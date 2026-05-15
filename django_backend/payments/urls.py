@@ -17,7 +17,7 @@ app_name = 'payments'
 
 urlpatterns = [
     # Payment endpoints
-    path('history/', views.PaymentHistoryView.as_View(), name='payment_history'),
+    path('history/', views.PaymentHistoryView.as_view(), name='payment_history'),
     path('initiate/', views.initiate_payment_view, name='initiate_payment'),
     
     # Withdrawal endpoints
