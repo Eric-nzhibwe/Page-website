@@ -179,7 +179,7 @@ CORS_ALLOW_CREDENTIALS = True
 # Set to 'smtp' to send real emails via Gmail
 EMAIL_MODE = config('EMAIL_MODE', default='smtp')
 
-if EMAIL_MODE == 'console':
+if EMAIL_MODE == 'smtp':
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 else:
     EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
@@ -207,11 +207,11 @@ LEMONSQUEEZY_API_KEY = config('LEMONSQUEEZY_API_KEY', default='')
 LEMONSQUEEZY_STORE_ID = config('LEMONSQUEEZY_STORE_ID', default='')
 
 # PawaPay Configuration (African Mobile Money)
-PAWAPAY_API_KEY = config('PAWAPAY_API_KEY', default='')
+PAWAPAY_API_KEY = config('PAWAPAY_API_KEY', default='eyJraWQiOiIxIiwiYWxnIjoiRVMyNTYifQ.eyJ0dCI6IkFBVCIsInN1YiI6IjE4NjI3IiwibWF2IjoiMSIsImV4cCI6MjA5NDQ1NzE4OCwiaWF0IjoxNzc4ODM3OTg4LCJwbSI6IkRBRixQQUYiLCJqdGkiOiJjYzU4NWQxZC0zYjFkLTQ5NGQtYWVmMy0yMzQ4YjkwOTQwMjIifQ.YKKAoj5UrcbeS4k5zx3_WXv-U4nUIN1sy8geCZqYg5rLi8L_n8ioiy4QLxbeoFVa-APk6Y185lA0QA8f44Uisg')
 PAWAPAY_API_URL = config('PAWAPAY_API_URL', default='https://api.pawapay.cloud')
 
 # OpenAI Configuration (for AI Chatbot)
-OPENAI_API_KEY = config('OPENAI_API_KEY', default='')
+OPENAI_API_KEY = config('OPENAI_API_KEY', default='OPENAI_KEY_REDACTED')
 
 # Logging
 LOGGING = {
