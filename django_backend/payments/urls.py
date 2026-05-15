@@ -7,14 +7,15 @@ from .views import (
     deposit_funds_view,
     withdraw_funds_view,
     transaction_history_view,
-    payment_history_view
+    PaymentHistoryView,
+    WithdrawHistoryView
 )
 
 app_name = 'payments'
 
 urlpatterns = [
     # Payment endpoints
-    path('history/', views.payment_history_view, name='payment_history'),
+    path('history/', views.PaymentHistoryView.as_View, name='payment_history'),
     path('initiate/', views.initiate_payment_view, name='initiate_payment'),
     
     # Withdrawal endpoints
