@@ -8,7 +8,7 @@ from .views import (
     withdraw_funds_view,
     transaction_history_view,
     PaymentHistoryView,
-    WithdrawHistoryView
+    WithdrawalHistoryView
 )
 
 app_name = 'payments'
