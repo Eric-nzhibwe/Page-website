@@ -164,54 +164,56 @@ REST_FRAMEWORK = {
     'PAGE_SIZE': 20,
 }
 
-# CORS settings
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    "http://localhost:8000",
-    "http://127.0.0.1:8000",
-]
+# CORS settings - Fixed to support production domains
+CORS_ALLOWED_ORIGINS = config(
+    'CORS_ALLOWED_ORIGINS',
+    default='http://localhost:3000,http://127.0.0.1:3000,http://localhost:8000,http://127.0.0.1:8000',
+    cast=lambda v: [s.strip() for s in v.split(',')]
+)
 
 CORS_ALLOW_CREDENTIALS = True
 
 # Email Configuration
 # Set to 'console' to print emails to terminal (for testing)
 # Set to 'smtp' to send real emails via Gmail
-EMAIL_MODE = config('EMAIL_MODE', default='smtp')
+EMAIL_MODE = config('EMAIL_MODE', default='console')
 
-if EMAIL_MODE == 'smtp':
+if EMAIL_MODE == 'console':
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 else:
     EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
     EMAIL_HOST = config('EMAIL_HOST', default='smtp.gmail.com')
     EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
     EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
-    EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='ericnzhibwe8@gmail.com')
-    EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='zdnn jjre jonw ffyb')
+    EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
+    EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
 
 DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='ARTX Platform <noreply@artx.com>')
 
 # Payment Provider Configuration
-STRIPE_PUBLISHABLE_KEY = config('STRIPE_PUBLISHABLE_KEY', default='pk_test_...')
-STRIPE_SECRET_KEY = config('STRIPE_SECRET_KEY', default='sk_test_...')
-STRIPE_WEBHOOK_SECRET = config('STRIPE_WEBHOOK_SECRET', default='whsec_...')
+# ⚠️ IMPORTANT: All API keys should be in .env file, NOT in code
+STRIPE_PUBLISHABLE_KEY = config('STRIPE_PUBLISHABLE_KEY', default='')
+STRIPE_SECRET_KEY = config('STRIPE_SECRET_KEY', default='')
+STRIPE_WEBHOOK_SECRET = config('STRIPE_WEBHOOK_SECRET', default='')
 
-PAYSTACK_PUBLIC_KEY = config('PAYSTACK_PUBLIC_KEY', default='pk_test_...')
-PAYSTACK_SECRET_KEY = config('PAYSTACK_SECRET_KEY', default='sk_test_...')
+PAYSTACK_PUBLIC_KEY = config('PAYSTACK_PUBLIC_KEY', default='')
+PAYSTACK_SECRET_KEY = config('PAYSTACK_SECRET_KEY', default='')
 
-TINGG_SECRET_KEY = config('TINGG_SECRET_KEY', default='TINGG_TEST_SECRET_KEY')
-TINGG_PUBLIC_KEY = config('TINGG_PUBLIC_KEY', default='TINGG_TEST_PUBLIC_KEY')
-TINGG_WEBHOOK_SECRET = config('TINGG_WEBHOOK_SECRET', default='test_webhook_secret')
+TING_SECRET_KEY = config('TINGG_SECRET_KEY', default='')
+TINGG_PUBLIC_KEY = config('TINGG_PUBLIC_KEY', default='')
+TINGG_WEBHOOK_SECRET = config('TINGG_WEBHOOK_SECRET', default='')
 
 LEMONSQUEEZY_API_KEY = config('LEMONSQUEEZY_API_KEY', default='')
 LEMONSQUEEZY_STORE_ID = config('LEMONSQUEEZY_STORE_ID', default='')
 
 # PawaPay Configuration (African Mobile Money)
-PAWAPAY_API_KEY = config('PAWAPAY_API_KEY', default='eyJraWQiOiIxIiwiYWxnIjoiRVMyNTYifQ.eyJ0dCI6IkFBVCIsInN1YiI6IjE4NjI3IiwibWF2IjoiMSIsImV4cCI6MjA5NDQ1NzE4OCwiaWF0IjoxNzc4ODM3OTg4LCJwbSI6IkRBRixQQUYiLCJqdGkiOiJjYzU4NWQxZC0zYjFkLTQ5NGQtYWVmMy0yMzQ4YjkwOTQwMjIifQ.YKKAoj5UrcbeS4k5zx3_WXv-U4nUIN1sy8geCZqYg5rLi8L_n8ioiy4QLxbeoFVa-APk6Y185lA0QA8f44Uisg')
+PAWAPAY_API_KEY = config('PAWAPAY_API_KEY', default='')
 PAWAPAY_API_URL = config('PAWAPAY_API_URL', default='https://api.pawapay.cloud')
+PAWAPAY_WEBHOOK_SECRET = config('PAWAPAY_WEBHOOK_SECRET', default='')
 
 # OpenAI Configuration (for AI Chatbot)
-OPENAI_API_KEY = config('OPENAI_API_KEY', default='OPENAI_KEY_REDACTED')
+# ⚠️ IMPORTANT: Keep this in .env file ONLY - DO NOT commit to git
+OPENAI_API_KEY = config('OPENAI_API_KEY', default='')
 
 # Logging
 LOGGING = {
@@ -246,6 +248,11 @@ LOGGING = {
             'level': 'INFO',
             'propagate': False,
         },
+        'payments': {
+            'handlers': ['console', 'file'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
     },
     'root': {
         'handlers': ['console', 'file'],
@@ -253,8 +260,14 @@ LOGGING = {
     },
 }
 
-# Create logs directory
-os.makedirs(BASE_DIR / 'logs', exist_ok=True)
+# Create logs directory with proper error handling
+LOGS_DIR = BASE_DIR / 'logs'
+if not LOGS_DIR.exists():
+    try:
+        LOGS_DIR.mkdir(parents=True, mode=0o755, exist_ok=True)
+    except Exception as e:
+        import warnings
+        warnings.warn(f"Could not create logs directory: {e}")
 
 # Security settings for production
 if not DEBUG:
