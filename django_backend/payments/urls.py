@@ -2,11 +2,13 @@
 Payment URLs for ARTX Platform
 """
 from django.urls import path
+from . import views
 from .views import (
     wallet_balance_view,
     deposit_funds_view,
     withdraw_funds_view,
     transaction_history_view,
+    add_game_earnings_view,
     PaymentHistoryView,
     WithdrawalHistoryView
 )
@@ -15,7 +17,7 @@ app_name = 'payments'
 
 urlpatterns = [
     # Payment endpoints
-    path('history/', views.PaymentHistoryView.as_View, name='payment_history'),
+    path('history/', views.PaymentHistoryView.as_View(), name='payment_history'),
     path('initiate/', views.initiate_payment_view, name='initiate_payment'),
     
     # Withdrawal endpoints
