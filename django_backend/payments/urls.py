@@ -6,7 +6,8 @@ from . views import (
     wallet_balance_view,
     deposit_funds_view,
     withdraw_funds_view,
-    transaction_history_view
+    transaction_history_view,
+    payment_history_view
 )
 
 app_name = 'payments'
