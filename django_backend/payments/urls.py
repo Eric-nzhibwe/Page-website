@@ -2,7 +2,12 @@
 Payment URLs for ARTX Platform
 """
 from django.urls import path
-from . import views
+from . import views (
+    wallet_balance_view,
+    deposit_funds_view,
+    withdraw_funds_view,
+    transaction_history_view
+)
 
 app_name = 'payments'
 
