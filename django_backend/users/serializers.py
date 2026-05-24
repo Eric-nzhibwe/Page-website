@@ -160,3 +160,12 @@ class SocialConnectionSerializer(serializers.Serializer):
     username = serializers.CharField(max_length=100)
     verified = serializers.BooleanField(default=False)
     profile_image_url = serializers.URLField(required=False)
+
+
+class UserBasicSerializer(serializers.ModelSerializer):
+    """Minimal serializer for user references in other models"""
+    
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'display_name', 'prestige_points', 'access_tier']
+        read_only_fields = fields

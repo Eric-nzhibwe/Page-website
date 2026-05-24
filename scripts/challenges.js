@@ -1,4 +1,6 @@
-// Challenges Page Logic
+/**
+ * Challenges Page Logic - Using Django Backend API
+ */
 
 // Mobile Menu Toggle
 function toggleMobileMenu() {
@@ -14,6 +16,8 @@ let challenges = [];
 let mySubmissions = [];
 let currentChallenge = null;
 let challengeTimer = null;
+let challengeStartTime = null;
+let realtimeUpdateInterval = null;
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
@@ -23,6 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     loadPlayerData();
+    initializeRealtimeUpdates();
     loadChallenges();
     loadMySubmissions();
     renderChallenges();
@@ -32,7 +37,13 @@ document.addEventListener('DOMContentLoaded', () => {
 // Authentication
 function checkAuth() {
     currentUserId = localStorage.getItem('artCurrentUser');
-    return currentUserId !== null;
+    const token = localStorage.getItem('authToken');
+    
+    if (token) {
+        apiService.setToken(token);
+    }
+    
+    return currentUserId !== null && token !== null;
 }
 
 function loadPlayerData() {
@@ -46,27 +57,93 @@ function loadPlayerData() {
 }
 
 function updateUI() {
+    if (!player) return;
+    
     document.getElementById('username').textContent = player.username;
-    document.getElementById('userPrestige').textContent = player.prestige;
+    document.getElementById('userPrestige').textContent = player.prestige_points || 0;
+    document.getElementById('streakCount').textContent = player.current_streak || 0;
+    
+    // Update wallet balance if available
+    if (player.wallet_balance !== undefined) {
+        document.getElementById('walletBalance').textContent = `K${player.wallet_balance.toFixed(2)}`;
+        document.getElementById('walletBalanceBadge').style.display = 'flex';
+    }
+    
+    // Update tier badge
+    if (player.access_tier) {
+        document.getElementById('tierBadge').textContent = player.access_tier;
+    }
 }
 
 function logout() {
     if (confirm('Logout?')) {
         localStorage.removeItem('artCurrentUser');
+        localStorage.removeItem('authToken');
         window.location.href = 'auth.html';
     }
 }
 
-// Load Challenges
-function loadChallenges() {
-    challenges = JSON.parse(localStorage.getItem('artChallenges') || '[]');
-    // Filter only active challenges
-    challenges = challenges.filter(c => c.status === 'active');
+// Initialize Real-time Updates
+function initializeRealtimeUpdates() {
+    // Try to connect to WebSocket
+    realtimeService.connect().catch(() => {
+        console.warn('WebSocket connection failed, using polling instead');
+        // Fallback to polling
+        startPollingUpdates();
+    });
+    
+    // Listen for real-time events
+    realtimeService.on('new_submission', (data) => {
+        console.log('New submission:', data);
+        updateChallengeStats();
+    });
+    
+    realtimeService.on('leaderboard_update', (data) => {
+        console.log('Leaderboard updated:', data);
+        if (currentChallenge && currentChallenge.id === data.challenge_id) {
+            loadLeaderboard();
+        }
+    });
+    
+    realtimeService.on('activity', (data) => {
+        console.log('New activity:', data);
+        if (currentChallenge && currentChallenge.id === data.challenge_id) {
+            loadActivityFeed();
+        }
+    });
 }
 
-function loadMySubmissions() {
-    const allSubmissions = JSON.parse(localStorage.getItem('artSubmissions') || '[]');
-    mySubmissions = allSubmissions.filter(s => s.userId === currentUserId);
+function startPollingUpdates() {
+    // Poll for updates every 5 seconds
+    realtimeUpdateInterval = setInterval(() => {
+        if (currentChallenge) {
+            updateChallengeStats();
+        }
+    }, 5000);
+}
+
+// Load Challenges from API
+async function loadChallenges() {
+    try {
+        const data = await apiService.getActiveChallenges();
+        challenges = Array.isArray(data) ? data : data.results || [];
+        console.log('Loaded challenges:', challenges);
+    } catch (error) {
+        console.error('Error loading challenges:', error);
+        challenges = [];
+    }
+}
+
+// Load User Submissions from API
+async function loadMySubmissions() {
+    try {
+        const data = await apiService.getMySubmissions();
+        mySubmissions = Array.isArray(data) ? data : data.results || [];
+        console.log('Loaded submissions:', mySubmissions);
+    } catch (error) {
+        console.error('Error loading submissions:', error);
+        mySubmissions = [];
+    }
 }
 
 // Filter Challenges
@@ -93,13 +170,13 @@ function renderChallenges(filter = 'all') {
     }
     
     container.innerHTML = filtered.map(challenge => {
-        const timeRemaining = getTimeRemaining(challenge.endsAt);
-        const hasSubmitted = mySubmissions.some(s => s.challengeId === challenge.id);
-        const pointsRange = getPointsRange(challenge.difficulty);
+        const timeRemaining = getTimeRemaining(challenge.ends_at);
+        const hasSubmitted = mySubmissions.some(s => s.challenge === challenge.id);
+        const pointsRange = `${challenge.min_points}-${challenge.max_points} pts`;
         
         return `
             <div class="challenge-card" onclick="openChallenge('${challenge.id}')">
-                <img src="${challenge.imageUrl}" alt="${challenge.title}" class="challenge-image">
+                <img src="${challenge.image_url}" alt="${challenge.title}" class="challenge-image">
                 <div class="challenge-body">
                     <div class="challenge-header">
                         <div>
@@ -110,13 +187,13 @@ function renderChallenges(filter = 'all') {
                     <p class="challenge-description">${challenge.description}</p>
                     <div class="challenge-meta">
                         <span class="meta-item">
-                            <i class="fas fa-clock"></i> ${challenge.timeLimit} min
+                            <i class="fas fa-clock"></i> ${challenge.time_limit} min
                         </span>
                         <span class="meta-item">
                             <i class="fas fa-calendar"></i> ${timeRemaining}
                         </span>
                         <span class="meta-item">
-                            <i class="fas fa-users"></i> ${challenge.submissions ? challenge.submissions.length : 0} entries
+                            <i class="fas fa-users"></i> ${challenge.submission_count} entries
                         </span>
                     </div>
                 </div>
@@ -129,16 +206,6 @@ function renderChallenges(filter = 'all') {
             </div>
         `;
     }).join('');
-}
-
-function getPointsRange(difficulty) {
-    const ranges = {
-        easy: '10-30 pts',
-        medium: '30-60 pts',
-        hard: '60-100 pts',
-        expert: '100-200 pts'
-    };
-    return ranges[difficulty] || '10-50 pts';
 }
 
 function getTimeRemaining(endDate) {
@@ -157,63 +224,87 @@ function getTimeRemaining(endDate) {
 }
 
 // Open Challenge
-function openChallenge(challengeId) {
-    currentChallenge = challenges.find(c => c.id === challengeId);
-    if (!currentChallenge) return;
-    
-    const hasSubmitted = mySubmissions.some(s => s.challengeId === challengeId);
-    
-    document.getElementById('challengeContent').innerHTML = `
-        <h2>${currentChallenge.title}</h2>
-        <span class="difficulty-badge difficulty-${currentChallenge.difficulty}">${currentChallenge.difficulty}</span>
+async function openChallenge(challengeId) {
+    try {
+        currentChallenge = await apiService.getChallenge(challengeId);
+        if (!currentChallenge) return;
         
-        <img src="${currentChallenge.imageUrl}" alt="${currentChallenge.title}" class="challenge-detail-image">
+        // Subscribe to real-time updates
+        realtimeService.subscribeToChallengeUpdates(challengeId);
         
-        <p style="color: #aaa; margin: 20px 0; line-height: 1.8;">${currentChallenge.description}</p>
+        const hasSubmitted = mySubmissions.some(s => s.challenge === challengeId);
         
-        <div class="challenge-rules">
-            <h3><i class="fas fa-list"></i> Submission Rules</h3>
-            <ul>
-                ${currentChallenge.submissionRules.map(rule => `<li>${rule}</li>`).join('')}
-            </ul>
-            <p style="margin-top: 15px; color: #888;">
-                <i class="fas fa-info-circle"></i> 
-                Word count: ${currentChallenge.minWordCount} - ${currentChallenge.maxWordCount} words
-            </p>
-        </div>
-        
-        ${hasSubmitted ? `
-            <div style="background: rgba(76, 175, 80, 0.2); border: 1px solid #4caf50; padding: 20px; border-radius: 8px; text-align: center;">
-                <i class="fas fa-check-circle" style="font-size: 48px; color: #4caf50; margin-bottom: 10px;"></i>
-                <h3 style="color: #4caf50;">You've already submitted to this challenge!</h3>
-                <p style="color: #aaa; margin-top: 10px;">Check your submissions below to see your score.</p>
-            </div>
-        ` : `
-            <div class="timer-warning">
-                <p><i class="fas fa-clock"></i> Time Limit: ${currentChallenge.timeLimit} minutes</p>
-                <div class="timer-display" id="timerDisplay">Ready to start</div>
+        document.getElementById('challengeContent').innerHTML = `
+            <h2>${currentChallenge.title}</h2>
+            <span class="difficulty-badge difficulty-${currentChallenge.difficulty}">${currentChallenge.difficulty}</span>
+            
+            <img src="${currentChallenge.image_url}" alt="${currentChallenge.title}" class="challenge-detail-image">
+            
+            <p style="color: #aaa; margin: 20px 0; line-height: 1.8;">${currentChallenge.description}</p>
+            
+            <div class="challenge-rules">
+                <h3><i class="fas fa-list"></i> Submission Rules</h3>
+                <ul>
+                    ${currentChallenge.submission_rules.map(rule => `<li>${rule}</li>`).join('')}
+                </ul>
+                <p style="margin-top: 15px; color: #888;">
+                    <i class="fas fa-info-circle"></i> 
+                    Word count: ${currentChallenge.min_word_count} - ${currentChallenge.max_word_count} words
+                </p>
             </div>
             
-            <div class="submission-form">
-                <form onsubmit="submitInterpretation(event)">
-                    <div class="form-group">
-                        <label>Your Interpretation</label>
-                        <textarea id="interpretationText" required placeholder="Share your interpretation of this image..." oninput="updateWordCount()"></textarea>
-                        <div class="word-count" id="wordCount">0 / ${currentChallenge.maxWordCount} words</div>
-                    </div>
-                    
-                    <button type="submit" class="btn-primary btn-large" id="submitBtn">
-                        <i class="fas fa-paper-plane"></i> Submit Interpretation
-                    </button>
-                </form>
+            ${hasSubmitted ? `
+                <div style="background: rgba(76, 175, 80, 0.2); border: 1px solid #4caf50; padding: 20px; border-radius: 8px; text-align: center;">
+                    <i class="fas fa-check-circle" style="font-size: 48px; color: #4caf50; margin-bottom: 10px;"></i>
+                    <h3 style="color: #4caf50;">You've already submitted to this challenge!</h3>
+                    <p style="color: #aaa; margin-top: 10px;">Check your submissions below to see your score.</p>
+                </div>
+            ` : `
+                <div class="timer-warning">
+                    <p><i class="fas fa-clock"></i> Time Limit: ${currentChallenge.time_limit} minutes</p>
+                    <div class="timer-display" id="timerDisplay">Ready to start</div>
+                </div>
+                
+                <div class="submission-form">
+                    <form onsubmit="submitInterpretation(event)">
+                        <div class="form-group">
+                            <label>Your Interpretation</label>
+                            <textarea id="interpretationText" required placeholder="Share your interpretation of this image..." oninput="updateWordCount()"></textarea>
+                            <div class="word-count" id="wordCount">0 / ${currentChallenge.max_word_count} words</div>
+                        </div>
+                        
+                        <button type="submit" class="btn-primary btn-large" id="submitBtn">
+                            <i class="fas fa-paper-plane"></i> Submit Interpretation
+                        </button>
+                    </form>
+                </div>
+            `}
+            
+            <div id="leaderboardContainer" style="margin-top: 40px;">
+                <h3><i class="fas fa-trophy"></i> Live Leaderboard</h3>
+                <div id="leaderboardContent"></div>
             </div>
-        `}
-    `;
-    
-    document.getElementById('challengeModal').style.display = 'block';
-    
-    if (!hasSubmitted) {
-        startChallengeTimer();
+            
+            <div id="activityContainer" style="margin-top: 40px;">
+                <h3><i class="fas fa-fire"></i> Live Activity</h3>
+                <div id="activityContent"></div>
+            </div>
+        `;
+        
+        document.getElementById('challengeModal').style.display = 'block';
+        
+        if (!hasSubmitted) {
+            challengeStartTime = Date.now();
+            startChallengeTimer();
+        }
+        
+        // Load leaderboard and activity
+        loadLeaderboard();
+        loadActivityFeed();
+        
+    } catch (error) {
+        console.error('Error opening challenge:', error);
+        alert('Error loading challenge. Please try again.');
     }
 }
 
@@ -223,12 +314,15 @@ function closeChallengeModal() {
         clearInterval(challengeTimer);
         challengeTimer = null;
     }
+    if (currentChallenge) {
+        realtimeService.unsubscribeFromChallengeUpdates(currentChallenge.id);
+    }
     currentChallenge = null;
 }
 
 // Challenge Timer
 function startChallengeTimer() {
-    const timeLimit = currentChallenge.timeLimit * 60; // Convert to seconds
+    const timeLimit = currentChallenge.time_limit * 60; // Convert to seconds
     let timeRemaining = timeLimit;
     
     const timerDisplay = document.getElementById('timerDisplay');
@@ -256,10 +350,10 @@ function updateWordCount() {
     const words = text.trim().split(/\s+/).filter(w => w.length > 0);
     const wordCount = words.length;
     
-    document.getElementById('wordCount').textContent = `${wordCount} / ${currentChallenge.maxWordCount} words`;
+    document.getElementById('wordCount').textContent = `${wordCount} / ${currentChallenge.max_word_count} words`;
     
     // Validate word count
-    if (wordCount < currentChallenge.minWordCount || wordCount > currentChallenge.maxWordCount) {
+    if (wordCount < currentChallenge.min_word_count || wordCount > currentChallenge.max_word_count) {
         document.getElementById('wordCount').style.color = '#f44336';
     } else {
         document.getElementById('wordCount').style.color = '#4caf50';
@@ -267,7 +361,7 @@ function updateWordCount() {
 }
 
 // Submit Interpretation
-function submitInterpretation(event) {
+async function submitInterpretation(event) {
     event.preventDefault();
     
     const interpretation = document.getElementById('interpretationText').value.trim();
@@ -275,96 +369,130 @@ function submitInterpretation(event) {
     const wordCount = words.length;
     
     // Validate word count
-    if (wordCount < currentChallenge.minWordCount) {
-        alert(`Your interpretation is too short. Minimum ${currentChallenge.minWordCount} words required.`);
+    if (wordCount < currentChallenge.min_word_count) {
+        alert(`Your interpretation is too short. Minimum ${currentChallenge.min_word_count} words required.`);
         return;
     }
     
-    if (wordCount > currentChallenge.maxWordCount) {
-        alert(`Your interpretation is too long. Maximum ${currentChallenge.maxWordCount} words allowed.`);
+    if (wordCount > currentChallenge.max_word_count) {
+        alert(`Your interpretation is too long. Maximum ${currentChallenge.max_word_count} words allowed.`);
         return;
     }
     
-    // Calculate score
-    const score = calculateScore(interpretation, currentChallenge);
-    
-    // Create submission
-    const submission = {
-        id: Date.now().toString(),
-        userId: currentUserId,
-        username: player.username,
-        challengeId: currentChallenge.id,
-        challengeTitle: currentChallenge.title,
-        interpretation: interpretation,
-        wordCount: wordCount,
-        score: score,
-        submittedAt: new Date().toISOString(),
-        status: 'scored'
-    };
-    
-    // Save submission
-    const allSubmissions = JSON.parse(localStorage.getItem('artSubmissions') || '[]');
-    allSubmissions.push(submission);
-    localStorage.setItem('artSubmissions', JSON.stringify(allSubmissions));
-    
-    // Update player prestige
-    player.prestige += score;
-    player.submissions = player.submissions || [];
-    player.submissions.push({
-        challengeId: currentChallenge.id,
-        score: score,
-        timestamp: new Date().toISOString()
-    });
-    
-    localStorage.setItem(`artPlayer_${currentUserId}`, JSON.stringify(player));
-    
-    // Update users array
-    const users = JSON.parse(localStorage.getItem('artUsers') || '[]');
-    const userIndex = users.findIndex(u => u.id === currentUserId);
-    if (userIndex !== -1) {
-        users[userIndex] = player;
-        localStorage.setItem('artUsers', JSON.stringify(users));
+    try {
+        const submissionTimeSeconds = Math.floor((Date.now() - challengeStartTime) / 1000);
+        
+        const submission = await apiService.submitChallenge(
+            currentChallenge.id,
+            interpretation,
+            submissionTimeSeconds
+        );
+        
+        alert(`Submission successful! Your interpretation has been submitted.`);
+        
+        // Clear timer
+        if (challengeTimer) {
+            clearInterval(challengeTimer);
+            challengeTimer = null;
+        }
+        
+        closeChallengeModal();
+        loadMySubmissions();
+        renderMySubmissions();
+        renderChallenges();
+        
+    } catch (error) {
+        console.error('Error submitting interpretation:', error);
+        alert(`Error submitting: ${error.message}`);
     }
-    
-    // Clear timer
-    if (challengeTimer) {
-        clearInterval(challengeTimer);
-        challengeTimer = null;
-    }
-    
-    alert(`Submission successful! You earned ${score} prestige points!`);
-    
-    closeChallengeModal();
-    loadMySubmissions();
-    renderMySubmissions();
-    updateUI();
 }
 
-// Calculate Score
-function calculateScore(interpretation, challenge) {
-    const words = interpretation.split(/\s+/).filter(w => w.length > 0);
-    const wordCount = words.length;
+// Load Leaderboard
+async function loadLeaderboard() {
+    if (!currentChallenge) return;
     
-    // Base score by difficulty
-    const baseScores = {
-        easy: { min: 10, max: 30 },
-        medium: { min: 30, max: 60 },
-        hard: { min: 60, max: 100 },
-        expert: { min: 100, max: 200 }
-    };
+    try {
+        const leaderboard = await apiService.getChallengeLeaderboard(currentChallenge.id);
+        const container = document.getElementById('leaderboardContent');
+        
+        if (!leaderboard.top_submissions || leaderboard.top_submissions.length === 0) {
+            container.innerHTML = '<p style="color: #888;">No submissions yet</p>';
+            return;
+        }
+        
+        container.innerHTML = `
+            <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px;">
+                <div style="display: grid; grid-template-columns: 50px 1fr 100px; gap: 15px; margin-bottom: 15px; font-weight: bold; color: #aaa;">
+                    <div>Rank</div>
+                    <div>Player</div>
+                    <div>Score</div>
+                </div>
+                ${leaderboard.top_submissions.map(entry => `
+                    <div style="display: grid; grid-template-columns: 50px 1fr 100px; gap: 15px; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.1);">
+                        <div style="font-weight: bold; color: #ffd700;">#${entry.rank}</div>
+                        <div>${entry.username}</div>
+                        <div style="color: #4caf50; font-weight: bold;">${entry.score} pts</div>
+                    </div>
+                `).join('')}
+            </div>
+            <div style="margin-top: 15px; color: #888; font-size: 12px;">
+                <p>Total Participants: ${leaderboard.total_participants}</p>
+                <p>Average Score: ${leaderboard.average_score.toFixed(1)}</p>
+                <p>Highest Score: ${leaderboard.highest_score}</p>
+            </div>
+        `;
+    } catch (error) {
+        console.error('Error loading leaderboard:', error);
+    }
+}
+
+// Load Activity Feed
+async function loadActivityFeed() {
+    if (!currentChallenge) return;
     
-    const base = baseScores[challenge.difficulty];
+    try {
+        const activities = await apiService.getChallengeActivity(currentChallenge.id);
+        const container = document.getElementById('activityContent');
+        
+        if (!activities || activities.length === 0) {
+            container.innerHTML = '<p style="color: #888;">No activity yet</p>';
+            return;
+        }
+        
+        container.innerHTML = activities.slice(0, 10).map(activity => `
+            <div style="background: rgba(255,255,255,0.05); padding: 12px; border-radius: 6px; margin-bottom: 10px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <strong>${activity.user.username}</strong>
+                        <p style="color: #aaa; font-size: 12px; margin: 5px 0;">${activity.description}</p>
+                    </div>
+                    <span style="color: #888; font-size: 12px;">${new Date(activity.created_at).toLocaleTimeString()}</span>
+                </div>
+            </div>
+        `).join('');
+    } catch (error) {
+        console.error('Error loading activity feed:', error);
+    }
+}
+
+// Update Challenge Stats
+async function updateChallengeStats() {
+    if (!currentChallenge) return;
     
-    // Calculate score based on word count (more words = better detail)
-    const wordRatio = Math.min(wordCount / challenge.maxWordCount, 1);
-    
-    // Random factor for creativity (simulated)
-    const creativityFactor = 0.7 + Math.random() * 0.3;
-    
-    // Calculate final score
-    const score = Math.floor(base.min + (base.max - base.min) * wordRatio * creativityFactor);
-    
-    return score;
+    try {
+        const stats = await apiService.getChallengeStats(currentChallenge.id);
+        console.log('Challenge stats:', stats);
+        
+        // Update leaderboard and activity if visible
+        if (document.getElementById('leaderboardContent')) {
+            loadLeaderboard();
+        }
+        if (document.getElementById('activityContent')) {
+            loadActivityFeed();
+        }
+    } catch (error) {
+        console.error('Error updating stats:', error);
+    }
 }
 
 // Render My Submissions
@@ -377,7 +505,7 @@ function renderMySubmissions() {
     }
     
     // Sort by date (newest first)
-    mySubmissions.sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt));
+    mySubmissions.sort((a, b) => new Date(b.submitted_at) - new Date(a.submitted_at));
     
     container.innerHTML = mySubmissions.map(submission => `
         <div class="submission-item">
@@ -385,76 +513,16 @@ function renderMySubmissions() {
                 <i class="fas fa-${submission.status === 'scored' ? 'check' : 'clock'}"></i>
             </div>
             <div class="submission-info">
-                <h4>${submission.challengeTitle}</h4>
-                <p>Submitted ${new Date(submission.submittedAt).toLocaleString()}</p>
-                <p style="margin-top: 5px;">${submission.wordCount} words</p>
+                <h4>${submission.challenge_title}</h4>
+                <p>Submitted ${new Date(submission.submitted_at).toLocaleString()}</p>
+                <p style="margin-top: 5px;">${submission.word_count} words</p>
             </div>
             <div class="submission-score">
-                <div class="score-value">${submission.score}</div>
+                <div class="score-value">${submission.final_score || 0}</div>
                 <div class="score-label">POINTS</div>
             </div>
         </div>
     `).join('');
-}
-
-// Upload Content
-function showUploadModal() {
-    document.getElementById('uploadModal').style.display = 'block';
-}
-
-function closeUploadModal() {
-    document.getElementById('uploadModal').style.display = 'none';
-    document.getElementById('uploadForm').reset();
-    document.getElementById('uploadPreview').innerHTML = '';
-}
-
-function previewUploadImage(event) {
-    const file = event.target.files[0];
-    if (file) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            document.getElementById('uploadPreview').innerHTML = `<img src="${e.target.result}" alt="Preview">`;
-        };
-        reader.readAsDataURL(file);
-    }
-}
-
-function uploadContent(event) {
-    event.preventDefault();
-    
-    const title = document.getElementById('uploadTitle').value;
-    const description = document.getElementById('uploadDescription').value;
-    const category = document.getElementById('uploadCategory').value;
-    const imageFile = document.getElementById('uploadImage').files[0];
-    
-    if (!imageFile) {
-        alert('Please select an image');
-        return;
-    }
-    
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        const ugc = {
-            id: Date.now().toString(),
-            userId: currentUserId,
-            username: player.username,
-            title: title,
-            description: description,
-            category: category,
-            imageUrl: e.target.result,
-            status: 'pending',
-            uploadedAt: new Date().toISOString()
-        };
-        
-        // Save to user generated content
-        const allUGC = JSON.parse(localStorage.getItem('artUserContent') || '[]');
-        allUGC.push(ugc);
-        localStorage.setItem('artUserContent', JSON.stringify(allUGC));
-        
-        alert('Content uploaded successfully! It will be reviewed by admins.');
-        closeUploadModal();
-    };
-    reader.readAsDataURL(imageFile);
 }
 
 // Make functions global
@@ -465,7 +533,3 @@ window.openChallenge = openChallenge;
 window.closeChallengeModal = closeChallengeModal;
 window.updateWordCount = updateWordCount;
 window.submitInterpretation = submitInterpretation;
-window.showUploadModal = showUploadModal;
-window.closeUploadModal = closeUploadModal;
-window.previewUploadImage = previewUploadImage;
-window.uploadContent = uploadContent;

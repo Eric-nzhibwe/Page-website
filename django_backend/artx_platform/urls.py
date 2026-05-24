@@ -18,6 +18,7 @@ urlpatterns = [
     path('api/alliances/', include('alliances.urls')),
     path('api/notifications/', include('notifications.urls')),
     path('api/chatbot/', include('chatbot.urls')),
+    path('api/challenges/', include('challenges.urls')),
     
     # Webhooks
     path('webhooks/', include('payments.webhook_urls')),
