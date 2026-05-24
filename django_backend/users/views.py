@@ -16,6 +16,7 @@ from .serializers import (
     UserActivitySerializer, UserSubmissionSerializer, LeaderboardSerializer,
     SocialConnectionSerializer
 )
+from .otp_service import otp_service
 
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -83,32 +84,19 @@ def login_view(request):
     
     user = serializer.validated_data['user']
     
-    # Generate OTP for two-factor authentication
-    otp, session_id = otp_service.create_otp(user)
+    # TEMPORARY: Skip OTP for testing - Remove after testing
+    # TODO: Re-enable OTP after confirming login works
+    print(f"⏭️  Skipping OTP for testing - user: {user.username}")
     
-    # Send OTP via email
-    otp_sent = otp_service.send_otp_email(user, otp)
+    login(request, user)
+    token, created = Token.objects.get_or_create(user=user)
     
-    if not otp_sent:
-        print(f"⚠️ Failed to send OTP email, proceeding without 2FA")
-        # Fallback: login without OTP if email fails
-        login(request, user)
-        token, created = Token.objects.get_or_create(user=user)
-        
-        return Response({
-            'user': UserProfileSerializer(user).data,
-            'token': token.key,
-            'message': f'Welcome back! 🔥'
-        })
+    print(f"✅ User logged in successfully: {user.username}")
     
-    print(f"✅ OTP sent to {user.email} for user: {user.username}")
-    
-    # Return response indicating OTP is required
     return Response({
-        'requires_otp': True,
-        'session_id': session_id,
-        'contact': user.email,
-        'message': 'OTP sent to your email. Please verify to continue.'
+        'user': UserProfileSerializer(user).data,
+        'token': token.key,
+        'message': f'Welcome back, {user.username}! 🔥'
     })
 
 
@@ -245,10 +233,6 @@ def remove_social_connection_view(request, platform):
             'error': f"No {platform} connection found"
         }, status=status.HTTP_404_NOT_FOUND)
 
-
-# ==================== OTP ENDPOINTS ====================
-
-from .otp_service import otp_service
 
 @csrf_exempt
 @api_view(['POST'])
