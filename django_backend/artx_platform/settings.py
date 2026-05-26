@@ -9,7 +9,7 @@ from decouple import config
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = config('SECRET_KEY', default='django-insecure-change-me-in-production')
+SECRET_KEY = config('SECRET_KEY', default='l2nk9k_v$jj%1r&)e935@n0+=pj!-$9y1tqar^(ieojgj_e9$5')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config('DEBUG', default='True') in ['True', 'true', '1', 'yes']
@@ -185,7 +185,7 @@ CORS_ALLOW_CREDENTIALS = True
 # Set to 'smtp' to send real emails via Gmail
 EMAIL_MODE = config('EMAIL_MODE', default='smtp')
 
-if EMAIL_MODE == 'console':
+if EMAIL_MODE == 'smtp':
     EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 else:
     EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
@@ -193,7 +193,7 @@ else:
     EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
     EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
     EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='ericnzhibwe8@gmail.com')
-    EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='oezj nyzb erzs vbkm')
+    EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='waji ftru wrdb ypav')
 
 DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='ARTX Platform <noreply@artx.com>')
 
@@ -202,16 +202,6 @@ DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='ARTX Platform <norepl
 STRIPE_PUBLISHABLE_KEY = config('STRIPE_PUBLISHABLE_KEY', default='')
 STRIPE_SECRET_KEY = config('STRIPE_SECRET_KEY', default='')
 STRIPE_WEBHOOK_SECRET = config('STRIPE_WEBHOOK_SECRET', default='')
-
-PAYSTACK_PUBLIC_KEY = config('PAYSTACK_PUBLIC_KEY', default='')
-PAYSTACK_SECRET_KEY = config('PAYSTACK_SECRET_KEY', default='')
-
-TING_SECRET_KEY = config('TINGG_SECRET_KEY', default='')
-TINGG_PUBLIC_KEY = config('TINGG_PUBLIC_KEY', default='')
-TINGG_WEBHOOK_SECRET = config('TINGG_WEBHOOK_SECRET', default='')
-
-LEMONSQUEEZY_API_KEY = config('LEMONSQUEEZY_API_KEY', default='')
-LEMONSQUEEZY_STORE_ID = config('LEMONSQUEEZY_STORE_ID', default='')
 
 # PawaPay Configuration (African Mobile Money)
 PAWAPAY_API_KEY = config('PAWAPAY_API_KEY', default='eyJraWQiOiIxIiwiYWxnIjoiRVMyNTYifQ.eyJ0dCI6IkFBVCIsInN1YiI6IjE4NjI3IiwibWF2IjoiMSIsImV4cCI6MjA5NTE1MTkxNywiaWF0IjoxNzc5NTMyNzE3LCJwbSI6IkRBRixQQUYiLCJqdGkiOiIxOWU5MGYwMy0xMmZkLTQ5ODktOTZkMC0zMWFiMzdhMTYwODkifQ.bSbEHIQVAyBBZepcNDvbOQWbCagX7vri4MNdGsHlQJRDGwGD1qnxZBEFZwddiW3ynjMZhcTdgLRBKmKJBBNEEg')
