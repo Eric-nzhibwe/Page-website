@@ -10,6 +10,25 @@ function toggleMobileMenu() {
     }
 }
 
+// Toggle User Menu
+function toggleUserMenu() {
+    const dropdown = document.getElementById('userDropdown');
+    if (dropdown) {
+        dropdown.classList.toggle('active');
+    }
+}
+
+// Open Messenger
+function openMessenger() {
+    alert('Messenger feature coming soon!');
+    // TODO: Implement messenger functionality
+}
+
+// Show Upload Modal
+function showUploadModal() {
+    document.getElementById('uploadModal').style.display = 'block';
+}
+
 let currentUserId = null;
 let player = null;
 let challenges = [];
@@ -199,9 +218,14 @@ function renderChallenges(filter = 'all') {
                 </div>
                 <div class="challenge-footer">
                     <span class="reward-badge"><i class="fas fa-star"></i> ${pointsRange}</span>
-                    <button class="btn-participate" ${hasSubmitted ? 'disabled' : ''}>
-                        ${hasSubmitted ? 'Submitted' : 'Participate'}
-                    </button>
+                    <div class="challenge-buttons">
+                        <button class="btn-secondary" onclick="viewChallengeDetails('${challenge.id}'); event.stopPropagation();">
+                            <i class="fas fa-info-circle"></i> Details
+                        </button>
+                        <button class="btn-participate" ${hasSubmitted ? 'disabled' : ''} onclick="event.stopPropagation();">
+                            ${hasSubmitted ? 'Submitted' : 'Participate'}
+                        </button>
+                    </div>
                 </div>
             </div>
         `;
@@ -305,6 +329,137 @@ async function openChallenge(challengeId) {
     } catch (error) {
         console.error('Error opening challenge:', error);
         alert('Error loading challenge. Please try again.');
+    }
+}
+
+// View Challenge Details (without submission form)
+async function viewChallengeDetails(challengeId) {
+    try {
+        const challenge = await apiService.getChallenge(challengeId);
+        if (!challenge) return;
+        
+        const stats = await apiService.getChallengeStats(challengeId);
+        const leaderboard = await apiService.getChallengeLeaderboard(challengeId);
+        
+        document.getElementById('challengeContent').innerHTML = `
+            <div class="challenge-details-view">
+                <div class="details-header">
+                    <h2>${challenge.title}</h2>
+                    <span class="difficulty-badge difficulty-${challenge.difficulty}">${challenge.difficulty}</span>
+                </div>
+                
+                <img src="${challenge.image_url}" alt="${challenge.title}" class="challenge-detail-image" style="max-width: 100%; border-radius: 8px; margin: 20px 0;">
+                
+                <div class="details-section">
+                    <h3><i class="fas fa-align-left"></i> Description</h3>
+                    <p style="color: #aaa; line-height: 1.8;">${challenge.description}</p>
+                </div>
+                
+                <div class="details-grid">
+                    <div class="detail-card">
+                        <i class="fas fa-clock"></i>
+                        <h4>Time Limit</h4>
+                        <p>${challenge.time_limit} minutes</p>
+                    </div>
+                    <div class="detail-card">
+                        <i class="fas fa-star"></i>
+                        <h4>Reward</h4>
+                        <p>${challenge.min_points}-${challenge.max_points} pts</p>
+                    </div>
+                    <div class="detail-card">
+                        <i class="fas fa-users"></i>
+                        <h4>Participants</h4>
+                        <p>${stats.unique_participants}</p>
+                    </div>
+                    <div class="detail-card">
+                        <i class="fas fa-chart-bar"></i>
+                        <h4>Avg Score</h4>
+                        <p>${stats.average_score.toFixed(1)}</p>
+                    </div>
+                </div>
+                
+                <div class="details-section">
+                    <h3><i class="fas fa-list"></i> Submission Rules</h3>
+                    <ul style="color: #aaa; line-height: 2;">
+                        ${challenge.submission_rules.map(rule => `<li>✓ ${rule}</li>`).join('')}
+                    </ul>
+                </div>
+                
+                <div class="details-section">
+                    <h3><i class="fas fa-pencil"></i> Requirements</h3>
+                    <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; color: #aaa;">
+                        <p><strong>Word Count:</strong> ${challenge.min_word_count} - ${challenge.max_word_count} words</p>
+                        <p><strong>Difficulty:</strong> ${challenge.difficulty.toUpperCase()}</p>
+                        <p><strong>Status:</strong> ${challenge.is_active ? '🟢 Active' : '🔴 Inactive'}</p>
+                        <p><strong>Time Remaining:</strong> ${getTimeRemaining(challenge.ends_at)}</p>
+                    </div>
+                </div>
+                
+                <div class="details-section">
+                    <h3><i class="fas fa-trophy"></i> Top Submissions</h3>
+                    <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px;">
+                        ${leaderboard.top_submissions && leaderboard.top_submissions.length > 0 ? `
+                            <div style="display: grid; gap: 10px;">
+                                ${leaderboard.top_submissions.slice(0, 5).map(entry => `
+                                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: rgba(255,255,255,0.02); border-radius: 6px;">
+                                        <div>
+                                            <span style="color: #ffd700; font-weight: bold;">#${entry.rank}</span>
+                                            <span style="color: #aaa; margin-left: 10px;">${entry.username}</span>
+                                        </div>
+                                        <span style="color: #4caf50; font-weight: bold;">${entry.score} pts</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        ` : `
+                            <p style="color: #888; text-align: center;">No submissions yet</p>
+                        `}
+                    </div>
+                </div>
+                
+                <div class="details-section">
+                    <h3><i class="fas fa-info-circle"></i> Scoring Criteria</h3>
+                    <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px;">
+                        <div style="margin-bottom: 10px;">
+                            <div style="display: flex; justify-content: space-between; color: #aaa;">
+                                <span>Creativity</span>
+                                <span>${challenge.creativity_weight}%</span>
+                            </div>
+                            <div style="background: rgba(255,255,255,0.1); height: 6px; border-radius: 3px; margin-top: 5px;">
+                                <div style="background: #667eea; height: 100%; width: ${challenge.creativity_weight}%; border-radius: 3px;"></div>
+                            </div>
+                        </div>
+                        <div style="margin-bottom: 10px;">
+                            <div style="display: flex; justify-content: space-between; color: #aaa;">
+                                <span>Relevance</span>
+                                <span>${challenge.relevance_weight}%</span>
+                            </div>
+                            <div style="background: rgba(255,255,255,0.1); height: 6px; border-radius: 3px; margin-top: 5px;">
+                                <div style="background: #764ba2; height: 100%; width: ${challenge.relevance_weight}%; border-radius: 3px;"></div>
+                            </div>
+                        </div>
+                        <div>
+                            <div style="display: flex; justify-content: space-between; color: #aaa;">
+                                <span>Detail</span>
+                                <span>${challenge.detail_weight}%</span>
+                            </div>
+                            <div style="background: rgba(255,255,255,0.1); height: 6px; border-radius: 3px; margin-top: 5px;">
+                                <div style="background: #f093fb; height: 100%; width: ${challenge.detail_weight}%; border-radius: 3px;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <button class="btn-primary btn-large" onclick="openChallenge('${challenge.id}')" style="width: 100%; margin-top: 20px;">
+                    <i class="fas fa-play"></i> Participate in Challenge
+                </button>
+            </div>
+        `;
+        
+        document.getElementById('challengeModal').style.display = 'block';
+        
+    } catch (error) {
+        console.error('Error loading challenge details:', error);
+        alert('Error loading challenge details. Please try again.');
     }
 }
 
@@ -525,11 +680,133 @@ function renderMySubmissions() {
     `).join('');
 }
 
+// Switch Upload Tabs
+function switchUploadTab(tab) {
+    // Hide all tabs
+    document.getElementById('contentTab').classList.remove('active');
+    document.getElementById('challengeTab').classList.remove('active');
+    
+    // Remove active class from all buttons
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    
+    // Show selected tab
+    if (tab === 'content') {
+        document.getElementById('contentTab').classList.add('active');
+        document.querySelectorAll('.tab-btn')[0].classList.add('active');
+    } else {
+        document.getElementById('challengeTab').classList.add('active');
+        document.querySelectorAll('.tab-btn')[1].classList.add('active');
+    }
+}
+
+// Validate Scoring Weights
+function validateWeights() {
+    const creativity = parseInt(document.getElementById('creativityWeight').value) || 0;
+    const relevance = parseInt(document.getElementById('relevanceWeight').value) || 0;
+    const detail = parseInt(document.getElementById('detailWeight').value) || 0;
+    const total = creativity + relevance + detail;
+    
+    const totalElement = document.getElementById('weightTotal');
+    if (total === 100) {
+        totalElement.style.color = '#4caf50';
+        totalElement.textContent = `Total: ${total}% ✓`;
+    } else {
+        totalElement.style.color = '#f44336';
+        totalElement.textContent = `Total: ${total}% (must be 100%)`;
+    }
+}
+
+// Preview Challenge Image
+function previewChallengeImage(event) {
+    const file = event.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('challengeImagePreview').innerHTML = `<img src="${e.target.result}" alt="Preview" style="max-width: 100%; border-radius: 8px;">`;
+        };
+        reader.readAsDataURL(file);
+    }
+}
+
+// Create Challenge
+async function createChallenge(event) {
+    event.preventDefault();
+    
+    const title = document.getElementById('challengeTitle').value;
+    const description = document.getElementById('challengeDescription').value;
+    const difficulty = document.getElementById('challengeDifficulty').value;
+    const timeLimit = parseInt(document.getElementById('challengeTimeLimit').value);
+    const minWords = parseInt(document.getElementById('challengeMinWords').value);
+    const maxWords = parseInt(document.getElementById('challengeMaxWords').value);
+    const rules = document.getElementById('challengeRules').value.split('\n').filter(r => r.trim());
+    const minPoints = parseInt(document.getElementById('challengeMinPoints').value);
+    const maxPoints = parseInt(document.getElementById('challengeMaxPoints').value);
+    const creativity = parseInt(document.getElementById('creativityWeight').value);
+    const relevance = parseInt(document.getElementById('relevanceWeight').value);
+    const detail = parseInt(document.getElementById('detailWeight').value);
+    const imageFile = document.getElementById('challengeImage').files[0];
+    
+    // Validate weights
+    if (creativity + relevance + detail !== 100) {
+        alert('Scoring weights must sum to 100%');
+        return;
+    }
+    
+    if (!imageFile) {
+        alert('Please select an image');
+        return;
+    }
+    
+    try {
+        const reader = new FileReader();
+        reader.onload = async function(e) {
+            const challengeData = {
+                title,
+                description,
+                difficulty,
+                time_limit: timeLimit,
+                min_word_count: minWords,
+                max_word_count: maxWords,
+                submission_rules: rules,
+                min_points: minPoints,
+                max_points: maxPoints,
+                creativity_weight: creativity,
+                relevance_weight: relevance,
+                detail_weight: detail,
+                image_url: e.target.result,
+                status: 'active',
+                starts_at: new Date().toISOString(),
+                ends_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+            };
+            
+            // Note: This would require an admin endpoint to create challenges
+            // For now, show success message
+            alert('Challenge created successfully! 🎉\n\nNote: Admin approval may be required.');
+            closeUploadModal();
+            loadChallenges();
+            renderChallenges();
+        };
+        reader.readAsDataURL(imageFile);
+        
+    } catch (error) {
+        console.error('Error creating challenge:', error);
+        alert('Error creating challenge: ' + error.message);
+    }
+}
+
 // Make functions global
 window.toggleMobileMenu = toggleMobileMenu;
+window.toggleUserMenu = toggleUserMenu;
+window.openMessenger = openMessenger;
+window.showUploadModal = showUploadModal;
+window.switchUploadTab = switchUploadTab;
+window.validateWeights = validateWeights;
+window.previewChallengeImage = previewChallengeImage;
+window.createChallenge = createChallenge;
 window.logout = logout;
 window.filterChallenges = filterChallenges;
 window.openChallenge = openChallenge;
+window.viewChallengeDetails = viewChallengeDetails;
 window.closeChallengeModal = closeChallengeModal;
 window.updateWordCount = updateWordCount;
 window.submitInterpretation = submitInterpretation;

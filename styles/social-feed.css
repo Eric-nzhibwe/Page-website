@@ -115,10 +115,16 @@
 /* Social Container Layout */
 .social-container {
     display: grid;
-    grid-template-columns: 280px 1fr 320px;
+    grid-template-columns: 1fr;
     gap: 20px;
     max-width: 1400px;
     margin: 0 auto;
+}
+
+@media (min-width: 1024px) {
+    .social-container {
+        grid-template-columns: 280px 1fr 320px;
+    }
 }
 
 /* Left Sidebar */
@@ -126,6 +132,13 @@
     position: sticky;
     top: 20px;
     height: fit-content;
+    display: none;
+}
+
+@media (min-width: 1024px) {
+    .left-sidebar {
+        display: block;
+    }
 }
 
 .sidebar-card {
@@ -240,7 +253,14 @@
 
 /* Main Feed */
 .main-feed {
-    max-width: 680px;
+    max-width: 100%;
+    width: 100%;
+}
+
+@media (min-width: 1024px) {
+    .main-feed {
+        max-width: 680px;
+    }
 }
 
 /* Stories Container */
@@ -248,7 +268,7 @@
     display: flex;
     gap: 10px;
     overflow-x: auto;
-    padding: 15px;
+    padding: 12px 8px;
     background: white;
     border-radius: 12px;
     margin-bottom: 20px;
@@ -266,13 +286,27 @@
 }
 
 .story-card {
-    min-width: 110px;
-    height: 180px;
+    min-width: 75px;
+    height: 120px;
     border-radius: 12px;
     overflow: hidden;
     cursor: pointer;
     position: relative;
     transition: all 0.3s;
+}
+
+@media (min-width: 640px) {
+    .story-card {
+        min-width: 90px;
+        height: 150px;
+    }
+}
+
+@media (min-width: 1024px) {
+    .story-card {
+        min-width: 110px;
+        height: 180px;
+    }
 }
 
 .story-card:hover {
@@ -314,9 +348,21 @@
 .create-post-card {
     background: white;
     border-radius: 12px;
-    padding: 20px;
+    padding: 12px;
     margin-bottom: 20px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+@media (min-width: 640px) {
+    .create-post-card {
+        padding: 15px;
+    }
+}
+
+@media (min-width: 1024px) {
+    .create-post-card {
+        padding: 20px;
+    }
 }
 
 .create-post-header {
@@ -327,27 +373,42 @@
 }
 
 .post-avatar {
-    width: 45px;
-    height: 45px;
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
     background: linear-gradient(135deg, darkolivegreen, lightgreen);
     display: flex;
     align-items: center;
     justify-content: center;
     color: white;
-    font-size: 24px;
+    font-size: 20px;
     flex-shrink: 0;
+}
+
+@media (min-width: 640px) {
+    .post-avatar {
+        width: 45px;
+        height: 45px;
+        font-size: 24px;
+    }
 }
 
 .post-input {
     flex: 1;
-    padding: 12px 16px;
+    padding: 10px 14px;
     border: none;
     background: #f0f0f0;
     border-radius: 25px;
-    font-size: 15px;
+    font-size: 14px;
     color: #333;
     cursor: pointer;
+}
+
+@media (min-width: 640px) {
+    .post-input {
+        padding: 12px 16px;
+        font-size: 15px;
+    }
 }
 
 .post-input:focus {
@@ -356,9 +417,16 @@
 
 .create-post-actions {
     display: flex;
-    gap: 10px;
-    padding-top: 15px;
+    gap: 8px;
+    padding-top: 12px;
     border-top: 1px solid #e0e0e0;
+}
+
+@media (min-width: 640px) {
+    .create-post-actions {
+        gap: 10px;
+        padding-top: 15px;
+    }
 }
 
 .post-action-btn {
@@ -367,14 +435,21 @@
     align-items: center;
     justify-content: center;
     gap: 8px;
-    padding: 10px;
+    padding: 8px;
     background: transparent;
     border: none;
     border-radius: 8px;
     color: #666;
     cursor: pointer;
     transition: all 0.3s;
-    font-size: 14px;
+    font-size: 12px;
+}
+
+@media (min-width: 640px) {
+    .post-action-btn {
+        padding: 10px;
+        font-size: 14px;
+    }
 }
 
 .post-action-btn:hover {
@@ -382,7 +457,23 @@
 }
 
 .post-action-btn i {
-    font-size: 18px;
+    font-size: 16px;
+}
+
+@media (min-width: 640px) {
+    .post-action-btn i {
+        font-size: 18px;
+    }
+}
+
+.post-action-btn span {
+    display: none;
+}
+
+@media (min-width: 640px) {
+    .post-action-btn span {
+        display: inline;
+    }
 }
 
 /* Feed Posts */
@@ -395,9 +486,21 @@
 .post-card {
     background: white;
     border-radius: 12px;
-    padding: 20px;
+    padding: 12px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     animation: fadeIn 0.3s;
+}
+
+@media (min-width: 640px) {
+    .post-card {
+        padding: 15px;
+    }
+}
+
+@media (min-width: 1024px) {
+    .post-card {
+        padding: 20px;
+    }
 }
 
 .post-header {
@@ -505,25 +608,50 @@
 
 .achievement-badge-large {
     background: linear-gradient(135deg, darkolivegreen, lightgreen);
-    padding: 40px;
+    padding: 24px;
     text-align: center;
     color: white;
 }
 
+@media (min-width: 640px) {
+    .achievement-badge-large {
+        padding: 30px;
+    }
+}
+
 .achievement-badge-large i {
-    font-size: 60px;
-    margin-bottom: 15px;
+    font-size: 40px;
+    margin-bottom: 12px;
+}
+
+@media (min-width: 640px) {
+    .achievement-badge-large i {
+        font-size: 60px;
+        margin-bottom: 15px;
+    }
 }
 
 .achievement-badge-large h3 {
-    margin: 0 0 10px 0;
-    font-size: 24px;
+    margin: 0 0 8px 0;
+    font-size: 18px;
+}
+
+@media (min-width: 640px) {
+    .achievement-badge-large h3 {
+        font-size: 24px;
+    }
 }
 
 .achievement-badge-large p {
     margin: 0;
-    font-size: 18px;
+    font-size: 14px;
     opacity: 0.9;
+}
+
+@media (min-width: 640px) {
+    .achievement-badge-large p {
+        font-size: 18px;
+    }
 }
 
 .post-stats {
@@ -563,6 +691,13 @@
     position: sticky;
     top: 20px;
     height: fit-content;
+    display: none;
+}
+
+@media (min-width: 1024px) {
+    .right-sidebar {
+        display: block;
+    }
 }
 
 .sidebar-title {
