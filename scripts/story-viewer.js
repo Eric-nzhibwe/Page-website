@@ -13,6 +13,7 @@ class StoryViewer {
         this.stories = [];
         this.viewers = new Map();
         this.storySocket = null;
+        this.storyPollInterval = null;
         this.autoPlayTimer = null;
         this.expiryTimer = null;
     }
@@ -312,48 +313,27 @@ class StoryViewer {
     }
     
     /**
-     * Connect to story WebSocket for real-time viewer updates
+     * Connect to story updates using polling (WebSocket not configured)
      */
     connectStorySocket(storyId) {
         if (!this.currentStory) return;
         
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const url = `${protocol}//${window.location.host}/ws/social/story/${storyId}/`;
+        console.warn('⚠️ WebSocket not configured. Using polling instead.');
+        console.log('💡 To enable WebSocket: pip install django-channels');
         
-        try {
-            this.storySocket = new WebSocket(url);
-            
-            this.storySocket.onopen = () => {
-                console.log('Story WebSocket connected');
-            };
-            
-            this.storySocket.onmessage = (event) => {
-                this.handleStoryMessage(JSON.parse(event.data));
-            };
-            
-            this.storySocket.onerror = (error) => {
-                console.error('Story WebSocket error:', error);
-            };
-            
-        } catch (error) {
-            console.error('Failed to connect story socket:', error);
-        }
+        // Poll for viewer updates every 5 seconds
+        this.storyPollInterval = setInterval(() => {
+            this.loadViewers(storyId);
+        }, 5000);
     }
     
     /**
-     * Handle story WebSocket messages
+     * Disconnect story polling
      */
-    handleStoryMessage(data) {
-        const { type } = data;
-        
-        switch (type) {
-            case 'viewer_joined':
-                this.addViewer(data.viewer);
-                break;
-            case 'viewers_updated':
-                this.viewers.set(this.currentStory.id, data.viewers);
-                this.updateViewersList();
-                break;
+    disconnectStorySocket() {
+        if (this.storyPollInterval) {
+            clearInterval(this.storyPollInterval);
+            this.storyPollInterval = null;
         }
     }
     
