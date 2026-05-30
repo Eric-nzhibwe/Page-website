@@ -1,9 +1,17 @@
 /**
  * Real-time Updates System
- * - WebSocket connections for live feed, stories, and user activity
- * - Real-time notifications
+ * - Polling-based updates for live feed, stories, and user activity
+ * - Real-time notifications via polling
  * - Online user tracking
+ * 
+ * NOTE: WebSocket support is not yet implemented. Using polling instead.
+ * To enable WebSocket, install django-channels and configure routing.
  */
+
+// API Base URL - Dynamic detection for production
+const API_BASE_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+    ? 'http://localhost:8000/api'
+    : `${window.location.origin}/api`;
 
 class RealtimeUpdates {
     constructor() {
@@ -14,87 +22,82 @@ class RealtimeUpdates {
         this.reconnectAttempts = 0;
         this.maxReconnectAttempts = 5;
         this.reconnectDelay = 3000;
+        this.pollInterval = null;
+        this.notificationPollInterval = null;
+        this.pollDelay = 5000; // Poll every 5 seconds
     }
     
     /**
-     * Initialize WebSocket connections
+     * Initialize polling-based updates
      */
     init() {
-        this.connectFeedSocket();
-        this.connectNotificationSocket();
+        console.log('🔄 Initializing real-time updates (polling mode)');
+        this.startPolling();
         
         // Handle page visibility changes
         document.addEventListener('visibilitychange', () => {
             if (document.hidden) {
-                this.disconnect();
+                this.stopPolling();
             } else {
-                this.reconnect();
+                this.startPolling();
             }
         });
     }
     
     /**
-     * Connect to social feed WebSocket
+     * Start polling for feed updates
      */
-    connectFeedSocket() {
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const url = `${protocol}//${window.location.host}/ws/social/feed/`;
+    startPolling() {
+        if (this.pollInterval) return; // Already polling
         
-        try {
-            this.feedSocket = new WebSocket(url);
-            
-            this.feedSocket.onopen = () => {
-                console.log('Feed WebSocket connected');
-                this.isConnected = true;
-                this.reconnectAttempts = 0;
-                this.requestFeedUpdate();
-            };
-            
-            this.feedSocket.onmessage = (event) => {
-                this.handleFeedMessage(JSON.parse(event.data));
-            };
-            
-            this.feedSocket.onerror = (error) => {
-                console.error('Feed WebSocket error:', error);
-            };
-            
-            this.feedSocket.onclose = () => {
-                console.log('Feed WebSocket disconnected');
-                this.isConnected = false;
-                this.attemptReconnect();
-            };
-            
-        } catch (error) {
-            console.error('Failed to connect feed socket:', error);
-            this.attemptReconnect();
-        }
+        console.log('📡 Starting polling for feed updates');
+        this.isConnected = true;
+        
+        // Initial fetch
+        this.requestFeedUpdate();
+        this.requestNotificationUpdate();
+        
+        // Poll every 5 seconds
+        this.pollInterval = setInterval(() => {
+            this.requestFeedUpdate();
+        }, this.pollDelay);
+        
+        this.notificationPollInterval = setInterval(() => {
+            this.requestNotificationUpdate();
+        }, this.pollDelay);
     }
     
     /**
-     * Connect to notifications WebSocket
+     * Stop polling
+     */
+    stopPolling() {
+        if (this.pollInterval) {
+            clearInterval(this.pollInterval);
+            this.pollInterval = null;
+        }
+        if (this.notificationPollInterval) {
+            clearInterval(this.notificationPollInterval);
+            this.notificationPollInterval = null;
+        }
+        this.isConnected = false;
+        console.log('⏸️ Stopped polling');
+    }
+    
+    /**
+     * Connect to social feed WebSocket (deprecated - using polling instead)
+     */
+    connectFeedSocket() {
+        console.warn('⚠️ WebSocket not configured. Using polling instead.');
+        console.log('💡 To enable WebSocket: pip install django-channels');
+        // WebSocket not available - using polling instead
+    }
+    
+    /**
+     * Connect to notifications WebSocket (deprecated - using polling instead)
      */
     connectNotificationSocket() {
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const url = `${protocol}//${window.location.host}/ws/social/notifications/`;
-        
-        try {
-            this.notificationSocket = new WebSocket(url);
-            
-            this.notificationSocket.onopen = () => {
-                console.log('Notification WebSocket connected');
-            };
-            
-            this.notificationSocket.onmessage = (event) => {
-                this.handleNotificationMessage(JSON.parse(event.data));
-            };
-            
-            this.notificationSocket.onerror = (error) => {
-                console.error('Notification WebSocket error:', error);
-            };
-            
-        } catch (error) {
-            console.error('Failed to connect notification socket:', error);
-        }
+        console.warn('⚠️ WebSocket not configured. Using polling instead.');
+        // WebSocket not available - using polling instead
     }
     
     /**
@@ -526,40 +529,117 @@ class RealtimeUpdates {
     }
     
     /**
-     * Request feed update
+     * Request feed update via HTTP polling
      */
-    requestFeedUpdate() {
-        if (this.feedSocket && this.feedSocket.readyState === WebSocket.OPEN) {
-            this.feedSocket.send(JSON.stringify({
-                type: 'fetch_feed'
-            }));
+    async requestFeedUpdate() {
+        try {
+            const token = localStorage.getItem('djangoAuthToken');
+            if (!token) return;
+            
+            const response = await fetch(`${API_BASE_URL}/social/posts/`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Token ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                const posts = data.results || data;
+                this.handleFeedMessage({
+                    type: 'feed_update',
+                    posts: Array.isArray(posts) ? posts : []
+                });
+            }
+        } catch (error) {
+            console.warn('Feed update failed:', error.message);
         }
     }
     
     /**
-     * Request stories update
+     * Request notification update via HTTP polling
      */
-    requestStoriesUpdate() {
-        if (this.feedSocket && this.feedSocket.readyState === WebSocket.OPEN) {
-            this.feedSocket.send(JSON.stringify({
-                type: 'fetch_stories'
-            }));
+    async requestNotificationUpdate() {
+        try {
+            const token = localStorage.getItem('djangoAuthToken');
+            if (!token) return;
+            
+            const response = await fetch(`${API_BASE_URL}/notifications/`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Token ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                const notifications = data.results || data;
+                
+                if (Array.isArray(notifications)) {
+                    notifications.forEach(notif => {
+                        this.handleNotificationMessage({
+                            type: 'notification',
+                            title: notif.title || 'Notification',
+                            message: notif.message || notif.description || '',
+                            icon: 'info'
+                        });
+                    });
+                }
+            }
+        } catch (error) {
+            console.warn('Notification update failed:', error.message);
         }
     }
     
     /**
-     * Request online users update
+     * Request stories update via HTTP polling
      */
-    requestOnlineUsersUpdate() {
-        if (this.feedSocket && this.feedSocket.readyState === WebSocket.OPEN) {
-            this.feedSocket.send(JSON.stringify({
-                type: 'fetch_online_users'
-            }));
+    async requestStoriesUpdate() {
+        try {
+            const token = localStorage.getItem('djangoAuthToken');
+            if (!token) return;
+            
+            const response = await fetch(`${API_BASE_URL}/social/stories/feed/`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Token ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                const stories = data.results || data;
+                this.handleFeedMessage({
+                    type: 'stories_update',
+                    stories: Array.isArray(stories) ? stories : []
+                });
+            }
+        } catch (error) {
+            console.warn('Stories update failed:', error.message);
         }
     }
     
     /**
-     * Attempt to reconnect
+     * Request online users update via HTTP polling
+     */
+    async requestOnlineUsersUpdate() {
+        try {
+            const token = localStorage.getItem('djangoAuthToken');
+            if (!token) return;
+            
+            // This would require an endpoint to track online users
+            // For now, just log that it's not available
+            console.log('💡 Online users tracking requires WebSocket or additional backend support');
+        } catch (error) {
+            console.warn('Online users update failed:', error.message);
+        }
+    }
+    
+    /**
+     * Attempt to reconnect (polling-based)
      */
     attemptReconnect() {
         if (this.reconnectAttempts < this.maxReconnectAttempts) {
@@ -567,31 +647,25 @@ class RealtimeUpdates {
             console.log(`Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts})...`);
             
             setTimeout(() => {
-                this.connectFeedSocket();
+                this.startPolling();
             }, this.reconnectDelay);
         }
     }
     
     /**
-     * Reconnect all sockets
+     * Reconnect all connections (polling-based)
      */
     reconnect() {
         if (!this.isConnected) {
-            this.connectFeedSocket();
-            this.connectNotificationSocket();
+            this.startPolling();
         }
     }
     
     /**
-     * Disconnect all sockets
+     * Disconnect all connections
      */
     disconnect() {
-        if (this.feedSocket) {
-            this.feedSocket.close();
-        }
-        if (this.notificationSocket) {
-            this.notificationSocket.close();
-        }
+        this.stopPolling();
     }
     
     /**
