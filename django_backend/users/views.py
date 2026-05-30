@@ -66,20 +66,53 @@ class UserRegistrationView(generics.CreateAPIView):
 @api_view(['POST'])
 @permission_classes([permissions.AllowAny])
 def login_view(request):
-    """User login endpoint"""
+    """User login endpoint - Mobile optimized"""
     print(f"🔐 Login request received: {request.method}")
     print(f"📊 Request data: {request.data}")
     print(f"📋 Content type: {request.content_type}")
+    print(f"📱 User Agent: {request.META.get('HTTP_USER_AGENT', 'Unknown')}")
     
-    serializer = UserLoginSerializer(data=request.data)
+    # Validate required fields
+    username_or_email = request.data.get('username', '').strip() if request.data.get('username') else None
+    password = request.data.get('password', '').strip() if request.data.get('password') else None
+    
+    # Provide specific error messages for missing fields
+    if not username_or_email:
+        return Response({
+            'error': 'Invalid data',
+            'details': {'username': ['Email or username is required']},
+            'message': 'Please enter your email or username'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    if not password:
+        return Response({
+            'error': 'Invalid data',
+            'details': {'password': ['Password is required']},
+            'message': 'Please enter your password'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    # Validate with serializer
+    serializer = UserLoginSerializer(data={
+        'username': username_or_email,
+        'password': password
+    })
     
     if not serializer.is_valid():
         print(f"❌ Serializer errors: {serializer.errors}")
         error_message = str(serializer.errors)
+        
+        # Provide user-friendly error messages
+        if 'Invalid credentials' in error_message:
+            message = 'Email/username or password is incorrect'
+        elif 'disabled' in error_message.lower():
+            message = 'Your account has been disabled'
+        else:
+            message = 'Login failed. Please check your credentials'
+        
         return Response({
             'error': 'Invalid data',
             'details': serializer.errors,
-            'message': error_message
+            'message': message
         }, status=status.HTTP_400_BAD_REQUEST)
     
     user = serializer.validated_data['user']

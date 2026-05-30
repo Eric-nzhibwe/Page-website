@@ -169,16 +169,44 @@ REST_FRAMEWORK = {
         'rest_framework.filters.SearchFilter',
         'rest_framework.filters.OrderingFilter',
     ],
+    # Mobile-friendly parsers - handle various content-type formats
+    'DEFAULT_PARSER_CLASSES': [
+        'rest_framework.parsers.JSONParser',
+        'rest_framework.parsers.FormParser',
+        'rest_framework.parsers.MultiPartParser',
+    ],
+    # Better error responses
+    'EXCEPTION_HANDLER': 'rest_framework.views.exception_handler',
 }
 
-# CORS settings - Fixed to support production domains
+# CORS settings - Fixed to support production domains and mobile clients
 CORS_ALLOWED_ORIGINS = config(
     'CORS_ALLOWED_ORIGINS',
     default='http://localhost:3000,http://127.0.0.1:3000,http://localhost:8000,http://127.0.0.1:8000',
     cast=lambda v: [s.strip() for s in v.split(',')]
 )
 
+# Allow all origins in development, restrict in production
+if DEBUG:
+    CORS_ALLOW_ALL_ORIGINS = True
+else:
+    # In production, ensure your domain is in CORS_ALLOWED_ORIGINS
+    CORS_ALLOW_ALL_ORIGINS = False
+
 CORS_ALLOW_CREDENTIALS = True
+
+# Allow common mobile headers
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+]
 
 # Email Configuration
 # Set to 'console' to print emails to terminal (for testing)

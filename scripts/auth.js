@@ -149,7 +149,7 @@ function switchToLogin() {
     document.getElementById('loginForm').classList.add('active');
 }
 
-// Handle Signup - Django Backend Integration
+// Handle Signup - Django Backend Integration with Mobile Optimization
 async function handleSignup(event) {
     event.preventDefault();
     
@@ -161,6 +161,11 @@ async function handleSignup(event) {
     // Validation
     if (username.length < 3) {
         alert('Username must be at least 3 characters long');
+        return;
+    }
+    
+    if (!email || !email.includes('@')) {
+        alert('Please enter a valid email address');
         return;
     }
     
@@ -181,8 +186,8 @@ async function handleSignup(event) {
     submitBtn.disabled = true;
     
     try {
-        // Register with Django backend
-        const response = await fetch(`${API_BASE_URL}/auth/register/`, {
+        // Register with Django backend - with timeout and retry
+        const response = await fetchWithRetry(`${API_BASE_URL}/auth/register/`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -192,13 +197,25 @@ async function handleSignup(event) {
                 email: email,
                 display_name: username,
                 password: password
-            })
+            }),
+            timeout: 15000,
+            retries: 2
         });
         
         const data = await response.json();
         
         if (!response.ok) {
-            throw new Error(data.error || data.message || 'Registration failed');
+            let errorMessage = data.error || data.message || 'Registration failed';
+            
+            if (data.details) {
+                if (data.details.username) {
+                    errorMessage = 'Username already taken';
+                } else if (data.details.email) {
+                    errorMessage = 'Email already registered';
+                }
+            }
+            
+            throw new Error(errorMessage);
         }
         
         console.log('Registration successful:', data);
@@ -376,12 +393,23 @@ function showPawapayPaymentForm() {
     initiatePayment(5, 'ZMW', 'pawapay', phoneNumber, correspondent);
 }
 
-// Handle Login - Django Backend Integration
+// Handle Login - Django Backend Integration with Mobile Optimization
 async function handleLogin(event) {
     event.preventDefault();
     
     const usernameOrEmail = document.getElementById('loginUsername').value.trim();
     const password = document.getElementById('loginPassword').value;
+    
+    // Client-side validation
+    if (!usernameOrEmail) {
+        alert('Please enter your email or username');
+        return;
+    }
+    
+    if (!password) {
+        alert('Please enter your password');
+        return;
+    }
     
     // Show loading state
     const submitBtn = event.target.querySelector('button[type="submit"]');
@@ -390,8 +418,8 @@ async function handleLogin(event) {
     submitBtn.disabled = true;
     
     try {
-        // Login with Django backend
-        const response = await fetch(`${API_BASE_URL}/auth/login/`, {
+        // Login with Django backend - with timeout and retry
+        const response = await fetchWithRetry(`${API_BASE_URL}/auth/login/`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -399,13 +427,33 @@ async function handleLogin(event) {
             body: JSON.stringify({
                 username: usernameOrEmail,
                 password: password
-            })
+            }),
+            timeout: 15000, // 15 second timeout for mobile networks
+            retries: 2 // Retry up to 2 times on network failure
         });
         
         const data = await response.json();
         
         if (!response.ok) {
-            throw new Error(data.error || data.message || 'Login failed');
+            // Provide specific error messages based on response
+            let errorMessage = data.message || data.error || 'Login failed';
+            
+            if (response.status === 400) {
+                // Bad request - validation error
+                if (data.details) {
+                    if (data.details.username) {
+                        errorMessage = 'Email or username not found';
+                    } else if (data.details.password) {
+                        errorMessage = 'Password is incorrect';
+                    }
+                }
+            } else if (response.status === 429) {
+                errorMessage = 'Too many login attempts. Please try again later.';
+            } else if (response.status === 500) {
+                errorMessage = 'Server error. Please try again later.';
+            }
+            
+            throw new Error(errorMessage);
         }
         
         console.log('Login successful:', data);
@@ -430,17 +478,24 @@ async function handleLogin(event) {
         }
         
         // Get user profile to show welcome message
-        const userResponse = await fetch(`${API_BASE_URL}/auth/profile/`, {
-            method: 'GET',
-            headers: {
-                'Authorization': `Token ${data.token}`,
-                'Content-Type': 'application/json'
+        try {
+            const userResponse = await fetchWithRetry(`${API_BASE_URL}/auth/profile/`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Token ${data.token}`,
+                    'Content-Type': 'application/json'
+                },
+                timeout: 10000,
+                retries: 1
+            });
+            
+            if (userResponse.ok) {
+                const userData = await userResponse.json();
+                alert(`Welcome back, ${userData.username}! 🔥 Ready to dominate the leaderboards?`);
             }
-        });
-        
-        if (userResponse.ok) {
-            const userData = await userResponse.json();
-            alert(`Welcome back, ${userData.username}! 🔥 Ready to dominate the leaderboards?`);
+        } catch (profileError) {
+            console.warn('Could not fetch profile:', profileError);
+            // Don't fail login if profile fetch fails
         }
         
         // Redirect to main app
@@ -454,6 +509,50 @@ async function handleLogin(event) {
         submitBtn.textContent = originalText;
         submitBtn.disabled = false;
     }
+}
+
+// Fetch with retry logic for mobile networks
+async function fetchWithRetry(url, options = {}) {
+    const { timeout = 15000, retries = 2, ...fetchOptions } = options;
+    
+    let lastError;
+    
+    for (let attempt = 0; attempt <= retries; attempt++) {
+        try {
+            // Create abort controller for timeout
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), timeout);
+            
+            const response = await fetch(url, {
+                ...fetchOptions,
+                signal: controller.signal
+            });
+            
+            clearTimeout(timeoutId);
+            return response;
+            
+        } catch (error) {
+            clearTimeout(timeoutId);
+            lastError = error;
+            
+            // Check if it's a network error or timeout
+            if (error.name === 'AbortError') {
+                lastError = new Error('Request timeout - slow network connection');
+            }
+            
+            // Only retry on network errors, not on other errors
+            if (attempt < retries && (error.name === 'AbortError' || error.name === 'TypeError')) {
+                console.warn(`Attempt ${attempt + 1} failed, retrying...`, error.message);
+                // Wait before retrying (exponential backoff)
+                await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
+                continue;
+            }
+            
+            throw lastError;
+        }
+    }
+    
+    throw lastError;
 }
 
 // Simple password hashing (for demo purposes - use proper backend in production)
