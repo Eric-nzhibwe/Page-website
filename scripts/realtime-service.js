@@ -9,7 +9,7 @@
 class RealtimeService {
     constructor() {
         this.ws = null;
-        this.url = 'ws://localhost:8000/ws/challenges/';
+        // WebSocket URL removed - using polling instead
         this.reconnectAttempts = 0;
         this.maxReconnectAttempts = 5;
         this.reconnectDelay = 3000;
@@ -165,13 +165,10 @@ class RealtimeService {
     }
 
     /**
-     * Disconnect WebSocket
+     * Disconnect (polling-based, no WebSocket to close)
      */
     disconnect() {
-        if (this.ws) {
-            this.ws.close();
-            this.ws = null;
-        }
+        this.stopPolling();
     }
 }
 
