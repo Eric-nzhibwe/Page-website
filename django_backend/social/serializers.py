@@ -2,7 +2,7 @@
 Serializers for social features
 """
 from rest_framework import serializers
-from .models import Post, Comment, PostReaction, CommentReaction, PostShare, Follow
+from .models import Post, Comment, PostReaction, CommentReaction, PostShare, Follow, Story, StoryView
 from users.models import User
 
 
