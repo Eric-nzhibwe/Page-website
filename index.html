@@ -140,12 +140,12 @@
             </div>
         </header>
 
-    <div class="container">
+    <div class="container-fluid p-0 m-0">
         <!-- Social Feed View (New Main View) -->
         <section id="social-feed" class="view active">
             <div class="social-container">
                 <!-- Left Sidebar -->
-                <aside class="left-sidebar">
+                <aside class="left-sidebar d-none d-xl-block">
                     <div class="sidebar-card">
                         <div class="user-profile-mini">
                             <div class="profile-avatar">
@@ -189,11 +189,11 @@
                 </aside>
 
                 <!-- Main Feed -->
-                <main class="main-feed">
+                <main class="main-feed w-100">
                     <!-- Stories Section -->
-                    <div class="stories-container">
-                        <div class="story-card create-story" onclick="openCreateStoryModal()">
-                            <div class="story-image">
+                    <div class="stories-container d-flex overflow-auto w-100 mb-3">
+                        <div class="story-card create-story flex-shrink-0" onclick="openCreateStoryModal()">
+                            <div class="story-image d-flex align-items-center justify-content-center">
                                 <i class="fas fa-plus-circle"></i>
                             </div>
                             <span class="story-name">Create Story</span>
@@ -219,26 +219,26 @@
                     </div>
 
                     <!-- Create Post Card -->
-                    <div class="create-post-card">
-                        <div class="create-post-header">
-                            <div class="post-avatar">
+                    <div class="create-post-card w-100 bg-white shadow-sm mb-3 p-3">
+                        <div class="create-post-header d-flex gap-3 mb-3">
+                            <div class="post-avatar rounded-circle d-flex align-items-center justify-content-center">
                                 <i class="fas fa-user-circle"></i>
                             </div>
-                            <input type="text" class="post-input" placeholder="What's on your mind?"
+                            <input type="text" class="post-input form-control rounded-pill" placeholder="What's on your mind?"
                                 onclick="openCreatePostModal()">
                         </div>
-                        <div class="create-post-actions">
-                            <button class="post-action-btn" onclick="openCreatePostModal('photo')">
-                                <i class="fas fa-image"></i>
-                                <span>Photo</span>
+                        <div class="create-post-actions d-flex gap-2">
+                            <button class="post-action-btn btn btn-light flex-fill" onclick="openCreatePostModal('photo')">
+                                <i class="fas fa-image me-2"></i>
+                                <span class="d-none d-sm-inline">Photo</span>
                             </button>
-                            <button class="post-action-btn" onclick="openCreatePostModal('video')">
-                                <i class="fas fa-video"></i>
-                                <span>Video</span>
+                            <button class="post-action-btn btn btn-light flex-fill" onclick="openCreatePostModal('video')">
+                                <i class="fas fa-video me-2"></i>
+                                <span class="d-none d-sm-inline">Video</span>
                             </button>
-                            <button class="post-action-btn" onclick="openCreatePostModal('achievement')">
-                                <i class="fas fa-trophy"></i>
-                                <span>Achievement</span>
+                            <button class="post-action-btn btn btn-light flex-fill" onclick="openCreatePostModal('achievement')">
+                                <i class="fas fa-trophy me-2"></i>
+                                <span class="d-none d-sm-inline">Achievement</span>
                             </button>
                         </div>
                     </div>
@@ -246,9 +246,9 @@
                     <!-- Feed Posts -->
                     <div id="feedPosts" class="feed-posts">
                         <!-- Sample Post 1 -->
-                        <div class="post-card" data-post-id="post-1">
-                            <div class="post-header">
-                                <div class="post-author">
+                        <div class="post-card w-100 bg-white shadow-sm mb-3 p-3" data-post-id="post-1">
+                            <div class="post-header d-flex justify-content-between align-items-center mb-3">
+                                <div class="post-author d-flex align-items-center gap-2">
                                     <div class="post-avatar">
                                         <i class="fas fa-user-circle"></i>
                                     </div>
@@ -378,7 +378,7 @@
                 </main>
 
                 <!-- Right Sidebar -->
-                <aside class="right-sidebar">
+                <aside class="right-sidebar d-none d-xl-block">
                     <!-- Live Competition -->
                     <div class="sidebar-card">
                         <h3 class="sidebar-title">
