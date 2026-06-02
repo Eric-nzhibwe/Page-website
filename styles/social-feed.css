@@ -1261,3 +1261,244 @@
         transform: scale(1.2);
     }
 }
+
+/* Comment Modal Styles */
+.comment-modal-content {
+    max-width: 600px;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.comments-list {
+    max-height: 400px;
+    overflow-y: auto;
+    margin-bottom: 20px;
+}
+
+.comment-item {
+    display: flex;
+    gap: 12px;
+    padding: 15px 0;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.comment-item:last-child {
+    border-bottom: none;
+}
+
+.comment-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, darkolivegreen, lightgreen);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 20px;
+    flex-shrink: 0;
+}
+
+.comment-content {
+    flex: 1;
+}
+
+.comment-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 5px;
+}
+
+.comment-author {
+    font-weight: 600;
+    color: #333;
+    font-size: 14px;
+}
+
+.comment-time {
+    font-size: 12px;
+    color: #999;
+}
+
+.comment-text {
+    color: #666;
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+.no-comments {
+    text-align: center;
+    color: #999;
+    padding: 40px 20px;
+    font-size: 14px;
+}
+
+.comment-input-container {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    padding: 15px;
+    background: #f9f9f9;
+    border-radius: 8px;
+}
+
+.comment-input {
+    flex: 1;
+    padding: 10px 15px;
+    border: 1px solid #e0e0e0;
+    border-radius: 20px;
+    font-size: 14px;
+    outline: none;
+}
+
+.comment-input:focus {
+    border-color: darkolivegreen;
+}
+
+.comment-submit-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: darkolivegreen;
+    color: white;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s;
+}
+
+.comment-submit-btn:hover {
+    background: #556b2f;
+    transform: scale(1.1);
+}
+
+/* Share Modal Styles */
+.share-modal-content {
+    max-width: 500px;
+}
+
+.share-platforms {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.share-platform-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 20px;
+    border: 2px solid #e0e0e0;
+    border-radius: 12px;
+    background: white;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-size: 14px;
+    font-weight: 600;
+    color: #333;
+}
+
+.share-platform-btn:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.share-platform-btn i {
+    font-size: 28px;
+}
+
+.share-platform-btn.facebook {
+    border-color: #1877f2;
+    color: #1877f2;
+}
+
+.share-platform-btn.facebook:hover {
+    background: #1877f2;
+    color: white;
+}
+
+.share-platform-btn.whatsapp {
+    border-color: #25d366;
+    color: #25d366;
+}
+
+.share-platform-btn.whatsapp:hover {
+    background: #25d366;
+    color: white;
+}
+
+.share-platform-btn.twitter {
+    border-color: #1da1f2;
+    color: #1da1f2;
+}
+
+.share-platform-btn.twitter:hover {
+    background: #1da1f2;
+    color: white;
+}
+
+.share-platform-btn.instagram {
+    border-color: #e4405f;
+    color: #e4405f;
+}
+
+.share-platform-btn.instagram:hover {
+    background: #e4405f;
+    color: white;
+}
+
+.share-platform-btn.copy {
+    border-color: darkolivegreen;
+    color: darkolivegreen;
+}
+
+.share-platform-btn.copy:hover {
+    background: darkolivegreen;
+    color: white;
+}
+
+.share-preview {
+    padding: 15px;
+    background: #f9f9f9;
+    border-radius: 8px;
+    text-align: center;
+}
+
+.share-url-preview {
+    color: #666;
+    font-size: 13px;
+    word-break: break-all;
+    margin: 0;
+}
+
+/* Mobile responsive for modals */
+@media (max-width: 768px) {
+    .comment-modal-content {
+        max-width: 95%;
+        margin: 10px auto;
+    }
+    
+    .share-modal-content {
+        max-width: 95%;
+        margin: 10px auto;
+    }
+    
+    .share-platforms {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .comment-item {
+        padding: 12px 0;
+    }
+    
+    .comment-avatar {
+        width: 35px;
+        height: 35px;
+        font-size: 18px;
+    }
+}

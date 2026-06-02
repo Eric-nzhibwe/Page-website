@@ -719,6 +719,187 @@ class RealtimeUpdates {
         console.log('Opening story:', story);
         // Implement story viewer modal
     }
+    
+    /**
+     * Follow a user (calls backend API)
+     */
+    async followUser(userId) {
+        try {
+            const token = localStorage.getItem('djangoAuthToken');
+            if (!token) {
+                console.error('No auth token found');
+                return;
+            }
+            
+            const response = await fetch(`${API_BASE_URL}/social/follow/follow/`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Token ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ user_id: userId })
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                console.log('Follow successful:', data);
+                showNotification('Success', 'You are now following this user', 'success');
+                
+                // Update UI to show following state
+                this.updateFollowButton(userId, true);
+                
+                return data;
+            } else {
+                const error = await response.json();
+                console.error('Follow failed:', error);
+                showNotification('Error', error.message || 'Failed to follow user', 'error');
+            }
+        } catch (error) {
+            console.error('Follow error:', error);
+            showNotification('Error', 'Failed to follow user', 'error');
+        }
+    }
+    
+    /**
+     * Unfollow a user (calls backend API)
+     */
+    async unfollowUser(userId) {
+        try {
+            const token = localStorage.getItem('djangoAuthToken');
+            if (!token) {
+                console.error('No auth token found');
+                return;
+            }
+            
+            const response = await fetch(`${API_BASE_URL}/social/follow/unfollow/`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Token ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ user_id: userId })
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                console.log('Unfollow successful:', data);
+                showNotification('Success', 'You have unfollowed this user', 'success');
+                
+                // Update UI to show unfollowed state
+                this.updateFollowButton(userId, false);
+                
+                return data;
+            } else {
+                const error = await response.json();
+                console.error('Unfollow failed:', error);
+                showNotification('Error', error.message || 'Failed to unfollow user', 'error');
+            }
+        } catch (error) {
+            console.error('Unfollow error:', error);
+            showNotification('Error', 'Failed to unfollow user', 'error');
+        }
+    }
+    
+    /**
+     * Check if current user is following another user
+     */
+    async isFollowing(userId) {
+        try {
+            const token = localStorage.getItem('djangoAuthToken');
+            if (!token) return false;
+            
+            const response = await fetch(`${API_BASE_URL}/social/follow/is_following/?user_id=${userId}`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Token ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                return data.is_following || false;
+            }
+            return false;
+        } catch (error) {
+            console.error('Check follow status error:', error);
+            return false;
+        }
+    }
+    
+    /**
+     * Update follow button state
+     */
+    updateFollowButton(userId, isFollowing) {
+        // Find all follow buttons for this user
+        const followButtons = document.querySelectorAll(`[data-user-id="${userId}"] .btn-follow, [data-user-id="${userId}"] .btn-follow-small`);
+        
+        followButtons.forEach(btn => {
+            if (isFollowing) {
+                btn.innerHTML = '<i class="fas fa-check"></i> Following';
+                btn.classList.add('following');
+                btn.onclick = () => this.unfollowUser(userId);
+            } else {
+                btn.innerHTML = '<i class="fas fa-user-plus"></i> Follow';
+                btn.classList.remove('following');
+                btn.onclick = () => this.followUser(userId);
+            }
+        });
+    }
+    
+    /**
+     * Load followers for a user
+     */
+    async loadFollowers(userId) {
+        try {
+            const token = localStorage.getItem('djangoAuthToken');
+            if (!token) return [];
+            
+            const response = await fetch(`${API_BASE_URL}/social/follow/followers/?user_id=${userId}`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Token ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                return data.results || data;
+            }
+            return [];
+        } catch (error) {
+            console.error('Load followers error:', error);
+            return [];
+        }
+    }
+    
+    /**
+     * Load users that current user is following
+     */
+    async loadFollowing() {
+        try {
+            const token = localStorage.getItem('djangoAuthToken');
+            if (!token) return [];
+            
+            const response = await fetch(`${API_BASE_URL}/social/follow/following/`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Token ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                return data.results || data;
+            }
+            return [];
+        } catch (error) {
+            console.error('Load following error:', error);
+            return [];
+        }
+    }
 }
 
 // Initialize on page load
@@ -735,3 +916,37 @@ window.addEventListener('beforeunload', function() {
         realtimeUpdates.disconnect();
     }
 });
+
+// Make follow functions globally accessible
+window.followUser = function(userId) {
+    if (realtimeUpdates) {
+        realtimeUpdates.followUser(userId);
+    }
+};
+
+window.unfollowUser = function(userId) {
+    if (realtimeUpdates) {
+        realtimeUpdates.unfollowUser(userId);
+    }
+};
+
+window.isFollowing = function(userId) {
+    if (realtimeUpdates) {
+        return realtimeUpdates.isFollowing(userId);
+    }
+    return false;
+};
+
+window.loadFollowers = function(userId) {
+    if (realtimeUpdates) {
+        return realtimeUpdates.loadFollowers(userId);
+    }
+    return Promise.resolve([]);
+};
+
+window.loadFollowing = function() {
+    if (realtimeUpdates) {
+        return realtimeUpdates.loadFollowing();
+    }
+    return Promise.resolve([]);
+};

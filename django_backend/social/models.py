@@ -3,6 +3,7 @@ Social models for ARTX Platform - Posts, Comments, and Shares
 """
 from django.db import models
 from django.utils import timezone
+from django.core.validators import MinValueValidator
 from users.models import User
 import uuid
 
@@ -33,9 +34,9 @@ class Post(models.Model):
     challenge_id = models.CharField(max_length=100, blank=True)  # For challenge posts
     
     # Engagement
-    reaction_count = models.IntegerField(default=0, validators=[models.Min(0)])
-    comment_count = models.IntegerField(default=0, validators=[models.Min(0)])
-    share_count = models.IntegerField(default=0, validators=[models.Min(0)])
+    reaction_count = models.IntegerField(default=0, validators=[MinValueValidator(0)])
+    comment_count = models.IntegerField(default=0, validators=[MinValueValidator(0)])
+    share_count = models.IntegerField(default=0, validators=[MinValueValidator(0)])
     
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
@@ -73,7 +74,7 @@ class Comment(models.Model):
     )
     
     # Engagement
-    reaction_count = models.IntegerField(default=0, validators=[models.Min(0)])
+    reaction_count = models.IntegerField(default=0, validators=[MinValueValidator(0)])
     
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
@@ -258,7 +259,7 @@ class Story(models.Model):
     media_type = models.CharField(max_length=20, choices=[('image', 'Image'), ('video', 'Video')])
     
     # Metadata
-    view_count = models.IntegerField(default=0, validators=[models.Min(0)])
+    view_count = models.IntegerField(default=0, validators=[MinValueValidator(0)])
     
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)

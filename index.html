@@ -31,7 +31,7 @@
                 </div>
             </div>
 
-            <!-- Icon Navigation (Facebook Style) -->
+            <!-- Icon Navigation -->
             <nav class="icon-nav">
                 <button class="icon-nav-btn active" data-view="social-feed" title="Home">
                     <i class="fas fa-home" style="color: black;"></i>
@@ -195,7 +195,7 @@
                             <span class="story-name">Create Story</span>
                         </div>
                         <div class="story-card" onclick="storyViewer.openStory('story-1', [{id: 'story-1', author: {username: 'You', display_name: 'Your Story', profile_image: null}, media_url: 'https://via.placeholder.com/400x600', media_type: 'image', content: '', view_count: 0, created_at: new Date().toISOString(), expires_at: new Date(Date.now() + 86400000).toISOString(), time_until_expiry: 86400}])">
-                            <div class="story-image" style="background: linear-gradient(135deg, #667eea, #764ba2);">
+                            <div class="story-image" style="background: linear-gradient(to right, whitesmoke, darkolivegreen);">
                                 <i class="fas fa-user"></i>
                             </div>
                             <span class="story-name">Your Story</span>
@@ -415,42 +415,29 @@
                         </div>
                     </div>
 
+                    <!-- Discover Users -->
+                    <div class="sidebar-card">
+                        <h3 class="sidebar-title">
+                            <i class="fas fa-users"></i> Discover Users
+                        </h3>
+                        <div class="user-search-container">
+                            <div class="user-search-box">
+                                <i class="fas fa-search"></i>
+                                <input type="text" id="userSearchInput" placeholder="Search users..." onkeyup="searchUsers(this.value)">
+                            </div>
+                        </div>
+                        <div id="discoverUsersList" class="discover-users-list">
+                            <p class="loading-text">Loading users...</p>
+                        </div>
+                    </div>
+
                     <!-- Suggested Connections -->
                     <div class="sidebar-card">
                         <h3 class="sidebar-title">
                             <i class="fas fa-user-plus"></i> Suggested For You
                         </h3>
-                        <div class="suggestions-list">
-                            <div class="suggestion-item">
-                                <div class="suggestion-avatar">
-                                    <i class="fas fa-user"></i>
-                                </div>
-                                <div class="suggestion-info">
-                                    <h4>Elite Player</h4>
-                                    <p>Gold Tier · 2.5k prestige</p>
-                                </div>
-                                <button class="btn-follow">Follow</button>
-                            </div>
-                            <div class="suggestion-item">
-                                <div class="suggestion-avatar">
-                                    <i class="fas fa-user"></i>
-                                </div>
-                                <div class="suggestion-info">
-                                    <h4>Pro Gamer</h4>
-                                    <p>Silver Tier · 1.8k prestige</p>
-                                </div>
-                                <button class="btn-follow">Follow</button>
-                            </div>
-                            <div class="suggestion-item">
-                                <div class="suggestion-avatar">
-                                    <i class="fas fa-user"></i>
-                                </div>
-                                <div class="suggestion-info">
-                                    <h4>Rising Star</h4>
-                                    <p>Bronze Tier · 850 prestige</p>
-                                </div>
-                                <button class="btn-follow">Follow</button>
-                            </div>
+                        <div id="suggestedUsersList" class="suggestions-list">
+                            <p class="loading-text">Loading suggestions...</p>
                         </div>
                     </div>
 
@@ -1845,6 +1832,7 @@
         </div>
     </div>
 
+    <script src="scripts/websocket-client.js"></script>
     <script src="scripts/app.js"></script>
     <script src="scripts/social-feed.js"></script>
     <script src="scripts/marketplace.js"></script>

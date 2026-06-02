@@ -36,6 +36,7 @@ THIRD_PARTY_APPS = [
     'corsheaders',
     'django_extensions',
     'django_filters',
+    'channels',
 ]
 
 LOCAL_APPS = [
@@ -46,6 +47,7 @@ LOCAL_APPS = [
     'notifications',
     'chatbot',
     'challenges',
+    'social',
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -81,6 +83,25 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'artx_platform.wsgi.application'
+ASGI_APPLICATION = 'artx_platform.asgi.application'
+
+# Channels configuration
+if DEBUG:
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels.layers.InMemoryChannelLayer',
+        },
+    }
+else:
+    # Production: Use Redis for channel layer
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels_redis.core.RedisChannelLayer',
+            'CONFIG': {
+                "hosts": [(config('REDIS_URL', default='redis://localhost:6379/0'),)],
+            },
+        },
+    }
 
 # Database
 # Use DATABASE_URL if available (Render provides this), otherwise use individual settings

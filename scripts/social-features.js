@@ -2,10 +2,14 @@
  * Real-time Social Features
  * - Comments with modal
  * - Social media sharing
- * - Real-time updates
+ * - Real-time updates via WebSocket
  */
 
 const API_BASE = '/api/social';
+
+// Global WebSocket connection for current post
+let currentPostWs = null;
+let currentPostId = null;
 
 // ============================================
 // COMMENT MODAL & FUNCTIONALITY
@@ -20,6 +24,9 @@ function openCommentModal(postId) {
     document.getElementById('commentModal').style.display = 'flex';
     document.getElementById('commentPostId').value = postId;
     document.getElementById('commentInput').focus();
+    
+    // Connect to WebSocket for real-time updates
+    connectToPostWebSocket(postId);
 }
 
 function closeCommentModal() {
@@ -27,6 +34,56 @@ function closeCommentModal() {
     if (modal) {
         modal.style.display = 'none';
         document.getElementById('commentInput').value = '';
+    }
+    
+    // Disconnect from WebSocket when closing modal
+    if (currentPostWs) {
+        wsClient.disconnect(`post_${currentPostId}`);
+        currentPostWs = null;
+        currentPostId = null;
+    }
+}
+
+// ============================================
+// WEBSOCKET CONNECTION
+// ============================================
+
+function connectToPostWebSocket(postId) {
+    // Disconnect from previous post if any
+    if (currentPostWs && currentPostId !== postId) {
+        wsClient.disconnect(`post_${currentPostId}`);
+    }
+    
+    currentPostId = postId;
+    
+    try {
+        currentPostWs = wsClient.connectToPost(postId, {
+            onConnect: () => {
+                console.log(`Connected to WebSocket for post ${postId}`);
+            },
+            onComment: (comment) => {
+                console.log('New comment received via WebSocket:', comment);
+                addCommentToUI(comment);
+                updateCommentCount(postId);
+            },
+            onReaction: (reaction) => {
+                console.log('Reaction updated via WebSocket:', reaction);
+                updateReactionCount(postId);
+            },
+            onShare: (share) => {
+                console.log('Post shared via WebSocket:', share);
+                updateShareCount(postId);
+            },
+            onError: (error) => {
+                console.error('WebSocket error:', error);
+            },
+            onDisconnect: () => {
+                console.log('Disconnected from WebSocket');
+                currentPostWs = null;
+            }
+        });
+    } catch (error) {
+        console.error('Failed to connect to WebSocket:', error);
     }
 }
 
@@ -86,6 +143,24 @@ async function submitComment() {
         return;
     }
     
+    // Try WebSocket first, fall back to REST API
+    if (currentPostWs) {
+        try {
+            wsClient.sendComment(postId, content);
+            
+            // Close modal and reset
+            closeCommentModal();
+            
+            // Show success message
+            showNotification('Comment posted successfully!', 'success');
+            
+            return;
+        } catch (error) {
+            console.error('WebSocket comment failed, falling back to REST API:', error);
+        }
+    }
+    
+    // Fallback to REST API
     try {
         const response = await fetch(`${API_BASE}/comments/`, {
             method: 'POST',
@@ -166,7 +241,30 @@ function updateCommentCount(postId) {
     }
 }
 
+function updateReactionCount(postId) {
+    const postCard = document.querySelector(`[data-post-id="${postId}"]`);
+    if (postCard) {
+        const statsEl = postCard.querySelector('.post-stats span:first-child');
+        if (statsEl) {
+            const currentCount = parseInt(statsEl.textContent.match(/\d+/)[0]) || 0;
+            statsEl.innerHTML = `<i class="fas fa-fire"></i> ${currentCount + 1} reactions`;
+        }
+    }
+}
+
 async function reactToComment(commentId, reactionType) {
+    // Try WebSocket first, fall back to REST API
+    if (currentPostWs && currentPostId) {
+        try {
+            wsClient.sendReaction(currentPostId, reactionType);
+            showNotification('Reaction added!', 'success');
+            return;
+        } catch (error) {
+            console.error('WebSocket reaction failed, falling back to REST API:', error);
+        }
+    }
+    
+    // Fallback to REST API
     try {
         const response = await fetch(`${API_BASE}/comments/${commentId}/react/`, {
             method: 'POST',
@@ -210,6 +308,9 @@ function openShareModal(postId) {
     document.getElementById('shareModal').style.display = 'flex';
     document.getElementById('sharePostId').value = postId;
     
+    // Connect to WebSocket for real-time updates
+    connectToPostWebSocket(postId);
+    
     // Load share URLs
     loadShareUrls(postId);
 }
@@ -218,6 +319,13 @@ function closeShareModal() {
     const modal = document.getElementById('shareModal');
     if (modal) {
         modal.style.display = 'none';
+    }
+    
+    // Disconnect from WebSocket when closing modal
+    if (currentPostWs) {
+        wsClient.disconnect(`post_${currentPostId}`);
+        currentPostWs = null;
+        currentPostId = null;
     }
 }
 
@@ -368,6 +476,18 @@ async function copyShareLink() {
 }
 
 async function recordShare(postId, platform) {
+    // Try WebSocket first, fall back to REST API
+    if (currentPostWs) {
+        try {
+            wsClient.sendShare(postId, platform);
+            updateShareCount(postId);
+            return;
+        } catch (error) {
+            console.error('WebSocket share failed, falling back to REST API:', error);
+        }
+    }
+    
+    // Fallback to REST API
     try {
         const response = await fetch(`${API_BASE}/posts/${postId}/share/`, {
             method: 'POST',

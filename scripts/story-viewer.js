@@ -16,6 +16,7 @@ class StoryViewer {
         this.storyPollInterval = null;
         this.autoPlayTimer = null;
         this.expiryTimer = null;
+        this.storyWs = null;
     }
     
     /**
@@ -313,14 +314,48 @@ class StoryViewer {
     }
     
     /**
-     * Connect to story updates using polling (WebSocket not configured)
+     * Connect to story updates using WebSocket
      */
     connectStorySocket(storyId) {
         if (!this.currentStory) return;
         
-        console.warn('⚠️ WebSocket not configured. Using polling instead.');
-        console.log('💡 To enable WebSocket: pip install django-channels');
-        
+        try {
+            this.storyWs = wsClient.connectToStories({
+                onConnect: () => {
+                    console.log('Connected to stories WebSocket');
+                    // Send story view notification
+                    wsClient.sendStoryView(storyId);
+                },
+                onView: (view, viewedStoryId) => {
+                    console.log('Story viewed via WebSocket:', view);
+                    if (viewedStoryId === this.currentStory?.id) {
+                        this.addViewer(view.viewer);
+                    }
+                },
+                onCreate: (story) => {
+                    console.log('New story created via WebSocket:', story);
+                    // Optionally add new story to feed
+                },
+                onError: (error) => {
+                    console.error('Story WebSocket error:', error);
+                    // Fallback to polling
+                    this.startPolling(storyId);
+                },
+                onDisconnect: () => {
+                    console.log('Disconnected from stories WebSocket');
+                    this.storyWs = null;
+                }
+            });
+        } catch (error) {
+            console.error('Failed to connect to story WebSocket, falling back to polling:', error);
+            this.startPolling(storyId);
+        }
+    }
+    
+    /**
+     * Start polling as fallback
+     */
+    startPolling(storyId) {
         // Poll for viewer updates every 5 seconds
         this.storyPollInterval = setInterval(() => {
             this.loadViewers(storyId);
@@ -328,9 +363,16 @@ class StoryViewer {
     }
     
     /**
-     * Disconnect story polling
+     * Disconnect story polling and WebSocket
      */
     disconnectStorySocket() {
+        // Disconnect WebSocket
+        if (this.storyWs) {
+            wsClient.disconnect('stories');
+            this.storyWs = null;
+        }
+        
+        // Stop polling
         if (this.storyPollInterval) {
             clearInterval(this.storyPollInterval);
             this.storyPollInterval = null;

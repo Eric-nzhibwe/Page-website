@@ -341,11 +341,11 @@ function displayPost(post, animate = false) {
                 <i class="fas fa-fire"></i>
                 <span>React</span>
             </button>
-            <button class="post-action-btn">
+            <button class="post-action-btn" onclick="openCommentModal(${post.id})">
                 <i class="fas fa-comment"></i>
                 <span>Comment</span>
             </button>
-            <button class="post-action-btn">
+            <button class="post-action-btn" onclick="openShareModal(${post.id})">
                 <i class="fas fa-share"></i>
                 <span>Share</span>
             </button>
@@ -639,6 +639,293 @@ function createStory() {
         reader.readAsDataURL(file);
     };
     input.click();
+}
+
+// Comment Modal Functions
+function openCommentModal(postId) {
+    const modal = document.getElementById('commentModal');
+    if (!modal) {
+        // Create comment modal if it doesn't exist
+        createCommentModal();
+    }
+    
+    const modalEl = document.getElementById('commentModal');
+    modalEl.style.display = 'block';
+    modalEl.setAttribute('data-post-id', postId);
+    
+    // Load existing comments for this post
+    loadComments(postId);
+    
+    // Focus on comment input
+    setTimeout(() => {
+        document.getElementById('commentInput').focus();
+    }, 100);
+}
+
+function closeCommentModal() {
+    const modal = document.getElementById('commentModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+    
+    // Clear comment input
+    const commentInput = document.getElementById('commentInput');
+    if (commentInput) {
+        commentInput.value = '';
+    }
+}
+
+function createCommentModal() {
+    const modalHTML = `
+        <div id="commentModal" class="modal">
+            <div class="modal-content comment-modal-content">
+                <div class="modal-header">
+                    <h2>Comments</h2>
+                    <span class="close" onclick="closeCommentModal()">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <div id="commentsList" class="comments-list">
+                        <p class="no-comments">No comments yet. Be the first to comment!</p>
+                    </div>
+                    <div class="comment-input-container">
+                        <div class="comment-avatar">
+                            <i class="fas fa-user-circle"></i>
+                        </div>
+                        <input type="text" id="commentInput" class="comment-input" placeholder="Write a comment...">
+                        <button class="comment-submit-btn" onclick="submitComment()">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    
+    // Close modal when clicking outside
+    const modal = document.getElementById('commentModal');
+    modal.addEventListener('click', function(event) {
+        if (event.target === modal) {
+            closeCommentModal();
+        }
+    });
+}
+
+function loadComments(postId) {
+    const commentsList = document.getElementById('commentsList');
+    
+    // Try to load comments from localStorage
+    let allComments = JSON.parse(localStorage.getItem('postComments') || '{}');
+    let postComments = allComments[postId] || [];
+    
+    if (postComments.length === 0) {
+        commentsList.innerHTML = '<p class="no-comments">No comments yet. Be the first to comment!</p>';
+        return;
+    }
+    
+    commentsList.innerHTML = postComments.map(comment => `
+        <div class="comment-item">
+            <div class="comment-avatar">
+                <i class="fas fa-user-circle"></i>
+            </div>
+            <div class="comment-content">
+                <div class="comment-header">
+                    <span class="comment-author">${comment.username}</span>
+                    <span class="comment-time">${getTimeAgo(comment.timestamp)}</span>
+                </div>
+                <p class="comment-text">${comment.text}</p>
+            </div>
+        </div>
+    `).join('');
+}
+
+function submitComment() {
+    const commentInput = document.getElementById('commentInput');
+    const text = commentInput.value.trim();
+    
+    if (!text) {
+        alert('Please enter a comment');
+        return;
+    }
+    
+    const modal = document.getElementById('commentModal');
+    const postId = modal.getAttribute('data-post-id');
+    
+    // Get username
+    const usernameEl = document.getElementById('username') || 
+                       document.getElementById('userMenuName') || 
+                       document.getElementById('sidebarUsername');
+    const username = usernameEl ? usernameEl.textContent : 'Player';
+    
+    // Create comment object
+    const comment = {
+        id: Date.now(),
+        username: username,
+        text: text,
+        timestamp: new Date().toISOString()
+    };
+    
+    // Save to localStorage
+    let allComments = JSON.parse(localStorage.getItem('postComments') || '{}');
+    if (!allComments[postId]) {
+        allComments[postId] = [];
+    }
+    allComments[postId].push(comment);
+    localStorage.setItem('postComments', JSON.stringify(allComments));
+    
+    // Reload comments
+    loadComments(postId);
+    
+    // Clear input
+    commentInput.value = '';
+    
+    // Update comment count on post
+    updateCommentCount(postId, allComments[postId].length);
+    
+    showNotification('Comment posted successfully!');
+}
+
+function updateCommentCount(postId, count) {
+    const postCard = document.querySelector(`[data-post-id="${postId}"]`);
+    if (postCard) {
+        const statsEl = postCard.querySelector('.post-stats span:last-child');
+        if (statsEl) {
+            const currentText = statsEl.textContent;
+            const match = currentText.match(/(\d+)\s*comments/);
+            if (match) {
+                statsEl.innerHTML = `${count} comments · ${currentText.split('·')[1] || '0 shares'}`;
+            }
+        }
+    }
+}
+
+// Share Modal Functions
+function openShareModal(postId) {
+    const modal = document.getElementById('shareModal');
+    if (!modal) {
+        // Create share modal if it doesn't exist
+        createShareModal();
+    }
+    
+    const modalEl = document.getElementById('shareModal');
+    modalEl.style.display = 'block';
+    modalEl.setAttribute('data-post-id', postId);
+    
+    // Generate share URLs
+    generateShareUrls(postId);
+}
+
+function closeShareModal() {
+    const modal = document.getElementById('shareModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
+function createShareModal() {
+    const modalHTML = `
+        <div id="shareModal" class="modal">
+            <div class="modal-content share-modal-content">
+                <div class="modal-header">
+                    <h2>Share Post</h2>
+                    <span class="close" onclick="closeShareModal()">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <div class="share-platforms">
+                        <button class="share-platform-btn facebook" onclick="shareToFacebook()">
+                            <i class="fab fa-facebook-f"></i>
+                            <span>Facebook</span>
+                        </button>
+                        <button class="share-platform-btn whatsapp" onclick="shareToWhatsApp()">
+                            <i class="fab fa-whatsapp"></i>
+                            <span>WhatsApp</span>
+                        </button>
+                        <button class="share-platform-btn twitter" onclick="shareToTwitter()">
+                            <i class="fab fa-twitter"></i>
+                            <span>Twitter/X</span>
+                        </button>
+                        <button class="share-platform-btn instagram" onclick="shareToInstagram()">
+                            <i class="fab fa-instagram"></i>
+                            <span>Instagram</span>
+                        </button>
+                        <button class="share-platform-btn copy" onclick="copyLink()">
+                            <i class="fas fa-link"></i>
+                            <span>Copy Link</span>
+                        </button>
+                    </div>
+                    <div class="share-preview">
+                        <p class="share-url-preview" id="shareUrlPreview"></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    
+    // Close modal when clicking outside
+    const modal = document.getElementById('shareModal');
+    modal.addEventListener('click', function(event) {
+        if (event.target === modal) {
+            closeShareModal();
+        }
+    });
+}
+
+function generateShareUrls(postId) {
+    // Generate a shareable URL (in production, this would be the actual post URL)
+    const shareUrl = `${window.location.origin}/posts/${postId}`;
+    document.getElementById('shareUrlPreview').textContent = shareUrl;
+    
+    // Store the share URL for platform sharing
+    window.currentShareUrl = shareUrl;
+    window.currentShareText = 'Check out this post on ARTX!';
+}
+
+function shareToFacebook() {
+    const url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.currentShareUrl)}`;
+    window.open(url, '_blank', 'width=600,height=400');
+    closeShareModal();
+    showNotification('Opening Facebook share...');
+}
+
+function shareToWhatsApp() {
+    const url = `https://wa.me/?text=${encodeURIComponent(window.currentShareText + ' ' + window.currentShareUrl)}`;
+    window.open(url, '_blank');
+    closeShareModal();
+    showNotification('Opening WhatsApp share...');
+}
+
+function shareToTwitter() {
+    const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(window.currentShareText)}&url=${encodeURIComponent(window.currentShareUrl)}`;
+    window.open(url, '_blank', 'width=600,height=400');
+    closeShareModal();
+    showNotification('Opening Twitter share...');
+}
+
+function shareToInstagram() {
+    // Instagram doesn't have direct web sharing, so we copy the link
+    copyLink();
+    showNotification('Instagram doesn\'t support direct sharing. Link copied!');
+    closeShareModal();
+}
+
+function copyLink() {
+    navigator.clipboard.writeText(window.currentShareUrl).then(() => {
+        showNotification('Link copied to clipboard!');
+        closeShareModal();
+    }).catch(err => {
+        // Fallback for older browsers
+        const textArea = document.createElement('textarea');
+        textArea.value = window.currentShareUrl;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        showNotification('Link copied to clipboard!');
+        closeShareModal();
+    });
 }
 
 // Add click handler for create story
