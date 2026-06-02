@@ -19,8 +19,10 @@
     <link rel="stylesheet" href="styles/challenges-enhanced.css">
     <link rel="stylesheet" href="styles/settings.css">
     <link rel="stylesheet" href="styles/streak.css">
-    <!-- Bootstrap Responsive - MUST BE LAST -->
+    <!-- Bootstrap Responsive -->
     <link rel="stylesheet" href="styles/bootstrap-responsive.css">
+    <!-- Professional Responsive Overhaul - MUST BE LAST -->
+    <link rel="stylesheet" href="styles/responsive-pro.css">
 </head>
 
 <body>
@@ -34,16 +36,15 @@
                 </div>
             </div>
 
-            <!-- Icon Navigation -->
             <nav class="icon-nav d-flex justify-content-center flex-grow-1">
-                <button class="icon-nav-btn active" data-view="social-feed" title="Home">
+                <button class="icon-nav-btn active" data-view="social-feed" title="Home" onclick="switchView('social-feed')">
                     <i class="fas fa-home" style="color: black;"></i>
                 </button>
-                <button class="icon-nav-btn" data-view="challenges" title="Challenges">
+                <button class="icon-nav-btn" data-view="challenges" title="Challenges" onclick="switchView('challenges')">
                     <i class="fas fa-trophy" style="color: black;"></i>
                     <span class="notification-badge" id="challengesBadge" style="display: none;">0</span>
                 </button>
-                <button class="icon-nav-btn" data-view="marketplace" title="Marketplace">
+                <button class="icon-nav-btn" data-view="marketplace" title="Marketplace" onclick="switchView('marketplace')">
                     <i class="fas fa-store" style="color: black;"></i>
                 </button>
                 <button class="icon-nav-btn" onclick="window.location.href='pages/user.html'" title="Profile">
@@ -1835,6 +1836,37 @@
             </div>
         </div>
     </div>
+
+    <!-- Mobile Bottom Navigation Bar (hidden on desktop via CSS) -->
+    <nav class="mobile-bottom-nav" id="mobileBottomNav">
+        <button class="icon-nav-btn active" data-view="social-feed" title="Home" onclick="switchView('social-feed')">
+            <i class="fas fa-home"></i>
+        </button>
+        <button class="icon-nav-btn" data-view="challenges" title="Challenges" onclick="switchView('challenges')">
+            <i class="fas fa-trophy"></i>
+            <span class="notification-badge" id="challengesBadgeMobile" style="display:none;">0</span>
+        </button>
+        <button class="icon-nav-btn" data-view="marketplace" title="Marketplace" onclick="switchView('marketplace')">
+            <i class="fas fa-store"></i>
+        </button>
+        <button class="icon-nav-btn" title="Profile" onclick="window.location.href='pages/user.html'">
+            <i class="fas fa-user-circle"></i>
+        </button>
+        <button class="icon-nav-btn" onclick="toggleUserMenu()" title="More">
+            <i class="fas fa-bars"></i>
+        </button>
+    </nav>
+
+    <script>
+    // Sync both the header icon-nav and bottom mobile nav active states
+    function switchView(viewName) {
+        showView(viewName);
+        // Update icon-nav-btns in both header and bottom nav
+        document.querySelectorAll('.icon-nav-btn[data-view]').forEach(function(btn) {
+            btn.classList.toggle('active', btn.getAttribute('data-view') === viewName);
+        });
+    }
+    </script>
 
     <script src="scripts/websocket-client.js"></script>
     <script src="scripts/app.js"></script>
