@@ -57,31 +57,35 @@ class UserLoginSerializer(serializers.Serializer):
         if not username_or_email or not password:
             raise serializers.ValidationError('Must include username/email and password')
         
-        # Since USERNAME_FIELD is 'email', we need to handle both cases
+        # Try to find the user and get their email for authentication
         user = None
         authentication_username = None
         
-        if '@' in username_or_email:
-            # It's an email, authenticate directly
-            authentication_username = username_or_email
-        else:
-            # It's a username, find the user's email first
-            try:
-                user_obj = User.objects.get(username__iexact=username_or_email)
-                authentication_username = user_obj.email
-            except User.DoesNotExist:
-                # Username doesn't exist
-                raise serializers.ValidationError('Invalid credentials')
+        # First, try to find user by username or email
+        try:
+            if '@' in username_or_email:
+                # It's an email
+                user = User.objects.get(email__iexact=username_or_email)
+                authentication_username = user.email
+            else:
+                # It's a username
+                user = User.objects.get(username__iexact=username_or_email)
+                authentication_username = user.email
+        except User.DoesNotExist:
+            # User doesn't exist
+            raise serializers.ValidationError('Invalid credentials')
         
-        # Authenticate using the email (since USERNAME_FIELD is email)
-        user = authenticate(username=authentication_username, password=password)
+        # Now authenticate using the email (since USERNAME_FIELD is email)
+        from django.contrib.auth import authenticate
+        authenticated_user = authenticate(username=authentication_username, password=password)
         
-        if user:
-            if user.is_active:
-                data['user'] = user
+        if authenticated_user:
+            if authenticated_user.is_active:
+                data['user'] = authenticated_user
             else:
                 raise serializers.ValidationError('User account is disabled')
         else:
+            # Authentication failed - wrong password
             raise serializers.ValidationError('Invalid credentials')
         
         return data

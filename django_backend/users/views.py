@@ -76,8 +76,11 @@ def login_view(request):
     username_or_email = request.data.get('username', '').strip() if request.data.get('username') else None
     password = request.data.get('password', '').strip() if request.data.get('password') else None
     
+    print(f"🔍 Attempting login with username/email: {username_or_email}")
+    
     # Provide specific error messages for missing fields
     if not username_or_email:
+        print(f"❌ Missing username/email")
         return Response({
             'error': 'Invalid data',
             'details': {'username': ['Email or username is required']},
@@ -85,10 +88,26 @@ def login_view(request):
         }, status=status.HTTP_400_BAD_REQUEST)
     
     if not password:
+        print(f"❌ Missing password")
         return Response({
             'error': 'Invalid data',
             'details': {'password': ['Password is required']},
             'message': 'Please enter your password'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    # Check if user exists first (for better error messages)
+    try:
+        if '@' in username_or_email:
+            check_user = User.objects.get(email__iexact=username_or_email)
+        else:
+            check_user = User.objects.get(username__iexact=username_or_email)
+        print(f"✅ User found: {check_user.username} (email: {check_user.email})")
+    except User.DoesNotExist:
+        print(f"❌ User not found with identifier: {username_or_email}")
+        return Response({
+            'error': 'Invalid data',
+            'details': {'non_field_errors': ['Invalid credentials']},
+            'message': 'Email/username or password is incorrect'
         }, status=status.HTTP_400_BAD_REQUEST)
     
     # Validate with serializer
@@ -103,7 +122,7 @@ def login_view(request):
         
         # Provide user-friendly error messages
         if 'Invalid credentials' in error_message:
-            message = 'Email/username or password is incorrect'
+            message = 'Email/username or password is incorrect. Please check your password.'
         elif 'disabled' in error_message.lower():
             message = 'Your account has been disabled'
         else:
@@ -124,7 +143,7 @@ def login_view(request):
     login(request, user)
     token, created = Token.objects.get_or_create(user=user)
     
-    print(f"✅ User logged in successfully: {user.username}")
+    print(f"✅ User logged in successfully: {user.username} (token: {token.key[:10]}...)")
     
     return Response({
         'user': UserProfileSerializer(user).data,
