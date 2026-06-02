@@ -128,7 +128,7 @@ class StoryViewSerializer(serializers.ModelSerializer):
     viewer = UserMinimalSerializer(read_only=True)
     
     class Meta:
-        model = memoryview
+        model = Story
         fields = ['id', 'viewer', 'viewed_at']
 
 

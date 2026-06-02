@@ -19,23 +19,23 @@
     <link rel="stylesheet" href="styles/challenges-enhanced.css">
     <link rel="stylesheet" href="styles/settings.css">
     <link rel="stylesheet" href="styles/streak.css">
-    <!-- Bootstrap Override - MUST BE LAST -->
-    <link rel="stylesheet" href="styles/bootstrap-override.css">
+    <!-- Bootstrap Responsive - MUST BE LAST -->
+    <link rel="stylesheet" href="styles/bootstrap-responsive.css">
 </head>
 
 <body>
-    <!-- Header -->
-    <header class="header">
-            <div class="header-left">
+    <!-- Header with Bootstrap -->
+    <header class="header w-100">
+            <div class="header-left d-flex align-items-center">
                 <div class="logo"><i class="fas fa-fire"></i>ARTX</div>
-                <div class="search-bar">
+                <div class="search-bar d-none d-md-flex align-items-center">
                     <i class="fas fa-search"></i>
                     <input type="text" placeholder="Search ARTX..." id="headerSearch">
                 </div>
             </div>
 
             <!-- Icon Navigation -->
-            <nav class="icon-nav">
+            <nav class="icon-nav d-flex justify-content-center flex-grow-1">
                 <button class="icon-nav-btn active" data-view="social-feed" title="Home">
                     <i class="fas fa-home" style="color: black;"></i>
                 </button>
@@ -52,7 +52,7 @@
             </nav>
 
             <!-- Right Side Icons -->
-            <div class="header-right">
+            <div class="header-right d-flex align-items-center">
                 <button class="header-icon-btn" onclick="showNotifications()" title="Notifications">
                     <i class="fas fa-bell" style="color: black;"></i>
                     <span class="notification-badge" id="notificationBadge" style="display: none;">0</span>
@@ -1845,6 +1845,9 @@
     <script src="scripts/social-features.js"></script>
     <script src="scripts/realtime-updates.js"></script>
     <script src="scripts/story-viewer.js"></script>
+    
+    <!-- Bootstrap JS Bundle (includes Popper) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 
 </html>
