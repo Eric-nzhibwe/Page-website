@@ -12,8 +12,7 @@ body {
 }
 
 .container {
-    max-width: 100%;
-    width: 100%;
+    max-width: 1400px;
     margin: 0 auto;
     padding: 12px;
 }
@@ -38,11 +37,12 @@ body {
     padding: 12px;
     background: linear-gradient(to right,whitesmoke, darkolivegreen);
     backdrop-filter: blur(10px);
-    border-radius: 10px;
+    border-radius: 0;
     margin-bottom: 20px;
     position: relative;
     flex-wrap: wrap;
     gap: 8px;
+    width: 100%;
 }
 
 @media (min-width: 640px) {

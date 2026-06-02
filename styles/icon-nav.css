@@ -6,13 +6,15 @@
     justify-content: space-between;
     align-items: center;
     padding: 6px 8px;
-    background: white;
+    background: linear-gradient(to right, whitesmoke, darkolivegreen);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     position: sticky;
     top: 0;
     z-index: 1000;
     gap: 4px;
     flex-wrap: nowrap;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 @media (min-width: 768px) {
