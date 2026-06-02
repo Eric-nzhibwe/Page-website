@@ -935,3 +935,185 @@ document.addEventListener('DOMContentLoaded', function() {
         createStoryCard.addEventListener('click', createStory);
     }
 });
+
+
+// ========================================
+// STORIES HORIZONTAL SCROLL ENHANCEMENT
+// ========================================
+
+// Function to update scroll indicators
+function updateScrollIndicators() {
+    const container = document.querySelector('.stories-container');
+    if (!container) return;
+    
+    const hasScroll = container.scrollWidth > container.clientWidth;
+    const isAtStart = container.scrollLeft <= 5;
+    const isAtEnd = container.scrollLeft >= (container.scrollWidth - container.clientWidth - 5);
+    
+    // Add or remove scroll classes
+    if (hasScroll) {
+        container.classList.add('has-scroll');
+        
+        // Show left fade indicator if not at start
+        if (!isAtStart) {
+            container.classList.add('has-scroll-start');
+        } else {
+            container.classList.remove('has-scroll-start');
+        }
+        
+        // Hide right fade indicator if at end
+        if (isAtEnd) {
+            container.classList.remove('has-scroll');
+        }
+    } else {
+        container.classList.remove('has-scroll');
+        container.classList.remove('has-scroll-start');
+    }
+}
+
+// Function to enable smooth momentum scrolling
+function enableSmoothScroll() {
+    const container = document.querySelector('.stories-container');
+    if (!container) return;
+    
+    let isDown = false;
+    let startX;
+    let scrollLeft;
+    let velocity = 0;
+    let lastX = 0;
+    let lastTime = Date.now();
+    
+    container.addEventListener('mousedown', (e) => {
+        isDown = true;
+        container.style.cursor = 'grabbing';
+        startX = e.pageX - container.offsetLeft;
+        scrollLeft = container.scrollLeft;
+        velocity = 0;
+        lastX = e.pageX;
+        lastTime = Date.now();
+    });
+    
+    container.addEventListener('mouseleave', () => {
+        isDown = false;
+        container.style.cursor = 'grab';
+    });
+    
+    container.addEventListener('mouseup', () => {
+        isDown = false;
+        container.style.cursor = 'grab';
+        
+        // Apply momentum
+        if (Math.abs(velocity) > 0.5) {
+            let momentum = velocity;
+            const deceleration = 0.95;
+            
+            function glide() {
+                momentum *= deceleration;
+                container.scrollLeft -= momentum;
+                
+                if (Math.abs(momentum) > 0.5) {
+                    requestAnimationFrame(glide);
+                }
+            }
+            glide();
+        }
+    });
+    
+    container.addEventListener('mousemove', (e) => {
+        if (!isDown) return;
+        e.preventDefault();
+        
+        const x = e.pageX - container.offsetLeft;
+        const walk = (x - startX) * 1.5; // Scroll speed multiplier
+        container.scrollLeft = scrollLeft - walk;
+        
+        // Calculate velocity for momentum
+        const now = Date.now();
+        const dt = now - lastTime;
+        if (dt > 0) {
+            velocity = (e.pageX - lastX) / dt * 16; // Normalize to 60fps
+        }
+        lastX = e.pageX;
+        lastTime = now;
+    });
+    
+    // Set initial cursor
+    container.style.cursor = 'grab';
+}
+
+// Function to add keyboard navigation
+function enableKeyboardNavigation() {
+    const container = document.querySelector('.stories-container');
+    if (!container) return;
+    
+    // Make container focusable
+    container.setAttribute('tabindex', '0');
+    
+    container.addEventListener('keydown', (e) => {
+        const scrollAmount = 200;
+        
+        switch(e.key) {
+            case 'ArrowLeft':
+                e.preventDefault();
+                container.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
+                break;
+            case 'ArrowRight':
+                e.preventDefault();
+                container.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+                break;
+            case 'Home':
+                e.preventDefault();
+                container.scrollTo({ left: 0, behavior: 'smooth' });
+                break;
+            case 'End':
+                e.preventDefault();
+                container.scrollTo({ left: container.scrollWidth, behavior: 'smooth' });
+                break;
+        }
+    });
+}
+
+// Initialize horizontal scroll features
+function initializeStoriesScroll() {
+    const container = document.querySelector('.stories-container');
+    if (!container) return;
+    
+    // Update indicators on scroll
+    container.addEventListener('scroll', updateScrollIndicators);
+    
+    // Update on window resize
+    window.addEventListener('resize', updateScrollIndicators);
+    
+    // Enable smooth drag scrolling (desktop only)
+    if (window.innerWidth >= 768) {
+        enableSmoothScroll();
+    }
+    
+    // Enable keyboard navigation
+    enableKeyboardNavigation();
+    
+    // Initial update
+    updateScrollIndicators();
+    
+    // Show scroll hint on mobile (once)
+    if (window.innerWidth < 768 && !localStorage.getItem('storiesScrollHintShown')) {
+        setTimeout(() => {
+            container.classList.add('show-hint');
+            setTimeout(() => {
+                container.classList.remove('show-hint');
+                localStorage.setItem('storiesScrollHintShown', 'true');
+            }, 2000);
+        }, 1000);
+    }
+    
+    // Update when stories are added/removed
+    const observer = new MutationObserver(updateScrollIndicators);
+    observer.observe(container, { childList: true });
+}
+
+// Initialize when DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeStoriesScroll);
+} else {
+    initializeStoriesScroll();
+}

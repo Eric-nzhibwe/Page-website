@@ -117,8 +117,9 @@
     display: grid;
     grid-template-columns: 1fr;
     gap: 20px;
-    max-width: 1400px;
+    max-width: 100%;
     margin: 0 auto;
+    padding: 0;
 }
 
 @media (min-width: 1024px) {
@@ -255,63 +256,161 @@
 .main-feed {
     max-width: 100%;
     width: 100%;
+    padding: 0;
 }
 
 @media (min-width: 1024px) {
     .main-feed {
-        max-width: 680px;
+        max-width: 600px;
     }
 }
 
 /* Stories Container */
 .stories-container {
     display: flex;
-    gap: 6px;
+    gap: 8px;
     overflow-x: auto;
-    padding: 8px 6px;
+    overflow-y: hidden;
+    padding: 12px 8px;
     background: white;
-    border-radius: 12px;
+    border-radius: 0;
     margin-bottom: 20px;
+    margin-left: -12px;
+    margin-right: -12px;
+    padding-left: 20px;
+    padding-right: 20px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     scrollbar-width: thin;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+    position: relative;
 }
 
-.stories-container::-webkit-scrollbar {
-    height: 4px;
+@media (min-width: 640px) {
+    .stories-container {
+        margin-left: -16px;
+        margin-right: -16px;
+        padding-left: 24px;
+        padding-right: 24px;
+    }
 }
 
-.stories-container::-webkit-scrollbar-thumb {
-    background: darkolivegreen;
-    border-radius: 2px;
+@media (min-width: 1024px) {
+    .stories-container {
+        margin-left: -20px;
+        margin-right: -20px;
+        padding-left: 28px;
+        padding-right: 28px;
+    }
+}
+
+/* Mobile: Hide scrollbar but keep functionality */
+@media (max-width: 767px) {
+    .stories-container {
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+    }
+    
+    .stories-container::-webkit-scrollbar {
+        display: none;
+    }
+}
+
+/* Desktop: Custom scrollbar for Webkit browsers */
+@media (min-width: 768px) {
+    .stories-container::-webkit-scrollbar {
+        height: 6px;
+    }
+
+    .stories-container::-webkit-scrollbar-track {
+        background: #f0f2f5;
+        border-radius: 10px;
+    }
+
+    .stories-container::-webkit-scrollbar-thumb {
+        background: rgba(85, 107, 47, 0.5);
+        border-radius: 10px;
+        transition: background 0.3s;
+    }
+
+    .stories-container::-webkit-scrollbar-thumb:hover {
+        background: rgba(85, 107, 47, 0.8);
+    }
+
+    /* Hide scrollbar for Firefox but keep functionality */
+    @supports (scrollbar-width: thin) {
+        .stories-container {
+            scrollbar-color: rgba(85, 107, 47, 0.5) #f0f2f5;
+        }
+    }
+}
+
+/* Fade effect on edges to indicate more content */
+.stories-container::before,
+.stories-container::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 6px;
+    width: 30px;
+    pointer-events: none;
+    z-index: 1;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.stories-container::before {
+    left: 0;
+    background: linear-gradient(to right, white, transparent);
+}
+
+.stories-container::after {
+    right: 0;
+    background: linear-gradient(to left, white, transparent);
+}
+
+/* Show fade indicators when scrollable */
+.stories-container.has-scroll::after {
+    opacity: 1;
+}
+
+.stories-container.has-scroll-start::before {
+    opacity: 1;
 }
 
 .story-card {
-    min-width: 60px;
-    height: 100px;
-    border-radius: 10px;
+    min-width: 80px;
+    height: 110px;
+    border-radius: 12px;
     overflow: hidden;
     cursor: pointer;
     position: relative;
-    transition: all 0.3s;
+    transition: all 0.3s ease;
     flex-shrink: 0;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 @media (min-width: 640px) {
     .story-card {
-        min-width: 75px;
-        height: 125px;
+        min-width: 100px;
+        height: 140px;
     }
 }
 
 @media (min-width: 1024px) {
     .story-card {
-        min-width: 90px;
-        height: 150px;
+        min-width: 110px;
+        height: 160px;
     }
 }
 
 .story-card:hover {
-    transform: scale(1.05);
+    transform: translateY(-4px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.story-card:active {
+    transform: translateY(-2px);
 }
 
 .story-image {
@@ -376,21 +475,33 @@
 /* Create Post Card */
 .create-post-card {
     background: white;
-    border-radius: 12px;
+    border-radius: 0;
     padding: 12px;
     margin-bottom: 20px;
+    margin-left: -12px;
+    margin-right: -12px;
+    padding-left: 20px;
+    padding-right: 20px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 @media (min-width: 640px) {
     .create-post-card {
         padding: 15px;
+        margin-left: -16px;
+        margin-right: -16px;
+        padding-left: 31px;
+        padding-right: 31px;
     }
 }
 
 @media (min-width: 1024px) {
     .create-post-card {
         padding: 20px;
+        margin-left: -20px;
+        margin-right: -20px;
+        padding-left: 40px;
+        padding-right: 40px;
     }
 }
 
@@ -514,8 +625,12 @@
 
 .post-card {
     background: white;
-    border-radius: 12px;
+    border-radius: 0;
     padding: 12px;
+    margin-left: -12px;
+    margin-right: -12px;
+    padding-left: 24px;
+    padding-right: 24px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     animation: fadeIn 0.3s;
 }
@@ -523,12 +638,20 @@
 @media (min-width: 640px) {
     .post-card {
         padding: 15px;
+        margin-left: -16px;
+        margin-right: -16px;
+        padding-left: 31px;
+        padding-right: 31px;
     }
 }
 
 @media (min-width: 1024px) {
     .post-card {
         padding: 20px;
+        margin-left: -20px;
+        margin-right: -20px;
+        padding-left: 40px;
+        padding-right: 40px;
     }
 }
 
@@ -1500,5 +1623,48 @@
         width: 35px;
         height: 35px;
         font-size: 18px;
+    }
+}
+
+
+/* Scroll hint for mobile (appears briefly on load) */
+@media (max-width: 767px) {
+    .stories-container.show-hint::after {
+        content: '→';
+        position: absolute;
+        right: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 24px;
+        font-weight: bold;
+        color: rgba(0, 0, 0, 0.3);
+        animation: scrollHint 2s ease-in-out;
+        pointer-events: none;
+        z-index: 2;
+    }
+    
+    @keyframes scrollHint {
+        0%, 100% {
+            opacity: 0;
+            transform: translateY(-50%) translateX(0);
+        }
+        20%, 80% {
+            opacity: 1;
+        }
+        50% {
+            transform: translateY(-50%) translateX(-10px);
+        }
+    }
+}
+
+/* Smooth scroll snap for better UX on mobile */
+@media (max-width: 767px) {
+    .stories-container {
+        scroll-snap-type: x proximity;
+        scroll-padding: 8px;
+    }
+    
+    .story-card {
+        scroll-snap-align: start;
     }
 }
