@@ -40,54 +40,35 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
             # Email sending failed, skip
             print(f"⚠️ Could not send welcome email: {e}")
             pass
-        
-        return user
+
         return user
 
 
 class UserLoginSerializer(serializers.Serializer):
-    """Serializer for user login"""
-    username = serializers.CharField()  # Can be username or email
-    password = serializers.CharField()
-    
+    """Serializer for user login — works with email or username."""
+    username = serializers.CharField()   # accepts email or username
+    password = serializers.CharField(write_only=True)
+
     def validate(self, data):
-        username_or_email = data.get('username', '').strip()
-        password = data.get('password', '').strip()
-        
-        if not username_or_email or not password:
-            raise serializers.ValidationError('Must include username/email and password')
-        
-        # Try to find the user and get their email for authentication
-        user = None
-        authentication_username = None
-        
-        # First, try to find user by username or email
-        try:
-            if '@' in username_or_email:
-                # It's an email
-                user = User.objects.get(email__iexact=username_or_email)
-                authentication_username = user.email
-            else:
-                # It's a username
-                user = User.objects.get(username__iexact=username_or_email)
-                authentication_username = user.email
-        except User.DoesNotExist:
-            # User doesn't exist
-            raise serializers.ValidationError('Invalid credentials')
-        
-        # Now authenticate using the email (since USERNAME_FIELD is email)
+        identifier = data.get('username', '').strip()
+        password   = data.get('password', '').strip()
+
+        if not identifier or not password:
+            raise serializers.ValidationError('Username/email and password are required.')
+
+        # Use our custom backend — handles email OR username lookup
         from django.contrib.auth import authenticate
-        authenticated_user = authenticate(username=authentication_username, password=password)
-        
-        if authenticated_user:
-            if authenticated_user.is_active:
-                data['user'] = authenticated_user
-            else:
-                raise serializers.ValidationError('User account is disabled')
-        else:
-            # Authentication failed - wrong password
-            raise serializers.ValidationError('Invalid credentials')
-        
+        user = authenticate(request=self.context.get('request'),
+                            username=identifier,
+                            password=password)
+
+        if user is None:
+            raise serializers.ValidationError('Invalid credentials. Please check your email/username and password.')
+
+        if not user.is_active:
+            raise serializers.ValidationError('This account has been disabled.')
+
+        data['user'] = user
         return data
 
 

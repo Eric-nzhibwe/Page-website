@@ -57,6 +57,7 @@ class StoryViewer {
         
         // Show modal
         modal.style.display = 'flex';
+        requestAnimationFrame(() => modal.classList.add('story-modal--visible'));
         
         // Start auto-play
         this.startAutoPlay();
@@ -258,13 +259,13 @@ class StoryViewer {
     closeStory() {
         const modal = document.getElementById('storyViewerModal');
         if (modal) {
-            modal.style.display = 'none';
+            modal.classList.remove('story-modal--visible');
+            setTimeout(() => { modal.style.display = 'none'; }, 250);
         }
-        
         this.clearTimers();
         this.disconnectStorySocket();
         this.currentStory = null;
-        this.stories = [];
+        this.stories      = [];
     }
     
     /**
@@ -272,84 +273,60 @@ class StoryViewer {
      */
     async markStoryAsViewed(storyId) {
         try {
-            const response = await fetch(`/api/social/stories/${storyId}/view/`, {
+            const token = localStorage.getItem('djangoAuthToken');
+            if (!token) return;
+            await fetch(`/api/social/stories/${storyId}/view/`, {
                 method: 'POST',
                 headers: {
-                    'Authorization': `Bearer ${this.getAuthToken()}`,
+                    'Authorization': `Token ${token}`,
                     'Content-Type': 'application/json'
                 }
             });
-            
-            if (!response.ok) {
-                throw new Error('Failed to mark story as viewed');
-            }
-            
         } catch (error) {
-            console.error('Error marking story as viewed:', error);
+            console.warn('Could not mark story as viewed:', error.message);
         }
     }
-    
+
     /**
      * Load viewers for story
      */
     async loadViewers(storyId) {
         try {
+            const token = localStorage.getItem('djangoAuthToken');
+            if (!token) return;
+
             const response = await fetch(`/api/social/stories/${storyId}/viewers/`, {
-                headers: {
-                    'Authorization': `Bearer ${this.getAuthToken()}`
-                }
+                headers: { 'Authorization': `Token ${token}` }
             });
-            
-            if (!response.ok) {
-                throw new Error('Failed to load viewers');
+
+            if (response.ok) {
+                const viewers = await response.json();
+                const list = Array.isArray(viewers) ? viewers : (viewers.results || []);
+                this.viewers.set(storyId, list);
+                this.updateViewersList();
             }
-            
-            const viewers = await response.json();
-            this.viewers.set(storyId, viewers);
-            this.updateViewersList();
-            
         } catch (error) {
-            console.error('Error loading viewers:', error);
+            console.warn('Could not load viewers:', error.message);
         }
     }
-    
+
     /**
-     * Connect to story updates using WebSocket
+     * Connect to story updates — WebSocket with polling fallback
      */
     connectStorySocket(storyId) {
-        if (!this.currentStory) return;
-        
-        try {
-            this.storyWs = wsClient.connectToStories({
-                onConnect: () => {
-                    console.log('Connected to stories WebSocket');
-                    // Send story view notification
-                    wsClient.sendStoryView(storyId);
-                },
-                onView: (view, viewedStoryId) => {
-                    console.log('Story viewed via WebSocket:', view);
-                    if (viewedStoryId === this.currentStory?.id) {
-                        this.addViewer(view.viewer);
-                    }
-                },
-                onCreate: (story) => {
-                    console.log('New story created via WebSocket:', story);
-                    // Optionally add new story to feed
-                },
-                onError: (error) => {
-                    console.error('Story WebSocket error:', error);
-                    // Fallback to polling
-                    this.startPolling(storyId);
-                },
-                onDisconnect: () => {
-                    console.log('Disconnected from stories WebSocket');
-                    this.storyWs = null;
+        // Connect to the stories WS room if not already connected
+        wsClient.connectToStories({
+            onView: (view, viewedStoryId) => {
+                if (viewedStoryId === this.currentStory?.id) {
+                    this.addViewer(view.viewer || view);
                 }
-            });
-        } catch (error) {
-            console.error('Failed to connect to story WebSocket, falling back to polling:', error);
-            this.startPolling(storyId);
-        }
+            }
+        });
+        // Send our view via WS
+        wsClient.sendStoryView(storyId);
+
+        // Also poll every 15 s as safety net
+        this.startPolling(storyId);
     }
     
     /**
@@ -363,25 +340,14 @@ class StoryViewer {
     }
     
     /**
-     * Disconnect story polling and WebSocket
+     * Disconnect story polling
      */
     disconnectStorySocket() {
-        // Disconnect WebSocket
-        if (this.storyWs) {
-            wsClient.disconnect('stories');
-            this.storyWs = null;
-        }
-        
-        // Stop polling
         if (this.storyPollInterval) {
             clearInterval(this.storyPollInterval);
             this.storyPollInterval = null;
         }
     }
-    
-    /**
-     * Add viewer to list
-     */
     addViewer(viewer) {
         if (!this.currentStory) return;
         
@@ -399,28 +365,13 @@ class StoryViewer {
     }
     
     /**
-     * Show viewer notification
+     * Show viewer notification — use toast instead of DOM injection
      */
     showViewerNotification(viewer) {
-        const notification = document.createElement('div');
-        notification.className = 'notification notification-viewer';
-        notification.innerHTML = `
-            <div class="notification-avatar">
-                ${viewer.profile_image ? 
-                    `<img src="${viewer.profile_image}" alt="${viewer.username}">` :
-                    '<i class="fas fa-user-circle"></i>'
-                }
-            </div>
-            <div class="notification-content">
-                <p><strong>${viewer.display_name || viewer.username}</strong> viewed your story</p>
-            </div>
-        `;
-        
-        document.body.appendChild(notification);
-        
-        setTimeout(() => {
-            notification.remove();
-        }, 3000);
+        const name = viewer.display_name || viewer.username || 'Someone';
+        if (typeof socialToast === 'function') {
+            socialToast(`${name} viewed your story 👁️`, 'info');
+        }
     }
     
     /**
@@ -460,17 +411,7 @@ class StoryViewer {
     }
     
     /**
-     * Disconnect story socket
-     */
-    disconnectStorySocket() {
-        if (this.storySocket) {
-            this.storySocket.close();
-            this.storySocket = null;
-        }
-    }
-    
-    /**
-     * Clear timers
+     * Add viewer to list
      */
     clearTimers() {
         this.clearAutoPlayTimer();
@@ -501,7 +442,7 @@ class StoryViewer {
      * Utility: Get auth token
      */
     getAuthToken() {
-        return localStorage.getItem('authToken') || sessionStorage.getItem('authToken') || '';
+        return localStorage.getItem('djangoAuthToken') || '';
     }
     
     /**

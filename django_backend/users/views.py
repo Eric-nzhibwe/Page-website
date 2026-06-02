@@ -66,90 +66,59 @@ class UserRegistrationView(generics.CreateAPIView):
 @api_view(['POST'])
 @permission_classes([permissions.AllowAny])
 def login_view(request):
-    """User login endpoint - Mobile optimized"""
-    print(f"🔐 Login request received: {request.method}")
-    print(f"📊 Request data: {request.data}")
-    print(f"📋 Content type: {request.content_type}")
-    print(f"📱 User Agent: {request.META.get('HTTP_USER_AGENT', 'Unknown')}")
-    
-    # Validate required fields
-    username_or_email = request.data.get('username', '').strip() if request.data.get('username') else None
-    password = request.data.get('password', '').strip() if request.data.get('password') else None
-    
-    print(f"🔍 Attempting login with username/email: {username_or_email}")
-    
-    # Provide specific error messages for missing fields
-    if not username_or_email:
-        print(f"❌ Missing username/email")
+    """User login endpoint — email or username, token-based."""
+    identifier = (request.data.get('username') or '').strip()
+    password   = (request.data.get('password') or '').strip()
+
+    if not identifier:
         return Response({
-            'error': 'Invalid data',
-            'details': {'username': ['Email or username is required']},
-            'message': 'Please enter your email or username'
+            'error': 'validation_error',
+            'message': 'Please enter your email or username.'
         }, status=status.HTTP_400_BAD_REQUEST)
-    
+
     if not password:
-        print(f"❌ Missing password")
         return Response({
-            'error': 'Invalid data',
-            'details': {'password': ['Password is required']},
-            'message': 'Please enter your password'
+            'error': 'validation_error',
+            'message': 'Please enter your password.'
         }, status=status.HTTP_400_BAD_REQUEST)
-    
-    # Check if user exists first (for better error messages)
-    try:
-        if '@' in username_or_email:
-            check_user = User.objects.get(email__iexact=username_or_email)
-        else:
-            check_user = User.objects.get(username__iexact=username_or_email)
-        print(f"✅ User found: {check_user.username} (email: {check_user.email})")
-    except User.DoesNotExist:
-        print(f"❌ User not found with identifier: {username_or_email}")
-        return Response({
-            'error': 'Invalid data',
-            'details': {'non_field_errors': ['Invalid credentials']},
-            'message': 'Email/username or password is incorrect'
-        }, status=status.HTTP_400_BAD_REQUEST)
-    
-    # Validate with serializer
-    serializer = UserLoginSerializer(data={
-        'username': username_or_email,
-        'password': password
-    })
-    
+
+    serializer = UserLoginSerializer(
+        data={'username': identifier, 'password': password},
+        context={'request': request}
+    )
+
     if not serializer.is_valid():
-        print(f"❌ Serializer errors: {serializer.errors}")
-        error_message = str(serializer.errors)
-        
-        # Provide user-friendly error messages
-        if 'Invalid credentials' in error_message:
-            message = 'Email/username or password is incorrect. Please check your password.'
-        elif 'disabled' in error_message.lower():
-            message = 'Your account has been disabled'
+        # Flatten serializer errors into a single readable message
+        raw = serializer.errors
+        if isinstance(raw, dict):
+            msgs = []
+            for v in raw.values():
+                if isinstance(v, list):
+                    msgs.extend([str(m) for m in v])
+                else:
+                    msgs.append(str(v))
+            message = ' '.join(msgs)
         else:
-            message = 'Login failed. Please check your credentials'
-        
+            message = str(raw)
+
         return Response({
-            'error': 'Invalid data',
-            'details': serializer.errors,
+            'error': 'authentication_failed',
             'message': message
-        }, status=status.HTTP_400_BAD_REQUEST)
-    
+        }, status=status.HTTP_401_UNAUTHORIZED)
+
     user = serializer.validated_data['user']
-    
-    # TEMPORARY: Skip OTP for testing - Remove after testing
-    # TODO: Re-enable OTP after confirming login works
-    print(f"⏭️  Skipping OTP for testing - user: {user.username}")
-    
-    login(request, user)
-    token, created = Token.objects.get_or_create(user=user)
-    
-    print(f"✅ User logged in successfully: {user.username} (token: {token.key[:10]}...)")
-    
+
+    # Create or retrieve DRF token
+    token, _ = Token.objects.get_or_create(user=user)
+
+    # Establish Django session too (for browser clients)
+    login(request, user, backend='users.backends.EmailOrUsernameBackend')
+
     return Response({
-        'user': UserProfileSerializer(user).data,
         'token': token.key,
+        'user': UserProfileSerializer(user).data,
         'message': f'Welcome back, {user.username}! 🔥'
-    })
+    }, status=status.HTTP_200_OK)
 
 
 @api_view(['POST'])
@@ -218,6 +187,75 @@ class LeaderboardView(generics.ListAPIView):
         ).order_by('-prestige_points')[:50]
         
         return queryset
+
+
+@api_view(['GET'])
+@permission_classes([permissions.IsAuthenticated])
+def discover_users_view(request):
+    """
+    Return a paginated list of users the current user does NOT yet follow,
+    excluding themselves. Used for the "Discover Users" sidebar.
+    """
+    from django.db.models import Q
+    from social.models import Follow
+
+    already_following = Follow.objects.filter(
+        follower=request.user
+    ).values_list('following_id', flat=True)
+
+    q = request.query_params.get('q', '').strip()
+
+    qs = User.objects.exclude(
+        Q(id=request.user.id) | Q(id__in=already_following)
+    ).order_by('-prestige_points')
+
+    if q:
+        qs = qs.filter(
+            Q(username__icontains=q) |
+            Q(display_name__icontains=q)
+        )
+
+    qs = qs[:30]
+
+    data = [
+        {
+            'id':           u.id,
+            'username':     u.username,
+            'display_name': u.display_name or u.username,
+            'access_tier':  u.access_tier,
+            'prestige_points': u.prestige_points,
+            'profile_image': u.profile_image.url if u.profile_image else None,
+        }
+        for u in qs
+    ]
+    return Response(data)
+
+
+@api_view(['GET'])
+@permission_classes([permissions.IsAuthenticated])
+def search_users_view(request):
+    """Search users by username or display_name."""
+    q = request.query_params.get('q', '').strip()
+    if not q:
+        return Response([])
+
+    from django.db.models import Q
+    qs = User.objects.filter(
+        Q(username__icontains=q) | Q(display_name__icontains=q)
+    ).exclude(id=request.user.id).order_by('-prestige_points')[:20]
+
+    data = [
+        {
+            'id':           u.id,
+            'username':     u.username,
+            'display_name': u.display_name or u.username,
+            'access_tier':  u.access_tier,
+            'prestige_points': u.prestige_points,
+            'profile_image': u.profile_image.url if u.profile_image else None,
+        }
+        for u in qs
+    ]
+    return Response(data)
 
 
 @api_view(['GET'])

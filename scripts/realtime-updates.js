@@ -1,952 +1,677 @@
 /**
- * Real-time Updates System
- * - Polling-based updates for live feed, stories, and user activity
- * - Real-time notifications via polling
- * - Online user tracking
- * 
- * NOTE: WebSocket support is not yet implemented. Using polling instead.
- * To enable WebSocket, install django-channels and configure routing.
+ * ARTX Real-time Updates & Social Graph
+ * ─────────────────────────────────────
+ * • Smart polling (feed, notifications, online users)
+ * • Full follow / unfollow with optimistic UI
+ * • User discovery + live search
+ * • Deduplication — no notification or post rendered twice
  */
 
-// API Base URL - Dynamic detection for production
-const API_BASE_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-    ? 'http://localhost:8000/api'
-    : `${window.location.origin}/api`;
+'use strict';
 
-class RealtimeUpdates {
-    constructor() {
-        this.feedSocket = null;
-        this.notificationSocket = null;
-        this.onlineUsers = new Map();
-        this.isConnected = false;
-        this.reconnectAttempts = 0;
-        this.maxReconnectAttempts = 5;
-        this.reconnectDelay = 3000;
-        this.pollInterval = null;
-        this.notificationPollInterval = null;
-        this.pollDelay = 5000; // Poll every 5 seconds
-    }
-    
-    /**
-     * Initialize polling-based updates
-     */
-    init() {
-        console.log('🔄 Initializing real-time updates (polling mode)');
-        this.startPolling();
-        
-        // Handle page visibility changes
-        document.addEventListener('visibilitychange', () => {
-            if (document.hidden) {
-                this.stopPolling();
-            } else {
-                this.startPolling();
-            }
+// ─────────────────────────────────────────────────────────────────────────────
+//  CONFIG
+// ─────────────────────────────────────────────────────────────────────────────
+const _RT_BASE = (
+    window.location.hostname === 'localhost' ||
+    window.location.hostname === '127.0.0.1'
+) ? 'http://localhost:8000/api'
+  : `${window.location.origin}/api`;
+
+function _rtHeaders() {
+    const token = localStorage.getItem('djangoAuthToken');
+    const h = { 'Content-Type': 'application/json' };
+    if (token) h['Authorization'] = `Token ${token}`;
+    return h;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  TOAST  (safe re-use — checks if auth.js version exists)
+// ─────────────────────────────────────────────────────────────────────────────
+function _rtToast(msg, type = 'info') {
+    if (typeof socialToast === 'function') { socialToast(msg, type); return; }
+    if (typeof showToast   === 'function') { showToast(msg, type);   return; }
+    console.info(`[ARTX] ${type.toUpperCase()}: ${msg}`);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  ESCAPE HTML  (shared helper)
+// ─────────────────────────────────────────────────────────────────────────────
+function _rtEsc(s) {
+    const d = document.createElement('div');
+    d.textContent = String(s ?? '');
+    return d.innerHTML;
+}
+
+function _rtTimeAgo(iso) {
+    const s = Math.floor((Date.now() - new Date(iso)) / 1000);
+    if (s < 60)  return 'just now';
+    const m = Math.floor(s / 60);   if (m < 60)  return `${m}m ago`;
+    const h = Math.floor(m / 60);   if (h < 24)  return `${h}h ago`;
+    const d = Math.floor(h / 24);   if (d < 7)   return `${d}d ago`;
+    return new Date(iso).toLocaleDateString();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  FOLLOW / UNFOLLOW  (the core of what was broken)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** In-memory set of user-ids the current user is following. */
+const _followingSet = new Set();
+
+/**
+ * Toggle follow state for a user.
+ * Called from any follow button: onclick="toggleFollow(userId, this)"
+ */
+async function toggleFollow(userId, btnEl) {
+    if (!userId) return;
+
+    const isFollowing = _followingSet.has(String(userId));
+    const endpoint    = isFollowing
+        ? `${_RT_BASE}/social/follows/unfollow/`
+        : `${_RT_BASE}/social/follows/follow/`;
+
+    // Optimistic UI
+    _applyFollowState(userId, !isFollowing, btnEl);
+
+    try {
+        const res = await fetch(endpoint, {
+            method:  'POST',
+            headers: _rtHeaders(),
+            body:    JSON.stringify({ user_id: userId })
         });
-    }
-    
-    /**
-     * Start polling for feed updates
-     */
-    startPolling() {
-        if (this.pollInterval) return; // Already polling
-        
-        console.log('📡 Starting polling for feed updates');
-        this.isConnected = true;
-        
-        // Initial fetch
-        this.requestFeedUpdate();
-        this.requestNotificationUpdate();
-        
-        // Poll every 5 seconds
-        this.pollInterval = setInterval(() => {
-            this.requestFeedUpdate();
-        }, this.pollDelay);
-        
-        this.notificationPollInterval = setInterval(() => {
-            this.requestNotificationUpdate();
-        }, this.pollDelay);
-    }
-    
-    /**
-     * Stop polling
-     */
-    stopPolling() {
-        if (this.pollInterval) {
-            clearInterval(this.pollInterval);
-            this.pollInterval = null;
-        }
-        if (this.notificationPollInterval) {
-            clearInterval(this.notificationPollInterval);
-            this.notificationPollInterval = null;
-        }
-        this.isConnected = false;
-        console.log('⏸️ Stopped polling');
-    }
-    
-    /**
-     * Connect to social feed WebSocket (deprecated - using polling instead)
-     */
-    connectFeedSocket() {
-        console.warn('⚠️ WebSocket not configured. Using polling instead.');
-        console.log('💡 To enable WebSocket: pip install django-channels');
-        // WebSocket not available - using polling instead
-    }
-    
-    /**
-     * Connect to notifications WebSocket (deprecated - using polling instead)
-     */
-    connectNotificationSocket() {
-        console.warn('⚠️ WebSocket not configured. Using polling instead.');
-        // WebSocket not available - using polling instead
-    }
-    
-    /**
-     * Handle feed messages
-     */
-    handleFeedMessage(data) {
-        const { type } = data;
-        
-        switch (type) {
-            case 'feed_update':
-                this.updateFeed(data.posts);
-                break;
-            case 'stories_update':
-                this.updateStories(data.stories);
-                break;
-            case 'online_users':
-                this.updateOnlineUsers(data.users);
-                break;
-            case 'post_created':
-                this.addNewPost(data.post);
-                break;
-            case 'post_updated':
-                this.updatePost(data.post);
-                break;
-            case 'comment_created':
-                this.addNewComment(data.comment, data.post_id);
-                break;
-            case 'user_followed':
-                this.handleUserFollowed(data.follower, data.following);
-                break;
-            case 'user_online':
-                this.handleUserOnline(data.user);
-                break;
-            case 'user_offline':
-                this.handleUserOffline(data.user_id);
-                break;
-            case 'error':
-                console.error('Feed error:', data.message);
-                break;
-        }
-    }
-    
-    /**
-     * Handle notification messages
-     */
-    handleNotificationMessage(data) {
-        const { type } = data;
-        
-        switch (type) {
-            case 'notification':
-                this.showNotification(data.title, data.message, data.icon);
-                break;
-            case 'follow_notification':
-                this.showFollowNotification(data);
-                break;
-            case 'comment_notification':
-                this.showCommentNotification(data);
-                break;
-        }
-    }
-    
-    /**
-     * Update feed with new posts
-     */
-    updateFeed(posts) {
-        const feedContainer = document.getElementById('feedPosts');
-        if (!feedContainer) return;
-        
-        // Clear existing posts (keep create post card)
-        const existingPosts = feedContainer.querySelectorAll('.post-card[data-post-id]');
-        existingPosts.forEach(post => post.remove());
-        
-        // Add new posts
-        posts.forEach(post => {
-            const postElement = this.createPostElement(post);
-            feedContainer.appendChild(postElement);
-        });
-    }
-    
-    /**
-     * Add new post to feed
-     */
-    addNewPost(post) {
-        const feedContainer = document.getElementById('feedPosts');
-        if (!feedContainer) return;
-        
-        const postElement = this.createPostElement(post);
-        feedContainer.insertBefore(postElement, feedContainer.firstChild);
-        
-        // Animate new post
-        postElement.style.animation = 'slideInDown 0.3s ease';
-    }
-    
-    /**
-     * Update existing post
-     */
-    updatePost(post) {
-        const postElement = document.querySelector(`[data-post-id="${post.id}"]`);
-        if (!postElement) return;
-        
-        // Update reaction count
-        const reactionCount = postElement.querySelector('.post-stats span:first-child');
-        if (reactionCount) {
-            reactionCount.innerHTML = `<i class="fas fa-fire"></i> ${post.reaction_count} reactions`;
-        }
-        
-        // Update comment count
-        const commentCount = postElement.querySelector('.comment-count');
-        if (commentCount) {
-            commentCount.textContent = post.comment_count;
-        }
-        
-        // Update share count
-        const shareCount = postElement.querySelector('.share-count');
-        if (shareCount) {
-            shareCount.textContent = post.share_count;
-        }
-    }
-    
-    /**
-     * Create post element
-     */
-    createPostElement(post) {
-        const div = document.createElement('div');
-        div.className = 'post-card';
-        div.setAttribute('data-post-id', post.id);
-        
-        const timeAgo = this.formatTimeAgo(post.created_at);
-        
-        div.innerHTML = `
-            <div class="post-header">
-                <div class="post-author">
-                    <div class="post-avatar">
-                        ${post.author.profile_image ? 
-                            `<img src="${post.author.profile_image}" alt="${post.author.username}">` :
-                            '<i class="fas fa-user-circle"></i>'
-                        }
-                    </div>
-                    <div class="post-author-info">
-                        <h4>${post.author.display_name || post.author.username}</h4>
-                        <span class="post-time">${timeAgo}</span>
-                    </div>
-                </div>
-                <button class="post-menu-btn">
-                    <i class="fas fa-ellipsis-h"></i>
-                </button>
-            </div>
-            <div class="post-content">
-                <p>${this.escapeHtml(post.content)}</p>
-            </div>
-            ${post.media_url ? `
-                <div class="post-media">
-                    ${post.media_type === 'image' ? 
-                        `<img src="${post.media_url}" alt="Post media">` :
-                        `<video controls><source src="${post.media_url}" type="video/mp4"></video>`
-                    }
-                </div>
-            ` : ''}
-            ${post.achievement_badge ? `
-                <div class="post-media">
-                    <div class="achievement-badge-large">
-                        <i class="fas fa-trophy"></i>
-                        <h3>${post.achievement_badge.title || 'Achievement'}</h3>
-                        <p>${post.achievement_badge.description || ''}</p>
-                    </div>
-                </div>
-            ` : ''}
-            <div class="post-stats">
-                <span><i class="fas fa-fire"></i> ${post.reaction_count} reactions</span>
-                <span><span class="comment-count">${post.comment_count}</span> comments · <span class="share-count">${post.share_count}</span> shares</span>
-            </div>
-            <div class="post-actions">
-                <button class="post-action-btn" onclick="reactToPost('${post.id}', 'fire')">
-                    <i class="fas fa-fire"></i>
-                    <span>React</span>
-                </button>
-                <button class="post-action-btn" onclick="openCommentModal('${post.id}')">
-                    <i class="fas fa-comment"></i>
-                    <span>Comment</span>
-                </button>
-                <button class="post-action-btn" onclick="openShareModal('${post.id}')">
-                    <i class="fas fa-share"></i>
-                    <span>Share</span>
-                </button>
-            </div>
-            <div class="post-comments"></div>
-        `;
-        
-        return div;
-    }
-    
-    /**
-     * Update stories
-     */
-    updateStories(stories) {
-        const storiesContainer = document.querySelector('.stories-container');
-        if (!storiesContainer) return;
-        
-        // Keep create story card
-        const createStoryCard = storiesContainer.querySelector('.create-story');
-        storiesContainer.innerHTML = '';
-        
-        if (createStoryCard) {
-            storiesContainer.appendChild(createStoryCard);
-        }
-        
-        // Add story cards
-        stories.forEach(story => {
-            const storyElement = this.createStoryElement(story);
-            storiesContainer.appendChild(storyElement);
-        });
-    }
-    
-    /**
-     * Create story element
-     */
-    createStoryElement(story) {
-        const div = document.createElement('div');
-        div.className = 'story-card';
-        div.setAttribute('data-story-id', story.id);
-        
-        const gradient = this.getRandomGradient();
-        
-        div.innerHTML = `
-            <div class="story-image" style="background: ${gradient};">
-                ${story.profile_image ? 
-                    `<img src="${story.profile_image}" alt="${story.username}" style="width: 100%; height: 100%; object-fit: cover;">` :
-                    '<i class="fas fa-user"></i>'
-                }
-            </div>
-            <span class="story-name">${story.display_name}</span>
-        `;
-        
-        div.addEventListener('click', () => {
-            this.openStory(story);
-        });
-        
-        return div;
-    }
-    
-    /**
-     * Update online users list
-     */
-    updateOnlineUsers(users) {
-        const onlineUsersContainer = document.getElementById('onlineUsers');
-        if (!onlineUsersContainer) return;
-        
-        this.onlineUsers.clear();
-        users.forEach(user => {
-            this.onlineUsers.set(user.id, user);
-        });
-        
-        this.renderOnlineUsers();
-    }
-    
-    /**
-     * Render online users
-     */
-    renderOnlineUsers() {
-        const container = document.getElementById('onlineUsers');
-        if (!container) return;
-        
-        container.innerHTML = '';
-        
-        if (this.onlineUsers.size === 0) {
-            container.innerHTML = '<p class="no-users">No users online</p>';
+
+        if (!res.ok) {
+            // Rollback
+            _applyFollowState(userId, isFollowing, btnEl);
+            const err = await res.json().catch(() => ({}));
+            _rtToast(err.error || 'Could not update follow status.', 'error');
             return;
         }
-        
-        this.onlineUsers.forEach(user => {
-            const userElement = document.createElement('div');
-            userElement.className = 'online-user-item';
-            userElement.innerHTML = `
-                <div class="online-user-avatar">
-                    ${user.profile_image ? 
-                        `<img src="${user.profile_image}" alt="${user.username}">` :
-                        '<i class="fas fa-user-circle"></i>'
-                    }
-                    <span class="online-indicator"></span>
-                </div>
-                <div class="online-user-info">
-                    <h4>${user.display_name || user.username}</h4>
-                    <p class="online-status">Online now</p>
-                </div>
-                <button class="btn-follow-small" onclick="followUser('${user.id}')">
-                    <i class="fas fa-user-plus"></i>
-                </button>
-            `;
-            container.appendChild(userElement);
-        });
-    }
-    
-    /**
-     * Handle user followed event
-     */
-    handleUserFollowed(follower, following) {
-        console.log(`${follower.username} followed ${following.username}`);
-        // Update UI if needed
-    }
-    
-    /**
-     * Handle user online event
-     */
-    handleUserOnline(user) {
-        this.onlineUsers.set(user.id, user);
-        this.renderOnlineUsers();
-    }
-    
-    /**
-     * Handle user offline event
-     */
-    handleUserOffline(userId) {
-        this.onlineUsers.delete(userId);
-        this.renderOnlineUsers();
-    }
-    
-    /**
-     * Add new comment
-     */
-    addNewComment(comment, postId) {
-        const postElement = document.querySelector(`[data-post-id="${postId}"]`);
-        if (!postElement) return;
-        
-        const commentsSection = postElement.querySelector('.post-comments');
-        if (!commentsSection) return;
-        
-        const commentElement = document.createElement('div');
-        commentElement.className = 'comment-item';
-        commentElement.setAttribute('data-comment-id', comment.id);
-        
-        const timeAgo = this.formatTimeAgo(comment.created_at);
-        
-        commentElement.innerHTML = `
-            <div class="comment-avatar">
-                ${comment.author.profile_image ? 
-                    `<img src="${comment.author.profile_image}" alt="${comment.author.username}">` :
-                    '<i class="fas fa-user-circle"></i>'
-                }
-            </div>
-            <div class="comment-content">
-                <div class="comment-header">
-                    <strong>${comment.author.display_name || comment.author.username}</strong>
-                    <span class="comment-time">${timeAgo}</span>
-                </div>
-                <p class="comment-text">${this.escapeHtml(comment.content)}</p>
-                <div class="comment-actions">
-                    <button class="comment-action-btn" onclick="reactToComment('${comment.id}', 'fire')">
-                        <i class="fas fa-fire"></i> React
-                    </button>
-                    <button class="comment-action-btn" onclick="replyToComment('${comment.id}')">
-                        <i class="fas fa-reply"></i> Reply
-                    </button>
-                </div>
-            </div>
-        `;
-        
-        commentsSection.insertBefore(commentElement, commentsSection.firstChild);
-    }
-    
-    /**
-     * Show notification
-     */
-    showNotification(title, message, icon = 'info') {
-        const notification = document.createElement('div');
-        notification.className = `notification notification-${icon}`;
-        notification.innerHTML = `
-            <i class="fas fa-${icon === 'success' ? 'check-circle' : icon === 'error' ? 'exclamation-circle' : 'info-circle'}"></i>
-            <div class="notification-content">
-                <h4>${title}</h4>
-                <p>${message}</p>
-            </div>
-        `;
-        
-        document.body.appendChild(notification);
-        
-        setTimeout(() => {
-            notification.remove();
-        }, 5000);
-    }
-    
-    /**
-     * Show follow notification
-     */
-    showFollowNotification(data) {
-        const notification = document.createElement('div');
-        notification.className = 'notification notification-follow';
-        notification.innerHTML = `
-            <div class="notification-avatar">
-                ${data.follower_image ? 
-                    `<img src="${data.follower_image}" alt="${data.follower_name}">` :
-                    '<i class="fas fa-user-circle"></i>'
-                }
-            </div>
-            <div class="notification-content">
-                <p><strong>${data.follower_name}</strong> started following you</p>
-            </div>
-            <button class="btn-follow-small" onclick="followUser('${data.follower_id}')">
-                <i class="fas fa-user-plus"></i>
-            </button>
-        `;
-        
-        document.body.appendChild(notification);
-        
-        setTimeout(() => {
-            notification.remove();
-        }, 5000);
-    }
-    
-    /**
-     * Show comment notification
-     */
-    showCommentNotification(data) {
-        const notification = document.createElement('div');
-        notification.className = 'notification notification-comment';
-        notification.innerHTML = `
-            <div class="notification-content">
-                <p><strong>${data.commenter_name}</strong> commented: "${data.comment_preview}"</p>
-            </div>
-            <button class="btn-small" onclick="scrollToPost('${data.post_id}')">
-                <i class="fas fa-arrow-right"></i>
-            </button>
-        `;
-        
-        document.body.appendChild(notification);
-        
-        setTimeout(() => {
-            notification.remove();
-        }, 5000);
-    }
-    
-    /**
-     * Request feed update via HTTP polling
-     */
-    async requestFeedUpdate() {
-        try {
-            const token = localStorage.getItem('djangoAuthToken');
-            if (!token) return;
-            
-            const response = await fetch(`${API_BASE_URL}/social/posts/`, {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Token ${token}`,
-                    'Content-Type': 'application/json'
-                }
-            });
-            
-            if (response.ok) {
-                const data = await response.json();
-                const posts = data.results || data;
-                this.handleFeedMessage({
-                    type: 'feed_update',
-                    posts: Array.isArray(posts) ? posts : []
-                });
-            }
-        } catch (error) {
-            console.warn('Feed update failed:', error.message);
+
+        if (!isFollowing) {
+            _followingSet.add(String(userId));
+            _rtToast('Following! 🎉', 'success');
+        } else {
+            _followingSet.delete(String(userId));
+            _rtToast('Unfollowed.', 'info');
         }
-    }
-    
-    /**
-     * Request notification update via HTTP polling
-     */
-    async requestNotificationUpdate() {
-        try {
-            const token = localStorage.getItem('djangoAuthToken');
-            if (!token) return;
-            
-            const response = await fetch(`${API_BASE_URL}/notifications/`, {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Token ${token}`,
-                    'Content-Type': 'application/json'
-                }
-            });
-            
-            if (response.ok) {
-                const data = await response.json();
-                const notifications = data.results || data;
-                
-                if (Array.isArray(notifications)) {
-                    notifications.forEach(notif => {
-                        this.handleNotificationMessage({
-                            type: 'notification',
-                            title: notif.title || 'Notification',
-                            message: notif.message || notif.description || '',
-                            icon: 'info'
-                        });
-                    });
-                }
-            }
-        } catch (error) {
-            console.warn('Notification update failed:', error.message);
-        }
-    }
-    
-    /**
-     * Request stories update via HTTP polling
-     */
-    async requestStoriesUpdate() {
-        try {
-            const token = localStorage.getItem('djangoAuthToken');
-            if (!token) return;
-            
-            const response = await fetch(`${API_BASE_URL}/social/stories/feed/`, {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Token ${token}`,
-                    'Content-Type': 'application/json'
-                }
-            });
-            
-            if (response.ok) {
-                const data = await response.json();
-                const stories = data.results || data;
-                this.handleFeedMessage({
-                    type: 'stories_update',
-                    stories: Array.isArray(stories) ? stories : []
-                });
-            }
-        } catch (error) {
-            console.warn('Stories update failed:', error.message);
-        }
-    }
-    
-    /**
-     * Request online users update via HTTP polling
-     */
-    async requestOnlineUsersUpdate() {
-        try {
-            const token = localStorage.getItem('djangoAuthToken');
-            if (!token) return;
-            
-            // This would require an endpoint to track online users
-            // For now, just log that it's not available
-            console.log('💡 Online users tracking requires WebSocket or additional backend support');
-        } catch (error) {
-            console.warn('Online users update failed:', error.message);
-        }
-    }
-    
-    /**
-     * Attempt to reconnect (polling-based)
-     */
-    attemptReconnect() {
-        if (this.reconnectAttempts < this.maxReconnectAttempts) {
-            this.reconnectAttempts++;
-            console.log(`Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts})...`);
-            
-            setTimeout(() => {
-                this.startPolling();
-            }, this.reconnectDelay);
-        }
-    }
-    
-    /**
-     * Reconnect all connections (polling-based)
-     */
-    reconnect() {
-        if (!this.isConnected) {
-            this.startPolling();
-        }
-    }
-    
-    /**
-     * Disconnect all connections
-     */
-    disconnect() {
-        this.stopPolling();
-    }
-    
-    /**
-     * Utility: Format time ago
-     */
-    formatTimeAgo(dateString) {
-        const date = new Date(dateString);
-        const now = new Date();
-        const diff = now - date;
-        
-        const minutes = Math.floor(diff / 60000);
-        const hours = Math.floor(diff / 3600000);
-        const days = Math.floor(diff / 86400000);
-        
-        if (minutes < 1) return 'just now';
-        if (minutes < 60) return `${minutes}m ago`;
-        if (hours < 24) return `${hours}h ago`;
-        if (days < 7) return `${days}d ago`;
-        
-        return date.toLocaleDateString();
-    }
-    
-    /**
-     * Utility: Escape HTML
-     */
-    escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
-    
-    /**
-     * Utility: Get random gradient
-     */
-    getRandomGradient() {
-        const gradients = [
-            'linear-gradient(135deg, #667eea, #764ba2)',
-            'linear-gradient(135deg, #f093fb, #f5576c)',
-            'linear-gradient(135deg, #4facfe, #00f2fe)',
-            'linear-gradient(135deg, #43e97b, #38f9d7)',
-            'linear-gradient(135deg, #fa709a, #fee140)',
-            'linear-gradient(135deg, #30cfd0, #330867)',
-        ];
-        return gradients[Math.floor(Math.random() * gradients.length)];
-    }
-    
-    /**
-     * Open story
-     */
-    openStory(story) {
-        console.log('Opening story:', story);
-        // Implement story viewer modal
-    }
-    
-    /**
-     * Follow a user (calls backend API)
-     */
-    async followUser(userId) {
-        try {
-            const token = localStorage.getItem('djangoAuthToken');
-            if (!token) {
-                console.error('No auth token found');
-                return;
-            }
-            
-            const response = await fetch(`${API_BASE_URL}/social/follow/follow/`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Token ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ user_id: userId })
-            });
-            
-            if (response.ok) {
-                const data = await response.json();
-                console.log('Follow successful:', data);
-                showNotification('Success', 'You are now following this user', 'success');
-                
-                // Update UI to show following state
-                this.updateFollowButton(userId, true);
-                
-                return data;
-            } else {
-                const error = await response.json();
-                console.error('Follow failed:', error);
-                showNotification('Error', error.message || 'Failed to follow user', 'error');
-            }
-        } catch (error) {
-            console.error('Follow error:', error);
-            showNotification('Error', 'Failed to follow user', 'error');
-        }
-    }
-    
-    /**
-     * Unfollow a user (calls backend API)
-     */
-    async unfollowUser(userId) {
-        try {
-            const token = localStorage.getItem('djangoAuthToken');
-            if (!token) {
-                console.error('No auth token found');
-                return;
-            }
-            
-            const response = await fetch(`${API_BASE_URL}/social/follow/unfollow/`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Token ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ user_id: userId })
-            });
-            
-            if (response.ok) {
-                const data = await response.json();
-                console.log('Unfollow successful:', data);
-                showNotification('Success', 'You have unfollowed this user', 'success');
-                
-                // Update UI to show unfollowed state
-                this.updateFollowButton(userId, false);
-                
-                return data;
-            } else {
-                const error = await response.json();
-                console.error('Unfollow failed:', error);
-                showNotification('Error', error.message || 'Failed to unfollow user', 'error');
-            }
-        } catch (error) {
-            console.error('Unfollow error:', error);
-            showNotification('Error', 'Failed to unfollow user', 'error');
-        }
-    }
-    
-    /**
-     * Check if current user is following another user
-     */
-    async isFollowing(userId) {
-        try {
-            const token = localStorage.getItem('djangoAuthToken');
-            if (!token) return false;
-            
-            const response = await fetch(`${API_BASE_URL}/social/follow/is_following/?user_id=${userId}`, {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Token ${token}`,
-                    'Content-Type': 'application/json'
-                }
-            });
-            
-            if (response.ok) {
-                const data = await response.json();
-                return data.is_following || false;
-            }
-            return false;
-        } catch (error) {
-            console.error('Check follow status error:', error);
-            return false;
-        }
-    }
-    
-    /**
-     * Update follow button state
-     */
-    updateFollowButton(userId, isFollowing) {
-        // Find all follow buttons for this user
-        const followButtons = document.querySelectorAll(`[data-user-id="${userId}"] .btn-follow, [data-user-id="${userId}"] .btn-follow-small`);
-        
-        followButtons.forEach(btn => {
-            if (isFollowing) {
-                btn.innerHTML = '<i class="fas fa-check"></i> Following';
-                btn.classList.add('following');
-                btn.onclick = () => this.unfollowUser(userId);
-            } else {
-                btn.innerHTML = '<i class="fas fa-user-plus"></i> Follow';
-                btn.classList.remove('following');
-                btn.onclick = () => this.followUser(userId);
-            }
-        });
-    }
-    
-    /**
-     * Load followers for a user
-     */
-    async loadFollowers(userId) {
-        try {
-            const token = localStorage.getItem('djangoAuthToken');
-            if (!token) return [];
-            
-            const response = await fetch(`${API_BASE_URL}/social/follow/followers/?user_id=${userId}`, {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Token ${token}`,
-                    'Content-Type': 'application/json'
-                }
-            });
-            
-            if (response.ok) {
-                const data = await response.json();
-                return data.results || data;
-            }
-            return [];
-        } catch (error) {
-            console.error('Load followers error:', error);
-            return [];
-        }
-    }
-    
-    /**
-     * Load users that current user is following
-     */
-    async loadFollowing() {
-        try {
-            const token = localStorage.getItem('djangoAuthToken');
-            if (!token) return [];
-            
-            const response = await fetch(`${API_BASE_URL}/social/follow/following/`, {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Token ${token}`,
-                    'Content-Type': 'application/json'
-                }
-            });
-            
-            if (response.ok) {
-                const data = await response.json();
-                return data.results || data;
-            }
-            return [];
-        } catch (error) {
-            console.error('Load following error:', error);
-            return [];
-        }
+
+        // Update ALL buttons for this user across the page
+        _updateAllFollowButtons(userId);
+
+    } catch {
+        _applyFollowState(userId, isFollowing, btnEl);
+        _rtToast('Network error. Please try again.', 'error');
     }
 }
 
-// Initialize on page load
-let realtimeUpdates;
+/** Kept for backward compat — old code calls followUser(id) */
+async function followUser(userId) {
+    if (_followingSet.has(String(userId))) return; // already following
+    const btn = document.querySelector(`[data-user-id="${userId}"] .artx-follow-btn`);
+    await toggleFollow(userId, btn);
+}
 
-document.addEventListener('DOMContentLoaded', function() {
-    realtimeUpdates = new RealtimeUpdates();
-    realtimeUpdates.init();
+async function unfollowUser(userId) {
+    if (!_followingSet.has(String(userId))) return; // not following
+    const btn = document.querySelector(`[data-user-id="${userId}"] .artx-follow-btn`);
+    await toggleFollow(userId, btn);
+}
+
+function _applyFollowState(userId, following, btnEl) {
+    if (following) {
+        _followingSet.add(String(userId));
+    } else {
+        _followingSet.delete(String(userId));
+    }
+    if (btnEl) _styleFollowBtn(btnEl, following);
+}
+
+function _styleFollowBtn(btn, following) {
+    btn.dataset.following = following ? '1' : '0';
+    if (following) {
+        btn.innerHTML     = '<i class="fas fa-check"></i> Following';
+        btn.classList.add('artx-follow-btn--following');
+    } else {
+        btn.innerHTML     = '<i class="fas fa-user-plus"></i> Follow';
+        btn.classList.remove('artx-follow-btn--following');
+    }
+}
+
+function _updateAllFollowButtons(userId) {
+    const following = _followingSet.has(String(userId));
+    document.querySelectorAll(`.artx-follow-btn[data-uid="${userId}"]`)
+        .forEach(btn => _styleFollowBtn(btn, following));
+}
+
+/** Build a follow button element */
+function _makeFollowBtn(userId, isFollowing) {
+    const btn = document.createElement('button');
+    btn.className     = `artx-follow-btn${isFollowing ? ' artx-follow-btn--following' : ''}`;
+    btn.dataset.uid   = userId;
+    btn.setAttribute('aria-label', isFollowing ? 'Unfollow' : 'Follow');
+    btn.innerHTML     = isFollowing
+        ? '<i class="fas fa-check"></i> Following'
+        : '<i class="fas fa-user-plus"></i> Follow';
+    btn.addEventListener('click', () => toggleFollow(userId, btn));
+    return btn;
+}
+
+/** Load current user's following list to seed _followingSet */
+async function _loadFollowingSet() {
+    try {
+        const res = await fetch(`${_RT_BASE}/social/follows/following/`, {
+            headers: _rtHeaders()
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        const list = Array.isArray(data) ? data : (data.results || []);
+        list.forEach(f => {
+            const id = f.user?.id ?? f.following?.id ?? f.id;
+            if (id) _followingSet.add(String(id));
+        });
+    } catch { /* silent — offline is fine */ }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  USER DISCOVERY  (Discover Users + Suggested sidebar)
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function loadDiscoverUsers() {
+    const container = document.getElementById('discoverUsersList');
+    if (!container) return;
+
+    _showUserSkeleton(container, 4);
+
+    try {
+        const res = await fetch(`${_RT_BASE}/auth/discover/`, { headers: _rtHeaders() });
+        if (!res.ok) throw new Error('API error');
+        const users = await res.json();
+        _renderDiscoverList(container, users, 'discover');
+    } catch {
+        container.innerHTML = '<p class="artx-no-users">Could not load users.</p>';
+    }
+}
+
+async function loadSuggestedUsers() {
+    const container = document.getElementById('suggestedUsersList');
+    if (!container) return;
+
+    _showUserSkeleton(container, 3);
+
+    try {
+        const res = await fetch(`${_RT_BASE}/auth/discover/?limit=6`, { headers: _rtHeaders() });
+        if (!res.ok) throw new Error('API error');
+        const users = await res.json();
+        _renderDiscoverList(container, users.slice(0, 6), 'suggested');
+    } catch {
+        container.innerHTML = '<p class="artx-no-users">Could not load suggestions.</p>';
+    }
+}
+
+async function searchUsers(query) {
+    const container = document.getElementById('discoverUsersList');
+    if (!container) return;
+
+    if (!query || query.trim().length < 1) {
+        loadDiscoverUsers();
+        return;
+    }
+
+    _showUserSkeleton(container, 3);
+
+    try {
+        const res = await fetch(`${_RT_BASE}/auth/search/?q=${encodeURIComponent(query)}`, {
+            headers: _rtHeaders()
+        });
+        if (!res.ok) throw new Error('API error');
+        const users = await res.json();
+        if (users.length === 0) {
+            container.innerHTML = `<p class="artx-no-users">No users found for "<strong>${_rtEsc(query)}</strong>"</p>`;
+        } else {
+            _renderDiscoverList(container, users, 'search');
+        }
+    } catch {
+        container.innerHTML = '<p class="artx-no-users">Search failed. Please try again.</p>';
+    }
+}
+
+function _renderDiscoverList(container, users, mode) {
+    if (!users || users.length === 0) {
+        container.innerHTML = '<p class="artx-no-users">No users to show right now.</p>';
+        return;
+    }
+
+    container.innerHTML = '';
+    users.forEach(u => {
+        const isFollowing = _followingSet.has(String(u.id));
+        const item = document.createElement('div');
+        item.className       = 'artx-user-item';
+        item.dataset.userId  = u.id;
+
+        const avatarHTML = u.profile_image
+            ? `<img src="${_rtEsc(u.profile_image)}" alt="${_rtEsc(u.display_name)}" class="artx-user-avatar-img">`
+            : `<i class="fas fa-user-circle"></i>`;
+
+        item.innerHTML = `
+          <div class="artx-user-avatar">${avatarHTML}</div>
+          <div class="artx-user-info">
+            <strong class="artx-user-name">${_rtEsc(u.display_name || u.username)}</strong>
+            <span class="artx-user-tier artx-tier--${(u.access_tier||'bronze').toLowerCase()}">
+              ${_rtEsc(u.access_tier || 'Bronze')}
+            </span>
+          </div>`;
+
+        const btn = _makeFollowBtn(u.id, isFollowing);
+        item.appendChild(btn);
+        container.appendChild(item);
+    });
+}
+
+function _showUserSkeleton(container, count) {
+    container.innerHTML = Array.from({ length: count }, () => `
+      <div class="artx-user-skel">
+        <div class="artx-skel-circle"></div>
+        <div class="artx-skel-lines">
+          <div class="artx-skel-line artx-skel-line--70"></div>
+          <div class="artx-skel-line artx-skel-line--40"></div>
+        </div>
+      </div>`).join('');
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  ONLINE USERS  (right sidebar)
+// ─────────────────────────────────────────────────────────────────────────────
+const _onlineMap  = new Map();
+let   _onlinePollTimer = null;
+
+function _startOnlinePoller() {
+    _pollOnlineUsers();
+    _onlinePollTimer = setInterval(_pollOnlineUsers, 45_000); // every 45 s
+}
+
+async function _pollOnlineUsers() {
+    // The backend has no dedicated "online" endpoint yet — approximate with
+    // recent active users from the discover list.
+    try {
+        const res = await fetch(`${_RT_BASE}/auth/discover/?limit=8`, { headers: _rtHeaders() });
+        if (!res.ok) return;
+        const users = await res.json();
+        _renderOnlineUsers(users.slice(0, 8));
+    } catch { /* silent */ }
+}
+
+function _renderOnlineUsers(users) {
+    const container = document.getElementById('onlineUsers');
+    if (!container) return;
+
+    if (!users || users.length === 0) {
+        container.innerHTML = '<p class="artx-no-users">No users online right now.</p>';
+        return;
+    }
+
+    container.innerHTML = '';
+    users.forEach(u => {
+        const isFollowing = _followingSet.has(String(u.id));
+        const item = document.createElement('div');
+        item.className = 'artx-online-item';
+        item.dataset.userId = u.id;
+
+        const avatarHTML = u.profile_image
+            ? `<img src="${_rtEsc(u.profile_image)}" alt="${_rtEsc(u.display_name)}" class="artx-user-avatar-img">`
+            : `<i class="fas fa-user-circle"></i>`;
+
+        item.innerHTML = `
+          <div class="artx-online-avatar">
+            ${avatarHTML}
+            <span class="artx-online-dot" title="Online"></span>
+          </div>
+          <div class="artx-user-info">
+            <strong class="artx-user-name">${_rtEsc(u.display_name || u.username)}</strong>
+            <span class="artx-online-label">Active</span>
+          </div>`;
+
+        const btn = _makeFollowBtn(u.id, isFollowing);
+        btn.classList.add('artx-follow-btn--sm');
+        item.appendChild(btn);
+        container.appendChild(item);
+    });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  FEED POLLING  (smart — only updates counts, doesn't wipe DOM)
+// ─────────────────────────────────────────────────────────────────────────────
+let _feedPollTimer     = null;
+let _seenPostIds       = new Set();     // dedup — never re-insert a post
+let _lastFeedPoll      = 0;
+const FEED_POLL_MS     = 30_000;        // 30 seconds — kind to the server
+
+function _startFeedPoller() {
+    _pollFeed();
+    _feedPollTimer = setInterval(_pollFeed, FEED_POLL_MS);
+}
+
+async function _pollFeed() {
+    const now = Date.now();
+    if (now - _lastFeedPoll < FEED_POLL_MS - 1000) return; // guard double-fire
+    _lastFeedPoll = now;
+
+    try {
+        const res = await fetch(`${_RT_BASE}/social/posts/`, { headers: _rtHeaders() });
+        if (!res.ok) return;
+        const data  = await res.json();
+        const posts = Array.isArray(data) ? data : (data.results || []);
+
+        const container = document.getElementById('feedPosts');
+        if (!container) return;
+
+        // If feed is still showing only static sample posts, replace them
+        const hasSampleOnly = !container.querySelector('[data-post-id^="post-"]')
+            || !container.querySelector('[data-post-id]:not([data-post-id^="post-"])');
+
+        if (hasSampleOnly && posts.length > 0 && _seenPostIds.size === 0) {
+            // First real load — replace static sample posts
+            const sampleCards = container.querySelectorAll('[data-post-id^="post-"]');
+            sampleCards.forEach(c => c.remove());
+        }
+
+        // Prepend only NEW posts (newest first from API)
+        const newPosts = posts.filter(p => !_seenPostIds.has(String(p.id)));
+
+        newPosts.forEach(p => {
+            _seenPostIds.add(String(p.id));
+            const el = _buildPostCard(p);
+            el.classList.add('post-card--new');
+            container.insertBefore(el, container.firstChild);
+        });
+
+        // For existing posts — silently update their counts only
+        posts.forEach(p => {
+            _patchPostCounts(p.id, p.reaction_count, p.comment_count, p.share_count);
+        });
+
+    } catch { /* silent — offline is fine */ }
+}
+
+function _patchPostCounts(postId, reactions, comments, shares) {
+    const card = document.querySelector(`[data-post-id="${postId}"]`);
+    if (!card) return;
+    const rEl = card.querySelector('.post-stats span:first-child');
+    if (rEl && reactions != null) rEl.innerHTML = `<i class="fas fa-fire"></i> ${reactions} reactions`;
+    const cEl = card.querySelector('.comment-count');
+    if (cEl && comments != null) cEl.textContent = comments;
+    const sEl = card.querySelector('.share-count');
+    if (sEl && shares   != null) sEl.textContent = shares;
+}
+
+/** Build a full post card DOM element from API data */
+function _buildPostCard(post) {
+    const div = document.createElement('div');
+    div.className = 'post-card';
+    div.setAttribute('data-post-id', post.id);
+
+    const author   = post.author || {};
+    const name     = _rtEsc(author.display_name || author.username || 'User');
+    const when     = _rtTimeAgo(post.created_at);
+    const content  = _rtEsc(post.content || '');
+
+    const avatarHTML = author.profile_image
+        ? `<img src="${_rtEsc(author.profile_image)}" alt="${name}" class="artx-user-avatar-img">`
+        : `<i class="fas fa-user-circle"></i>`;
+
+    let mediaHTML = '';
+    if (post.media_url) {
+        mediaHTML = post.media_type === 'video'
+            ? `<div class="post-media"><video controls><source src="${_rtEsc(post.media_url)}"></video></div>`
+            : `<div class="post-media"><img src="${_rtEsc(post.media_url)}" alt="Post media" loading="lazy"></div>`;
+    }
+    if (post.achievement_badge && post.achievement_badge.title) {
+        const ab = post.achievement_badge;
+        mediaHTML = `<div class="post-media">
+          <div class="achievement-badge-large">
+            <i class="fas fa-trophy"></i>
+            <h3>${_rtEsc(ab.title)}</h3>
+            <p>${_rtEsc(ab.description || '')}</p>
+          </div></div>`;
+    }
+
+    div.innerHTML = `
+      <div class="post-header">
+        <div class="post-author">
+          <div class="post-avatar">${avatarHTML}</div>
+          <div class="post-author-info">
+            <h4>${name}</h4>
+            <span class="post-time">${when}</span>
+          </div>
+        </div>
+        <button class="post-menu-btn" onclick="showPostMenu('${post.id}')">
+          <i class="fas fa-ellipsis-h"></i>
+        </button>
+      </div>
+      <div class="post-content"><p>${content}</p></div>
+      ${mediaHTML}
+      <div class="post-stats">
+        <span><i class="fas fa-fire"></i> ${post.reaction_count ?? 0} reactions</span>
+        <span><span class="comment-count">${post.comment_count ?? 0}</span> comments
+          · <span class="share-count">${post.share_count ?? 0}</span> shares</span>
+      </div>
+      <div class="post-actions">
+        <button class="post-action-btn${post.user_reaction ? ' reacted' : ''}"
+          onclick="reactToPost('${post.id}', 'fire')">
+          <i class="fas fa-fire"></i><span>React</span>
+        </button>
+        <button class="post-action-btn" onclick="openCommentModal('${post.id}')">
+          <i class="fas fa-comment"></i><span>Comment</span>
+        </button>
+        <button class="post-action-btn" onclick="openShareModal('${post.id}')">
+          <i class="fas fa-share"></i><span>Share</span>
+        </button>
+      </div>
+      <div class="post-comments"></div>`;
+
+    return div;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  NOTIFICATION POLLING  (deduplicated)
+// ─────────────────────────────────────────────────────────────────────────────
+const _seenNotifIds  = new Set();
+let   _notifTimer    = null;
+
+function _startNotifPoller() {
+    _pollNotifications();
+    _notifTimer = setInterval(_pollNotifications, 20_000); // 20 s
+}
+
+async function _pollNotifications() {
+    try {
+        const res = await fetch(`${_RT_BASE}/notifications/`, { headers: _rtHeaders() });
+        if (!res.ok) return;
+        const data  = await res.json();
+        const list  = Array.isArray(data) ? data : (data.results || []);
+        let   badge = 0;
+
+        list.forEach(n => {
+            if (!n.is_read) badge++;
+            if (_seenNotifIds.has(n.id)) return; // already shown
+            _seenNotifIds.add(n.id);
+            if (!n.is_read) {
+                _rtToast(n.message || n.title || 'New notification', 'info');
+            }
+        });
+
+        // Update bell badge
+        const bellBadge = document.getElementById('notificationBadge');
+        if (bellBadge) {
+            bellBadge.textContent = badge > 99 ? '99+' : badge;
+            bellBadge.style.display = badge > 0 ? 'inline-block' : 'none';
+        }
+    } catch { /* silent */ }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  INIT
+// ─────────────────────────────────────────────────────────────────────────────
+function _initRealtimeUpdates() {
+    const token = localStorage.getItem('djangoAuthToken');
+    if (!token) return; // Not logged in — nothing to do
+
+    // ── 1. WebSocket feed connection ──────────────────────────────────────────
+    wsClient.connectFeed();
+
+    // When we get the feed snapshot, replace static sample posts
+    wsClient.on('feed', 'snapshot', ({ posts }) => {
+        if (!posts?.length) return;
+        const container = document.getElementById('feedPosts');
+        if (!container) return;
+        // Remove static sample cards (data-post-id="post-1" etc.)
+        container.querySelectorAll('[data-post-id^="post-"]').forEach(c => c.remove());
+        // Mark them all as seen then insert
+        posts.forEach(p => {
+            if (!_seenPostIds.has(String(p.id))) {
+                _seenPostIds.add(String(p.id));
+                container.appendChild(_buildPostCard(p));
+            }
+        });
+    });
+
+    // New post broadcast from another user
+    wsClient.on('feed', 'new_post', ({ post }) => {
+        if (_seenPostIds.has(String(post.id))) return;
+        _seenPostIds.add(String(post.id));
+        const container = document.getElementById('feedPosts');
+        if (!container) return;
+        const el = _buildPostCard(post);
+        el.classList.add('post-card--new');
+        container.insertBefore(el, container.firstChild);
+    });
+
+    // Count patches (reactions / comments / shares from other users)
+    wsClient.on('feed', 'post_update', data => {
+        _patchPostCounts(data.post_id, data.reaction_count, data.comment_count, data.share_count);
+    });
+
+    // Live activity ticker (sidebar)
+    wsClient.on('feed', 'live_activity', ({ user, action }) => {
+        const feed = document.querySelector('.live-feed');
+        if (!feed) return;
+        const item = document.createElement('div');
+        item.className = 'live-item';
+        item.style.animation = 'fadeInCard .4s ease';
+        item.innerHTML = `
+            <span class="live-dot"></span>
+            <div class="live-info">
+                <strong>${_rtEsc(user)}</strong> ${_rtEsc(action)}
+                <span class="live-time">Just now</span>
+            </div>`;
+        feed.insertBefore(item, feed.firstChild);
+        while (feed.children.length > 5) feed.removeChild(feed.lastChild);
+    });
+
+    // New story from someone we follow
+    wsClient.on('feed', 'new_story', ({ story }) => {
+        _appendStoryCard(story);
+    });
+
+    // ── 2. Stories WS connection ──────────────────────────────────────────────
+    wsClient.connectToStories({
+        onSnapshot: stories => {
+            if (!stories?.length) return;
+            const container = document.querySelector('.stories-container');
+            if (!container) return;
+            // Keep create-story card, add real stories after it
+            const createCard = container.querySelector('.create-story');
+            stories.forEach(s => {
+                if (!container.querySelector(`[data-story-id="${s.id}"]`)) {
+                    const card = _buildStoryCard(s);
+                    if (createCard?.nextSibling) container.insertBefore(card, createCard.nextSibling);
+                    else container.appendChild(card);
+                }
+            });
+        }
+    });
+
+    // ── 3. Load who we're following first so follow buttons render correctly ──
+    _loadFollowingSet().then(() => {
+        loadDiscoverUsers();
+        loadSuggestedUsers();
+        _renderOnlineUsers([]);
+        _startOnlinePoller();
+    });
+
+    // ── 4. Notification polling (bell badge) — WS not yet on this channel ─────
+    _startNotifPoller();
+
+    // ── 5. Pause everything when tab is hidden ────────────────────────────────
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+            clearInterval(_notifTimer);
+            clearInterval(_onlinePollTimer);
+            _notifTimer = _onlinePollTimer = null;
+        } else {
+            _startNotifPoller();
+            _startOnlinePoller();
+        }
+    });
+}
+
+// ── Story card builder (for WS-pushed stories) ────────────────────────────────
+function _buildStoryCard(story) {
+    const card = document.createElement('div');
+    card.className = 'story-card';
+    card.dataset.storyId = story.id;
+
+    const author = story.author || {};
+    const name   = author.display_name || author.username || 'User';
+    const bgGrad = ['linear-gradient(135deg,#667eea,#764ba2)',
+                     'linear-gradient(135deg,#f093fb,#f5576c)',
+                     'linear-gradient(135deg,#4facfe,#00f2fe)',
+                     'linear-gradient(135deg,#43e97b,#38f9d7)',
+                     'linear-gradient(135deg,#fa709a,#fee140)'];
+    const grad = bgGrad[Math.floor(Math.random() * bgGrad.length)];
+
+    card.innerHTML = `
+        <div class="story-image" style="background:${grad}">
+            ${story.media_url
+                ? (story.media_type === 'video'
+                    ? `<video src="${_rtEsc(story.media_url)}" style="width:100%;height:100%;object-fit:cover"></video>`
+                    : `<img src="${_rtEsc(story.media_url)}" style="width:100%;height:100%;object-fit:cover" alt="">`)
+                : `<i class="fas fa-user"></i>`}
+        </div>
+        <span class="story-name">${_rtEsc(name)}</span>`;
+
+    card.onclick = () => {
+        if (window.storyViewer) {
+            storyViewer.openStory(story.id, [story]);
+        }
+    };
+    return card;
+}
+
+function _appendStoryCard(story) {
+    const container  = document.querySelector('.stories-container');
+    const createCard = container?.querySelector('.create-story');
+    if (!container) return;
+    const card = _buildStoryCard(story);
+    if (createCard?.nextSibling) container.insertBefore(card, createCard.nextSibling);
+    else container.appendChild(card);
+}
+
+document.addEventListener('DOMContentLoaded', _initRealtimeUpdates);
+
+window.addEventListener('beforeunload', () => {
+    clearInterval(_feedPollTimer);
+    clearInterval(_notifTimer);
+    clearInterval(_onlinePollTimer);
 });
 
-// Cleanup on page unload
-window.addEventListener('beforeunload', function() {
-    if (realtimeUpdates) {
-        realtimeUpdates.disconnect();
-    }
-});
-
-// Make follow functions globally accessible
-window.followUser = function(userId) {
-    if (realtimeUpdates) {
-        realtimeUpdates.followUser(userId);
-    }
-};
-
-window.unfollowUser = function(userId) {
-    if (realtimeUpdates) {
-        realtimeUpdates.unfollowUser(userId);
-    }
-};
-
-window.isFollowing = function(userId) {
-    if (realtimeUpdates) {
-        return realtimeUpdates.isFollowing(userId);
-    }
-    return false;
-};
-
-window.loadFollowers = function(userId) {
-    if (realtimeUpdates) {
-        return realtimeUpdates.loadFollowers(userId);
-    }
-    return Promise.resolve([]);
-};
-
-window.loadFollowing = function() {
-    if (realtimeUpdates) {
-        return realtimeUpdates.loadFollowing();
-    }
-    return Promise.resolve([]);
-};
+// ─────────────────────────────────────────────────────────────────────────────
+//  GLOBAL EXPORTS  (called from inline HTML and other scripts)
+// ─────────────────────────────────────────────────────────────────────────────
+window.toggleFollow    = toggleFollow;
+window.followUser      = followUser;
+window.unfollowUser    = unfollowUser;
+window.searchUsers     = searchUsers;         // wires up the sidebar search input
+window.loadDiscoverUsers  = loadDiscoverUsers;
+window.loadSuggestedUsers = loadSuggestedUsers;

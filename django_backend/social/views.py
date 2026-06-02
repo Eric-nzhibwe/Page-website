@@ -40,8 +40,32 @@ class PostViewSet(viewsets.ModelViewSet):
         ).select_related('author').prefetch_related('comments', 'reactions', 'shares')
     
     def perform_create(self, serializer):
-        """Create post with current user as author"""
-        serializer.save(author=self.request.user)
+        """Create post with current user as author and broadcast to feed group."""
+        post = serializer.save(author=self.request.user)
+        # Broadcast new post to all connected feed clients
+        try:
+            from channels.layers import get_channel_layer
+            from asgiref.sync import async_to_sync
+            from .serializers import PostSerializer as PS
+            import json
+            from django.core.serializers.json import DjangoJSONEncoder
+            req = type('Req', (), {'user': self.request.user})()
+            post_data = PS(post, context={'request': req}).data
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(
+                'artx_feed',
+                {
+                    'type': 'feed_new_post',
+                    'post': json.loads(json.dumps(dict(post_data), cls=DjangoJSONEncoder))
+                }
+            )
+        except Exception:
+            pass  # Channel layer unavailable — still return success
+
+    def get_serializer_context(self):
+        ctx = super().get_serializer_context()
+        ctx['request'] = self.request
+        return ctx
     
     @action(detail=True, methods=['post'])
     def react(self, request, pk=None):
@@ -113,19 +137,31 @@ class CommentViewSet(viewsets.ModelViewSet):
     """
     serializer_class = CommentSerializer
     permission_classes = [IsAuthenticated]
-    
+
     def get_queryset(self):
-        """Get comments for a specific post"""
+        """Get top-level comments for a specific post."""
         post_id = self.request.query_params.get('post_id')
+        qs = Comment.objects.select_related('author').prefetch_related(
+            'reactions', 'replies__author', 'replies__reactions'
+        )
         if post_id:
-            return Comment.objects.filter(post_id=post_id, parent_comment__isnull=True).select_related('author').prefetch_related('reactions', 'replies')
-        return Comment.objects.all()
-    
+            return qs.filter(post_id=post_id, parent_comment__isnull=True)
+        return qs.none()  # Don't list all comments without a post_id
+
+    def get_serializer_context(self):
+        ctx = super().get_serializer_context()
+        ctx['request'] = self.request
+        return ctx
+
     def perform_create(self, serializer):
-        """Create comment with current user as author"""
+        """Create comment with current user as author."""
         post_id = self.request.data.get('post_id')
         post = get_object_or_404(Post, id=post_id)
-        serializer.save(author=self.request.user, post=post)
+        parent_id = self.request.data.get('parent_comment_id')
+        kwargs = {'author': self.request.user, 'post': post}
+        if parent_id:
+            kwargs['parent_comment'] = get_object_or_404(Comment, id=parent_id)
+        serializer.save(**kwargs)
     
     @action(detail=True, methods=['post'])
     def react(self, request, pk=None):
@@ -185,7 +221,18 @@ class FollowViewSet(viewsets.ViewSet):
             follower=request.user,
             following=user_to_follow
         )
-        
+
+        if created:
+            from notifications.views import create_notification
+            create_notification(
+                recipient=user_to_follow,
+                actor=request.user,
+                notif_type='follow',
+                title=f'{request.user.username} started following you',
+                message='',
+                link=f'/pages/user.html?id={request.user.id}',
+            )
+
         serializer = FollowSerializer(follow)
         return Response(serializer.data, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
     

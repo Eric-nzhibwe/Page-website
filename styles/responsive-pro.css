@@ -1636,3 +1636,206 @@ body, html {
     justify-content: space-between !important;
   }
 }
+
+/* ===================================================================
+   USER DISCOVERY & FOLLOW SYSTEM
+   =================================================================== */
+
+/* ── Shared user item row ────────────────────────────────────────── */
+.artx-user-item,
+.artx-online-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--artx-border);
+  animation: fadeInCard .22s ease;
+}
+
+.artx-user-item:last-child,
+.artx-online-item:last-child { border-bottom: none; }
+
+/* Avatar */
+.artx-user-avatar,
+.artx-online-avatar {
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--artx-green), var(--artx-green-light));
+  display: flex; align-items: center; justify-content: center;
+  color: white; font-size: 22px; flex-shrink: 0;
+  overflow: hidden; position: relative;
+}
+
+.artx-user-avatar-img {
+  width: 100%; height: 100%; object-fit: cover;
+  border-radius: 50%;
+}
+
+/* Online dot */
+.artx-online-dot {
+  position: absolute;
+  bottom: 1px; right: 1px;
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: #22c55e;
+  border: 2px solid var(--artx-surface);
+  box-shadow: 0 0 0 2px rgba(34,197,94,.25);
+  animation: livePulse 2.2s infinite;
+}
+
+/* Info column */
+.artx-user-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.artx-user-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--artx-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.artx-online-label {
+  font-size: 11px;
+  color: #22c55e;
+  font-weight: 500;
+}
+
+/* Tier badge */
+.artx-user-tier {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 20px;
+  text-transform: uppercase;
+  letter-spacing: .3px;
+  width: fit-content;
+}
+
+.artx-tier--bronze { background: #fde8d8; color: #c2621a; }
+.artx-tier--silver { background: #f0f0f0; color: #555; }
+.artx-tier--gold   { background: #fff8dc; color: #9a7c00; }
+
+/* ── Follow button ───────────────────────────────────────────────── */
+.artx-follow-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 14px;
+  background: linear-gradient(135deg, var(--artx-green-light), var(--artx-green));
+  color: white;
+  border: none;
+  border-radius: var(--artx-radius-pill);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: opacity .2s, transform .2s, box-shadow .2s, background .2s;
+  box-shadow: 0 2px 8px rgba(85,107,47,.2);
+}
+
+.artx-follow-btn:hover {
+  opacity: .92;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(85,107,47,.3);
+}
+
+.artx-follow-btn--following {
+  background: #f3f4f6;
+  color: var(--artx-muted);
+  box-shadow: none;
+  border: 1.5px solid var(--artx-border);
+}
+
+.artx-follow-btn--following:hover {
+  background: #fee2e2;
+  color: #ef4444;
+  border-color: #ef4444;
+  box-shadow: none;
+}
+
+/* Smaller variant for online-users list */
+.artx-follow-btn--sm {
+  padding: 5px 10px;
+  font-size: 11px;
+}
+
+/* ── No-users empty state ────────────────────────────────────────── */
+.artx-no-users {
+  text-align: center;
+  font-size: 13px;
+  color: var(--artx-muted);
+  padding: 16px 8px;
+}
+
+/* ── Skeleton loaders for user lists ─────────────────────────────── */
+.artx-user-skel {
+  display: flex; gap: 10px; align-items: center;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--artx-border);
+}
+
+.artx-skel-circle {
+  width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: skelShimmer 1.4s infinite;
+}
+
+.artx-skel-lines {
+  flex: 1; display: flex; flex-direction: column; gap: 6px;
+}
+
+.artx-skel-line {
+  height: 11px; border-radius: 6px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: skelShimmer 1.4s infinite;
+}
+
+.artx-skel-line--70 { width: 70%; }
+.artx-skel-line--40 { width: 40%; }
+
+/* ── New post slide-in ───────────────────────────────────────────── */
+.post-card--new {
+  animation: slideInFeed .35s cubic-bezier(.4,0,.2,1);
+}
+
+@keyframes slideInFeed {
+  from { opacity: 0; transform: translateY(-14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── User search box ─────────────────────────────────────────────── */
+.user-search-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--artx-bg);
+  border: 1.5px solid var(--artx-border);
+  border-radius: var(--artx-radius-pill);
+  padding: 8px 14px;
+  margin-bottom: 12px;
+  transition: border-color .2s, box-shadow .2s;
+}
+
+.user-search-box:focus-within {
+  border-color: var(--artx-green);
+  box-shadow: 0 0 0 3px rgba(85,107,47,.1);
+}
+
+.user-search-box i { color: var(--artx-muted); font-size: 13px; }
+
+.user-search-box input {
+  border: none; background: transparent; outline: none;
+  font-size: 13px; color: var(--artx-text); width: 100%;
+}
+
+.user-search-box input::placeholder { color: var(--artx-muted); }

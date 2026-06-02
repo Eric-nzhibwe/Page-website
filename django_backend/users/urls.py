@@ -16,6 +16,8 @@ urlpatterns = [
     path('profile/', views.UserProfileView.as_view(), name='user-profile'),
     path('stats/', views.user_stats_view, name='user-stats'),
     path('activities/', views.UserActivitiesView.as_view(), name='user-activities'),
+    path('discover/', views.discover_users_view, name='discover-users'),
+    path('search/', views.search_users_view, name='search-users'),
     
     # Submissions
     path('submit/', views.SubmitAnswerView.as_view(), name='submit-answer'),

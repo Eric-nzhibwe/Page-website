@@ -26,11 +26,12 @@ class CommentSerializer(serializers.ModelSerializer):
     reactions = CommentReactionSerializer(many=True, read_only=True)
     replies = serializers.SerializerMethodField()
     user_reaction = serializers.SerializerMethodField()
-    
+    post_id = serializers.UUIDField(write_only=True, required=False)
+
     class Meta:
         model = Comment
         fields = [
-            'id', 'author', 'content', 'reaction_count', 'created_at',
+            'id', 'author', 'content', 'post_id', 'reaction_count', 'created_at',
             'updated_at', 'reactions', 'replies', 'user_reaction'
         ]
     
@@ -126,9 +127,9 @@ class FollowListSerializer(serializers.ModelSerializer):
 class StoryViewSerializer(serializers.ModelSerializer):
     """Serializer for story views"""
     viewer = UserMinimalSerializer(read_only=True)
-    
+
     class Meta:
-        model = Story
+        model = StoryView
         fields = ['id', 'viewer', 'viewed_at']
 
 

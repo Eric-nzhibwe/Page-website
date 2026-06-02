@@ -5,6 +5,38 @@ from django.db import models
 from django.conf import settings
 
 
+class InAppNotification(models.Model):
+    """In-app notification shown in the bell dropdown."""
+
+    TYPE_CHOICES = [
+        ('follow',    'New Follower'),
+        ('comment',   'New Comment'),
+        ('reaction',  'New Reaction'),
+        ('share',     'Post Shared'),
+        ('mention',   'Mention'),
+        ('system',    'System'),
+    ]
+
+    recipient   = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
+                                    related_name='inapp_notifications')
+    actor       = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
+                                    null=True, blank=True, related_name='sent_notifications')
+    notif_type  = models.CharField(max_length=20, choices=TYPE_CHOICES, default='system')
+    title       = models.CharField(max_length=200)
+    message     = models.TextField()
+    link        = models.CharField(max_length=500, blank=True)   # e.g. /posts/<id>
+    is_read     = models.BooleanField(default=False)
+    created_at  = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'inapp_notifications'
+        ordering = ['-created_at']
+        indexes  = [models.Index(fields=['recipient', 'is_read', 'created_at'])]
+
+    def __str__(self):
+        return f'{self.recipient.username} — {self.notif_type}: {self.title}'
+
+
 class EmailTemplate(models.Model):
     """Email template model"""
     
