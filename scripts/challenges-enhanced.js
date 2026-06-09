@@ -488,7 +488,8 @@ async function verifyChallengeSubmission(submission) {
     if (token) {
         // Try to verify with backend
         try {
-            const API_BASE_URL = 'http://localhost:8000/api';
+            const API_BASE_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+                ? 'http://localhost:8000/api' : `${window.location.origin}/api`;
             const response = await fetch(`${API_BASE_URL}/challenges/verify/`, {
                 method: 'POST',
                 headers: {
@@ -553,7 +554,8 @@ async function addMoneyToWalletBackend(amount, challengeId) {
     if (token) {
         // Add earnings via Django backend
         try {
-            const API_BASE_URL = 'http://localhost:8000/api';
+            const API_BASE_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+                ? 'http://localhost:8000/api' : `${window.location.origin}/api`;
             const response = await fetch(`${API_BASE_URL}/payments/wallet/add-earnings/`, {
                 method: 'POST',
                 headers: {

@@ -3,7 +3,11 @@
  * Handles deposit (PawaPay, Stripe, Paystack) and withdrawal flows.
  */
 
-const API_BASE_URL = 'http://localhost:8000/api';
+// Auto-detect API base: works on localhost AND on HTTPS production
+const API_BASE_URL = (
+    window.location.hostname === 'localhost' ||
+    window.location.hostname === '127.0.0.1'
+) ? 'http://localhost:8000/api' : `${window.location.origin}/api`;
 
 let walletData       = null;
 let stripeInstance   = null;   // Stripe.js instance
