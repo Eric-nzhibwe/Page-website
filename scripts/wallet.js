@@ -7,7 +7,7 @@
 const API_BASE_URL = (
     window.location.hostname === 'localhost' ||
     window.location.hostname === '127.0.0.1'
-) ? 'http://localhost:8000/api' : `${window.location.origin}/api`;
+) ? 'https://artx-website.onrender.com/pages/wallet.html' : `${window.location.origin}/api`;
 
 let walletData       = null;
 let stripeInstance   = null;   // Stripe.js instance
