@@ -399,3 +399,126 @@
         padding: 20px;
     }
 }
+
+/* ── New styles for enhanced wallet ─────────────────────────────────────── */
+
+/* Close button (now a real <button>, not a <span>) */
+.modal-content .close {
+    background: none;
+    border: none;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    color: #aaa;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0;
+    transition: color 0.2s;
+}
+.modal-content .close:hover { color: #333; }
+
+/* Submit button disabled state */
+.submit-btn:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+/* Provider info hint text inside modal */
+.provider-info {
+    background: #f0f4ff;
+    border-left: 4px solid #667eea;
+    padding: 10px 14px;
+    border-radius: 6px;
+    font-size: 13px;
+    color: #444;
+    margin: 10px 0 16px;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+}
+.provider-info i { margin-top: 2px; color: #667eea; flex-shrink: 0; }
+
+/* Field hint (small helper text below inputs) */
+.field-hint {
+    display: block;
+    margin-top: 5px;
+    font-size: 12px;
+    color: #888;
+}
+
+/* Inline field error (Stripe card errors) */
+.field-error {
+    color: #e74c3c;
+    font-size: 13px;
+    margin-top: 6px;
+    min-height: 18px;
+}
+
+/* Stripe card element container */
+.stripe-card-element {
+    padding: 12px;
+    border: 2px solid #dfe6e9;
+    border-radius: 8px;
+    background: #1a1a2e;
+    transition: border-color 0.3s;
+}
+.stripe-card-element.StripeElement--focus { border-color: #667eea; }
+.stripe-card-element.StripeElement--invalid { border-color: #e74c3c; }
+
+/* Loading message in transaction list */
+.loading-message {
+    text-align: center;
+    padding: 40px;
+    color: #888;
+    font-size: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+/* Pending deposit notice banner (polling status) */
+.pending-notice {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: #1a3a7a;
+    border: 2px solid #3498db;
+    color: #fff;
+    padding: 14px 20px;
+    border-radius: 10px;
+    margin-bottom: 24px;
+    font-size: 14px;
+    flex-wrap: wrap;
+}
+.pending-notice i { color: #3498db; font-size: 18px; flex-shrink: 0; }
+.pending-notice span { flex: 1; }
+.cancel-poll-btn {
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.4);
+    color: #fff;
+    padding: 6px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: background 0.2s;
+}
+.cancel-poll-btn:hover { background: rgba(255,255,255,0.25); }
+
+/* Deposit / Withdraw action button colours (more vibrant) */
+.deposit-btn {
+    background: linear-gradient(135deg, #00b894, #00cec9);
+    color: #fff;
+}
+.deposit-btn:hover {
+    box-shadow: 0 5px 20px rgba(0, 184, 148, 0.45);
+}
+.withdraw-btn {
+    background: linear-gradient(135deg, #e17055, #d63031);
+    color: #fff;
+}
+.withdraw-btn:hover {
+    box-shadow: 0 5px 20px rgba(214, 48, 49, 0.4);
+}

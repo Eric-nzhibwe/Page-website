@@ -3,19 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wallet</title>
+    <title>Wallet — ARTX</title>
     <link rel="stylesheet" href="../styles/styles.css">
     <link rel="stylesheet" href="../styles/wallet.css">
     <link rel="stylesheet" href="../styles/responsive-pro.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Stripe.js — only loads when needed -->
+    <script src="https://js.stripe.com/v3/" defer></script>
 </head>
 <body>
     <div class="wallet-container">
-        <!-- Wallet Header -->
+
+        <!-- Header -->
         <div class="wallet-header">
             <button class="back-btn" onclick="window.location.href='../index.html'">
                 <i class="fas fa-arrow-left"></i> Back
-            </butsston>
+            </button>
             <h1><i class="fas fa-wallet"></i> My Wallet</h1>
         </div>
 
@@ -56,6 +59,13 @@
             </button>
         </div>
 
+        <!-- Pending deposit notice (shown while polling PawaPay) -->
+        <div id="pendingDepositNotice" class="pending-notice" style="display:none;">
+            <i class="fas fa-spinner fa-spin"></i>
+            <span id="pendingDepositMsg">Waiting for payment confirmation on your phone…</span>
+            <button onclick="cancelPolling()" class="cancel-poll-btn">Dismiss</button>
+        </div>
+
         <!-- Transaction History -->
         <div class="transaction-section">
             <div class="section-header">
@@ -68,107 +78,171 @@
                     <option value="payment">Payments</option>
                 </select>
             </div>
-
-            <div id="transactionList" class="transaction-list">
-                <!-- Transactions will be loaded here -->
-            </div>
+            <div id="transactionList" class="transaction-list"></div>
         </div>
     </div>
 
-    <!-- Deposit Modal -->
-    <div id="depositModal" class="modal">
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- DEPOSIT MODAL                                               -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <div id="depositModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="depositTitle">
         <div class="modal-content">
-            <span class="close" onclick="closeDepositModal()">&times;</span>
-            <h2><i class="fas fa-plus-circle"></i> Deposit Funds</h2>
-            
-            <form id="depositForm" onsubmit="handleDeposit(event)">
+            <button class="close" onclick="closeDepositModal()" aria-label="Close">&times;</button>
+            <h2 id="depositTitle"><i class="fas fa-plus-circle"></i> Deposit Funds</h2>
+
+            <form id="depositForm" onsubmit="handleDeposit(event)" novalidate>
+
                 <div class="form-group">
-                    <label>Amount</label>
-                    <input type="number" id="depositAmount" step="0.01" min="1" required placeholder="Enter amount">
+                    <label for="depositAmount">Amount</label>
+                    <input type="number" id="depositAmount" step="0.01" min="1"
+                           required placeholder="Enter amount" autocomplete="off">
                 </div>
 
                 <div class="form-group">
-                    <label>Payment Method</label>
-                    <select id="depositProvider" onchange="handleProviderChange('deposit')" required>
+                    <label for="depositProvider">Payment Method</label>
+                    <select id="depositProvider" onchange="handleDepositProviderChange()" required>
                         <option value="">Select payment method</option>
-                        <option value="stripe">Card (Stripe)</option>
-                        <option value="pawapay">Mobile Money (PawaPay)</option>
-                        <option value="paystack">Paystack</option>
+                        <option value="pawapay">📱 Mobile Money (MTN, Airtel, M-Pesa)</option>
+                        <option value="stripe">💳 Card Payment (Stripe)</option>
+                        <option value="paystack">🏦 Paystack (Card / Bank)</option>
                     </select>
                 </div>
 
-                <!-- PawaPay Fields -->
-                <div id="depositPawapayFields" style="display: none;">
+                <!-- PawaPay fields -->
+                <div id="depositPawapayFields" style="display:none;">
                     <div class="form-group">
-                        <label>Phone Number</label>
-                        <input type="tel" id="depositPhone" placeholder="+260977123456">
+                        <label for="depositPhone">Phone Number</label>
+                        <input type="tel" id="depositPhone"
+                               placeholder="+260977123456"
+                               autocomplete="tel">
+                        <small class="field-hint">Use international format, e.g. +260977123456</small>
                     </div>
                     <div class="form-group">
-                        <label>Mobile Money Provider</label>
+                        <label for="depositCorrespondent">Mobile Network</label>
                         <select id="depositCorrespondent">
-                            <option value="">Select provider</option>
+                            <option value="">Select network</option>
+                            <option value="MTN_MOMO_ZMB">MTN Mobile Money — Zambia</option>
+                            <option value="AIRTEL_OAPI_ZMB">Airtel Money — Zambia</option>
+                            <option value="VODACOM_MPESA_TZA">M-Pesa — Tanzania</option>
+                            <option value="SAFARICOM_MPESA_KEN">M-Pesa — Kenya</option>
+                            <option value="MTN_MOMO_UGA">MTN Mobile Money — Uganda</option>
+                            <option value="MTN_MOMO_GHA">MTN Mobile Money — Ghana</option>
+                            <option value="MTN_MOMO_RWA">MTN Mobile Money — Rwanda</option>
                         </select>
                     </div>
+                    <p class="provider-info">
+                        <i class="fas fa-info-circle"></i>
+                        You will receive a prompt on your phone to enter your PIN.
+                    </p>
                 </div>
 
-                <button type="submit" class="submit-btn">
-                    <i class="fas fa-check"></i> Deposit Now
+                <!-- Stripe card element -->
+                <div id="depositStripeFields" style="display:none;">
+                    <div class="form-group">
+                        <label>Card Details</label>
+                        <div id="stripeCardElement" class="stripe-card-element">
+                            <!-- Stripe Elements mounts here -->
+                        </div>
+                        <div id="stripeCardErrors" class="field-error" role="alert"></div>
+                    </div>
+                    <p class="provider-info">
+                        <i class="fas fa-lock"></i>
+                        Secured by Stripe — your card details never touch our servers.
+                    </p>
+                </div>
+
+                <!-- Paystack info -->
+                <div id="depositPaystackFields" style="display:none;">
+                    <p class="provider-info">
+                        <i class="fas fa-info-circle"></i>
+                        You will be redirected to Paystack's secure checkout page to complete the payment.
+                    </p>
+                </div>
+
+                <button type="submit" class="submit-btn" id="depositSubmitBtn">
+                    <i class="fas fa-check"></i>
+                    <span id="depositBtnText">Deposit Now</span>
                 </button>
             </form>
         </div>
     </div>
 
-    <!-- Withdraw Modal -->
-    <div id="withdrawModal" class="modal">
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- WITHDRAW MODAL                                              -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <div id="withdrawModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="withdrawTitle">
         <div class="modal-content">
-            <span class="close" onclick="closeWithdrawModal()">&times;</span>
-            <h2><i class="fas fa-minus-circle"></i> Withdraw Funds</h2>
-            
-            <form id="withdrawForm" onsubmit="handleWithdraw(event)">
+            <button class="close" onclick="closeWithdrawModal()" aria-label="Close">&times;</button>
+            <h2 id="withdrawTitle"><i class="fas fa-minus-circle"></i> Withdraw Funds</h2>
+
+            <form id="withdrawForm" onsubmit="handleWithdraw(event)" novalidate>
+
                 <div class="form-group">
-                    <label>Amount</label>
-                    <input type="number" id="withdrawAmount" step="0.01" min="1" required placeholder="Enter amount">
-                    <small id="withdrawMax"></small>
+                    <label for="withdrawAmount">Amount</label>
+                    <input type="number" id="withdrawAmount" step="0.01" min="1"
+                           required placeholder="Enter amount" autocomplete="off">
+                    <small id="withdrawMax" class="field-hint"></small>
                 </div>
 
                 <div class="form-group">
-                    <label>Withdrawal Method</label>
-                    <select id="withdrawProvider" onchange="handleProviderChange('withdraw')" required>
+                    <label for="withdrawProvider">Withdrawal Method</label>
+                    <select id="withdrawProvider" onchange="handleWithdrawProviderChange()" required>
                         <option value="">Select withdrawal method</option>
-                        <option value="mtn">MTN Mobile Money</option>
-                        <option value="airtel">Airtel Money</option>
-                        <option value="mpesa">M-Pesa</option>
-                        <option value="bank">Bank Transfer</option>
-                        <option value="paypal">PayPal</option>
+                        <option value="mtn">📱 MTN Mobile Money</option>
+                        <option value="airtel">📱 Airtel Money</option>
+                        <option value="mpesa">📱 M-Pesa</option>
+                        <option value="bank">🏦 Bank Transfer</option>
+                        <option value="paypal">💙 PayPal</option>
                     </select>
                 </div>
 
-                <!-- Mobile Money Fields -->
-                <div id="withdrawMobileFields" style="display: none;">
+                <!-- Mobile money fields -->
+                <div id="withdrawMobileFields" style="display:none;">
                     <div class="form-group">
-                        <label>Phone Number</label>
-                        <input type="tel" id="withdrawPhone" placeholder="+260977123456">
+                        <label for="withdrawPhone">Phone Number</label>
+                        <input type="tel" id="withdrawPhone"
+                               placeholder="+260977123456"
+                               autocomplete="tel">
+                        <small class="field-hint">Use international format, e.g. +260977123456</small>
                     </div>
+                    <div class="form-group">
+                        <label for="withdrawCorrespondent">Mobile Network</label>
+                        <select id="withdrawCorrespondent">
+                            <option value="">Select network</option>
+                            <option value="MTN_MOMO_ZMB">MTN Mobile Money — Zambia</option>
+                            <option value="AIRTEL_OAPI_ZMB">Airtel Money — Zambia</option>
+                            <option value="VODACOM_MPESA_TZA">M-Pesa — Tanzania</option>
+                            <option value="SAFARICOM_MPESA_KEN">M-Pesa — Kenya</option>
+                            <option value="MTN_MOMO_UGA">MTN Mobile Money — Uganda</option>
+                            <option value="MTN_MOMO_GHA">MTN Mobile Money — Ghana</option>
+                            <option value="MTN_MOMO_RWA">MTN Mobile Money — Rwanda</option>
+                        </select>
+                    </div>
+                    <p class="provider-info">
+                        <i class="fas fa-info-circle"></i>
+                        Funds will be sent directly to your mobile money account.
+                    </p>
                 </div>
 
-                <!-- Bank Fields -->
-                <div id="withdrawBankFields" style="display: none;">
+                <!-- Bank fields -->
+                <div id="withdrawBankFields" style="display:none;">
                     <div class="form-group">
-                        <label>Bank Account Number</label>
+                        <label for="withdrawBank">Bank Account Number</label>
                         <input type="text" id="withdrawBank" placeholder="Account number">
                     </div>
                 </div>
 
-                <!-- PayPal Fields -->
-                <div id="withdrawPaypalFields" style="display: none;">
+                <!-- PayPal fields -->
+                <div id="withdrawPaypalFields" style="display:none;">
                     <div class="form-group">
-                        <label>PayPal Email</label>
+                        <label for="withdrawPaypal">PayPal Email</label>
                         <input type="email" id="withdrawPaypal" placeholder="your@email.com">
                     </div>
                 </div>
 
-                <button type="submit" class="submit-btn">
-                    <i class="fas fa-check"></i> Withdraw Now
+                <button type="submit" class="submit-btn" id="withdrawSubmitBtn">
+                    <i class="fas fa-check"></i>
+                    <span id="withdrawBtnText">Withdraw Now</span>
                 </button>
             </form>
         </div>

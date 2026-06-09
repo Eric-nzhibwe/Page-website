@@ -3,14 +3,15 @@ Payment models for ARTX Platform
 """
 from django.db import models
 from django.conf import settings
-from django.core.validators import MinValueValidator
+from django.core.validators import MinValueValidator, MaxValueValidator
 from django.utils import timezone
 from decimal import Decimal
+import uuid
 
 
 class Payment(models.Model):
     """Payment transactions"""
-    
+
     PROVIDER_CHOICES = [
         ('stripe', 'Stripe'),
         ('paystack', 'Paystack'),
@@ -423,3 +424,180 @@ class Transaction(models.Model):
     def __str__(self):
         sign = '+' if self.amount >= 0 else ''
         return f"{self.wallet.user.username}: {sign}{self.amount} {self.wallet.currency} ({self.transaction_type})"
+
+
+class PaymentAuditLog(models.Model):
+    """
+    Immutable audit trail for every payment state change.
+    Never delete or update rows — append only.
+    """
+    ACTION_CHOICES = [
+        ('initiated', 'Initiated'),
+        ('processing', 'Processing'),
+        ('completed', 'Completed'),
+        ('failed', 'Failed'),
+        ('cancelled', 'Cancelled'),
+        ('refunded', 'Refunded'),
+        ('webhook_received', 'Webhook Received'),
+        ('wallet_credited', 'Wallet Credited'),
+        ('wallet_debited', 'Wallet Debited'),
+        ('refund_issued', 'Refund Issued'),
+    ]
+
+    # Link to either a payment or a withdrawal (one will be null)
+    payment = models.ForeignKey(
+        Payment, on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='audit_logs'
+    )
+    withdrawal = models.ForeignKey(
+        'Withdrawal', on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='audit_logs'
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
+        null=True, related_name='payment_audit_logs'
+    )
+
+    action = models.CharField(max_length=30, choices=ACTION_CHOICES)
+    previous_status = models.CharField(max_length=20, blank=True)
+    new_status = models.CharField(max_length=20, blank=True)
+    amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    currency = models.CharField(max_length=3, blank=True)
+    provider = models.CharField(max_length=20, blank=True)
+
+    # Request context
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.CharField(max_length=512, blank=True)
+
+    # Extra data (webhook payload, error details, etc.)
+    metadata = models.JSONField(default=dict, blank=True)
+    note = models.TextField(blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        db_table = 'payment_audit_logs'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['payment', '-created_at']),
+            models.Index(fields=['withdrawal', '-created_at']),
+            models.Index(fields=['user', '-created_at']),
+            models.Index(fields=['action']),
+        ]
+
+    def __str__(self):
+        target = f"payment={self.payment_id}" if self.payment_id else f"withdrawal={self.withdrawal_id}"
+        return f"AuditLog[{self.action}] {target} @ {self.created_at}"
+
+    @classmethod
+    def log(cls, action, payment=None, withdrawal=None, user=None,
+            previous_status='', new_status='', amount=None, currency='',
+            provider='', ip_address=None, user_agent='', metadata=None, note=''):
+        """Convenience factory — never raises, always logs."""
+        try:
+            return cls.objects.create(
+                payment=payment,
+                withdrawal=withdrawal,
+                user=user or (payment.user if payment else None) or (withdrawal.user if withdrawal else None),
+                action=action,
+                previous_status=previous_status,
+                new_status=new_status,
+                amount=amount,
+                currency=currency,
+                provider=provider,
+                ip_address=ip_address,
+                user_agent=user_agent,
+                metadata=metadata or {},
+                note=note,
+            )
+        except Exception:
+            pass  # Audit log must never crash the main flow
+
+
+class WithdrawalLimit(models.Model):
+    """
+    Per-user daily and monthly withdrawal limits.
+    Defaults to platform-wide settings when not overridden.
+    """
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
+        related_name='withdrawal_limit'
+    )
+    daily_limit = models.DecimalField(
+        max_digits=10, decimal_places=2,
+        default=Decimal('5000.00'),
+        validators=[MinValueValidator(Decimal('0.00'))]
+    )
+    monthly_limit = models.DecimalField(
+        max_digits=10, decimal_places=2,
+        default=Decimal('50000.00'),
+        validators=[MinValueValidator(Decimal('0.00'))]
+    )
+    currency = models.CharField(max_length=3, default='ZMW')
+    is_active = models.BooleanField(default=True)
+    note = models.CharField(max_length=255, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'withdrawal_limits'
+
+    def __str__(self):
+        return (
+            f"{self.user.username}: daily={self.daily_limit} "
+            f"monthly={self.monthly_limit} {self.currency}"
+        )
+
+    def get_daily_withdrawn(self):
+        """Sum of completed/processing withdrawals today."""
+        from django.utils import timezone as tz
+        today = tz.now().date()
+        return Withdrawal.objects.filter(
+            user=self.user,
+            status__in=['processing', 'completed'],
+            created_at__date=today,
+        ).aggregate(
+            total=models.Sum('amount')
+        )['total'] or Decimal('0.00')
+
+    def get_monthly_withdrawn(self):
+        """Sum of completed/processing withdrawals this calendar month."""
+        from django.utils import timezone as tz
+        now = tz.now()
+        return Withdrawal.objects.filter(
+            user=self.user,
+            status__in=['processing', 'completed'],
+            created_at__year=now.year,
+            created_at__month=now.month,
+        ).aggregate(
+            total=models.Sum('amount')
+        )['total'] or Decimal('0.00')
+
+    def check_limit(self, amount):
+        """
+        Returns (allowed: bool, reason: str).
+        Call before creating a withdrawal.
+        """
+        if not self.is_active:
+            return True, ''
+
+        amount = Decimal(str(amount))
+
+        daily_used = self.get_daily_withdrawn()
+        if daily_used + amount > self.daily_limit:
+            remaining = max(self.daily_limit - daily_used, Decimal('0'))
+            return False, (
+                f'Daily withdrawal limit reached. '
+                f'Remaining today: {remaining:.2f} {self.currency}'
+            )
+
+        monthly_used = self.get_monthly_withdrawn()
+        if monthly_used + amount > self.monthly_limit:
+            remaining = max(self.monthly_limit - monthly_used, Decimal('0'))
+            return False, (
+                f'Monthly withdrawal limit reached. '
+                f'Remaining this month: {remaining:.2f} {self.currency}'
+            )
+
+        return True, ''
