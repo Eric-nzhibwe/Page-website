@@ -13,10 +13,10 @@ from .models import (
 class UserAdmin(BaseUserAdmin):
     list_display = [
         'username', 'email', 'display_name', 'prestige_points',
-        'level', 'access_tier', 'is_verified', 'email_verified',
+        'level', 'access_tier', 'is_verified',
         'failed_login_attempts', 'created_at',
     ]
-    list_filter  = ['access_tier', 'power_rank', 'is_verified', 'email_verified', 'created_at']
+    list_filter  = ['access_tier', 'power_rank', 'is_verified', 'created_at']
     search_fields = ['username', 'email', 'display_name']
     ordering     = ['-prestige_points']
 
@@ -35,7 +35,7 @@ class UserAdmin(BaseUserAdmin):
         }),
         ('Verification', {
             'fields': (
-                'is_verified', 'email_verified', 'email_verified_at',
+                'is_verified', 'email_verified_at',
                 'verification_level', 'social_connections',
             ),
         }),
@@ -63,7 +63,6 @@ class UserAdmin(BaseUserAdmin):
     def force_email_verification(self, request, queryset):
         from django.utils import timezone
         queryset.update(
-            email_verified=True,
             email_verified_at=timezone.now(),
             is_verified=True,
         )

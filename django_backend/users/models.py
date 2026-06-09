@@ -35,7 +35,6 @@ class User(AbstractUser):
     
     # Verification and social
     is_verified = models.BooleanField(default=False)
-    email_verified = models.BooleanField(default=False)
     email_verified_at = models.DateTimeField(null=True, blank=True)
     verification_level = models.IntegerField(default=0)  # 0=none, 1=email, 2=social, 3=identity
     social_connections = models.JSONField(default=dict, blank=True)
