@@ -154,7 +154,7 @@ function filterTransactions() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function showDepositModal() {
-    document.getElementById('depositModal').style.display = 'block';
+    document.getElementById('depositModal').style.display = 'flex';
 }
 
 function closeDepositModal() {
@@ -172,7 +172,7 @@ function showWithdrawModal() {
         alert('You have no available balance to withdraw.');
         return;
     }
-    document.getElementById('withdrawModal').style.display = 'block';
+    document.getElementById('withdrawModal').style.display = 'flex';
 }
 
 function closeWithdrawModal() {
