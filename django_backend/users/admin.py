@@ -5,20 +5,20 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from .models import (
     User, UserActivity, UserSubmission,
-    LoginHistory, EmailVerificationToken, PasswordResetToken,
+    LoginHistory, PasswordResetToken,
 )
 
 
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):
-    list_display = [
+    list_display  = [
         'username', 'email', 'display_name', 'prestige_points',
         'level', 'access_tier', 'is_verified',
         'failed_login_attempts', 'created_at',
     ]
-    list_filter  = ['access_tier', 'power_rank', 'is_verified', 'created_at']
+    list_filter   = ['access_tier', 'power_rank', 'is_verified', 'created_at']
     search_fields = ['username', 'email', 'display_name']
-    ordering     = ['-prestige_points']
+    ordering      = ['-prestige_points']
 
     fieldsets = BaseUserAdmin.fieldsets + (
         ('ARTX Profile', {
@@ -34,10 +34,7 @@ class UserAdmin(BaseUserAdmin):
             'fields': ('total_earnings',),
         }),
         ('Verification', {
-            'fields': (
-                'is_verified', 'email_verified_at',
-                'verification_level', 'social_connections',
-            ),
+            'fields': ('is_verified', 'verification_level', 'social_connections'),
         }),
         ('Security', {
             'fields': (
@@ -47,10 +44,10 @@ class UserAdmin(BaseUserAdmin):
         }),
     )
     readonly_fields = [
-        'created_at', 'last_login_date', 'email_verified_at',
+        'created_at', 'last_login_date',
         'password_changed_at', 'last_login_ip',
     ]
-    actions = ['unlock_accounts', 'force_email_verification']
+    actions = ['unlock_accounts', 'mark_verified']
 
     def get_queryset(self, request):
         return super().get_queryset(request).select_related()
@@ -60,14 +57,10 @@ class UserAdmin(BaseUserAdmin):
         self.message_user(request, f'Unlocked {queryset.count()} account(s).')
     unlock_accounts.short_description = 'Unlock selected accounts'
 
-    def force_email_verification(self, request, queryset):
-        from django.utils import timezone
-        queryset.update(
-            email_verified_at=timezone.now(),
-            is_verified=True,
-        )
-        self.message_user(request, f'Verified {queryset.count()} account(s).')
-    force_email_verification.short_description = 'Mark email as verified'
+    def mark_verified(self, request, queryset):
+        queryset.update(is_verified=True)
+        self.message_user(request, f'Marked {queryset.count()} account(s) as verified.')
+    mark_verified.short_description = 'Mark as verified'
 
 
 @admin.register(UserActivity)
@@ -103,18 +96,10 @@ class LoginHistoryAdmin(admin.ModelAdmin):
     readonly_fields = ['identifier', 'user', 'status', 'ip_address', 'user_agent', 'created_at']
 
     def has_add_permission(self, request):
-        return False  # Immutable audit log
+        return False
 
     def has_change_permission(self, request, obj=None):
         return False
-
-
-@admin.register(EmailVerificationToken)
-class EmailVerificationTokenAdmin(admin.ModelAdmin):
-    list_display  = ['user', 'used', 'created_at', 'expires_at']
-    list_filter   = ['used']
-    search_fields = ['user__email', 'user__username']
-    readonly_fields = ['token', 'created_at']
 
 
 @admin.register(PasswordResetToken)

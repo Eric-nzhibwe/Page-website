@@ -35,7 +35,6 @@ class User(AbstractUser):
     
     # Verification and social
     is_verified = models.BooleanField(default=False)
-    email_verified_at = models.DateTimeField(null=True, blank=True)
     verification_level = models.IntegerField(default=0)  # 0=none, 1=email, 2=social, 3=identity
     social_connections = models.JSONField(default=dict, blank=True)
 
@@ -252,35 +251,6 @@ class UserSubmission(models.Model):
                     'challenge_id': self.challenge_id
                 }
             )
-
-
-class EmailVerificationToken(models.Model):
-    """Single-use token for email verification."""
-    user       = models.ForeignKey(User, on_delete=models.CASCADE, related_name='email_tokens')
-    token      = models.CharField(max_length=64, unique=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    expires_at = models.DateTimeField()
-    used       = models.BooleanField(default=False)
-
-    class Meta:
-        db_table = 'email_verification_tokens'
-
-    def __str__(self):
-        return f"EmailToken for {self.user.email}"
-
-    @classmethod
-    def create_for_user(cls, user, expiry_hours=24):
-        cls.objects.filter(user=user, used=False).update(used=True)
-        token = secrets.token_urlsafe(48)
-        return cls.objects.create(
-            user=user,
-            token=token,
-            expires_at=timezone.now() + timezone.timedelta(hours=expiry_hours),
-        )
-
-    @property
-    def is_valid(self):
-        return not self.used and timezone.now() < self.expires_at
 
 
 class PasswordResetToken(models.Model):
