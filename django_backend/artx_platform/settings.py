@@ -20,6 +20,13 @@ ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1,testserver'
 if 'testserver' not in ALLOWED_HOSTS:
     ALLOWED_HOSTS.append('testserver')
 
+# Render sets RENDER_EXTERNAL_HOSTNAME automatically — add it so Django
+# doesn't return 400 Bad Request on production without manual config
+_render_host = config('RENDER_EXTERNAL_HOSTNAME', default='')
+if _render_host and _render_host not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append(_render_host)
+    ALLOWED_HOSTS.append('testserver')
+
 # Application definition
 DJANGO_APPS = [
     'django.contrib.admin',
@@ -206,19 +213,23 @@ REST_FRAMEWORK = {
     'EXCEPTION_HANDLER': 'rest_framework.views.exception_handler',
 }
 
-# CORS settings - Fixed to support production domains and mobile clients
+# CORS settings
 CORS_ALLOWED_ORIGINS = config(
     'CORS_ALLOWED_ORIGINS',
     default='http://localhost:3000,http://127.0.0.1:3000,http://localhost:8000,http://127.0.0.1:8000',
     cast=lambda v: [s.strip() for s in v.split(',')]
 )
 
-# Allow all origins in development, restrict in production
+# Allow all origins in development; use explicit list in production
 if DEBUG:
     CORS_ALLOW_ALL_ORIGINS = True
 else:
-    # In production, ensure your domain is in CORS_ALLOWED_ORIGINS
     CORS_ALLOW_ALL_ORIGINS = False
+    # Render automatically sets RENDER_EXTERNAL_URL — add it so the
+    # frontend can talk to the backend without a manual env var update
+    _render_url = config('RENDER_EXTERNAL_URL', default='').rstrip('/')
+    if _render_url and _render_url not in CORS_ALLOWED_ORIGINS:
+        CORS_ALLOWED_ORIGINS.append(_render_url)
 
 CORS_ALLOW_CREDENTIALS = True
 
