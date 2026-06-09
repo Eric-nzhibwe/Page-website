@@ -5,6 +5,7 @@ from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.core.validators import MinValueValidator
 from django.utils import timezone
+import secrets
 import json
 
 class User(AbstractUser):
@@ -34,8 +35,16 @@ class User(AbstractUser):
     
     # Verification and social
     is_verified = models.BooleanField(default=False)
+    email_verified = models.BooleanField(default=False)
+    email_verified_at = models.DateTimeField(null=True, blank=True)
     verification_level = models.IntegerField(default=0)  # 0=none, 1=email, 2=social, 3=identity
     social_connections = models.JSONField(default=dict, blank=True)
+
+    # Security
+    failed_login_attempts = models.IntegerField(default=0)
+    locked_until = models.DateTimeField(null=True, blank=True)
+    password_changed_at = models.DateTimeField(null=True, blank=True)
+    last_login_ip = models.GenericIPAddressField(null=True, blank=True)
     
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
@@ -244,3 +253,94 @@ class UserSubmission(models.Model):
                     'challenge_id': self.challenge_id
                 }
             )
+
+
+class EmailVerificationToken(models.Model):
+    """Single-use token for email verification."""
+    user       = models.ForeignKey(User, on_delete=models.CASCADE, related_name='email_tokens')
+    token      = models.CharField(max_length=64, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    used       = models.BooleanField(default=False)
+
+    class Meta:
+        db_table = 'email_verification_tokens'
+
+    def __str__(self):
+        return f"EmailToken for {self.user.email}"
+
+    @classmethod
+    def create_for_user(cls, user, expiry_hours=24):
+        cls.objects.filter(user=user, used=False).update(used=True)
+        token = secrets.token_urlsafe(48)
+        return cls.objects.create(
+            user=user,
+            token=token,
+            expires_at=timezone.now() + timezone.timedelta(hours=expiry_hours),
+        )
+
+    @property
+    def is_valid(self):
+        return not self.used and timezone.now() < self.expires_at
+
+
+class PasswordResetToken(models.Model):
+    """Single-use token for password reset."""
+    user       = models.ForeignKey(User, on_delete=models.CASCADE, related_name='password_reset_tokens')
+    token      = models.CharField(max_length=64, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    used       = models.BooleanField(default=False)
+
+    class Meta:
+        db_table = 'password_reset_tokens'
+
+    def __str__(self):
+        return f"PasswordReset for {self.user.email}"
+
+    @classmethod
+    def create_for_user(cls, user, expiry_hours=2):
+        cls.objects.filter(user=user, used=False).update(used=True)
+        token = secrets.token_urlsafe(48)
+        return cls.objects.create(
+            user=user,
+            token=token,
+            expires_at=timezone.now() + timezone.timedelta(hours=expiry_hours),
+        )
+
+    @property
+    def is_valid(self):
+        return not self.used and timezone.now() < self.expires_at
+
+
+class LoginHistory(models.Model):
+    """Immutable log of every login attempt."""
+    STATUS_CHOICES = [
+        ('success',    'Success'),
+        ('failed',     'Failed — bad credentials'),
+        ('locked',     'Failed — account locked'),
+        ('unverified', 'Failed — email not verified'),
+    ]
+
+    user       = models.ForeignKey(
+        User, on_delete=models.CASCADE,
+        null=True, blank=True,
+        related_name='login_history',
+    )
+    identifier = models.CharField(max_length=255)
+    status     = models.CharField(max_length=20, choices=STATUS_CHOICES)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.CharField(max_length=512, blank=True)
+    location   = models.CharField(max_length=255, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        db_table = 'login_history'
+        ordering = ['-created_at']
+        indexes  = [
+            models.Index(fields=['user', '-created_at']),
+            models.Index(fields=['ip_address', '-created_at']),
+        ]
+
+    def __str__(self):
+        return f"{self.identifier} — {self.status} @ {self.created_at:%Y-%m-%d %H:%M}"
