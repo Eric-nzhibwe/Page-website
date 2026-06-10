@@ -199,26 +199,9 @@
                             <div class="story-image d-flex align-items-center justify-content-center">
                                 <i class="fas fa-plus-circle"></i>
                             </div>
-                            <span class="story-name">Create Story</span>
+                            <span class="story-name">Add Story</span>
                         </div>
-                        <div class="story-card" onclick="storyViewer.openStory('story-1', [{id: 'story-1', author: {username: 'You', display_name: 'Your Story', profile_image: null}, media_url: 'https://via.placeholder.com/400x600', media_type: 'image', content: '', view_count: 0, created_at: new Date().toISOString(), expires_at: new Date(Date.now() + 86400000).toISOString(), time_until_expiry: 86400}])">
-                            <div class="story-image" style="background: linear-gradient(to right, whitesmoke, darkolivegreen);">
-                                <i class="fas fa-user"></i>
-                            </div>
-                            <span class="story-name">Your Story</span>
-                        </div>
-                        <div class="story-card" onclick="storyViewer.openStory('story-2', [{id: 'story-2', author: {username: 'TopPlayer', display_name: 'Top Player', profile_image: null}, media_url: 'https://via.placeholder.com/400x600', media_type: 'image', content: 'Just crushed the Elite Challenge!', view_count: 45, created_at: new Date().toISOString(), expires_at: new Date(Date.now() + 86400000).toISOString(), time_until_expiry: 86400}])">
-                            <div class="story-image" style="background: linear-gradient(135deg, #f093fb, #f5576c);">
-                                <i class="fas fa-user"></i>
-                            </div>
-                            <span class="story-name">Top Player</span>
-                        </div>
-                        <div class="story-card" onclick="storyViewer.openStory('story-3', [{id: 'story-3', author: {username: 'AllianceLeader', display_name: 'Alliance Leader', profile_image: null}, media_url: 'https://via.placeholder.com/400x600', media_type: 'image', content: 'Alliance tournament victory!', view_count: 120, created_at: new Date().toISOString(), expires_at: new Date(Date.now() + 86400000).toISOString(), time_until_expiry: 86400}])">
-                            <div class="story-image" style="background: linear-gradient(135deg, #4facfe, #00f2fe);">
-                                <i class="fas fa-user"></i>
-                            </div>
-                            <span class="story-name">Alliance</span>
-                        </div>
+                        <!-- Real stories load here via social-feed.js -->
                     </div>
 
                     <!-- Create Post Card -->
@@ -246,136 +229,10 @@
                         </div>
                     </div>
 
-                    <!-- Feed Posts -->
+                    <!-- Feed Posts — loaded in real time by social-feed.js -->
                     <div id="feedPosts" class="feed-posts">
-                        <!-- Sample Post 1 -->
-                        <div class="post-card w-100 bg-white shadow-sm mb-3 p-3" data-post-id="post-1">
-                            <div class="post-header d-flex justify-content-between align-items-center mb-3">
-                                <div class="post-author d-flex align-items-center gap-2">
-                                    <div class="post-avatar">
-                                        <i class="fas fa-user-circle"></i>
-                                    </div>
-                                    <div class="post-author-info">
-                                        <h4>Top Player</h4>
-                                        <span class="post-time">2 hours ago</span>
-                                    </div>
-                                </div>
-                                <button class="post-menu-btn">
-                                    <i class="fas fa-ellipsis-h"></i>
-                                </button>
-                            </div>
-                            <div class="post-content">
-                                <p>Just completed the Elite Challenge! 🔥 Earned 500 prestige points and climbed to Gold
-                                    Tier! Who's next? 💪</p>
-                            </div>
-                            <div class="post-media">
-                                <div class="achievement-badge-large">
-                                    <i class="fas fa-trophy"></i>
-                                    <h3>Elite Champion</h3>
-                                    <p>+500 Prestige</p>
-                                </div>
-                            </div>
-                            <div class="post-stats">
-                                <span><i class="fas fa-fire"></i> 234 reactions</span>
-                                <span><span class="comment-count">45</span> comments · <span class="share-count">12</span> shares</span>
-                            </div>
-                            <div class="post-actions">
-                                <button class="post-action-btn" onclick="reactToPost('post-1', 'fire')">
-                                    <i class="fas fa-fire"></i>
-                                    <span>React</span>
-                                </button>
-                                <button class="post-action-btn" onclick="openCommentModal('post-1')">
-                                    <i class="fas fa-comment"></i>
-                                    <span>Comment</span>
-                                </button>
-                                <button class="post-action-btn" onclick="openShareModal('post-1')">
-                                    <i class="fas fa-share"></i>
-                                    <span>Share</span>
-                                </button>
-                            </div>
-                            <div class="post-comments"></div>
-                        </div>
-
-                        <!-- Sample Post 2 -->
-                        <div class="post-card" data-post-id="post-2">
-                            <div class="post-header">
-                                <div class="post-author">
-                                    <div class="post-avatar">
-                                        <i class="fas fa-user-circle"></i>
-                                    </div>
-                                    <div class="post-author-info">
-                                        <h4>Alliance Leader</h4>
-                                        <span class="post-time">5 hours ago</span>
-                                    </div>
-                                </div>
-                                <button class="post-menu-btn">
-                                    <i class="fas fa-ellipsis-h"></i>
-                                </button>
-                            </div>
-                            <div class="post-content">
-                                <p>Our alliance just won the weekly tournament! 🏆 Huge shoutout to all members.
-                                    Together we're unstoppable! #TeamWork</p>
-                            </div>
-                            <div class="post-stats">
-                                <span><i class="fas fa-fire"></i> 567 reactions</span>
-                                <span><span class="comment-count">89</span> comments · <span class="share-count">34</span> shares</span>
-                            </div>
-                            <div class="post-actions">
-                                <button class="post-action-btn" onclick="reactToPost('post-2', 'fire')">
-                                    <i class="fas fa-fire"></i>
-                                    <span>React</span>
-                                </button>
-                                <button class="post-action-btn" onclick="openCommentModal('post-2')">
-                                    <i class="fas fa-comment"></i>
-                                    <span>Comment</span>
-                                </button>
-                                <button class="post-action-btn" onclick="openShareModal('post-2')">
-                                    <i class="fas fa-share"></i>
-                                    <span>Share</span>
-                                </button>
-                            </div>
-                            <div class="post-comments"></div>
-                        </div>
-
-                        <!-- Sample Post 3 -->
-                        <div class="post-card" data-post-id="post-3">
-                            <div class="post-header">
-                                <div class="post-author">
-                                    <div class="post-avatar">
-                                        <i class="fas fa-user-circle"></i>
-                                    </div>
-                                    <div class="post-author-info">
-                                        <h4>Rising Star</h4>
-                                        <span class="post-time">1 day ago</span>
-                                    </div>
-                                </div>
-                                <button class="post-menu-btn">
-                                    <i class="fas fa-ellipsis-h"></i>
-                                </button>
-                            </div>
-                            <div class="post-content">
-                                <p>New to ARTX and already loving the competition! Looking for alliance members. Let's
-                                    dominate together! 🚀</p>
-                            </div>
-                            <div class="post-stats">
-                                <span><i class="fas fa-fire"></i> 123 reactions</span>
-                                <span><span class="comment-count">28</span> comments · <span class="share-count">8</span> shares</span>
-                            </div>
-                            <div class="post-actions">
-                                <button class="post-action-btn" onclick="reactToPost('post-3', 'fire')">
-                                    <i class="fas fa-fire"></i>
-                                    <span>React</span>
-                                </button>
-                                <button class="post-action-btn" onclick="openCommentModal('post-3')">
-                                    <i class="fas fa-comment"></i>
-                                    <span>Comment</span>
-                                </button>
-                                <button class="post-action-btn" onclick="openShareModal('post-3')">
-                                    <i class="fas fa-share"></i>
-                                    <span>Share</span>
-                                </button>
-                            </div>
-                            <div class="post-comments"></div>
+                        <div class="feed-loading">
+                            <i class="fas fa-spinner fa-spin"></i> Loading posts…
                         </div>
                     </div>
                 </main>

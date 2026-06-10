@@ -582,11 +582,220 @@ function _initStoriesScroll() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  INIT
+//  REAL-TIME FEED & STORIES LOADER
 // ─────────────────────────────────────────────────────────────────────────────
+
+const _SOCIAL_API = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+    ? 'http://localhost:8000/api/social'
+    : `${window.location.origin}/api/social`;
+
+let _feedPage        = 1;
+let _feedLoading     = false;
+let _feedExhausted   = false;
+
+/**
+ * Fetch real posts from the API and render them.
+ * Clears the loading spinner on first load.
+ */
+async function loadRealFeed(page = 1) {
+    if (_feedLoading || _feedExhausted) return;
+    _feedLoading = true;
+
+    const token = localStorage.getItem('djangoAuthToken');
+    if (!token) { _feedLoading = false; return; }
+
+    try {
+        const res  = await fetch(`${_SOCIAL_API}/posts/?page=${page}`, {
+            headers: { 'Authorization': `Token ${token}` }
+        });
+        if (!res.ok) throw new Error(res.status);
+        const data = await res.json();
+
+        const container = document.getElementById('feedPosts');
+        if (!container) return;
+
+        // Remove loading spinner on first page
+        if (page === 1) {
+            const spinner = container.querySelector('.feed-loading');
+            if (spinner) spinner.remove();
+        }
+
+        const posts = data.results || data;
+        if (!posts.length && page === 1) {
+            container.innerHTML = `
+                <div class="feed-empty">
+                    <i class="fas fa-users" style="font-size:48px;opacity:.3;margin-bottom:12px;"></i>
+                    <p>No posts yet. Follow people or create your first post!</p>
+                </div>`;
+            _feedExhausted = true;
+            return;
+        }
+
+        posts.forEach(post => {
+            // Don't duplicate
+            if (!container.querySelector(`[data-post-id="${post.id}"]`)) {
+                _appendPostCard(post, container);
+            }
+        });
+
+        // Check if more pages exist
+        if (!data.next) _feedExhausted = true;
+        _feedPage = page + 1;
+
+    } catch (err) {
+        console.warn('Feed load error:', err);
+        // Show locally saved posts as fallback
+        _loadLocalPosts();
+    } finally {
+        _feedLoading = false;
+    }
+}
+
+/** Append (not prepend) a post card — used for pagination */
+function _appendPostCard(post, container) {
+    const author = post.author || {};
+    const name   = _esc(author.display_name || author.username || 'User');
+    const when   = post.created_at ? _timeAgo(post.created_at) : 'Just now';
+
+    const avatarHTML = author.profile_image
+        ? `<img src="${_esc(author.profile_image)}" alt="${name}"
+               style="width:100%;height:100%;object-fit:cover;border-radius:50%">`
+        : `<i class="fas fa-user-circle"></i>`;
+
+    let mediaHTML = '';
+    if (post.media_url) {
+        mediaHTML = post.media_type === 'video'
+            ? `<div class="post-media"><video controls>
+                   <source src="${_esc(post.media_url)}"></video></div>`
+            : `<div class="post-media">
+                   <img src="${_esc(post.media_url)}" alt="Post media" loading="lazy"></div>`;
+    }
+
+    const card = document.createElement('div');
+    card.className = 'post-card';
+    card.setAttribute('data-post-id', post.id);
+    card.innerHTML = `
+        <div class="post-header">
+            <div class="post-author">
+                <div class="post-avatar">${avatarHTML}</div>
+                <div class="post-author-info">
+                    <h4>${name}</h4>
+                    <span class="post-time">${when}</span>
+                </div>
+            </div>
+            <button class="post-menu-btn" onclick="showPostMenu('${post.id}', event)">
+                <i class="fas fa-ellipsis-h"></i>
+            </button>
+        </div>
+        <div class="post-content"><p>${_esc(post.content || '')}</p></div>
+        ${mediaHTML}
+        <div class="post-stats">
+            <span><i class="fas fa-fire"></i>
+                <span class="reaction-count">${post.reaction_count ?? 0}</span> reactions</span>
+            <span>
+                <span class="comment-count">${post.comment_count ?? 0}</span> comments ·
+                <span class="share-count">${post.share_count ?? 0}</span> shares
+            </span>
+        </div>
+        <div class="post-actions">
+            <button class="post-action-btn${post.user_reaction ? ' reacted' : ''}"
+                onclick="reactToPost('${post.id}', 'fire')">
+                <i class="fas fa-fire"></i><span>React</span>
+            </button>
+            <button class="post-action-btn" onclick="openCommentModal('${post.id}')">
+                <i class="fas fa-comment"></i><span>Comment</span>
+            </button>
+            <button class="post-action-btn" onclick="openShareModal('${post.id}')">
+                <i class="fas fa-share"></i><span>Share</span>
+            </button>
+        </div>
+        <div class="post-comments"></div>`;
+    container.appendChild(card);
+}
+
+/**
+ * Fetch real stories from the API and render them in the stories bar.
+ */
+async function loadRealStories() {
+    const token = localStorage.getItem('djangoAuthToken');
+    if (!token) return;
+
+    try {
+        const res  = await fetch(`${_SOCIAL_API}/stories/feed/`, {
+            headers: { 'Authorization': `Token ${token}` }
+        });
+        if (!res.ok) throw new Error(res.status);
+        const stories = await res.json();
+
+        const container  = document.querySelector('.stories-container');
+        if (!container) return;
+
+        // Remove any existing real story cards (keep the "Add Story" card)
+        container.querySelectorAll('.story-card:not(.create-story)').forEach(c => c.remove());
+
+        if (!stories.length) return;
+
+        // Group stories by author
+        const byAuthor = {};
+        stories.forEach(s => {
+            const uid = s.author?.id || s.author?.username;
+            if (!byAuthor[uid]) byAuthor[uid] = { author: s.author, stories: [] };
+            byAuthor[uid].stories.push(s);
+        });
+
+        Object.values(byAuthor).forEach(({ author, stories: authorStories }) => {
+            const name   = _esc(author.display_name || author.username || 'User');
+            const card   = document.createElement('div');
+            card.className = 'story-card flex-shrink-0';
+
+            const avatarStyle = author.profile_image
+                ? `background:url('${_esc(author.profile_image)}') center/cover`
+                : `background:linear-gradient(135deg,#6c63ff,#3b2dbf)`;
+
+            const avatarContent = author.profile_image
+                ? '' : `<i class="fas fa-user"></i>`;
+
+            card.innerHTML = `
+                <div class="story-image" style="${avatarStyle}">
+                    ${avatarContent}
+                    <div class="story-ring"></div>
+                </div>
+                <span class="story-name">${name}</span>`;
+
+            card.addEventListener('click', () => {
+                if (typeof storyViewer !== 'undefined') {
+                    storyViewer.openStory(authorStories[0].id, authorStories);
+                }
+            });
+
+            container.appendChild(card);
+        });
+
+    } catch (err) {
+        console.warn('Stories load error:', err);
+    }
+}
+
+/** Infinite scroll — load next page when user reaches bottom of feed */
+function _initInfiniteScroll() {
+    const observer = new IntersectionObserver(entries => {
+        if (entries[0].isIntersecting && !_feedLoading && !_feedExhausted) {
+            loadRealFeed(_feedPage);
+        }
+    }, { rootMargin: '300px' });
+
+    // Sentinel element at the bottom of the feed
+    const sentinel = document.createElement('div');
+    sentinel.id = 'feedSentinel';
+    sentinel.style.height = '1px';
+    const feedPosts = document.getElementById('feedPosts');
+    if (feedPosts) feedPosts.after(sentinel);
+    observer.observe(sentinel);
+}
 document.addEventListener('DOMContentLoaded', () => {
-    // Load any locally-saved posts so the feed isn't blank while API loads
-    _loadLocalPosts();
+    // Load real posts and stories from API
+    loadRealFeed(1);
+    loadRealStories();
 
     // Sidebar
     setTimeout(updateSocialSidebar, 400);
@@ -600,6 +809,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Stories scroll behaviour
     _initStoriesScroll();
 
-    // Live feed ticker
+    // Live feed ticker (sidebar)
     setTimeout(_startLiveFeedTicker, 5000);
+
+    // Infinite scroll for more posts
+    _initInfiniteScroll();
 });

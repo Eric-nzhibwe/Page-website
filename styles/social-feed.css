@@ -1668,3 +1668,45 @@
         scroll-snap-align: start;
     }
 }
+
+/* ── Feed loading / empty states ─────────────────────────────────────── */
+.feed-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 40px 20px;
+    color: #888;
+    font-size: 15px;
+}
+
+.feed-loading i {
+    font-size: 20px;
+    color: #6c63ff;
+}
+
+.feed-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    color: #888;
+    text-align: center;
+    gap: 12px;
+}
+
+.feed-empty p {
+    font-size: 15px;
+    max-width: 280px;
+    line-height: 1.5;
+}
+
+/* Story ring indicator — shows user has an active story */
+.story-ring {
+    position: absolute;
+    inset: -3px;
+    border-radius: 50%;
+    border: 2px solid #6c63ff;
+    pointer-events: none;
+}
