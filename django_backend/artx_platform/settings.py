@@ -111,36 +111,29 @@ else:
     }
 
 # Database
-# Use DATABASE_URL if available (Render provides this), otherwise use individual settings
 import dj_database_url
 
-DATABASE_URL = config('DATABASE_URL', default=None)
+# Render provides DATABASE_URL. Fix postgres:// → postgresql:// for Django compatibility.
+_raw_db_url = config('DATABASE_URL', default=None)
+if _raw_db_url and _raw_db_url.startswith('postgres://'):
+    _raw_db_url = _raw_db_url.replace('postgres://', 'postgresql://', 1)
 
-if DATABASE_URL:
-    # Production: Use DATABASE_URL from Render
+if _raw_db_url:
     DATABASES = {
-        'default': dj_database_url.config(default=DATABASE_URL, conn_max_age=600)
+        'default': dj_database_url.config(
+            default=_raw_db_url,
+            conn_max_age=600,
+            ssl_require=not DEBUG,
+        )
     }
 else:
-    # Development: Use individual settings or SQLite
-    if DEBUG:
-        DATABASES = {
-            'default': {
-                'ENGINE': 'django.db.backends.sqlite3',
-                'NAME': BASE_DIR / 'db.sqlite3',
-            }
+    # Local development only — SQLite
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
         }
-    else:
-        DATABASES = {
-            'default': {
-                'ENGINE': 'django.db.backends.postgresql',
-                'NAME': config('DB_NAME', default='artx_platform'),
-                'USER': config('DB_USER', default='postgres'),
-                'PASSWORD': config('DB_PASSWORD', default='password'),
-                'HOST': config('DB_HOST', default='localhost'),
-                'PORT': config('DB_PORT', default='5432'),
-            }
-        }
+    }
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
