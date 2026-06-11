@@ -51,7 +51,7 @@
                 <p class="landing-eyebrow">The creative competition platform</p>
                 <h1 class="landing-title">
                     <span class="title-line">We are not</span>
-                    <span class="title-line">just a place</span>
+                    <span class="title-line">just a platform</span>
                 </h1>
                 <p class="landing-subtitle">We are a community</p>
 
@@ -59,33 +59,448 @@
                     Get Started <i class="fas fa-arrow-right"></i>
                 </button>
 
-                <div class="landing-stats">
-                    <div class="stat-item">
-                        <span class="stat-number">10K+</span>
-                        <span class="stat-label">Artists</span>
-                    </div>
-                    <div class="stat-divider"></div>
-                    <div class="stat-item">
-                        <span class="stat-number">500+</span>
-                        <span class="stat-label">Challenges</span>
-                    </div>
-                    <div class="stat-divider"></div>
-                    <div class="stat-item">
-                        <span class="stat-number">$50K</span>
-                        <span class="stat-label">Paid Out</span>
-                    </div>
-                </div>
-            </div>
-        </div>
+
+        </div><!-- /landing-hero -->
 
         <!-- Bottom bar -->
         <div class="landing-footer">
             <div class="footer-links">
-                <a href="#">Privacy Policy</a>
+                <a href="#" onclick="openLegalModal('privacy'); return false;">Privacy Policy</a>
                 <span>|</span>
-                <a href="#">Terms of Service</a>
+                <a href="#" onclick="openLegalModal('terms'); return false;">Terms of Service</a>
             </div>
-            <p class="footer-copy">© 2025 ARTX. All rights reserved.</p>
+            <p class="footer-copy">© 2026 ARTX. All rights reserved.</p>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════
+         PRIVACY POLICY MODAL
+    ══════════════════════════════════════════ -->
+    <div id="privacyModal" class="legal-modal" role="dialog" aria-modal="true" aria-labelledby="privacyModalTitle">
+        <div class="legal-modal-inner">
+            <div class="legal-modal-header">
+                <div class="legal-modal-logo">ARTX</div>
+                <button class="legal-close-btn" onclick="closeLegalModal('privacy')" aria-label="Close">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="legal-modal-body">
+                <h1 id="privacyModalTitle">Privacy Policy</h1>
+                <p class="legal-effective">Effective Date: January 1, 2026 &nbsp;·&nbsp; Last Updated: June 1, 2026</p>
+
+                <p>ARTX ("we", "our", or "us") operates the ARTX platform, a competitive creative community where artists earn prestige, build streaks, form alliances, and compete for real cash prizes. This Privacy Policy explains how we collect, use, share, and protect your personal information when you use our website, mobile experience, and related services (collectively, the "Platform").</p>
+                <p>By registering or using the Platform you agree to the practices described in this policy. If you do not agree, please do not use the Platform.</p>
+
+                <h2>1. Information We Collect</h2>
+                <h3>1.1 Information You Provide</h3>
+                <ul>
+                    <li><strong>Account data</strong> — username, email address, and password when you register.</li>
+                    <li><strong>Profile data</strong> — display name, bio, profile picture, and any social media handles you choose to link.</li>
+                    <li><strong>Payment &amp; payout data</strong> — billing information and payout details required to process competition winnings. Payment card data is handled exclusively by our PCI-compliant payment processor and is never stored on our servers.</li>
+                    <li><strong>User-generated content</strong> — artwork, submissions, comments, and messages you post on the Platform.</li>
+                    <li><strong>Communications</strong> — support tickets, feedback, and any other messages you send us.</li>
+                </ul>
+
+                <h3>1.2 Information Collected Automatically</h3>
+                <ul>
+                    <li><strong>Usage data</strong> — pages visited, features used, challenges entered, and interaction timestamps.</li>
+                    <li><strong>Device &amp; browser data</strong> — IP address, browser type and version, operating system, and device identifiers.</li>
+                    <li><strong>Cookies &amp; similar technologies</strong> — session cookies to keep you signed in, preference cookies to remember your settings, and analytics cookies to understand how the Platform is used.</li>
+                </ul>
+
+                <h3>1.3 Information from Third Parties</h3>
+                <p>If you connect a social media account (Instagram, TikTok, YouTube, etc.) we receive basic profile information and follower count from that platform to populate your ARTX profile and determine verification status. We only access the permissions you explicitly grant.</p>
+
+                <h2>2. How We Use Your Information</h2>
+                <ul>
+                    <li>Create and manage your account.</li>
+                    <li>Process competition entries, calculate rankings, and disburse prize money.</li>
+                    <li>Display your profile, artwork, and stats to other community members.</li>
+                    <li>Send transactional emails (account confirmation, password reset, prize notifications).</li>
+                    <li>Send promotional communications — you may opt out at any time via the unsubscribe link in any email.</li>
+                    <li>Detect and prevent fraud, abuse, and Terms of Service violations.</li>
+                    <li>Analyse usage trends to improve the Platform.</li>
+                    <li>Comply with legal obligations.</li>
+                </ul>
+
+                <h2>3. How We Share Your Information</h2>
+                <p>We do not sell your personal information. We may share it only in the following circumstances:</p>
+                <ul>
+                    <li><strong>Service providers</strong> — third-party vendors who help us operate the Platform (hosting, email delivery, payment processing, analytics). They are contractually required to protect your data and may not use it for their own purposes.</li>
+                    <li><strong>Other users</strong> — your username, profile picture, artwork submissions, prestige level, and ranking are visible to other ARTX members as part of the competitive experience.</li>
+                    <li><strong>Legal requirements</strong> — when required by law, court order, or to protect the rights, safety, or property of ARTX or others.</li>
+                    <li><strong>Business transfers</strong> — in the event of a merger, acquisition, or sale of assets, your data may be transferred as part of that transaction. We will notify you before your data is subject to a different privacy policy.</li>
+                </ul>
+
+                <h2>4. Data Retention</h2>
+                <p>We retain your account data for as long as your account is active. If you delete your account we will remove your personal data within 30 days, except where we are required to retain it for legal, tax, or financial record-keeping purposes (typically up to 7 years for transaction records).</p>
+
+                <h2>5. Your Rights &amp; Choices</h2>
+                <p>Depending on your jurisdiction you may have the right to:</p>
+                <ul>
+                    <li>Access a copy of the personal data we hold about you.</li>
+                    <li>Correct inaccurate data.</li>
+                    <li>Request deletion of your data ("right to be forgotten").</li>
+                    <li>Object to or restrict certain processing.</li>
+                    <li>Data portability — receive your data in a machine-readable format.</li>
+                    <li>Withdraw consent at any time where processing is based on consent.</li>
+                </ul>
+                <p>To exercise any of these rights, email us at <strong>privacy@artxplatform.com</strong>. We will respond within 30 days.</p>
+
+                <h2>6. Cookies</h2>
+                <p>You can control cookies through your browser settings. Disabling cookies may affect Platform functionality. We do not currently respond to "Do Not Track" browser signals, but we support the Global Privacy Control (GPC) signal where applicable.</p>
+
+                <h2>7. Security</h2>
+                <p>We use industry-standard safeguards including TLS encryption in transit, hashed passwords (bcrypt), and access controls. No method of transmission over the internet is 100% secure, and we cannot guarantee absolute security. Please use a strong, unique password and enable two-factor authentication when available.</p>
+
+                <h2>8. Children's Privacy</h2>
+                <p>ARTX is not intended for users under the age of 18. We do not knowingly collect personal data from minors. If you believe a minor has created an account, contact us at <strong>privacy@artxplatform.com</strong> and we will promptly delete the account.</p>
+
+                <h2>9. International Transfers</h2>
+                <p>ARTX is operated from and your data may be processed in countries outside your own. Where required, we rely on approved transfer mechanisms (such as Standard Contractual Clauses) to protect your data.</p>
+
+                <h2>10. Changes to This Policy</h2>
+                <p>We may update this policy from time to time. We will notify you of material changes by email or by posting a prominent notice on the Platform at least 14 days before the change takes effect. Your continued use after the effective date constitutes acceptance.</p>
+
+                <h2>11. Contact Us</h2>
+                <p>For privacy-related questions or requests:</p>
+                <p><strong>ARTX Privacy Team</strong><br>
+                Email: privacy@artxplatform.com<br>
+                Response time: within 30 days</p>
+            </div>
+            <div class="legal-modal-footer">
+                <button class="btn-primary" onclick="closeLegalModal('privacy')">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════
+         TERMS OF SERVICE MODAL
+    ══════════════════════════════════════════ -->
+    <div id="termsModal" class="legal-modal" role="dialog" aria-modal="true" aria-labelledby="termsModalTitle">
+        <div class="legal-modal-inner">
+            <div class="legal-modal-header">
+                <div class="legal-modal-logo">ARTX</div>
+                <button class="legal-close-btn" onclick="closeLegalModal('terms')" aria-label="Close">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="legal-modal-body">
+                <h1 id="termsModalTitle">Terms of Service</h1>
+                <p class="legal-effective">Effective Date: January 1, 2026 &nbsp;·&nbsp; Last Updated: June 1, 2026</p>
+
+                <p>Welcome to ARTX. These Terms of Service ("Terms") govern your access to and use of the ARTX platform, including all competitions, community features, and prize disbursements. Please read them carefully. By creating an account or using the Platform you agree to be bound by these Terms.</p>
+
+                <h2>1. Eligibility</h2>
+                <ul>
+                    <li>You must be at least <strong>18 years old</strong> to register and participate in cash-prize competitions.</li>
+                    <li>You must be a human individual — bots, scrapers, and automated accounts are prohibited.</li>
+                    <li>You must provide accurate, truthful information during registration. Impersonation of any person or entity is grounds for immediate account termination.</li>
+                    <li>Participation in cash-prize competitions may be restricted in certain jurisdictions where online prize competitions are prohibited or heavily regulated. You are solely responsible for determining whether participation is lawful in your location.</li>
+                </ul>
+
+                <h2>2. Your Account</h2>
+                <ul>
+                    <li>You are responsible for maintaining the confidentiality of your password and for all activity that occurs under your account.</li>
+                    <li>Notify us immediately at <strong>support@artxplatform.com</strong> if you suspect unauthorised access.</li>
+                    <li>One account per person. Creating multiple accounts to gain competitive advantages is prohibited and will result in permanent banning of all associated accounts.</li>
+                    <li>You may not transfer or sell your account to any other person.</li>
+                </ul>
+
+                <h2>3. Competitions &amp; Challenges</h2>
+                <h3>3.1 Entry &amp; Participation</h3>
+                <ul>
+                    <li>Each challenge will clearly state its entry requirements, submission deadline, judging criteria, and prize pool before you enter.</li>
+                    <li>Submission of an entry constitutes your agreement to the specific rules of that challenge in addition to these Terms.</li>
+                    <li>Late submissions will not be accepted. ARTX is not responsible for technical issues on your end that prevent timely submission.</li>
+                </ul>
+
+                <h3>3.2 Original Work</h3>
+                <ul>
+                    <li>All submissions must be your own original work. You must own all rights to any content you submit.</li>
+                    <li>Submissions may not contain third-party copyrighted material without an appropriate licence.</li>
+                    <li>AI-generated content must be clearly disclosed. Fully AI-generated submissions without substantial human creative direction are prohibited in challenges that explicitly require original human artistry.</li>
+                    <li>Plagiarism, copying, or submitting work previously published elsewhere is grounds for disqualification and account suspension.</li>
+                </ul>
+
+                <h3>3.3 Judging &amp; Results</h3>
+                <ul>
+                    <li>Judging may be conducted by community vote, a panel of judges, or a combination — as specified per challenge.</li>
+                    <li>ARTX reserves the right to disqualify any submission that violates these Terms or the specific challenge rules.</li>
+                    <li>All judging decisions are final. While we welcome feedback, ARTX is not obligated to provide individual explanations for judging outcomes.</li>
+                    <li>Vote manipulation, coordinated voting rings, or any attempt to game rankings is strictly prohibited and will result in permanent disqualification.</li>
+                </ul>
+
+                <h3>3.4 Prizes &amp; Payouts</h3>
+                <ul>
+                    <li>Cash prizes will be disbursed within <strong>14 business days</strong> of a challenge closing and results being verified.</li>
+                    <li>To receive a payout you must have a verified account and a valid payout method on file.</li>
+                    <li>Prize winnings may be subject to income tax in your jurisdiction. You are solely responsible for reporting and paying any applicable taxes. ARTX may be required to collect tax identification information for payouts above regulatory thresholds.</li>
+                    <li>ARTX reserves the right to withhold prizes pending identity verification or investigation of potential Terms violations.</li>
+                    <li>Prizes are non-transferable and have no cash equivalent outside of the stated prize amount.</li>
+                </ul>
+
+                <h2>4. User Content &amp; Licence</h2>
+                <ul>
+                    <li>You retain ownership of all artwork and content you submit ("User Content").</li>
+                    <li>By submitting User Content you grant ARTX a non-exclusive, worldwide, royalty-free licence to display, reproduce, and promote your work on the Platform and in ARTX marketing materials (social media, press, promotional campaigns) for the purpose of showcasing the competition and your achievement. This licence ends when you delete your account, except for content already used in published materials.</li>
+                    <li>You may request removal of specific uses by emailing <strong>content@artxplatform.com</strong>.</li>
+                </ul>
+
+                <h2>5. Prohibited Conduct</h2>
+                <p>You agree not to:</p>
+                <ul>
+                    <li>Submit content that is hateful, harassing, sexually explicit, violent, defamatory, or illegal.</li>
+                    <li>Harass, threaten, or abuse other community members.</li>
+                    <li>Attempt to reverse-engineer, hack, or disrupt the Platform or its infrastructure.</li>
+                    <li>Use bots, scripts, or automated tools to interact with the Platform.</li>
+                    <li>Sell, trade, or exploit your account or winnings for purposes not sanctioned by ARTX.</li>
+                    <li>Engage in any activity that creates an unfair competitive advantage.</li>
+                </ul>
+                <p>Violations may result in content removal, account suspension, permanent banning, forfeiture of prizes, and legal action where appropriate.</p>
+
+                <h2>6. Streaks &amp; Prestige System</h2>
+                <p>ARTX's streak and prestige mechanics are features of the Platform designed to reward consistent participation. ARTX reserves the right to adjust, reset, or discontinue these mechanics at any time. Streaks and prestige points have no monetary value and cannot be exchanged for cash.</p>
+
+                <h2>7. Alliances</h2>
+                <p>Alliance features allow users to form groups for collaborative competitions. Alliance leaders are responsible for ensuring their members comply with these Terms. ARTX may dissolve alliances found to be engaging in prohibited conduct, and all members of a dissolved alliance may face individual penalties.</p>
+
+                <h2>8. Intellectual Property</h2>
+                <p>The ARTX name, logo, platform design, and all original Platform content are the intellectual property of ARTX and may not be reproduced, distributed, or used without our express written permission.</p>
+
+                <h2>9. Disclaimers</h2>
+                <p>THE PLATFORM IS PROVIDED "AS IS" WITHOUT WARRANTIES OF ANY KIND, EXPRESS OR IMPLIED. ARTX DOES NOT GUARANTEE UNINTERRUPTED OR ERROR-FREE SERVICE. WE ARE NOT RESPONSIBLE FOR ANY LOSS OF USER CONTENT DUE TO TECHNICAL FAILURES.</p>
+
+                <h2>10. Limitation of Liability</h2>
+                <p>TO THE MAXIMUM EXTENT PERMITTED BY LAW, ARTX'S TOTAL LIABILITY TO YOU FOR ANY CLAIM ARISING FROM YOUR USE OF THE PLATFORM SHALL NOT EXCEED THE GREATER OF (A) THE AMOUNT YOU PAID TO ARTX IN THE 12 MONTHS PRECEDING THE CLAIM, OR (B) $100 USD.</p>
+
+                <h2>11. Indemnification</h2>
+                <p>You agree to indemnify and hold ARTX and its officers, employees, and agents harmless from any claims, damages, or expenses (including reasonable legal fees) arising from your use of the Platform, your User Content, or your violation of these Terms.</p>
+
+                <h2>12. Termination</h2>
+                <p>We reserve the right to suspend or permanently terminate any account at our discretion, with or without notice, for violations of these Terms or for any other reason we deem appropriate. Upon termination, your licence to use the Platform ends immediately. Provisions that by their nature should survive termination (ownership, disclaimers, indemnification, limitation of liability) will do so.</p>
+
+                <h2>13. Governing Law &amp; Disputes</h2>
+                <p>These Terms are governed by the laws of the applicable jurisdiction in which ARTX is incorporated. Any dispute that cannot be resolved informally shall be submitted to binding arbitration on an individual basis — class actions are waived to the fullest extent permitted by law.</p>
+
+                <h2>14. Changes to These Terms</h2>
+                <p>We may update these Terms at any time. We will provide at least 14 days' notice of material changes via email or a prominent Platform notice. Continued use after the effective date constitutes acceptance of the revised Terms.</p>
+
+                <h2>15. Contact</h2>
+                <p>For questions about these Terms:</p>
+                <p><strong>ARTX Legal Team</strong><br>
+                Email: legal@artxplatform.com<br>
+                Response time: within 30 days</p>
+            </div>
+            <div class="legal-modal-footer">
+                <button class="btn-primary" onclick="closeLegalModal('terms')">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════
+         ABOUT MODAL
+    ══════════════════════════════════════════ -->
+    <div id="aboutModal" class="legal-modal" role="dialog" aria-modal="true" aria-labelledby="aboutModalTitle">
+        <div class="legal-modal-inner">
+            <div class="legal-modal-header">
+                <div class="legal-modal-logo">ARTX</div>
+                <button class="legal-close-btn" onclick="closeInfoModal('about')" aria-label="Close">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="legal-modal-body">
+
+                <h1 id="aboutModalTitle">About ARTX</h1>
+                <p class="legal-effective">Where Skill Creates Prestige</p>
+
+                <!-- Mission -->
+                <div class="about-hero-block">
+                    <p class="about-lead">ARTX is a competitive creative platform built for artists who want more than likes — they want recognition, community, and real rewards for their craft.</p>
+                </div>
+
+                <h2>Our Story</h2>
+                <p>ARTX was born from a simple frustration: the internet is full of talented artists who never get their moment. Social media rewards follower counts over skill, and most creative competitions are either pay-to-play or hidden behind gatekeepers.</p>
+                <p>We built ARTX to flip that. A place where the work speaks for itself — where a newcomer with raw talent can go head-to-head with a seasoned pro, earn community recognition, and take home real prize money based purely on their art.</p>
+
+                <h2>What We Do</h2>
+                <div class="about-features-grid">
+                    <div class="about-feature-card">
+                        <span class="about-feature-icon"><i class="fas fa-trophy"></i></span>
+                        <strong>Challenges</strong>
+                        <p>Weekly and monthly creative challenges across disciplines — illustration, photography, design, digital art, and more. Each one with a clear brief, a prize pool, and a deadline.</p>
+                    </div>
+                    <div class="about-feature-card">
+                        <span class="about-feature-icon"><i class="fas fa-star"></i></span>
+                        <strong>Prestige System</strong>
+                        <p>Earn prestige points for every submission, win, and streak. Your rank reflects your consistency and quality — not your follower count.</p>
+                    </div>
+                    <div class="about-feature-card">
+                        <span class="about-feature-icon"><i class="fas fa-fire"></i></span>
+                        <strong>Streaks</strong>
+                        <p>Show up every day. Build your streak. The longer you stay consistent, the bigger the multipliers on your prestige earnings.</p>
+                    </div>
+                    <div class="about-feature-card">
+                        <span class="about-feature-icon"><i class="fas fa-users"></i></span>
+                        <strong>Alliances</strong>
+                        <p>Form crews with other artists. Alliance members compete together in team events, share knowledge, and keep each other accountable.</p>
+                    </div>
+                    <div class="about-feature-card">
+                        <span class="about-feature-icon"><i class="fas fa-dollar-sign"></i></span>
+                        <strong>Real Prizes</strong>
+                        <p>Cash payouts, not gift cards or exposure. Top finishers in every challenge earn real money, paid out directly to their account within 14 business days.</p>
+                    </div>
+                    <div class="about-feature-card">
+                        <span class="about-feature-icon"><i class="fas fa-shield-alt"></i></span>
+                        <strong>Fair Competition</strong>
+                        <p>Transparent judging. Community voting with anti-manipulation safeguards. Every submission gets a fair shot.</p>
+                    </div>
+                </div>
+
+                <h2>Our Values</h2>
+                <ul>
+                    <li><strong>Skill first.</strong> Rankings and rewards are based on the quality of your work, nothing else.</li>
+                    <li><strong>Community over clout.</strong> We're building a space where artists support each other, not just compete.</li>
+                    <li><strong>Radical transparency.</strong> Prize pools, judging criteria, and platform rules are always visible upfront.</li>
+                    <li><strong>Accessibility.</strong> Free to join, free to compete. No premium tiers that lock you out of prizes.</li>
+                    <li><strong>Original work.</strong> We celebrate human creativity and protect the integrity of every competition.</li>
+                </ul>
+
+                <h2>Who It's For</h2>
+                <p>ARTX is for any artist 18 or older who wants to:</p>
+                <ul>
+                    <li>Push their creative limits with structured challenges</li>
+                    <li>Build a portfolio of competitive work</li>
+                    <li>Earn recognition beyond social media vanity metrics</li>
+                    <li>Connect with a serious, motivated creative community</li>
+                    <li>Win money doing what they love</li>
+                </ul>
+
+                <h2>Join Us</h2>
+                <p>ARTX is growing fast. Thousands of artists are already competing, building streaks, and forming alliances. Whether you're a hobbyist who wants to take their work seriously or a professional looking for a new competitive outlet — there's a place for you here.</p>
+                <p>Create your account, enter your first challenge, and find out where your skill stands.</p>
+
+            </div>
+            <div class="legal-modal-footer">
+                <button class="btn-primary" onclick="showAuthPage(); closeInfoModal('about');">
+                    Join ARTX &nbsp;<i class="fas fa-arrow-right"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════
+         CONTACT MODAL
+    ══════════════════════════════════════════ -->
+    <div id="contactModal" class="legal-modal" role="dialog" aria-modal="true" aria-labelledby="contactModalTitle">
+        <div class="legal-modal-inner">
+            <div class="legal-modal-header">
+                <div class="legal-modal-logo">ARTX</div>
+                <button class="legal-close-btn" onclick="closeInfoModal('contact')" aria-label="Close">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="legal-modal-body">
+
+                <h1 id="contactModalTitle">Contact Us</h1>
+                <p class="legal-effective">We're here to help — typically within 24–48 hours</p>
+
+                <!-- Contact cards -->
+                <div class="contact-cards">
+                    <div class="contact-card">
+                        <span class="contact-card-icon"><i class="fas fa-life-ring"></i></span>
+                        <div>
+                            <strong>General Support</strong>
+                            <p>Account issues, technical problems, billing questions, and anything else that needs attention.</p>
+                            <a href="mailto:support@artxplatform.com" class="contact-link">support@artxplatform.com</a>
+                        </div>
+                    </div>
+                    <div class="contact-card">
+                        <span class="contact-card-icon"><i class="fas fa-gavel"></i></span>
+                        <div>
+                            <strong>Competition Disputes</strong>
+                            <p>Questions about judging outcomes, disqualifications, or suspected rule violations.</p>
+                            <a href="mailto:competitions@artxplatform.com" class="contact-link">competitions@artxplatform.com</a>
+                        </div>
+                    </div>
+                    <div class="contact-card">
+                        <span class="contact-card-icon"><i class="fas fa-lock"></i></span>
+                        <div>
+                            <strong>Privacy &amp; Data Requests</strong>
+                            <p>Data access, deletion, or any concern about how your personal information is handled.</p>
+                            <a href="mailto:privacy@artxplatform.com" class="contact-link">privacy@artxplatform.com</a>
+                        </div>
+                    </div>
+                    <div class="contact-card">
+                        <span class="contact-card-icon"><i class="fas fa-handshake"></i></span>
+                        <div>
+                            <strong>Partnerships &amp; Press</strong>
+                            <p>Brand collaborations, sponsorships, media enquiries, and business development.</p>
+                            <a href="mailto:partnerships@artxplatform.com" class="contact-link">partnerships@artxplatform.com</a>
+                        </div>
+                    </div>
+                    <div class="contact-card">
+                        <span class="contact-card-icon"><i class="fas fa-bug"></i></span>
+                        <div>
+                            <strong>Bug Reports &amp; Security</strong>
+                            <p>Found a bug or a security vulnerability? We take these seriously and respond fast.</p>
+                            <a href="mailto:security@artxplatform.com" class="contact-link">security@artxplatform.com</a>
+                        </div>
+                    </div>
+                </div>
+
+                <h2>Send Us a Message</h2>
+                <form class="contact-form" onsubmit="handleContactSubmit(event)">
+                    <div class="input-group">
+                        <label for="contactName">Your Name</label>
+                        <input type="text" id="contactName" placeholder="e.g. Alex Rivera" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="contactEmail">Email Address</label>
+                        <input type="email" id="contactEmail" placeholder="your@email.com" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="contactSubject">Subject</label>
+                        <select id="contactSubject" required>
+                            <option value="" disabled selected>Select a topic…</option>
+                            <option value="support">General Support</option>
+                            <option value="dispute">Competition Dispute</option>
+                            <option value="privacy">Privacy / Data Request</option>
+                            <option value="partnership">Partnership / Press</option>
+                            <option value="bug">Bug Report</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label for="contactMessage">Message</label>
+                        <textarea id="contactMessage" rows="4" placeholder="Tell us what's going on…" required></textarea>
+                    </div>
+                    <button type="submit" class="btn-primary contact-submit-btn">
+                        <span class="contact-btn-text">Send Message</span>
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </form>
+
+                <h2>Follow Us</h2>
+                <div class="contact-socials">
+                    <a href="#" class="contact-social-btn" aria-label="Instagram">
+                        <i class="fab fa-instagram"></i>
+                        <span>Instagram</span>
+                    </a>
+                    <a href="#" class="contact-social-btn" aria-label="TikTok">
+                        <i class="fab fa-tiktok"></i>
+                        <span>TikTok</span>
+                    </a>
+                    <a href="#" class="contact-social-btn" aria-label="Twitter / X">
+                        <i class="fab fa-x-twitter"></i>
+                        <span>Twitter / X</span>
+                    </a>
+                </div>
+
+            </div>
+            <div class="legal-modal-footer">
+                <button class="btn-primary" onclick="closeInfoModal('contact')">Close</button>
+            </div>
         </div>
     </div>
 
@@ -194,5 +609,81 @@
     </div>
 
     <script src="../scripts/auth.js"></script>
+    <script>
+        /* ── Legal modals (Privacy / Terms) ── */
+        function openLegalModal(type) {
+            const modal = document.getElementById(type === 'privacy' ? 'privacyModal' : 'termsModal');
+            modal.classList.add('legal-modal--open');
+            document.body.style.overflow = 'hidden';
+            modal.querySelector('.legal-modal-body').scrollTop = 0;
+        }
+
+        function closeLegalModal(type) {
+            const modal = document.getElementById(type === 'privacy' ? 'privacyModal' : 'termsModal');
+            modal.classList.remove('legal-modal--open');
+            document.body.style.overflow = '';
+        }
+
+        /* ── Info modals (About / Contact) ── */
+        function showAbout() {
+            const modal = document.getElementById('aboutModal');
+            modal.classList.add('legal-modal--open');
+            document.body.style.overflow = 'hidden';
+            modal.querySelector('.legal-modal-body').scrollTop = 0;
+        }
+
+        function showContact() {
+            const modal = document.getElementById('contactModal');
+            modal.classList.add('legal-modal--open');
+            document.body.style.overflow = 'hidden';
+            modal.querySelector('.legal-modal-body').scrollTop = 0;
+        }
+
+        function closeInfoModal(type) {
+            const id = type === 'about' ? 'aboutModal' : 'contactModal';
+            document.getElementById(id).classList.remove('legal-modal--open');
+            document.body.style.overflow = '';
+        }
+
+        /* ── Contact form submit ── */
+        function handleContactSubmit(e) {
+            e.preventDefault();
+            const btn  = e.target.querySelector('.contact-submit-btn');
+            const text = btn.querySelector('.contact-btn-text');
+            btn.disabled = true;
+            text.textContent = 'Sending…';
+            // Simulate async send — replace with real fetch() when backend ready
+            setTimeout(() => {
+                text.textContent = 'Message sent!';
+                btn.style.background = 'linear-gradient(135deg, #22c55e, #16a34a)';
+                e.target.reset();
+                setTimeout(() => {
+                    text.textContent = 'Send Message';
+                    btn.disabled = false;
+                    btn.style.background = '';
+                }, 3000);
+            }, 1200);
+        }
+
+        /* ── Close any modal on backdrop click ── */
+        document.querySelectorAll('.legal-modal').forEach(modal => {
+            modal.addEventListener('click', function(e) {
+                if (e.target === this) {
+                    this.classList.remove('legal-modal--open');
+                    document.body.style.overflow = '';
+                }
+            });
+        });
+
+        /* ── Close on Escape ── */
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                document.querySelectorAll('.legal-modal--open').forEach(modal => {
+                    modal.classList.remove('legal-modal--open');
+                    document.body.style.overflow = '';
+                });
+            }
+        });
+    </script>
 </body>
 </html>
