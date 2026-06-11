@@ -78,25 +78,58 @@ body {
     left: 0;
     width: 100%;
     height: 100%;
-    background: linear-gradient(135deg, #1a3a2e 0%, darkolivegreen 50%, #1a3a2e 100%);
+    background: linear-gradient(135deg, #0f2419 0%, #1a3a2e 40%, #2d5a3d 100%);
     display: flex;
     flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    padding: 40px 20px;
     opacity: 0;
     animation: fadeInContent 0.5s ease-in-out 2.5s forwards;
     z-index: 9998;
     overflow: hidden;
 }
 
+/* ── Nav bar ── */
+.landing-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 24px 60px;
+    flex-shrink: 0;
+}
+
+.landing-nav-logo {
+    font-size: 28px;
+    font-weight: 800;
+    background: linear-gradient(to right, #f093fb, #f5576c, lightgreen, lightblue, #ffd700);
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: 2px;
+}
+
+.landing-nav-links {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+/* ── Hero: two-column ── */
+.landing-hero {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 80px;
+    padding: 0 60px;
+    min-height: 0;
+}
+
+/* ── Polaroids ── */
 .polaroid-container {
     display: flex;
-    gap: 28px;
-    margin-bottom: 60px;
-    justify-content: center;
+    gap: 20px;
     align-items: flex-end;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    flex-shrink: 0;
 }
 
 .polaroid {
@@ -110,16 +143,6 @@ body {
     transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275),
                 box-shadow 0.4s ease;
     position: relative;
-}
-
-.polaroid::after {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 52px;
-    background: inherit;
 }
 
 .polaroid:hover {
@@ -165,19 +188,31 @@ body {
     letter-spacing: 0.5px;
 }
 
+/* ── Right side copy ── */
 .landing-content {
-    text-align: center;
-    max-width: 600px;
+    text-align: left;
+    max-width: 480px;
+}
+
+.landing-eyebrow {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: lightgreen;
+    margin-bottom: 16px;
+    opacity: 0.85;
 }
 
 .landing-title {
-    font-size: 48px;
+    font-size: 64px;
     font-weight: 300;
-    margin-bottom: 10px;
-    line-height: 1.2;
+    margin-bottom: 14px;
+    line-height: 1.1;
     display: flex;
     flex-direction: column;
     color: #e8e8d0;
+    letter-spacing: -1px;
 }
 
 .title-line {
@@ -185,94 +220,79 @@ body {
 }
 
 .landing-subtitle {
-    font-size: 20px;
-    color: #e8e8d0;
-    margin-bottom: 50px;
+    font-size: 22px;
+    color: rgba(232, 232, 208, 0.7);
+    margin-bottom: 40px;
     font-weight: 300;
+    font-style: italic;
 }
 
-.btn-signup {
-    background: linear-gradient(to right, lightgreen, darkolivegreen);
-    color: white;
-    border: none;
-    padding: 18px 60px;
-    font-size: 18px;
-    font-weight: 600;
-    border-radius: 50px;
-    cursor: pointer;
-    transition: all 0.3s;
-    margin-bottom: 80px;
-    letter-spacing: 1px;
-    box-shadow: 0 4px 15px rgba(144, 238, 144, 0.3);
+.landing-stats {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin-top: 40px;
+    padding-top: 32px;
+    border-top: 1px solid rgba(255,255,255,0.1);
 }
 
-.btn-signup:hover {
-    transform: scale(1.05);
-    box-shadow: 0 6px 25px rgba(144, 238, 144, 0.5);
-}
-
-.btn-signup i {
-    margin-left: 10px;
-}
-
-.landing-footer {
+.stat-item {
     display: flex;
     flex-direction: column;
-    gap: 15px;
     align-items: center;
+    padding: 0 28px;
 }
 
-.footer-row {
-    display: flex;
-    gap: 20px;
-    align-items: center;
+.stat-item:first-child {
+    padding-left: 0;
 }
 
-.btn-footer {
-    background: transparent;
+.stat-number {
+    font-size: 28px;
+    font-weight: 700;
     color: lightgreen;
-    border: 2px solid lightgreen;
-    padding: 12px 40px;
-    font-size: 16px;
-    border-radius: 50px;
-    cursor: pointer;
-    transition: all 0.3s;
+    line-height: 1;
 }
 
-.btn-footer:hover {
-    background: lightgreen;
-    color: #1a3a2e;
-    box-shadow: 0 4px 15px rgba(144, 238, 144, 0.3);
+.stat-label {
+    font-size: 12px;
+    color: rgba(232,232,208,0.6);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-top: 4px;
 }
 
-.social-link {
-    width: 50px;
-    height: 50px;
-    border: 2px solid lightgreen;
-    border-radius: 50%;
+.stat-divider {
+    width: 1px;
+    height: 36px;
+    background: rgba(255,255,255,0.15);
+}
+
+/* ── Footer bar ── */
+.landing-footer {
     display: flex;
-    justify-content: center;
+    justify-content: space-between;
     align-items: center;
-    color: lightgreen;
-    font-size: 20px;
-    text-decoration: none;
-    transition: all 0.3s;
+    padding: 16px 60px;
+    border-top: 1px solid rgba(255,255,255,0.06);
+    flex-shrink: 0;
 }
 
-.social-link:hover {
-    background: lightgreen;
-    color: #1a3a2e;
-    box-shadow: 0 4px 15px rgba(144, 238, 144, 0.3);
+.footer-copy {
+    font-size: 12px;
+    color: rgba(232,232,208,0.4);
 }
 
 .footer-links {
-    color: #a8a89d;
-    font-size: 13px;
-    margin-top: 10px;
+    color: rgba(232,232,208,0.5);
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
 .footer-links a {
-    color: #a8a89d;
+    color: rgba(232,232,208,0.5);
     text-decoration: none;
     transition: color 0.3s;
 }
@@ -282,7 +302,74 @@ body {
 }
 
 .footer-links span {
-    margin: 0 8px;
+    opacity: 0.4;
+}
+
+.btn-signup {
+    background: linear-gradient(to right, lightgreen, darkolivegreen);
+    color: white;
+    border: none;
+    padding: 16px 52px;
+    font-size: 17px;
+    font-weight: 600;
+    border-radius: 50px;
+    cursor: pointer;
+    transition: all 0.3s;
+    letter-spacing: 1px;
+    box-shadow: 0 4px 20px rgba(144, 238, 144, 0.35);
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.btn-signup:hover {
+    transform: translateY(-2px) scale(1.03);
+    box-shadow: 0 8px 30px rgba(144, 238, 144, 0.5);
+}
+
+.btn-signup i {
+    transition: transform 0.3s;
+}
+
+.btn-signup:hover i {
+    transform: translateX(4px);
+}
+
+.btn-footer {
+    background: transparent;
+    color: rgba(232,232,208,0.75);
+    border: 1px solid rgba(232,232,208,0.25);
+    padding: 8px 22px;
+    font-size: 14px;
+    border-radius: 50px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.btn-footer:hover {
+    background: rgba(255,255,255,0.08);
+    color: #e8e8d0;
+    border-color: rgba(232,232,208,0.5);
+}
+
+.social-link {
+    width: 38px;
+    height: 38px;
+    border: 1px solid rgba(232,232,208,0.25);
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: rgba(232,232,208,0.75);
+    font-size: 16px;
+    text-decoration: none;
+    transition: all 0.3s;
+}
+
+.social-link:hover {
+    background: rgba(255,255,255,0.08);
+    color: #e8e8d0;
+    border-color: rgba(232,232,208,0.5);
 }
 
 .auth-container {
@@ -492,192 +579,142 @@ body {
         order: 2;
     }
     
-    .logo {
-        font-size: 36px;
+    .logo { font-size: 36px; }
+    .logo-image { width: 40px; height: 40px; }
+    .splash-logo { font-size: 80px; }
+
+    /* ── Landing: stack to column on tablet ── */
+    .landing-nav {
+        padding: 18px 24px;
     }
-    
-    .logo-image {
-        width: 40px;
-        height: 40px;
+
+    .landing-hero {
+        flex-direction: column;
+        gap: 32px;
+        padding: 0 24px 16px;
+        justify-content: center;
+        align-items: center;
     }
-    
-    .splash-logo {
-        font-size: 80px;
+
+    .landing-content {
+        text-align: center;
+        max-width: 100%;
     }
-    
+
+    .landing-eyebrow { display: none; }
+
     .landing-title {
-        font-size: 36px;
+        font-size: 40px;
+        align-items: center;
     }
-    
+
     .landing-subtitle {
         font-size: 18px;
-        margin-bottom: 40px;
+        margin-bottom: 28px;
     }
-    
+
+    .landing-stats {
+        justify-content: center;
+        margin-top: 28px;
+        padding-top: 24px;
+    }
+
     /* ── Polaroids: tablet ── */
     .polaroid-container {
         gap: 14px;
-        margin-bottom: 40px;
-        flex-wrap: nowrap;       /* keep the trio in one row */
+        flex-wrap: nowrap;
         align-items: flex-end;
     }
 
     .polaroid {
-        width: 28vw;             /* three cards + gaps fit comfortably */
-        padding: 10px 10px 46px 10px;
+        width: 28vw;
+        padding: 10px 10px 40px 10px;
         flex-shrink: 0;
     }
 
-    .polaroid-image {
-        height: 22vw;
-    }
+    .polaroid-image { height: 22vw; }
+    .polaroid-caption { font-size: 11px; }
 
-    .polaroid-caption {
-        font-size: 11px;
-    }
-    
+    .landing-footer { padding: 14px 24px; }
+
     .btn-signup {
-        padding: 16px 50px;
+        padding: 14px 44px;
         font-size: 16px;
-        margin-bottom: 60px;
     }
 }
 
 @media (max-width: 480px) {
-    body {
-        padding: 10px;
+    body { padding: 10px; }
+    .auth-card { padding: 25px 15px; }
+    .logo { font-size: 32px; }
+    .logo-image { width: 35px; height: 35px; }
+    .tagline { font-size: 12px; }
+    .auth-form h2 { font-size: 20px; margin-bottom: 20px; }
+    .input-group { margin-bottom: 15px; }
+    .input-group label { font-size: 13px; }
+    .input-group input { padding: 10px 12px; font-size: 14px; }
+    .btn-primary { padding: 12px; font-size: 14px; }
+    .switch-form { font-size: 13px; }
+    .splash-logo { font-size: 60px; }
+    .splash-screen { animation: fadeOut 0.5s ease-in-out 1.5s forwards; }
+    .auth-container { animation: fadeInContent 0.5s ease-in-out 2s forwards; }
+    .features-showcase { padding: 20px; }
+    .features-showcase h3 { font-size: 18px; margin-bottom: 20px; }
+    .feature-item { padding: 12px; margin-bottom: 15px; }
+    .feature-icon, .feature-icon i { font-size: 24px; }
+
+    /* ── Landing: mobile ── */
+    .landing-nav {
+        padding: 14px 16px;
     }
-    
-    .auth-card {
-        padding: 25px 15px;
+
+    .landing-nav-logo { font-size: 22px; }
+
+    .landing-hero {
+        gap: 20px;
+        padding: 0 16px 8px;
     }
-    
-    .logo {
-        font-size: 32px;
-    }
-    
-    .logo-image {
-        width: 35px;
-        height: 35px;
-    }
-    
-    .tagline {
-        font-size: 12px;
-    }
-    
-    .auth-form h2 {
-        font-size: 20px;
-        margin-bottom: 20px;
-    }
-    
-    .input-group {
-        margin-bottom: 15px;
-    }
-    
-    .input-group label {
-        font-size: 13px;
-    }
-    
-    .input-group input {
-        padding: 10px 12px;
-        font-size: 14px;
-    }
-    
-    .btn-primary {
-        padding: 12px;
-        font-size: 14px;
-    }
-    
-    .switch-form {
-        font-size: 13px;
-    }
-    
-    .splash-logo {
-        font-size: 60px;
-    }
-    
-    .splash-screen {
-        animation: fadeOut 0.5s ease-in-out 1.5s forwards;
-    }
-    
-    .auth-container {
-        animation: fadeInContent 0.5s ease-in-out 2s forwards;
-    }
-    
-    .features-showcase {
-        padding: 20px;
-    }
-    
-    .features-showcase h3 {
-        font-size: 18px;
-        margin-bottom: 20px;
-    }
-    
-    .feature-item {
-        padding: 12px;
-        margin-bottom: 15px;
-    }
-    
-    .feature-icon {
-        font-size: 24px;
-    }
-    
-    .feature-icon i {
-        font-size: 24px;
-    }
-    
-    .landing-title {
-        font-size: 28px;
-    }
-    
-    .landing-subtitle {
-        font-size: 16px;
-        margin-bottom: 30px;
-    }
+
+    .landing-title { font-size: 30px; }
+    .landing-subtitle { font-size: 15px; margin-bottom: 20px; }
+
+    .stat-number { font-size: 20px; }
+    .stat-item { padding: 0 14px; }
 
     /* ── Polaroids: mobile ── */
     .polaroid-container {
         gap: 6px;
-        margin-bottom: 28px;
-        flex-wrap: nowrap;       /* force single row — left / mid / right */
+        flex-wrap: nowrap;
         align-items: flex-end;
         padding: 0 4px;
     }
 
     .polaroid {
-        width: 29vw;             /* ~87vw total for 3 cards, ~18vw for gaps */
-        padding: 6px 6px 34px 6px;
+        width: 29vw;
+        padding: 6px 6px 28px 6px;
         flex-shrink: 0;
     }
 
-    .polaroid-image {
-        height: 36vw;            /* tall enough to show the photo clearly */
-    }
+    .polaroid-image { height: 36vw; }
 
     .polaroid-caption {
-        font-size: 9px;
+        font-size: 8px;
         letter-spacing: 0.2px;
-        padding-top: 8px;
+        padding-top: 6px;
     }
 
-    /* tighten tilt angles so rotated edges don't clip off-screen */
     .polaroid-1 { transform: rotate(-5deg) translateY(4px); }
     .polaroid-2 { transform: rotate(2deg)  translateY(-3px); }
     .polaroid-3 { transform: rotate(-3deg) translateY(5px); }
-    
-    .btn-signup {
-        padding: 14px 40px;
-        font-size: 14px;
-        margin-bottom: 50px;
-    }
-    
-    .btn-footer {
-        padding: 10px 30px;
-        font-size: 14px;
-    }
-    
-    .footer-links {
-        font-size: 11px;
+
+    .btn-signup { padding: 12px 32px; font-size: 14px; }
+    .btn-footer { padding: 7px 16px; font-size: 12px; }
+
+    .landing-footer {
+        padding: 10px 16px;
+        flex-direction: column;
+        gap: 4px;
+        text-align: center;
     }
 }
 

@@ -16,44 +16,76 @@
 
     <!-- Landing Page -->
     <div id="landingPage" class="landing-page">
-        <div class="polaroid-container">
-            <div class="polaroid polaroid-1">
-                <div class="polaroid-image" style="background-image: url('../images/artx-left.jpg');"></div>
-                <p class="polaroid-caption">ARTX Platform</p>
+
+        <!-- Top nav bar -->
+        <nav class="landing-nav">
+            <div class="landing-nav-logo">ARTX</div>
+            <div class="landing-nav-links">
+                <button class="btn-footer" onclick="showAbout()">About</button>
+                <button class="btn-footer" onclick="showContact()">Contact</button>
+                <a href="#" class="social-link"><i class="fab fa-instagram"></i></a>
             </div>
-            <div class="polaroid polaroid-2">
-                <div class="polaroid-image" style="background-image: url('../images/artx-middle.jpg');"></div>
-                <p class="polaroid-caption">Compete & Win</p>
+        </nav>
+
+        <!-- Hero: two-column -->
+        <div class="landing-hero">
+
+            <!-- Left: polaroids -->
+            <div class="polaroid-container">
+                <div class="polaroid polaroid-1">
+                    <div class="polaroid-image" style="background-image: url('../images/artx-left.jpg');"></div>
+                    <p class="polaroid-caption">ARTX Platform</p>
+                </div>
+                <div class="polaroid polaroid-2">
+                    <div class="polaroid-image" style="background-image: url('../images/art-middle.jpg');"></div>
+                    <p class="polaroid-caption">Compete & Win</p>
+                </div>
+                <div class="polaroid polaroid-3">
+                    <div class="polaroid-image" style="background-image: url('../images/artx-right.jpg'); filter: hue-rotate(120deg) saturate(1.5);"></div>
+                    <p class="polaroid-caption">Join Today</p>
+                </div>
             </div>
-            <div class="polaroid polaroid-3">
-                <div class="polaroid-image" style="background-image: url('../images/artx-right.jpg'); filter: hue-rotate(120deg) saturate(1.5);"></div>
-                <p class="polaroid-caption">Join Today</p>
+
+            <!-- Right: copy + CTA -->
+            <div class="landing-content">
+                <p class="landing-eyebrow">The creative competition platform</p>
+                <h1 class="landing-title">
+                    <span class="title-line">We are not</span>
+                    <span class="title-line">just a place</span>
+                </h1>
+                <p class="landing-subtitle">We are a community</p>
+
+                <button class="btn-signup" onclick="showAuthPage()">
+                    Get Started <i class="fas fa-arrow-right"></i>
+                </button>
+
+                <div class="landing-stats">
+                    <div class="stat-item">
+                        <span class="stat-number">10K+</span>
+                        <span class="stat-label">Artists</span>
+                    </div>
+                    <div class="stat-divider"></div>
+                    <div class="stat-item">
+                        <span class="stat-number">500+</span>
+                        <span class="stat-label">Challenges</span>
+                    </div>
+                    <div class="stat-divider"></div>
+                    <div class="stat-item">
+                        <span class="stat-number">$50K</span>
+                        <span class="stat-label">Paid Out</span>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <div class="landing-content">
-            <h1 class="landing-title">
-                <span class="title-line">We are not</span>
-                <span class="title-line">just a place</span>
-            </h1>
-            <p class="landing-subtitle">We are a community</p>
-            
-            <button class="btn-signup" onclick="showAuthPage()">
-                SIGN IN <i class="fas fa-arrow-right"></i>
-            </button>
-
-            <div class="landing-footer">
-                <button class="btn-footer" onclick="showAbout()">about</button>
-                <div class="footer-row">
-                    <button class="btn-footer" onclick="showContact()">contact</button>
-                    <a href="#" class="social-link"><i class="fab fa-instagram"></i></a>
-                </div>
-                <div class="footer-links">
-                    <a href="#">privacy policy</a>
-                    <span>|</span>
-                    <a href="#">terms of service</a>
-                </div>
+        <!-- Bottom bar -->
+        <div class="landing-footer">
+            <div class="footer-links">
+                <a href="#">Privacy Policy</a>
+                <span>|</span>
+                <a href="#">Terms of Service</a>
             </div>
+            <p class="footer-copy">© 2025 ARTX. All rights reserved.</p>
         </div>
     </div>
 
