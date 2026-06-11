@@ -121,6 +121,7 @@ body {
     gap: 80px;
     padding: 0 60px;
     min-height: 0;
+    position: relative;
 }
 
 /* ── Polaroids ── */
@@ -388,6 +389,11 @@ body {
     }
 }
 
+@keyframes slideUp {
+    from { opacity: 0; transform: translateY(24px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
 .auth-card {
     background-color:#1a3a2e;
     backdrop-filter: blur(10px);
@@ -643,7 +649,12 @@ body {
     }
 }
 
+/* ============================================================
+   MOBILE LANDING — full-bleed immersive layout
+   ============================================================ */
 @media (max-width: 480px) {
+
+    /* --- Auth form page (unchanged) --- */
     body { padding: 10px; }
     .auth-card { padding: 25px 15px; }
     .logo { font-size: 32px; }
@@ -663,60 +674,216 @@ body {
     .feature-item { padding: 12px; margin-bottom: 15px; }
     .feature-icon, .feature-icon i { font-size: 24px; }
 
-    /* ── Landing: mobile ── */
+    /* --- Landing page: full-screen immersive --- */
+
+    /* The landing page itself becomes a viewport-filling canvas */
+    .landing-page {
+        background: #0a1a10;
+        display: grid;
+        grid-template-rows: auto 1fr auto;
+        overflow: hidden;
+    }
+
+    /* ── Slimmer nav on mobile ── */
     .landing-nav {
-        padding: 14px 16px;
+        padding: 20px 20px 0;
+        position: relative;
+        z-index: 20;
+        background: transparent;
     }
 
-    .landing-nav-logo { font-size: 22px; }
+    .landing-nav-logo {
+        font-size: 26px;
+        letter-spacing: 4px;
+    }
 
+    .landing-nav-links .btn-footer {
+        display: none; /* hide About/Contact on mobile, too cluttered */
+    }
+
+    .landing-nav-links .social-link {
+        width: 34px;
+        height: 34px;
+        font-size: 15px;
+    }
+
+    /* ── Hero: full-bleed photo collage ── */
     .landing-hero {
-        gap: 20px;
-        padding: 0 16px 8px;
-    }
-
-    .landing-title { font-size: 30px; }
-    .landing-subtitle { font-size: 15px; margin-bottom: 20px; }
-
-    .stat-number { font-size: 20px; }
-    .stat-item { padding: 0 14px; }
-
-    /* ── Polaroids: mobile ── */
-    .polaroid-container {
-        gap: 6px;
-        flex-wrap: nowrap;
-        align-items: flex-end;
-        padding: 0 4px;
-    }
-
-    .polaroid {
-        width: 29vw;
-        padding: 6px 6px 28px 6px;
-        flex-shrink: 0;
-    }
-
-    .polaroid-image { height: 36vw; }
-
-    .polaroid-caption {
-        font-size: 8px;
-        letter-spacing: 0.2px;
-        padding-top: 6px;
-    }
-
-    .polaroid-1 { transform: rotate(-5deg) translateY(4px); }
-    .polaroid-2 { transform: rotate(2deg)  translateY(-3px); }
-    .polaroid-3 { transform: rotate(-3deg) translateY(5px); }
-
-    .btn-signup { padding: 12px 32px; font-size: 14px; }
-    .btn-footer { padding: 7px 16px; font-size: 12px; }
-
-    .landing-footer {
-        padding: 10px 16px;
+        position: relative;
         flex-direction: column;
-        gap: 4px;
+        gap: 0;
+        padding: 0;
+        align-items: stretch;
+        justify-content: flex-end;
+        overflow: hidden;
+    }
+
+    /* Photo strip: three images side by side filling the hero */
+    .polaroid-container {
+        position: absolute;
+        inset: 0;
+        gap: 2px;
+        padding: 0;
+        flex-wrap: nowrap;
+        align-items: stretch;
+        z-index: 1;
+    }
+
+    /* Each polaroid becomes a flush full-height panel */
+    .polaroid {
+        flex: 1;
+        width: auto;
+        padding: 0;
+        background: transparent;
+        box-shadow: none;
+        border-radius: 0;
+        transform: none !important;
+        transition: none;
+    }
+
+    .polaroid:hover {
+        transform: none !important;
+        box-shadow: none;
+    }
+
+    /* Images fill the full height of the panel */
+    .polaroid-image {
+        height: 100%;
+        width: 100%;
+        border-radius: 0;
+        box-shadow: none;
+    }
+
+    /* Caption hidden — replaced by the overlay copy below */
+    .polaroid-caption { display: none; }
+
+    /* Gradient: dark at top (for nav readability) and dark at bottom (for copy) */
+    .landing-hero::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background:
+            linear-gradient(to bottom,
+                rgba(10,26,16,0.72) 0%,
+                rgba(10,26,16,0.0) 35%,
+                rgba(10,26,16,0.0) 50%,
+                rgba(10,26,16,0.88) 78%,
+                rgba(10,26,16,1.0) 100%
+            );
+        z-index: 2;
+        pointer-events: none;
+    }
+
+    /* Thin colour-accent lines between the photo panels */
+    .polaroid-container::before,
+    .polaroid-container::after {
+        content: '';
+        position: absolute;
+        top: 0; bottom: 0;
+        width: 1px;
+        background: linear-gradient(to bottom,
+            transparent 0%,
+            rgba(144,238,144,0.4) 30%,
+            rgba(144,238,144,0.4) 70%,
+            transparent 100%);
+        z-index: 3;
+    }
+    .polaroid-container::before { left: calc(33.33% + 1px); }
+    .polaroid-container::after  { left: calc(66.66% + 1px); }
+
+    /* Copy card: floats over the bottom of the photo strip */
+    .landing-content {
+        position: relative;
+        z-index: 10;
         text-align: center;
+        max-width: 100%;
+        padding: 28px 24px 8px;
+        animation: slideUp 0.6s cubic-bezier(0.22, 1, 0.36, 1) 3.0s both;
+    }
+
+    .landing-eyebrow {
+        display: block;
+        font-size: 10px;
+        letter-spacing: 4px;
+        color: lightgreen;
+        margin-bottom: 10px;
+        opacity: 0.9;
+        text-transform: uppercase;
+    }
+
+    .landing-title {
+        font-size: 42px;
+        font-weight: 200;
+        letter-spacing: -1.5px;
+        color: #fff;
+        margin-bottom: 6px;
+        align-items: center;
+        line-height: 1.05;
+    }
+
+    .landing-subtitle {
+        font-size: 14px;
+        color: rgba(255,255,255,0.55);
+        font-style: italic;
+        margin-bottom: 24px;
+        letter-spacing: 1px;
+    }
+
+    .btn-signup {
+        padding: 15px 0;
+        font-size: 15px;
+        width: 100%;
+        justify-content: center;
+        border-radius: 14px;
+        background: linear-gradient(135deg, #90ee90, #3a7a3a);
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        font-weight: 700;
+        box-shadow: 0 0 30px rgba(144,238,144,0.35), 0 4px 20px rgba(0,0,0,0.4);
+    }
+
+    .btn-signup:hover {
+        transform: none;
+    }
+
+    /* Stats bar: sits right below the CTA */
+    .landing-stats {
+        margin-top: 22px;
+        padding-top: 18px;
+        border-top: 1px solid rgba(255,255,255,0.08);
+        justify-content: center;
+    }
+
+    .stat-number {
+        font-size: 22px;
+        font-weight: 700;
+    }
+
+    .stat-label {
+        font-size: 10px;
+        letter-spacing: 1.5px;
+    }
+
+    .stat-item { padding: 0 16px; }
+    .stat-item:first-child { padding-left: 0; }
+
+    /* ── Footer ── */
+    .landing-footer {
+        padding: 14px 20px;
+        flex-direction: row;
+        justify-content: space-between;
+        gap: 0;
+        border-top: 1px solid rgba(255,255,255,0.05);
+        background: rgba(10,26,16,1.0);
+    }
+
+    .footer-copy,
+    .footer-links,
+    .footer-links a {
+        font-size: 10px;
     }
 }
+
 
 /* Social Connections Styles */
 .social-connections-section {
