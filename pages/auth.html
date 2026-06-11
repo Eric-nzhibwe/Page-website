@@ -525,59 +525,142 @@
     <!-- Auth Container (Login/Signup Forms) -->
     <div class="auth-container" style="display: none;">
         <div class="auth-card">
+
+            <!-- Logo -->
             <div class="logo-section">
                 <div class="logo-container">
-                    <img src="../images/ARTX.jpg" alt="ART Logo" class="logo-image">
+                    <div class="logo-mark">
+                        <img src="../images/ARTX.jpg" alt="ARTX" class="logo-image">
+                        <div class="logo-ring" aria-hidden="true"></div>
+                    </div>
                     <div class="logo">ARTX</div>
                 </div>
                 <p class="tagline">Where Skill Creates Prestige</p>
             </div>
 
-            <!-- Login Form -->
-            <div id="loginForm" class="auth-form active">
-                <h2>Welcome Back</h2>
-                <form onsubmit="handleLogin(event)">
-                    <div class="input-group">
-                        <label>Email or Username</label>
-                        <input type="text" id="loginUsername" required placeholder="Enter your email or username">
-                    </div>
-                    <div class="input-group">
-                        <label>Password</label>
-                        <input type="password" id="loginPassword" required placeholder="Enter your password">
-                    </div>
-                    <button type="submit" class="btn-primary">Sign In</button>
-                </form>
-                <p class="switch-form">
-                    Don't have an account? <a href="#" onclick="switchToSignup()">Sign Up</a>
-                </p>
+            <!-- Tab switcher -->
+            <div class="auth-tabs" role="tablist">
+                <button class="auth-tab active" id="tabLogin"   role="tab" aria-selected="true"  onclick="switchToLogin()">Sign In</button>
+                <button class="auth-tab"         id="tabSignup" role="tab" aria-selected="false" onclick="switchToSignup()">Create Account</button>
+                <span class="auth-tab-slider" id="tabSlider" aria-hidden="true"></span>
             </div>
 
-            <!-- Signup Form -->
-            <div id="signupForm" class="auth-form">
-                <h2>Join ARTX</h2>
-                <form onsubmit="handleSignup(event)">
+            <!-- ── LOGIN FORM ── -->
+            <div id="loginForm" class="auth-form active" role="tabpanel">
+                <form onsubmit="handleLogin(event)" novalidate autocomplete="on">
+
                     <div class="input-group">
-                        <label>Username</label>
-                        <input type="text" id="signupUsername" required placeholder="Choose a username" minlength="3">
+                        <span class="input-icon"><i class="fas fa-user"></i></span>
+                        <input type="text" id="loginUsername" name="username"
+                               autocomplete="username"
+                               placeholder=" " required>
+                        <label for="loginUsername">Email or Username</label>
+                        <span class="input-focus-bar"></span>
                     </div>
+
                     <div class="input-group">
-                        <label>Email</label>
-                        <input type="email" id="signupEmail" required placeholder="Enter your email">
+                        <span class="input-icon"><i class="fas fa-lock"></i></span>
+                        <input type="password" id="loginPassword" name="password"
+                               autocomplete="current-password"
+                               placeholder=" " required>
+                        <label for="loginPassword">Password</label>
+                        <button type="button" class="input-eye" onclick="togglePassword('loginPassword', this)" aria-label="Show password" tabindex="-1">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        <span class="input-focus-bar"></span>
                     </div>
-                    <div class="input-group">
-                        <label>Password</label>
-                        <input type="password" id="signupPassword" required placeholder="Create a password" minlength="6">
+
+                    <div class="auth-options">
+                        <label class="remember-me">
+                            <input type="checkbox" id="rememberMe">
+                            <span class="custom-check"></span>
+                            Remember me
+                        </label>
+                        <a href="#" class="forgot-link" tabindex="0">Forgot password?</a>
                     </div>
-                    <div class="input-group">
-                        <label>Confirm Password</label>
-                        <input type="password" id="signupConfirmPassword" required placeholder="Confirm your password">
-                    </div>
-                    <button type="submit" class="btn-primary">Sign Up</button>
+
+                    <button type="submit" class="btn-primary btn-auth">
+                        <span class="btn-auth-text">Sign In</span>
+                        <span class="btn-auth-icon"><i class="fas fa-arrow-right"></i></span>
+                        <span class="btn-shimmer" aria-hidden="true"></span>
+                    </button>
+
                 </form>
-                <p class="switch-form">
-                    Already have an account? <a href="#" onclick="switchToLogin()">Login</a>
-                </p>
             </div>
+
+            <!-- ── SIGNUP FORM ── -->
+            <div id="signupForm" class="auth-form" role="tabpanel">
+                <form onsubmit="handleSignup(event)" novalidate autocomplete="off">
+
+                    <div class="input-group">
+                        <span class="input-icon"><i class="fas fa-at"></i></span>
+                        <input type="text" id="signupUsername" name="username"
+                               autocomplete="username"
+                               placeholder=" " required minlength="3">
+                        <label for="signupUsername">Username</label>
+                        <span class="input-focus-bar"></span>
+                    </div>
+
+                    <div class="input-group">
+                        <span class="input-icon"><i class="fas fa-envelope"></i></span>
+                        <input type="email" id="signupEmail" name="email"
+                               autocomplete="email"
+                               placeholder=" " required>
+                        <label for="signupEmail">Email Address</label>
+                        <span class="input-focus-bar"></span>
+                    </div>
+
+                    <div class="input-group">
+                        <span class="input-icon"><i class="fas fa-lock"></i></span>
+                        <input type="password" id="signupPassword" name="new-password"
+                               autocomplete="new-password"
+                               placeholder=" " required minlength="6"
+                               oninput="updateStrength(this.value)">
+                        <label for="signupPassword">Password</label>
+                        <button type="button" class="input-eye" onclick="togglePassword('signupPassword', this)" aria-label="Show password" tabindex="-1">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        <span class="input-focus-bar"></span>
+                    </div>
+
+                    <!-- Password strength meter -->
+                    <div class="strength-meter" aria-live="polite">
+                        <div class="strength-bars">
+                            <span class="sbar" id="sbar1"></span>
+                            <span class="sbar" id="sbar2"></span>
+                            <span class="sbar" id="sbar3"></span>
+                            <span class="sbar" id="sbar4"></span>
+                        </div>
+                        <span class="strength-label" id="strengthLabel">Strength</span>
+                    </div>
+
+                    <div class="input-group">
+                        <span class="input-icon"><i class="fas fa-shield-alt"></i></span>
+                        <input type="password" id="signupConfirmPassword" name="confirm-password"
+                               autocomplete="new-password"
+                               placeholder=" " required>
+                        <label for="signupConfirmPassword">Confirm Password</label>
+                        <button type="button" class="input-eye" onclick="togglePassword('signupConfirmPassword', this)" aria-label="Show password" tabindex="-1">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        <span class="input-focus-bar"></span>
+                    </div>
+
+                    <p class="terms-note">
+                        By creating an account you agree to our
+                        <a href="#" onclick="openLegalModal('terms'); return false;">Terms</a> and
+                        <a href="#" onclick="openLegalModal('privacy'); return false;">Privacy Policy</a>.
+                    </p>
+
+                    <button type="submit" class="btn-primary btn-auth">
+                        <span class="btn-auth-text">Create Account</span>
+                        <span class="btn-auth-icon"><i class="fas fa-arrow-right"></i></span>
+                        <span class="btn-shimmer" aria-hidden="true"></span>
+                    </button>
+
+                </form>
+            </div>
+
         </div>
 
             <div class="features-showcase">
@@ -869,7 +952,74 @@
         })();
         /* ── Steps stepper END ── */
 
-        /* ── Legal modals (Privacy / Terms) ── */
+        /* ── Password visibility toggle ── */
+        function togglePassword(fieldId, btn) {
+            const field = document.getElementById(fieldId);
+            const icon  = btn.querySelector('i');
+            const show  = field.type === 'password';
+            field.type  = show ? 'text' : 'password';
+            icon.classList.toggle('fa-eye',      !show);
+            icon.classList.toggle('fa-eye-slash', show);
+        }
+
+        /* ── Password strength meter ── */
+        function updateStrength(val) {
+            const bars   = [1,2,3,4].map(n => document.getElementById('sbar' + n));
+            const label  = document.getElementById('strengthLabel');
+            let score = 0;
+            if (val.length >= 6)                          score++;
+            if (val.length >= 10)                         score++;
+            if (/[A-Z]/.test(val) && /[a-z]/.test(val))  score++;
+            if (/[0-9]/.test(val) && /[^A-Za-z0-9]/.test(val)) score++;
+
+            const levels = ['', 'Weak', 'Fair', 'Good', 'Strong'];
+            const colors = ['', '#ef4444', '#f59e0b', '#3b82f6', '#22c55e'];
+            bars.forEach((bar, i) => {
+                bar.style.background = i < score ? colors[score] : 'rgba(255,255,255,0.1)';
+                bar.style.transform  = i < score ? 'scaleX(1)' : 'scaleX(0.3)';
+                bar.style.opacity    = i < score ? '1' : '0.3';
+            });
+            label.textContent  = val.length ? levels[score] || 'Weak' : 'Strength';
+            label.style.color  = val.length ? colors[score] : 'rgba(232,232,208,0.35)';
+        }
+
+        /* ── Tab slider positioning ── */
+        function positionTabSlider(tabId) {
+            const tab    = document.getElementById(tabId);
+            const slider = document.getElementById('tabSlider');
+            if (!tab || !slider) return;
+            slider.style.width  = tab.offsetWidth + 'px';
+            slider.style.left   = tab.offsetLeft  + 'px';
+        }
+
+        /* Override switchToLogin / switchToSignup to also move slider */
+        const _origSwitchLogin  = window.switchToLogin;
+        const _origSwitchSignup = window.switchToSignup;
+
+        window.switchToLogin = function() {
+            if (typeof _origSwitchLogin === 'function') _origSwitchLogin();
+            document.getElementById('tabLogin')?.classList.add('active');
+            document.getElementById('tabSignup')?.classList.remove('active');
+            document.getElementById('tabLogin')?.setAttribute('aria-selected','true');
+            document.getElementById('tabSignup')?.setAttribute('aria-selected','false');
+            positionTabSlider('tabLogin');
+        };
+
+        window.switchToSignup = function() {
+            if (typeof _origSwitchSignup === 'function') _origSwitchSignup();
+            document.getElementById('tabSignup')?.classList.add('active');
+            document.getElementById('tabLogin')?.classList.remove('active');
+            document.getElementById('tabSignup')?.setAttribute('aria-selected','true');
+            document.getElementById('tabLogin')?.setAttribute('aria-selected','false');
+            positionTabSlider('tabSignup');
+        };
+
+        /* Initial slider position */
+        window.addEventListener('load', () => positionTabSlider('tabLogin'));
+        window.addEventListener('resize', () => {
+            const active = document.querySelector('.auth-tab.active');
+            if (active) positionTabSlider(active.id);
+        });
         function openLegalModal(type) {
             const modal = document.getElementById(type === 'privacy' ? 'privacyModal' : 'termsModal');
             modal.classList.add('legal-modal--open');

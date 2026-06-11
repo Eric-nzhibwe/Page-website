@@ -395,132 +395,450 @@ body {
 }
 
 .auth-card {
-    background-color:#1a3a2e;
-    backdrop-filter: blur(10px);
-    border-radius: 20px;
-    padding: 40px;
-    border: 1px solid darkolivegreen;
+    background: linear-gradient(160deg, #132d1e 0%, #0e2018 100%);
+    backdrop-filter: blur(20px);
+    border-radius: 24px;
+    padding: 36px 32px 28px;
+    border: 1px solid rgba(144,238,144,0.1);
+    position: relative;
+    overflow: hidden;
+    box-shadow:
+        0 0 0 1px rgba(144,238,144,0.05) inset,
+        0 32px 80px rgba(0,0,0,0.5);
 }
 
+/* Card ambient glow */
+.auth-card::before {
+    content: '';
+    position: absolute;
+    top: -60px; right: -60px;
+    width: 220px; height: 220px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(144,238,144,0.07) 0%, transparent 70%);
+    pointer-events: none;
+}
+
+/* ── Logo section ── */
 .logo-section {
     text-align: center;
-    margin-bottom: 30px;
+    margin-bottom: 24px;
 }
 
 .logo-container {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 15px;
-    margin-bottom: 10px;
+    gap: 14px;
+    margin-bottom: 6px;
+}
+
+/* Logo mark: image + animated ring */
+.logo-mark {
+    position: relative;
+    width: 52px;
+    height: 52px;
+    flex-shrink: 0;
 }
 
 .logo-image {
-    width: 50px;
-    height: 50px;
+    width: 52px;
+    height: 52px;
     border-radius: 50%;
     object-fit: cover;
-    border: 2px solid #f5576c;
+    position: relative;
+    z-index: 1;
+    border: 2px solid rgba(144,238,144,0.3);
+}
+
+.logo-ring {
+    position: absolute;
+    inset: -5px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    background: conic-gradient(lightgreen 0deg, transparent 200deg, lightgreen 360deg) border-box;
+    -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: destination-out;
+    mask-composite: exclude;
+    animation: ringRotate 3s linear infinite;
+}
+
+@keyframes ringRotate {
+    to { transform: rotate(360deg); }
 }
 
 .logo {
-    font-size: 48px;
-    font-weight: bold;
-    background: linear-gradient(to left, #f093fb, #f5576c, #aaa, lightblue, lightgreen, orange);
+    font-size: 42px;
+    font-weight: 800;
+    background: linear-gradient(135deg, #f093fb, #f5576c, lightgreen, lightblue, #ffd700);
     background-clip: text;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
+    letter-spacing: -1px;
+    line-height: 1;
 }
 
 .tagline {
-    color: #aaa;
-    font-size: 14px;
+    color: rgba(232,232,208,0.4);
+    font-size: 12px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-top: 2px;
 }
 
+/* ── Tab switcher ── */
+.auth-tabs {
+    display: flex;
+    position: relative;
+    background: rgba(0,0,0,0.25);
+    border-radius: 12px;
+    padding: 4px;
+    margin-bottom: 28px;
+    border: 1px solid rgba(255,255,255,0.06);
+}
+
+.auth-tab {
+    flex: 1;
+    padding: 10px 0;
+    border: none;
+    background: transparent;
+    color: rgba(232,232,208,0.45);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    border-radius: 9px;
+    position: relative;
+    z-index: 1;
+    transition: color 0.3s;
+    letter-spacing: 0.3px;
+    font-family: inherit;
+}
+
+.auth-tab.active {
+    color: #e8e8d0;
+}
+
+.auth-tab-slider {
+    position: absolute;
+    top: 4px;
+    bottom: 4px;
+    left: 4px;
+    border-radius: 9px;
+    background: linear-gradient(135deg, rgba(144,238,144,0.18), rgba(144,238,144,0.08));
+    border: 1px solid rgba(144,238,144,0.2);
+    transition: left 0.3s cubic-bezier(0.4,0,0.2,1),
+                width 0.3s cubic-bezier(0.4,0,0.2,1);
+    box-shadow: 0 2px 12px rgba(144,238,144,0.1);
+}
+
+/* ── Auth forms ── */
 .auth-form {
     display: none;
 }
 
 .auth-form.active {
     display: block;
-    animation: fadeIn 0.3s;
+    animation: authFormIn 0.35s cubic-bezier(0.22,1,0.36,1);
 }
 
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
+@keyframes authFormIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
 }
 
-.auth-form h2 {
-    margin-bottom: 25px;
-    text-align: center;
-}
-
+/* ── Floating label input group ── */
 .input-group {
+    position: relative;
     margin-bottom: 20px;
 }
 
-.input-group label {
-    display: block;
-    margin-bottom: 8px;
-    color: #aaa;
+/* Left icon */
+.input-icon {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: rgba(232,232,208,0.3);
     font-size: 14px;
+    pointer-events: none;
+    transition: color 0.25s;
+    z-index: 2;
 }
 
+/* The input itself */
 .input-group input {
     width: 100%;
-    padding: 12px 15px;
-    background: white;
-    border: 2px solid darkolivegreen;
-    border-radius: 8px;
-    color: black;
-    font-size: 16px;
-    transition: all 0.3s;
-}
-
-.input-group input:focus {
+    padding: 18px 44px 6px 42px; /* top padding for floating label, left for icon */
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px;
+    color: #e8e8d0;
+    font-size: 15px;
+    font-family: inherit;
+    transition: border-color 0.25s, background 0.25s, box-shadow 0.25s;
     outline: none;
-    border-color: #aaa;
-    background: rgba(255, 255, 255, 0.15);
+    position: relative;
+    z-index: 1;
+    -webkit-autofill-override: 1;
 }
 
+/* Override browser autofill background */
+.input-group input:-webkit-autofill,
+.input-group input:-webkit-autofill:focus {
+    -webkit-box-shadow: 0 0 0 100px #132d1e inset !important;
+    -webkit-text-fill-color: #e8e8d0 !important;
+    transition: background-color 9999s ease-in-out 0s;
+}
+
+/* Floating label */
+.input-group label {
+    position: absolute;
+    left: 42px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: rgba(232,232,208,0.4);
+    font-size: 14px;
+    pointer-events: none;
+    transition: all 0.22s cubic-bezier(0.4,0,0.2,1);
+    z-index: 2;
+    background: transparent;
+    margin: 0;
+    display: block;
+}
+
+/* Float the label when input has content or is focused */
+.input-group input:focus ~ label,
+.input-group input:not(:placeholder-shown) ~ label {
+    top: 10px;
+    transform: translateY(0) scale(0.82);
+    transform-origin: left;
+    color: lightgreen;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+}
+
+/* Focus styles */
+.input-group input:focus {
+    border-color: rgba(144,238,144,0.4);
+    background: rgba(144,238,144,0.05);
+    box-shadow: 0 0 0 3px rgba(144,238,144,0.08);
+}
+
+.input-group input:focus ~ .input-icon,
+.input-group input:not(:placeholder-shown) ~ .input-icon {
+    color: rgba(144,238,144,0.7);
+}
+
+/* Animated underline bar */
+.input-focus-bar {
+    position: absolute;
+    bottom: 0;
+    left: 12px;
+    right: 12px;
+    height: 2px;
+    border-radius: 0 0 2px 2px;
+    background: linear-gradient(to right, lightgreen, #3a7a3a);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
+    pointer-events: none;
+}
+
+.input-group input:focus ~ .input-focus-bar {
+    transform: scaleX(1);
+}
+
+/* Eye toggle button */
+.input-eye {
+    position: absolute;
+    right: 13px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: transparent;
+    border: none;
+    color: rgba(232,232,208,0.3);
+    cursor: pointer;
+    font-size: 14px;
+    padding: 4px;
+    z-index: 3;
+    transition: color 0.2s;
+    line-height: 1;
+}
+
+.input-eye:hover { color: rgba(232,232,208,0.7); }
+
+/* ── Password strength meter ── */
+.strength-meter {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: -12px;
+    margin-bottom: 16px;
+    padding: 0 2px;
+}
+
+.strength-bars {
+    display: flex;
+    gap: 4px;
+    flex: 1;
+}
+
+.sbar {
+    flex: 1;
+    height: 3px;
+    border-radius: 2px;
+    background: rgba(255,255,255,0.1);
+    transition: background 0.3s, transform 0.3s, opacity 0.3s;
+    transform-origin: left;
+}
+
+.strength-label {
+    font-size: 11px;
+    color: rgba(232,232,208,0.35);
+    letter-spacing: 0.5px;
+    min-width: 42px;
+    text-align: right;
+    font-weight: 600;
+    transition: color 0.3s;
+}
+
+/* ── Remember me + Forgot ── */
+.auth-options {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: -6px 0 20px;
+}
+
+.remember-me {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    color: rgba(232,232,208,0.55);
+    user-select: none;
+}
+
+.remember-me input[type="checkbox"] {
+    display: none;
+}
+
+.custom-check {
+    width: 16px;
+    height: 16px;
+    border: 1.5px solid rgba(255,255,255,0.2);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.remember-me input:checked ~ .custom-check {
+    background: lightgreen;
+    border-color: lightgreen;
+    box-shadow: 0 0 6px rgba(144,238,144,0.4);
+}
+
+.remember-me input:checked ~ .custom-check::after {
+    content: '';
+    width: 5px;
+    height: 8px;
+    border: 2px solid #0e2018;
+    border-top: none;
+    border-left: none;
+    transform: rotate(45deg) translateY(-1px);
+}
+
+.forgot-link {
+    font-size: 12px;
+    color: rgba(144,238,144,0.6);
+    text-decoration: none;
+    transition: color 0.2s;
+    font-weight: 500;
+}
+
+.forgot-link:hover { color: lightgreen; }
+
+/* ── Primary button with shimmer ── */
 .btn-primary {
     width: 100%;
     padding: 14px;
-    background: linear-gradient(to right, lightgreen, darkolivegreen);
-    color: white;
+    background: linear-gradient(135deg, #4ade80, #16a34a);
+    color: #0a1a10;
     border: none;
-    border-radius: 8px;
-    font-size: 16px;
-    font-weight: bold;
+    border-radius: 12px;
+    font-size: 15px;
+    font-weight: 700;
     cursor: pointer;
-    transition: all 0.3s;
-    margin-top: 10px;
-    box-shadow: 0 4px 15px rgba(144, 238, 144, 0.3);
+    transition: transform 0.2s, box-shadow 0.2s;
+    margin-top: 4px;
+    box-shadow: 0 4px 20px rgba(74,222,128,0.3);
+    letter-spacing: 0.3px;
+    font-family: inherit;
+}
+
+.btn-auth {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    position: relative;
+    overflow: hidden;
+}
+
+.btn-auth-icon {
+    display: inline-flex;
+    transition: transform 0.25s;
+}
+
+.btn-auth:hover .btn-auth-icon { transform: translateX(4px); }
+
+/* Shimmer sweep */
+.btn-shimmer {
+    position: absolute;
+    top: 0; left: -100%;
+    width: 60%;
+    height: 100%;
+    background: linear-gradient(120deg, transparent, rgba(255,255,255,0.25), transparent);
+    transform: skewX(-20deg);
+    animation: shimmerSweep 2.8s ease-in-out infinite;
+    pointer-events: none;
+}
+
+@keyframes shimmerSweep {
+    0%   { left: -100%; }
+    40%  { left: 160%; }
+    100% { left: 160%; }
 }
 
 .btn-primary:hover {
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(144, 238, 144, 0.5);
+    box-shadow: 0 8px 30px rgba(74,222,128,0.45);
 }
 
-.switch-form {
+.btn-primary:active { transform: translateY(0); }
+
+/* ── Terms note ── */
+.terms-note {
+    font-size: 12px;
+    color: rgba(232,232,208,0.4);
     text-align: center;
-    margin-top: 20px;
-    color: #aaa;
-    font-size: 14px;
+    margin: -4px 0 16px;
+    line-height: 1.6;
 }
 
-.switch-form a {
-    color: lightgreen;
+.terms-note a {
+    color: rgba(144,238,144,0.7);
     text-decoration: none;
-    font-weight: bold;
+    transition: color 0.2s;
 }
 
-.switch-form a:hover {
-    text-decoration: underline;
-    color: #90ee90;
-}
+.terms-note a:hover { color: lightgreen; }
+
+/* Remove the old switch-form (replaced by tabs) */
+.switch-form { display: none; }
 
 /* ==========================================================
    3D FLIP CARD STEPPER
@@ -872,7 +1190,7 @@ body {
     }
     
     .auth-card {
-        padding: 30px 20px;
+        padding: 28px 20px 24px;
         order: 1;
     }
     
@@ -952,16 +1270,17 @@ body {
 
     /* ── Auth form page ── */
     body { padding: 10px; }
-    .auth-card { padding: 25px 15px; }
-    .logo { font-size: 32px; }
-    .logo-image { width: 35px; height: 35px; }
-    .tagline { font-size: 12px; }
-    .auth-form h2 { font-size: 20px; margin-bottom: 20px; }
-    .input-group { margin-bottom: 15px; }
-    .input-group label { font-size: 13px; }
-    .input-group input { padding: 10px 12px; font-size: 14px; }
-    .btn-primary { padding: 12px; font-size: 14px; }
-    .switch-form { font-size: 13px; }
+    .auth-card { padding: 22px 16px 20px; }
+    .logo { font-size: 30px; }
+    .logo-mark { width: 44px; height: 44px; }
+    .logo-image { width: 44px; height: 44px; }
+    .tagline { font-size: 11px; }
+    .auth-tab { font-size: 13px; padding: 9px 0; }
+    .input-group { margin-bottom: 16px; }
+    .input-group input { font-size: 15px; padding: 17px 40px 5px 40px; }
+    .input-group label { font-size: 13px; left: 40px; }
+    .btn-primary { padding: 13px; font-size: 14px; }
+    .auth-options { flex-direction: column; align-items: flex-start; gap: 10px; margin-bottom: 16px; }
     .splash-logo { font-size: 60px; }
     .splash-screen { animation: fadeOut 0.5s ease-in-out 1.5s forwards; }
     .auth-container { animation: fadeInContent 0.5s ease-in-out 2s forwards; }
