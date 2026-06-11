@@ -99,9 +99,9 @@ body {
 }
 
 .polaroid {
-    width: 240px;
+    width: 320px;
     background: #fff;
-    padding: 14px 14px 52px 14px;
+    padding: 16px 16px 64px 16px;
     box-shadow:
         0 2px 4px rgba(0,0,0,0.15),
         0 10px 30px rgba(0,0,0,0.45),
@@ -144,12 +144,11 @@ body {
 
 .polaroid-image {
     width: 100%;
-    height: 260px;
+    height: 360px;
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
     display: block;
-    /* Slight inner shadow for depth */
     box-shadow: inset 0 0 12px rgba(0,0,0,0.15);
 }
 
@@ -520,12 +519,12 @@ body {
     }
     
     .polaroid {
-        width: 180px;
-        padding: 10px 10px 42px 10px;
+        width: 220px;
+        padding: 12px 12px 50px 12px;
     }
 
     .polaroid-image {
-        height: 190px;
+        height: 260px;
     }
     
     .btn-signup {
@@ -633,12 +632,12 @@ body {
     }
     
     .polaroid {
-        width: 120px;
-        padding: 8px 8px 34px 8px;
+        width: 150px;
+        padding: 8px 8px 38px 8px;
     }
 
     .polaroid-image {
-        height: 140px;
+        height: 180px;
     }
     
     .btn-signup {
