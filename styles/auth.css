@@ -87,6 +87,7 @@ body {
     opacity: 0;
     animation: fadeInContent 0.5s ease-in-out 2.5s forwards;
     z-index: 9998;
+    overflow: hidden;
 }
 
 .polaroid-container {
@@ -513,18 +514,26 @@ body {
         margin-bottom: 40px;
     }
     
+    /* ── Polaroids: tablet ── */
     .polaroid-container {
-        gap: 16px;
+        gap: 14px;
         margin-bottom: 40px;
+        flex-wrap: nowrap;       /* keep the trio in one row */
+        align-items: flex-end;
     }
-    
+
     .polaroid {
-        width: 220px;
-        padding: 12px 12px 50px 12px;
+        width: 28vw;             /* three cards + gaps fit comfortably */
+        padding: 10px 10px 46px 10px;
+        flex-shrink: 0;
     }
 
     .polaroid-image {
-        height: 260px;
+        height: 22vw;
+    }
+
+    .polaroid-caption {
+        font-size: 11px;
     }
     
     .btn-signup {
@@ -625,20 +634,36 @@ body {
         font-size: 16px;
         margin-bottom: 30px;
     }
-    
+
+    /* ── Polaroids: mobile ── */
     .polaroid-container {
-        gap: 10px;
-        margin-bottom: 30px;
+        gap: 6px;
+        margin-bottom: 28px;
+        flex-wrap: nowrap;       /* force single row — left / mid / right */
+        align-items: flex-end;
+        padding: 0 4px;
     }
-    
+
     .polaroid {
-        width: 150px;
-        padding: 8px 8px 38px 8px;
+        width: 29vw;             /* ~87vw total for 3 cards, ~18vw for gaps */
+        padding: 6px 6px 34px 6px;
+        flex-shrink: 0;
     }
 
     .polaroid-image {
-        height: 180px;
+        height: 36vw;            /* tall enough to show the photo clearly */
     }
+
+    .polaroid-caption {
+        font-size: 9px;
+        letter-spacing: 0.2px;
+        padding-top: 8px;
+    }
+
+    /* tighten tilt angles so rotated edges don't clip off-screen */
+    .polaroid-1 { transform: rotate(-5deg) translateY(4px); }
+    .polaroid-2 { transform: rotate(2deg)  translateY(-3px); }
+    .polaroid-3 { transform: rotate(-3deg) translateY(5px); }
     
     .btn-signup {
         padding: 14px 40px;
