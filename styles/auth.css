@@ -127,7 +127,7 @@ body {
 .polaroid-image {
     width: 100%;
     height: 100%;
-    background-image: url('');
+    background-image: url('../images/artx-left.jpg'), url('../images/art-middle.jpg'), url('../images/artx-right.jpg');
     background-size: cover;
     background-position: center;
 }
