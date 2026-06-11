@@ -523,178 +523,297 @@ body {
 }
 
 /* ==========================================================
-   STEPS STEPPER (replaces features-showcase content)
+   3D FLIP CARD STEPPER
    ========================================================== */
 
 .features-showcase {
-    background: rgba(255, 255, 255, 0.03);
-    border-radius: 20px;
+    background: linear-gradient(145deg, rgba(15,36,25,0.95), rgba(10,26,16,0.98));
+    border-radius: 24px;
     padding: 32px 28px 24px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(144,238,144,0.12);
     display: flex;
     flex-direction: column;
     gap: 0;
-    min-height: 320px;
+    min-height: 380px;
     position: relative;
     overflow: hidden;
+    box-shadow:
+        0 0 0 1px rgba(144,238,144,0.06) inset,
+        0 24px 60px rgba(0,0,0,0.4);
 }
 
-/* Header row */
+/* Ambient glow orb */
+.showcase-glow {
+    position: absolute;
+    width: 300px;
+    height: 300px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(144,238,144,0.08) 0%, transparent 70%);
+    top: -80px;
+    right: -80px;
+    pointer-events: none;
+    animation: glowPulse 4s ease-in-out infinite;
+}
+
+@keyframes glowPulse {
+    0%, 100% { opacity: 0.6; transform: scale(1);    }
+    50%       { opacity: 1.0; transform: scale(1.15); }
+}
+
+/* ── Header ── */
 .steps-header {
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    margin-bottom: 28px;
+    align-items: flex-start;
+    margin-bottom: 26px;
+    position: relative;
+    z-index: 2;
 }
 
-.steps-label {
-    font-size: 11px;
+.steps-label-group {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.steps-eyebrow {
+    font-size: 10px;
     font-weight: 700;
-    letter-spacing: 3px;
+    letter-spacing: 3.5px;
     text-transform: uppercase;
     color: lightgreen;
-    opacity: 0.85;
+    opacity: 0.7;
 }
 
-.steps-counter {
-    font-size: 12px;
-    color: rgba(232,232,208,0.35);
-    letter-spacing: 1px;
-    font-variant-numeric: tabular-nums;
-}
-
-#stepsCurrent {
-    color: rgba(232,232,208,0.7);
+.steps-title {
+    font-size: 22px;
     font-weight: 700;
-    transition: all 0.2s;
+    color: #e8e8d0;
+    letter-spacing: -0.5px;
 }
 
-/* Track: holds all cards, clips overflow */
-.steps-track {
+/* SVG progress ring */
+.steps-progress-ring {
+    position: relative;
+    width: 44px;
+    height: 44px;
+    flex-shrink: 0;
+}
+
+.steps-progress-ring svg { transform: rotate(-90deg); }
+
+.ring-bg {
+    fill: none;
+    stroke: rgba(255,255,255,0.07);
+    stroke-width: 3;
+}
+
+.ring-fill {
+    fill: none;
+    stroke: lightgreen;
+    stroke-width: 3;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 0.6s cubic-bezier(0.4,0,0.2,1);
+    filter: drop-shadow(0 0 4px rgba(144,238,144,0.6));
+}
+
+.ring-label {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 800;
+    color: lightgreen;
+    letter-spacing: -0.5px;
+}
+
+/* ── 3D Scene ── */
+.steps-scene {
     flex: 1;
     position: relative;
-    overflow: hidden;
-    min-height: 200px;
+    perspective: 900px;         /* THE key property for 3D depth */
+    perspective-origin: 50% 40%;
+    min-height: 185px;
+    margin-bottom: 20px;
 }
 
-/* Individual step card */
-.step-card {
+/* Each flip card sits in the scene */
+.flip-card {
     position: absolute;
     inset: 0;
     display: none;
-    flex-direction: column;
-    gap: 0;
+    cursor: default;
 }
 
-.step-card.active { display: flex; }
+.flip-card.active { display: block; }
 
-.step-card-inner {
+/* The inner wrapper rotates in 3D space */
+.flip-card-inner {
+    width: 100%;
+    height: 100%;
+    transform-style: preserve-3d;  /* children rendered in 3D */
+    transform: rotateY(0deg);
+    will-change: transform;
+}
+
+/* Both faces share positioning */
+.flip-card-front,
+.flip-card-back {
+    position: absolute;
+    inset: 0;
+    backface-visibility: hidden;   /* hide when facing away */
+    -webkit-backface-visibility: hidden;
+    border-radius: 18px;
+    padding: 22px 20px;
     display: flex;
     flex-direction: column;
-    height: 100%;
 }
 
-.step-card-front {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    height: 100%;
+/* BACK face — shown at start (viewer sees it before flip) */
+.flip-card-back {
+    background: linear-gradient(135deg, #1a4a2e, #0f2419);
+    border: 1px solid rgba(144,238,144,0.2);
+    transform: rotateY(180deg);    /* starts facing viewer when inner = -180 */
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
 }
 
-/* Big step number */
-.step-number-badge {
-    font-size: 56px;
-    font-weight: 800;
+.flip-back-number {
+    font-size: 72px;
+    font-weight: 900;
+    letter-spacing: -4px;
     line-height: 1;
-    background: linear-gradient(135deg, rgba(144,238,144,0.25), rgba(144,238,144,0.05));
+    background: linear-gradient(135deg, lightgreen, #3a7a3a);
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
-    letter-spacing: -2px;
-    user-select: none;
+    filter: drop-shadow(0 0 20px rgba(144,238,144,0.4));
 }
 
-.step-body {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-
-.step-icon {
-    font-size: 28px;
-    color: lightgreen;
-    opacity: 0.9;
-}
-
-.step-card h4 {
-    font-size: 20px;
+.flip-back-label {
+    font-size: 11px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: rgba(144,238,144,0.5);
     font-weight: 600;
+}
+
+/* FRONT face — the content */
+.flip-card-front {
+    background: linear-gradient(145deg, rgba(26,58,46,0.7), rgba(15,36,25,0.9));
+    border: 1px solid rgba(255,255,255,0.08);
+    gap: 12px;
+    justify-content: center;
+}
+
+.flip-front-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 4px;
+}
+
+.flip-front-num {
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 2px;
+    color: rgba(144,238,144,0.4);
+}
+
+.flip-front-icon {
+    font-size: 26px;
+    color: lightgreen;
+    filter: drop-shadow(0 0 8px rgba(144,238,144,0.5));
+}
+
+.flip-card-front h4 {
+    font-size: 19px;
+    font-weight: 700;
     color: #e8e8d0;
     line-height: 1.2;
     margin: 0;
 }
 
-.step-card p {
-    font-size: 14px;
+.flip-card-front p {
+    font-size: 13.5px;
     color: rgba(232,232,208,0.6);
     line-height: 1.65;
     margin: 0;
 }
 
-/* ── Flip animations ── */
-/* Card flipping out to the left (going forward) */
-@keyframes flipOutLeft {
-    0%   { opacity: 1; transform: translateX(0)     rotateY(0deg);    }
-    100% { opacity: 0; transform: translateX(-40px) rotateY(-25deg);  }
-}
-/* Card flipping out to the right (going backward) */
-@keyframes flipOutRight {
-    0%   { opacity: 1; transform: translateX(0)    rotateY(0deg);   }
-    100% { opacity: 0; transform: translateX(40px) rotateY(25deg);  }
-}
-/* Card flipping in from right (going forward) */
-@keyframes flipIn {
-    0%   { opacity: 0; transform: translateX(40px) rotateY(25deg);  }
-    100% { opacity: 1; transform: translateX(0)    rotateY(0deg);   }
-}
-
-.step-card.flip-out-left  { animation: flipOutLeft  0.36s cubic-bezier(0.4,0,1,1) forwards; }
-.step-card.flip-out-right { animation: flipOutRight 0.36s cubic-bezier(0.4,0,1,1) forwards; }
-
-/* Pre-position: card waiting off-screen before entering */
-.step-card.pre-enter-right { transform: translateX(40px) rotateY(25deg); opacity: 0; }
-.step-card.pre-enter-left  { transform: translateX(-40px) rotateY(-25deg); opacity: 0; }
-
-.step-card.flip-in { animation: flipIn 0.42s cubic-bezier(0,0,0.2,1) forwards; }
-
-/* ── Progress dots ── */
-.steps-dots {
+/* ── Timeline ── */
+.steps-timeline {
     display: flex;
-    justify-content: center;
-    gap: 8px;
-    margin-top: 20px;
+    align-items: center;
+    gap: 0;
+    margin-bottom: 16px;
+    position: relative;
+    z-index: 2;
 }
 
-.step-dot {
-    width: 6px;
-    height: 6px;
+.stl-dot {
+    width: 28px;
+    height: 28px;
     border-radius: 50%;
-    background: rgba(255,255,255,0.18);
-    border: none;
+    border: 2px solid rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.04);
     cursor: pointer;
     padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: border-color 0.3s, background 0.3s, transform 0.25s;
+    position: relative;
+    z-index: 1;
+}
+
+.stl-dot-inner {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.2);
     transition: all 0.3s;
 }
 
-.step-dot.active {
-    background: lightgreen;
-    width: 22px;
-    border-radius: 3px;
-    box-shadow: 0 0 8px rgba(144,238,144,0.5);
+.stl-dot.active {
+    border-color: lightgreen;
+    background: rgba(144,238,144,0.12);
+    transform: scale(1.15);
+    box-shadow: 0 0 12px rgba(144,238,144,0.35);
 }
 
-.step-dot:hover:not(.active) {
-    background: rgba(255,255,255,0.35);
+.stl-dot.active .stl-dot-inner {
+    background: lightgreen;
+    box-shadow: 0 0 6px rgba(144,238,144,0.8);
+}
+
+.stl-dot.complete {
+    border-color: rgba(144,238,144,0.5);
+    background: rgba(144,238,144,0.08);
+}
+
+.stl-dot.complete .stl-dot-inner {
+    background: rgba(144,238,144,0.5);
+}
+
+.stl-line {
+    flex: 1;
+    height: 2px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 1px;
+    overflow: hidden;
+}
+
+.stl-line-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(to right, rgba(144,238,144,0.5), rgba(144,238,144,0.2));
+    border-radius: 1px;
+    transition: width 0.6s cubic-bezier(0.4,0,0.2,1);
 }
 
 /* ── Prev / Next ── */
@@ -702,52 +821,49 @@ body {
     display: flex;
     justify-content: flex-end;
     gap: 8px;
-    margin-top: 16px;
+    position: relative;
+    z-index: 2;
 }
 
 .steps-nav-btn {
-    width: 34px;
-    height: 34px;
+    width: 36px;
+    height: 36px;
     border-radius: 50%;
-    border: 1px solid rgba(255,255,255,0.12);
-    background: rgba(255,255,255,0.05);
-    color: rgba(232,232,208,0.6);
+    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.04);
+    color: rgba(232,232,208,0.5);
     cursor: pointer;
     font-size: 13px;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.2s;
+    transition: all 0.22s;
 }
 
 .steps-nav-btn:hover {
-    background: rgba(255,255,255,0.1);
-    border-color: rgba(255,255,255,0.25);
-    color: #e8e8d0;
+    background: rgba(144,238,144,0.12);
+    border-color: rgba(144,238,144,0.35);
+    color: lightgreen;
+    transform: scale(1.08);
+    box-shadow: 0 0 10px rgba(144,238,144,0.2);
 }
 
-/* Mobile adjustments */
+/* Mobile */
 @media (max-width: 768px) {
-    .features-showcase {
-        padding: 24px 20px 18px;
-        min-height: 280px;
-    }
-    .step-number-badge { font-size: 42px; }
-    .step-card h4      { font-size: 18px; }
+    .features-showcase { padding: 24px 20px 18px; min-height: 340px; }
+    .steps-title       { font-size: 18px; }
+    .flip-back-number  { font-size: 56px; }
+    .flip-card-front h4 { font-size: 17px; }
 }
 
 @media (max-width: 480px) {
-    .features-showcase {
-        padding: 20px 16px 14px;
-        min-height: 260px;
-    }
-    .step-number-badge { font-size: 36px; }
-    .step-card h4      { font-size: 16px; }
-    .step-card p       { font-size: 13px; }
-    .step-icon         { font-size: 22px; }
+    .features-showcase { padding: 20px 16px 14px; min-height: 300px; }
+    .steps-title       { font-size: 16px; }
+    .flip-back-number  { font-size: 48px; }
+    .flip-card-front h4 { font-size: 15px; }
+    .flip-card-front p  { font-size: 13px; }
+    .flip-front-icon   { font-size: 22px; }
 }
-
-
 
 @media (max-width: 768px) {
     .auth-container {
