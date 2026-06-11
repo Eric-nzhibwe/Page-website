@@ -100,7 +100,7 @@ body {
 .polaroid {
     width: 180px;
     height: 220px;
-    background: #f5f5dc;
+    background: none;
     padding: 15px 15px 40px 15px;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
     transform: rotate(-5deg);
