@@ -7,515 +7,385 @@
     <link rel="icon" type="image/jpeg" href="../images/ARTX.jpg">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../styles/icon-nav.css">
     <link rel="stylesheet" href="../styles/user.css">
 </head>
 <body>
 
-<!-- ══════════════ ANIMATED BACKGROUND ══════════════ -->
-<canvas id="bgCanvas"></canvas>
-<div class="bg-mesh"></div>
-
-<!-- ══════════════ NAVBAR ══════════════ -->
-<header class="artx-nav">
-    <div class="nav-logo" onclick="window.location.href='../index.html'">
-        <span class="logo-fire"><i class="fas fa-fire"></i></span>
-        <span class="logo-text">ARTX</span>
+<!-- ═══════════════════════ NAVBAR ═══════════════════════ -->
+<header class="p-nav">
+    <div class="p-nav-left">
+        <div class="p-logo" onclick="window.location.href='../index.html'">
+            <i class="fas fa-fire"></i>ARTX
+        </div>
+        <div class="p-search">
+            <i class="fas fa-search"></i>
+            <input type="text" placeholder="Search ARTX…" id="headerSearch">
+        </div>
     </div>
 
-    <nav class="nav-icons">
-        <button class="nib" onclick="window.location.href='../index.html'" title="Home">
-            <i class="fas fa-home"></i>
-        </button>
-        <button class="nib" onclick="window.location.href='challenges.html'" title="Challenges">
-            <i class="fas fa-trophy"></i>
-        </button>
-        <button class="nib" onclick="window.location.href='community.html'" title="Community">
-            <i class="fas fa-users"></i>
-        </button>
-        <button class="nib active" title="Profile">
-            <i class="fas fa-user-circle"></i>
-            <span class="nib-active-bar"></span>
-        </button>
+    <nav class="p-nav-center">
+        <a class="p-nib" href="../index.html" title="Home"><i class="fas fa-home"></i></a>
+        <a class="p-nib" href="challenges.html" title="Challenges"><i class="fas fa-trophy"></i></a>
+        <a class="p-nib" href="community.html" title="Community"><i class="fas fa-users"></i></a>
+        <a class="p-nib active" href="user.html" title="Profile"><i class="fas fa-user-circle"></i></a>
     </nav>
 
-    <div class="nav-right">
-        <button class="nav-pill-btn" onclick="window.location.href='wallet.html'">
+    <div class="p-nav-right">
+        <button class="p-nav-btn" onclick="window.location.href='wallet.html'" title="Wallet">
             <i class="fas fa-wallet"></i>
-            <span id="navWallet">K0</span>
         </button>
-        <button class="nav-icon-circle" onclick="toggleQuickMenu()" id="qmTrigger">
+        <button class="p-nav-btn" id="qmTrigger" onclick="toggleQM()" title="Menu">
             <i class="fas fa-th-large"></i>
         </button>
-        <div class="nav-avatar" onclick="toggleUserMenu()" id="umTrigger" title="Account">
-            <div class="nav-avatar-img" id="navAvatarImg"><i class="fas fa-user"></i></div>
-            <div class="nav-avatar-ring"></div>
+        <div class="p-avatar-wrap" id="umTrigger" onclick="toggleUM()">
+            <div class="p-avatar-inner" id="navAvatar"><i class="fas fa-user"></i></div>
         </div>
     </div>
 
     <!-- Quick Menu -->
-    <div class="qm-panel" id="quickMenuDropdown">
-        <div class="qm-title">Quick Access</div>
-        <div class="qm-grid">
-            <a href="../index.html" class="qm-item"><i class="fas fa-chart-line"></i><span>Dashboard</span></a>
-            <a href="challenges.html" class="qm-item"><i class="fas fa-trophy"></i><span>Challenges</span></a>
-            <a href="community.html" class="qm-item"><i class="fas fa-users"></i><span>Community</span></a>
-            <a href="wallet.html" class="qm-item"><i class="fas fa-wallet"></i><span>Wallet</span></a>
-            <a href="chatbot.html" class="qm-item"><i class="fas fa-robot"></i><span>AI Bot</span></a>
-            <a href="messenger.html" class="qm-item"><i class="fas fa-comments"></i><span>Messenger</span></a>
+    <div class="p-dropdown" id="quickMenu">
+        <p class="p-dd-label">Quick Access</p>
+        <div class="p-dd-grid">
+            <a href="../index.html"><i class="fas fa-chart-line"></i><span>Dashboard</span></a>
+            <a href="challenges.html"><i class="fas fa-trophy"></i><span>Challenges</span></a>
+            <a href="community.html"><i class="fas fa-users"></i><span>Community</span></a>
+            <a href="wallet.html"><i class="fas fa-wallet"></i><span>Wallet</span></a>
+            <a href="chatbot.html"><i class="fas fa-robot"></i><span>AI Bot</span></a>
+            <a href="messenger.html"><i class="fas fa-comments"></i><span>Messenger</span></a>
         </div>
     </div>
 
-    <!-- User Dropdown -->
-    <div class="um-panel" id="userMenuDropdown">
-        <div class="um-header">
-            <div class="um-avatar"><i class="fas fa-user"></i></div>
+    <!-- User Menu -->
+    <div class="p-dropdown p-usermenu" id="userMenu">
+        <div class="p-um-top">
+            <div class="p-um-avatar" id="umAvatar"><i class="fas fa-user"></i></div>
             <div>
-                <div class="um-name" id="menuUsername">Player</div>
-                <div class="um-tier" id="menuTier">Bronze Tier</div>
+                <div class="p-um-name" id="menuUsername">—</div>
+                <div class="p-um-sub" id="menuTier">Bronze Tier</div>
             </div>
         </div>
-        <div class="um-stats">
-            <div class="um-stat"><i class="fas fa-star" style="color:#ffd700"></i><span id="menuPrestige">0</span><small>Prestige</small></div>
-            <div class="um-stat"><i class="fas fa-fire" style="color:#f5576c"></i><span id="menuStreak">0</span><small>Streak</small></div>
-            <div class="um-stat"><i class="fas fa-coins" style="color:#22c1c3"></i><span id="menuWallet2">K0</span><small>Wallet</small></div>
+        <div class="p-um-stats">
+            <div class="p-um-stat"><i class="fas fa-star"></i><span id="menuPrestige">0</span><small>Prestige</small></div>
+            <div class="p-um-stat"><i class="fas fa-fire"></i><span id="menuStreak">0</span><small>Streak</small></div>
+            <div class="p-um-stat"><i class="fas fa-coins"></i><span id="menuEarnings">K0</span><small>Earned</small></div>
         </div>
-        <div class="um-links">
+        <div class="p-um-links">
             <a href="user.html"><i class="fas fa-user"></i>My Profile</a>
             <a href="wallet.html"><i class="fas fa-wallet"></i>Wallet</a>
             <a href="chatbot.html"><i class="fas fa-robot"></i>AI Assistant</a>
-            <a href="#" onclick="logout();return false;"><i class="fas fa-sign-out-alt"></i>Logout</a>
+            <a href="#" onclick="logout();return false;"><i class="fas fa-sign-out-alt"></i>Sign Out</a>
         </div>
     </div>
 </header>
 
-<!-- ══════════════ MAIN PAGE ══════════════ -->
-<main class="profile-wrap">
+<!-- ═══════════════════════ PAGE ═══════════════════════ -->
+<div class="page">
 
-    <!-- ── HERO ── -->
-    <section class="hero-section">
-        <div class="hero-cover">
-            <div class="hero-cover-gradient"></div>
-            <div class="hero-scanlines"></div>
-            <div class="floating-icons" id="floatingIcons"></div>
+    <!-- ── COVER + PROFILE HEADER ── -->
+    <section class="cover-section">
+        <div class="cover-art" id="coverArt">
+            <div class="cover-grain"></div>
         </div>
 
-        <div class="hero-body">
-            <!-- Avatar cluster -->
-            <div class="avatar-cluster">
-                <div class="avatar-halo"></div>
-                <div class="avatar-outer-ring" id="avatarRing"></div>
-                <div class="avatar-img" id="avatarDisplay">
+        <div class="profile-header">
+            <!-- Avatar -->
+            <div class="av-wrap">
+                <div class="av-ring" id="avRing"></div>
+                <div class="av-img" id="avatarDisplay">
                     <i class="fas fa-user"></i>
                 </div>
-                <label class="avatar-cam" for="avatarInput"><i class="fas fa-camera"></i></label>
+                <label class="av-cam" for="avatarInput" title="Update photo">
+                    <i class="fas fa-camera"></i>
+                </label>
                 <input type="file" id="avatarInput" accept="image/*" style="display:none" onchange="uploadAvatar(this)">
-                <div class="level-orb" id="avatarLevel">
-                    <span>Lv</span><strong>1</strong>
-                </div>
+                <div class="av-level" id="avatarLevel"><span>Lv</span><b>1</b></div>
             </div>
 
             <!-- Identity -->
-            <div class="hero-identity">
-                <div class="hero-name-row">
-                    <h1 class="hero-name" id="profileDisplayName">Loading...</h1>
-                    <span class="verified-chip" id="profileVerified" style="display:none">
-                        <i class="fas fa-bolt"></i> Verified
+            <div class="profile-id">
+                <div class="pid-name-row">
+                    <h1 id="profileDisplayName">Loading…</h1>
+                    <span class="pid-verified" id="profileVerified" style="display:none">
+                        <i class="fas fa-circle-check"></i> Verified
                     </span>
                 </div>
-                <div class="hero-handle" id="profileUsername">@username</div>
-                <div class="hero-chips">
-                    <span class="chip chip-tier" id="profileTier">Bronze</span>
-                    <span class="chip chip-rank" id="profileRank">Novice</span>
+                <div class="pid-handle" id="profileUsername">@username</div>
+                <div class="pid-badges">
+                    <span class="badge badge-tier" id="profileTier">Bronze</span>
+                    <span class="badge badge-rank" id="profileRank">Novice</span>
                 </div>
-                <p class="hero-quote" id="heroBio"></p>
+                <p class="pid-bio" id="heroBio"></p>
             </div>
 
             <!-- Actions -->
-            <div class="hero-actions">
-                <button class="btn-primary-glow" onclick="openEditModal()">
-                    <i class="fas fa-pen-nib"></i> Edit Profile
+            <div class="profile-actions">
+                <button class="btn-act-primary" onclick="openEditModal()">
+                    <i class="fas fa-pen"></i> Edit Profile
                 </button>
-                <button class="btn-ghost-circle" onclick="shareProfile()" title="Share">
+                <button class="btn-act-ghost" onclick="shareProfile()" title="Share profile">
                     <i class="fas fa-share-nodes"></i>
-                </button>
-                <button class="btn-ghost-circle" onclick="window.location.href='messenger.html'" title="Message">
-                    <i class="fas fa-paper-plane"></i>
                 </button>
             </div>
         </div>
     </section>
 
-    <!-- ── STAT STRIP ── -->
-    <div class="stat-strip">
-        <div class="stat-orb" id="sOrb0">
-            <svg class="orb-ring" viewBox="0 0 60 60"><circle class="orb-track" cx="30" cy="30" r="25"/><circle class="orb-fill" id="orbFill0" cx="30" cy="30" r="25" stroke="#ffd700"/></svg>
-            <div class="orb-inner"><i class="fas fa-star" style="color:#ffd700"></i></div>
-            <div class="orb-data"><span class="orb-val" id="statPrestige">0</span><span class="orb-lbl">Prestige</span></div>
-        </div>
-        <div class="stat-orb" id="sOrb1">
-            <svg class="orb-ring" viewBox="0 0 60 60"><circle class="orb-track" cx="30" cy="30" r="25"/><circle class="orb-fill" id="orbFill1" cx="30" cy="30" r="25" stroke="#667eea"/></svg>
-            <div class="orb-inner"><i class="fas fa-layer-group" style="color:#667eea"></i></div>
-            <div class="orb-data"><span class="orb-val" id="statLevel">1</span><span class="orb-lbl">Level</span></div>
-        </div>
-        <div class="stat-orb" id="sOrb2">
-            <svg class="orb-ring" viewBox="0 0 60 60"><circle class="orb-track" cx="30" cy="30" r="25"/><circle class="orb-fill" id="orbFill2" cx="30" cy="30" r="25" stroke="#f5576c"/></svg>
-            <div class="orb-inner"><i class="fas fa-fire" style="color:#f5576c"></i></div>
-            <div class="orb-data"><span class="orb-val" id="statStreak">0</span><span class="orb-lbl">Streak</span></div>
-        </div>
-        <div class="stat-orb" id="sOrb3">
-            <svg class="orb-ring" viewBox="0 0 60 60"><circle class="orb-track" cx="30" cy="30" r="25"/><circle class="orb-fill" id="orbFill3" cx="30" cy="30" r="25" stroke="#22c1c3"/></svg>
-            <div class="orb-inner"><i class="fas fa-trophy" style="color:#22c1c3"></i></div>
-            <div class="orb-data"><span class="orb-val" id="statWins">0</span><span class="orb-lbl">Wins</span></div>
-        </div>
-        <div class="stat-orb" id="sOrb4">
-            <svg class="orb-ring" viewBox="0 0 60 60"><circle class="orb-track" cx="30" cy="30" r="25"/><circle class="orb-fill" id="orbFill4" cx="30" cy="30" r="25" stroke="#4caf50"/></svg>
-            <div class="orb-inner"><i class="fas fa-bullseye" style="color:#4caf50"></i></div>
-            <div class="orb-data"><span class="orb-val" id="statSuccessRate">0%</span><span class="orb-lbl">Accuracy</span></div>
-        </div>
-        <div class="stat-orb" id="sOrb5">
-            <svg class="orb-ring" viewBox="0 0 60 60"><circle class="orb-track" cx="30" cy="30" r="25"/><circle class="orb-fill" id="orbFill5" cx="30" cy="30" r="25" stroke="#ff9800"/></svg>
-            <div class="orb-inner"><i class="fas fa-coins" style="color:#ff9800"></i></div>
-            <div class="orb-data"><span class="orb-val" id="statEarnings">K0</span><span class="orb-lbl">Earned</span></div>
-        </div>
+    <!-- ── STATS ROW ── -->
+    <div class="stats-row">
+        <div class="scard"><div class="scard-val" id="statPrestige">0</div><div class="scard-key">Prestige</div></div>
+        <div class="scard"><div class="scard-val" id="statLevel">1</div><div class="scard-key">Level</div></div>
+        <div class="scard highlight"><div class="scard-val" id="statStreak">0<i class="fas fa-fire"></i></div><div class="scard-key">Day Streak</div></div>
+        <div class="scard"><div class="scard-val" id="statWins">0</div><div class="scard-key">Wins</div></div>
+        <div class="scard"><div class="scard-val" id="statSuccessRate">0%</div><div class="scard-key">Accuracy</div></div>
+        <div class="scard"><div class="scard-val" id="statEarnings">K0</div><div class="scard-key">Earned</div></div>
     </div>
 
-    <!-- ── CONTENT GRID ── -->
-    <div class="content-grid">
+    <!-- ── CONTENT ── -->
+    <div class="content-layout">
 
-        <!-- LEFT -->
+        <!-- LEFT SIDEBAR -->
         <aside class="sidebar">
 
             <!-- About -->
-            <div class="glass-panel">
-                <div class="panel-header">
-                    <div class="panel-icon" style="--c1:#556b2f;--c2:#7cba3d"><i class="fas fa-id-card"></i></div>
-                    <span>About</span>
-                </div>
-                <blockquote class="bio-quote" id="profileBio">No bio yet.</blockquote>
-                <ul class="info-list">
-                    <li><i class="fas fa-calendar-alt"></i><span>Joined <b id="profileJoined">—</b></span></li>
+            <div class="card">
+                <h3 class="card-title"><i class="fas fa-id-card-clip"></i> About</h3>
+                <p class="bio-block" id="profileBio">No bio yet.</p>
+                <ul class="detail-list">
+                    <li><i class="fas fa-calendar-days"></i><span>Joined <b id="profileJoined">—</b></span></li>
                     <li><i class="fas fa-envelope"></i><span id="profileEmail">—</span></li>
-                    <li><i class="fas fa-shield-halved"></i><span>Verification Lvl <b id="profileVerLevel">0</b></span></li>
+                    <li><i class="fas fa-shield-halved"></i><span>Verification level <b id="profileVerLevel">0</b></span></li>
                 </ul>
             </div>
 
             <!-- Prestige -->
-            <div class="glass-panel">
-                <div class="panel-header">
-                    <div class="panel-icon" style="--c1:#ffd700;--c2:#ff9800"><i class="fas fa-crown"></i></div>
-                    <span>Prestige Path</span>
+            <div class="card">
+                <h3 class="card-title"><i class="fas fa-crown"></i> Prestige Path</h3>
+                <div class="xp-nums">
+                    <span class="xp-current" id="prestigePoints">0</span>
+                    <span class="xp-sep">/ <span id="prestigeNext">200</span> pts</span>
                 </div>
-                <div class="prestige-big">
-                    <span class="prestige-num" id="prestigePoints">0</span>
-                    <span class="prestige-slash">/</span>
-                    <span class="prestige-next" id="prestigeNext">200</span>
-                    <span class="prestige-pts">pts</span>
-                </div>
-                <div class="xp-bar-track">
-                    <div class="xp-bar-fill" id="prestigeBar">
-                        <div class="xp-bar-glow"></div>
-                        <div class="xp-bar-pulse"></div>
-                    </div>
-                </div>
-                <div class="tier-road">
-                    <div class="tr-node" data-tier="Bronze"><span class="tr-dot"></span><small>Bronze</small></div>
-                    <div class="tr-line"></div>
-                    <div class="tr-node" data-tier="Silver"><span class="tr-dot"></span><small>Silver</small></div>
-                    <div class="tr-line"></div>
-                    <div class="tr-node" data-tier="Gold"><span class="tr-dot"></span><small>Gold</small></div>
-                    <div class="tr-line"></div>
-                    <div class="tr-node" data-tier="Platinum"><span class="tr-dot"></span><small>Plat</small></div>
-                    <div class="tr-line"></div>
-                    <div class="tr-node" data-tier="Diamond"><span class="tr-dot"></span><small>Diam</small></div>
-                    <div class="tr-line"></div>
-                    <div class="tr-node" data-tier="Elite"><span class="tr-dot"></span><small>Elite</small></div>
-                    <div class="tr-line"></div>
-                    <div class="tr-node" data-tier="Legendary"><span class="tr-dot legendary-dot"></span><small>Legend</small></div>
+                <div class="xp-track"><div class="xp-fill" id="prestigeBar"><div class="xp-shine"></div></div></div>
+                <div class="tier-nodes" id="tierNodes">
+                    <div class="tnode" data-tier="Bronze"><div class="tdot"></div><small>Bronze</small></div>
+                    <div class="tline"></div>
+                    <div class="tnode" data-tier="Silver"><div class="tdot"></div><small>Silver</small></div>
+                    <div class="tline"></div>
+                    <div class="tnode" data-tier="Gold"><div class="tdot"></div><small>Gold</small></div>
+                    <div class="tline"></div>
+                    <div class="tnode" data-tier="Platinum"><div class="tdot"></div><small>Plat</small></div>
+                    <div class="tline"></div>
+                    <div class="tnode" data-tier="Diamond"><div class="tdot"></div><small>Diam</small></div>
+                    <div class="tline"></div>
+                    <div class="tnode" data-tier="Elite"><div class="tdot"></div><small>Elite</small></div>
+                    <div class="tline"></div>
+                    <div class="tnode" data-tier="Legendary"><div class="tdot tdot-legend"></div><small>Legend</small></div>
                 </div>
             </div>
 
             <!-- Social -->
-            <div class="glass-panel">
-                <div class="panel-header">
-                    <div class="panel-icon" style="--c1:#667eea;--c2:#764ba2"><i class="fas fa-satellite-dish"></i></div>
-                    <span>Connected Socials</span>
-                </div>
-                <div id="socialList" class="social-grid">
-                    <div class="empty-msg"><i class="fas fa-plug-circle-xmark"></i><span>No accounts linked</span></div>
+            <div class="card">
+                <h3 class="card-title"><i class="fas fa-satellite-dish"></i> Social Accounts</h3>
+                <div id="socialList" class="social-stack">
+                    <div class="empty-state"><i class="fas fa-link-slash"></i><span>No accounts linked</span></div>
                 </div>
             </div>
 
         </aside>
 
-        <!-- RIGHT -->
-        <section class="main-col">
+        <!-- MAIN -->
+        <main class="main-col">
 
-            <!-- Performance Radar -->
-            <div class="glass-panel perf-panel">
-                <div class="panel-header">
-                    <div class="panel-icon" style="--c1:#22c1c3;--c2:#667eea"><i class="fas fa-chart-radar"></i></div>
-                    <span>Performance</span>
-                    <div class="panel-tabs" id="perfTabs">
-                        <button class="ptab active" data-tab="stats">Stats</button>
-                        <button class="ptab" data-tab="chart">Chart</button>
+            <!-- Performance -->
+            <div class="card">
+                <div class="card-header-row">
+                    <h3 class="card-title"><i class="fas fa-chart-mixed"></i> Performance</h3>
+                    <div class="tab-pills" id="perfTabBar">
+                        <button class="tpill active" data-target="tabOverview">Overview</button>
+                        <button class="tpill" data-target="tabDonut">Chart</button>
                     </div>
                 </div>
 
-                <!-- Stats tab -->
-                <div id="tabStats" class="perf-tab-content active">
-                    <div class="kpi-row">
-                        <div class="kpi-box">
-                            <div class="kpi-icon" style="background:linear-gradient(135deg,#667eea,#764ba2)"><i class="fas fa-paper-plane"></i></div>
-                            <div class="kpi-val" id="perfSubmissions">0</div>
-                            <div class="kpi-lbl">Submissions</div>
+                <div id="tabOverview" class="tab-panel active">
+                    <div class="kpi-grid">
+                        <div class="kpi">
+                            <div class="kpi-num" id="perfSubmissions">0</div>
+                            <div class="kpi-label">Total Submitted</div>
+                            <div class="kpi-bar" style="--c:#556b2f"></div>
                         </div>
-                        <div class="kpi-box">
-                            <div class="kpi-icon" style="background:linear-gradient(135deg,#4caf50,#8bc34a)"><i class="fas fa-check-double"></i></div>
-                            <div class="kpi-val success" id="perfCorrect">0</div>
-                            <div class="kpi-lbl">Correct</div>
+                        <div class="kpi">
+                            <div class="kpi-num correct" id="perfCorrect">0</div>
+                            <div class="kpi-label">Correct</div>
+                            <div class="kpi-bar" style="--c:#4caf50"></div>
                         </div>
-                        <div class="kpi-box">
-                            <div class="kpi-icon" style="background:linear-gradient(135deg,#f44336,#e91e63)"><i class="fas fa-xmark"></i></div>
-                            <div class="kpi-val danger" id="perfWrong">0</div>
-                            <div class="kpi-lbl">Incorrect</div>
+                        <div class="kpi">
+                            <div class="kpi-num wrong" id="perfWrong">0</div>
+                            <div class="kpi-label">Incorrect</div>
+                            <div class="kpi-bar" style="--c:#e53935"></div>
                         </div>
-                        <div class="kpi-box">
-                            <div class="kpi-icon" style="background:linear-gradient(135deg,#ffd700,#ff9800)"><i class="fas fa-medal"></i></div>
-                            <div class="kpi-val gold" id="perfWins">0</div>
-                            <div class="kpi-lbl">Wins</div>
+                        <div class="kpi">
+                            <div class="kpi-num gold" id="perfWins">0</div>
+                            <div class="kpi-label">Tournament Wins</div>
+                            <div class="kpi-bar" style="--c:#f9a825"></div>
                         </div>
                     </div>
-                    <div class="accuracy-section">
-                        <div class="accuracy-head">
-                            <span><i class="fas fa-crosshairs"></i> Accuracy</span>
-                            <span class="accuracy-num" id="successRateLabel">0%</span>
+                    <div class="acc-block">
+                        <div class="acc-row">
+                            <span class="acc-label"><i class="fas fa-bullseye"></i> Success rate</span>
+                            <span class="acc-pct" id="successRateLabel">0%</span>
                         </div>
-                        <div class="accuracy-track">
-                            <div class="accuracy-fill" id="successBar">
-                                <div class="acc-shimmer"></div>
+                        <div class="acc-track"><div class="acc-fill" id="successBar"><div class="acc-shine"></div></div></div>
+                    </div>
+                </div>
+
+                <div id="tabDonut" class="tab-panel">
+                    <div class="donut-layout">
+                        <div class="donut-box">
+                            <svg class="donut" viewBox="0 0 140 140">
+                                <circle class="dring bg" cx="70" cy="70" r="52"/>
+                                <circle class="dring correct" id="dCorrect" cx="70" cy="70" r="52"/>
+                                <circle class="dring wrong" id="dWrong" cx="70" cy="70" r="52"/>
+                            </svg>
+                            <div class="donut-label">
+                                <div class="dl-pct" id="donutPct">0%</div>
+                                <div class="dl-sub">accuracy</div>
                             </div>
                         </div>
-                    </div>
-                </div>
-
-                <!-- Chart tab (SVG donut) -->
-                <div id="tabChart" class="perf-tab-content">
-                    <div class="donut-wrap">
-                        <svg class="donut-svg" viewBox="0 0 200 200" id="donutSvg">
-                            <circle class="donut-track" cx="100" cy="100" r="75" />
-                            <circle class="donut-correct" id="donutCorrect" cx="100" cy="100" r="75" />
-                            <circle class="donut-wrong" id="donutWrong" cx="100" cy="100" r="75" />
-                        </svg>
-                        <div class="donut-center">
-                            <span class="donut-pct" id="donutPct">0%</span>
-                            <small>accuracy</small>
+                        <div class="donut-legend">
+                            <div class="dl-row correct"><i class="fas fa-circle"></i><span>Correct</span><b id="dlCorrect">0</b></div>
+                            <div class="dl-row wrong"><i class="fas fa-circle"></i><span>Incorrect</span><b id="dlWrong">0</b></div>
+                            <div class="dl-row total"><i class="fas fa-circle"></i><span>Total</span><b id="dlTotal">0</b></div>
                         </div>
                     </div>
-                    <div class="donut-legend">
-                        <span class="dl-item correct"><i class="fas fa-circle"></i> Correct</span>
-                        <span class="dl-item wrong"><i class="fas fa-circle"></i> Wrong</span>
+                </div>
+            </div>
+
+            <!-- Activity -->
+            <div class="card">
+                <div class="card-header-row">
+                    <h3 class="card-title"><i class="fas fa-bolt-lightning"></i> Recent Activity</h3>
+                    <span class="act-count-badge" id="activityCount"></span>
+                </div>
+                <div id="activityList" class="activity-stream">
+                    <div class="skeleton-list">
+                        <div class="sk-row"></div>
+                        <div class="sk-row short"></div>
+                        <div class="sk-row"></div>
+                        <div class="sk-row short"></div>
                     </div>
                 </div>
             </div>
 
-            <!-- Activity Feed -->
-            <div class="glass-panel">
-                <div class="panel-header">
-                    <div class="panel-icon" style="--c1:#f5576c;--c2:#f093fb"><i class="fas fa-bolt-lightning"></i></div>
-                    <span>Activity Feed</span>
-                    <div class="activity-pill" id="activityCount"></div>
-                </div>
-                <div id="activityList" class="activity-feed">
-                    <div class="feed-loading">
-                        <div class="pulse-bar"></div>
-                        <div class="pulse-bar short"></div>
-                        <div class="pulse-bar"></div>
-                        <div class="pulse-bar short"></div>
-                    </div>
-                </div>
-            </div>
-
-        </section>
+        </main>
     </div>
-</main>
+</div>
 
-<!-- ══════════════ EDIT MODAL ══════════════ -->
-<div class="modal-bg" id="editModal">
-    <div class="modal-card">
-        <div class="modal-glow"></div>
-        <button class="modal-x" onclick="closeEditModal()"><i class="fas fa-times"></i></button>
-        <div class="modal-top">
-            <div class="modal-avatar" id="modalAvatar"><i class="fas fa-user"></i></div>
-            <h2>Edit Profile</h2>
-            <p>Update your identity on ARTX</p>
+<!-- ═══════════════════════ EDIT MODAL ═══════════════════════ -->
+<div class="modal-veil" id="editModal">
+    <div class="modal-box">
+        <button class="modal-close" onclick="closeEditModal()"><i class="fas fa-xmark"></i></button>
+
+        <div class="modal-hero">
+            <div class="modal-av" id="modalAvatar"><i class="fas fa-user"></i></div>
+            <div>
+                <h2>Edit Profile</h2>
+                <p>Update how the ARTX community sees you</p>
+            </div>
         </div>
-        <div class="modal-fields">
-            <div class="mf-group">
-                <label>Display Name</label>
-                <input id="editDisplayName" type="text" placeholder="Your name" maxlength="100">
+
+        <div class="modal-form">
+            <div class="mfield">
+                <label for="editDisplayName">Display Name</label>
+                <input id="editDisplayName" type="text" placeholder="Your full name or alias" maxlength="100" autocomplete="off">
             </div>
-            <div class="mf-group">
-                <label>Username</label>
-                <div class="mf-prefix"><span>@</span><input id="editUsername" type="text" placeholder="handle" maxlength="50"></div>
+            <div class="mfield">
+                <label for="editUsername">Username</label>
+                <div class="mfield-prefix">
+                    <span class="mprefix">@</span>
+                    <input id="editUsername" type="text" placeholder="handle" maxlength="50" autocomplete="off">
+                </div>
             </div>
-            <div class="mf-group">
-                <label>Bio <em id="bioCharCount">0</em>/500</label>
-                <textarea id="editBio" placeholder="Tell your story..." rows="3" maxlength="500"></textarea>
+            <div class="mfield">
+                <label for="editBio">Bio <span class="mchar"><span id="bioCount">0</span>/500</span></label>
+                <textarea id="editBio" placeholder="Tell the community about yourself…" rows="3" maxlength="500"></textarea>
             </div>
-            <div class="edit-error" id="editError" style="display:none"></div>
+            <div class="merror" id="editError" style="display:none"></div>
         </div>
-        <div class="modal-btns">
-            <button class="mbtn-save" onclick="saveProfile()"><i class="fas fa-floppy-disk"></i> Save Changes</button>
-            <button class="mbtn-cancel" onclick="closeEditModal()">Cancel</button>
+
+        <div class="modal-footer">
+            <button class="mbtn primary" onclick="saveProfile()"><i class="fas fa-floppy-disk"></i> Save Changes</button>
+            <button class="mbtn ghost" onclick="closeEditModal()">Cancel</button>
         </div>
     </div>
 </div>
 
 <!-- Toast -->
-<div class="toast" id="toastNotif"></div>
+<div class="toast" id="toast"></div>
 
 <script src="../scripts/app.js"></script>
 <script src="../scripts/user.js"></script>
 <script>
-// ── Nav dropdown toggles ──────────────────────────────────────
-function toggleQuickMenu() {
-    document.getElementById('quickMenuDropdown').classList.toggle('show');
-    document.getElementById('userMenuDropdown').classList.remove('show');
+/* ── Dropdown toggles ──────────────────────────── */
+function toggleQM() {
+    document.getElementById('quickMenu').classList.toggle('open');
+    document.getElementById('userMenu').classList.remove('open');
 }
-function toggleUserMenu() {
-    document.getElementById('userMenuDropdown').classList.toggle('show');
-    document.getElementById('quickMenuDropdown').classList.remove('show');
+function toggleUM() {
+    document.getElementById('userMenu').classList.toggle('open');
+    document.getElementById('quickMenu').classList.remove('open');
 }
 document.addEventListener('click', e => {
-    if (!e.target.closest('#qmTrigger') && !e.target.closest('#quickMenuDropdown'))
-        document.getElementById('quickMenuDropdown').classList.remove('show');
-    if (!e.target.closest('#umTrigger') && !e.target.closest('#userMenuDropdown'))
-        document.getElementById('userMenuDropdown').classList.remove('show');
+    if (!e.target.closest('#qmTrigger,#quickMenu')) document.getElementById('quickMenu').classList.remove('open');
+    if (!e.target.closest('#umTrigger,#userMenu'))  document.getElementById('userMenu').classList.remove('open');
 });
 
-// ── Canvas background ─────────────────────────────────────────
-(function(){
-    const canvas = document.getElementById('bgCanvas');
-    const ctx = canvas.getContext('2d');
-    let dots = [];
-    function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
-    resize();
-    window.addEventListener('resize', resize);
-    for (let i = 0; i < 70; i++) {
-        dots.push({
-            x: Math.random() * window.innerWidth,
-            y: Math.random() * window.innerHeight,
-            r: Math.random() * 1.5 + 0.3,
-            dx: (Math.random() - 0.5) * 0.3,
-            dy: (Math.random() - 0.5) * 0.3,
-            opacity: Math.random() * 0.5 + 0.1
-        });
-    }
-    function draw() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        dots.forEach(d => {
-            d.x += d.dx; d.y += d.dy;
-            if (d.x < 0 || d.x > canvas.width) d.dx *= -1;
-            if (d.y < 0 || d.y > canvas.height) d.dy *= -1;
-            ctx.beginPath();
-            ctx.arc(d.x, d.y, d.r, 0, Math.PI*2);
-            ctx.fillStyle = `rgba(124,186,61,${d.opacity})`;
-            ctx.fill();
-        });
-        // Draw connecting lines
-        for (let i = 0; i < dots.length; i++) {
-            for (let j = i+1; j < dots.length; j++) {
-                const dist = Math.hypot(dots[i].x - dots[j].x, dots[i].y - dots[j].y);
-                if (dist < 120) {
-                    ctx.beginPath();
-                    ctx.moveTo(dots[i].x, dots[i].y);
-                    ctx.lineTo(dots[j].x, dots[j].y);
-                    ctx.strokeStyle = `rgba(85,107,47,${0.12 * (1 - dist/120)})`;
-                    ctx.lineWidth = 0.5;
-                    ctx.stroke();
-                }
-            }
-        }
-        requestAnimationFrame(draw);
-    }
-    draw();
-})();
-
-// ── Floating icons in hero ────────────────────────────────────
-(function(){
-    const container = document.getElementById('floatingIcons');
-    if (!container) return;
-    const icons = ['fa-star','fa-trophy','fa-bolt','fa-crown','fa-fire','fa-medal','fa-shield-halved','fa-gem'];
-    icons.forEach((ic, i) => {
-        const el = document.createElement('div');
-        el.className = 'float-icon';
-        el.innerHTML = `<i class="fas ${ic}"></i>`;
-        el.style.cssText = `left:${8 + i*12}%;animation-delay:${i*0.6}s;animation-duration:${5+i*0.5}s`;
-        container.appendChild(el);
-    });
-})();
-
-// ── Performance tabs ──────────────────────────────────────────
-document.getElementById('perfTabs').addEventListener('click', e => {
-    const btn = e.target.closest('.ptab');
-    if (!btn) return;
-    document.querySelectorAll('.ptab').forEach(b => b.classList.remove('active'));
-    document.querySelectorAll('.perf-tab-content').forEach(t => t.classList.remove('active'));
-    btn.classList.add('active');
-    document.getElementById('tab' + btn.dataset.tab.charAt(0).toUpperCase() + btn.dataset.tab.slice(1)).classList.add('active');
+/* ── Tab pills ─────────────────────────────────── */
+document.getElementById('perfTabBar').addEventListener('click', e => {
+    const pill = e.target.closest('.tpill');
+    if (!pill) return;
+    document.querySelectorAll('.tpill').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    pill.classList.add('active');
+    document.getElementById(pill.dataset.target).classList.add('active');
 });
 
-// ── Modal helpers ─────────────────────────────────────────────
+/* ── Modal backdrop ────────────────────────────── */
 document.getElementById('editModal').addEventListener('click', e => {
     if (e.target === document.getElementById('editModal')) closeEditModal();
 });
-document.getElementById('editBio').addEventListener('input', function(){
-    document.getElementById('bioCharCount').textContent = this.value.length;
+
+/* ── Bio counter ────────────────────────────────── */
+document.addEventListener('DOMContentLoaded', () => {
+    const ta = document.getElementById('editBio');
+    const ct = document.getElementById('bioCount');
+    if (ta && ct) ta.addEventListener('input', () => ct.textContent = ta.value.length);
 });
 
+/* ── Share ─────────────────────────────────────── */
 function shareProfile() {
     const url = window.location.href;
-    if (navigator.share) { navigator.share({ title:'ARTX Profile', url }); }
-    else { navigator.clipboard.writeText(url).then(() => showToast('🔗 Link copied!')); }
+    if (navigator.share) navigator.share({ title: 'ARTX Profile', url });
+    else navigator.clipboard.writeText(url).then(() => window.showToast && showToast('Link copied!'));
 }
 
-function showToast(msg) {
-    const t = document.getElementById('toastNotif');
-    t.textContent = msg;
-    t.classList.add('show');
-    setTimeout(() => t.classList.remove('show'), 3200);
-}
-
-// ── Avatar ring color by tier ─────────────────────────────────
-const TIER_COLORS = {
-    Bronze:'#cd7f32', Silver:'#a8a9ad', Gold:'#ffd700',
-    Platinum:'#e5e4e2', Diamond:'#b9f2ff', Elite:'#f093fb', Legendary:'#ffd700'
+/* ── Cover ambient pulse ───────────────────────── */
+const TIER_PALETTE = {
+    Bronze:    ['#8B5E3C','#C8853A'],
+    Silver:    ['#6B7280','#9CA3AF'],
+    Gold:      ['#92660A','#D4A017'],
+    Platinum:  ['#334155','#64748B'],
+    Diamond:   ['#0C4A6E','#0EA5E9'],
+    Elite:     ['#5B21B6','#8B5CF6'],
+    Legendary: ['#7C2D12','#EA580C'],
 };
 
-// ── Donut chart builder ───────────────────────────────────────
-function buildDonut(correct, total) {
-    const circumference = 2 * Math.PI * 75;
-    const wrong = total - correct;
-    const cFrac = total > 0 ? correct / total : 0;
-    const wFrac = total > 0 ? wrong / total : 0;
-
-    const donutCorrect = document.getElementById('donutCorrect');
-    const donutWrong = document.getElementById('donutWrong');
-
-    donutCorrect.style.strokeDasharray = `${cFrac * circumference} ${circumference}`;
-    donutCorrect.style.strokeDashoffset = `${circumference * 0.25}`;
-    const offset = circumference * 0.25 - cFrac * circumference;
-    donutWrong.style.strokeDasharray = `${wFrac * circumference} ${circumference}`;
-    donutWrong.style.strokeDashoffset = offset;
-    document.getElementById('donutPct').textContent = total > 0 ? Math.round(cFrac*100)+'%' : '0%';
-}
-
-// ── Expose to user.js ─────────────────────────────────────────
-window.buildDonut = buildDonut;
-window.TIER_COLORS = TIER_COLORS;
-window.showToast = showToast;
+window.applyTierPalette = function(tier) {
+    const c = TIER_PALETTE[tier] || TIER_PALETTE.Bronze;
+    document.getElementById('coverArt').style.background =
+        `linear-gradient(135deg, ${c[0]} 0%, #1a2e1a 50%, ${c[1]}22 100%)`;
+    const ring = document.getElementById('avRing');
+    if (ring) ring.style.background = `conic-gradient(${c[1]}, transparent 70%, ${c[0]})`;
+};
 </script>
 </body>
 </html>

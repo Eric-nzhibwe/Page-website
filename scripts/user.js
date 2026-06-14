@@ -1,4 +1,4 @@
-// ARTX — Profile Page Script
+// ARTX — Profile  ·  user.js
 
 const PROFILE_API = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
     ? 'http://localhost:8000/api'
@@ -6,17 +6,17 @@ const PROFILE_API = (window.location.hostname === 'localhost' || window.location
 
 let profileData = null;
 
-const ACTIVITY_ICONS = {
-    prestige_gained:    { icon: 'fa-star',         color: 'linear-gradient(135deg,#f5a623,#ffd700)' },
-    level_up:           { icon: 'fa-arrow-trend-up',color: 'linear-gradient(135deg,#4caf50,#8bc34a)' },
-    tier_upgrade:       { icon: 'fa-crown',         color: 'linear-gradient(135deg,#ff9800,#ffc107)' },
-    tournament_entry:   { icon: 'fa-trophy',        color: 'linear-gradient(135deg,#2196f3,#667eea)' },
-    tournament_win:     { icon: 'fa-medal',         color: 'linear-gradient(135deg,#ffd700,#ff9800)' },
-    alliance_join:      { icon: 'fa-users',         color: 'linear-gradient(135deg,#9c27b0,#673ab7)' },
-    alliance_create:    { icon: 'fa-flag',          color: 'linear-gradient(135deg,#9c27b0,#e91e63)' },
-    payment_made:       { icon: 'fa-credit-card',   color: 'linear-gradient(135deg,#22c1c3,#667eea)' },
-    submission_success: { icon: 'fa-check-double',  color: 'linear-gradient(135deg,#4caf50,#00bcd4)' },
-    submission_failed:  { icon: 'fa-xmark',         color: 'linear-gradient(135deg,#f44336,#e91e63)' },
+const ACT_META = {
+    prestige_gained:    { icon: 'fa-star',         bg: 'linear-gradient(135deg,#b45309,#f59e0b)' },
+    level_up:           { icon: 'fa-arrow-trend-up',bg: 'linear-gradient(135deg,#16a34a,#4ade80)' },
+    tier_upgrade:       { icon: 'fa-crown',         bg: 'linear-gradient(135deg,#92400e,#f59e0b)' },
+    tournament_entry:   { icon: 'fa-trophy',        bg: 'linear-gradient(135deg,#1d4ed8,#60a5fa)' },
+    tournament_win:     { icon: 'fa-medal',         bg: 'linear-gradient(135deg,#92400e,#fbbf24)' },
+    alliance_join:      { icon: 'fa-users',         bg: 'linear-gradient(135deg,#6d28d9,#a78bfa)' },
+    alliance_create:    { icon: 'fa-flag',          bg: 'linear-gradient(135deg,#6d28d9,#f472b6)' },
+    payment_made:       { icon: 'fa-credit-card',   bg: 'linear-gradient(135deg,#0e7490,#22d3ee)' },
+    submission_success: { icon: 'fa-check-double',  bg: 'linear-gradient(135deg,#15803d,#4ade80)' },
+    submission_failed:  { icon: 'fa-xmark',         bg: 'linear-gradient(135deg,#b91c1c,#f87171)' },
 };
 
 // ── Init ──────────────────────────────────────────────────────
@@ -27,7 +27,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     await loadActivities();
 });
 
-// ── Load Profile ──────────────────────────────────────────────
+// ── Load profile ──────────────────────────────────────────────
 async function loadProfile() {
     const token = localStorage.getItem('djangoAuthToken');
     try {
@@ -43,151 +43,132 @@ async function loadProfile() {
     }
 }
 
-// ── Render Profile ────────────────────────────────────────────
+// ── Render ────────────────────────────────────────────────────
 function renderProfile(u, rank) {
-    // ── Hero
-    setText('profileDisplayName', u.display_name || u.username);
-    setText('profileUsername', `@${u.username}`);
-    setText('profileTier', u.access_tier);
-    setText('profileRank', u.power_rank);
-    setText('heroBio', u.bio || '');
+
+    // Identity
+    set('profileDisplayName', u.display_name || u.username);
+    set('profileUsername', `@${u.username}`);
+    set('profileTier', u.access_tier);
+    set('profileRank', u.power_rank);
+    set('heroBio', u.bio || '');
+    set('profileBio', u.bio || 'No bio yet.');
+    set('profileEmail', u.email);
+    set('profileJoined', new Date(u.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }));
+    set('profileVerLevel', u.verification_level);
     if (u.is_verified) show('profileVerified');
 
-    // Level orb
-    const lvlOrb = document.getElementById('avatarLevel');
-    if (lvlOrb) lvlOrb.querySelector('strong').textContent = u.level;
+    // Avatar level orb
+    const lvl = document.getElementById('avatarLevel');
+    if (lvl) lvl.querySelector('b').textContent = u.level;
 
-    // Avatar
+    // Avatar image
     if (u.profile_image) {
-        document.getElementById('avatarDisplay').innerHTML =
-            `<img src="${u.profile_image}" alt="avatar">`;
-        // Modal avatar
-        const ma = document.getElementById('modalAvatar');
-        if (ma) ma.innerHTML = `<img src="${u.profile_image}" alt="avatar">`;
-        // Nav avatar
-        const na = document.getElementById('navAvatarImg');
-        if (na) na.innerHTML = `<img src="${u.profile_image}" alt="avatar">`;
+        setAvatarImg(u.profile_image);
     }
 
-    // ── Tier-colored avatar ring
-    if (window.TIER_COLORS) {
-        const ringColor = window.TIER_COLORS[u.access_tier] || '#7cba3d';
-        const ring = document.getElementById('avatarRing');
-        if (ring) ring.style.background = `conic-gradient(${ringColor}, #22c1c3, ${ringColor})`;
-    }
+    // Tier palette (cover + ring colour)
+    if (window.applyTierPalette) applyTierPalette(u.access_tier);
 
-    // ── Stat strip orbs
-    setText('statPrestige', u.prestige_points.toLocaleString());
-    setText('statLevel', u.level);
-    setText('statStreak', u.current_streak);
-    setText('statWins', u.tournament_wins);
-    setText('statSuccessRate', `${u.success_rate}%`);
-    setText('statEarnings', `K${parseFloat(u.total_earnings).toFixed(0)}`);
+    // Stats row
+    set('statPrestige', u.prestige_points.toLocaleString());
+    set('statLevel', u.level);
+    set('statStreak', u.current_streak);
+    set('statWins', u.tournament_wins);
+    set('statSuccessRate', `${u.success_rate}%`);
+    set('statEarnings', `K${parseFloat(u.total_earnings).toFixed(0)}`);
 
-    // Animate SVG orb rings (visual only, fill based on relative scale)
-    animateOrb('orbFill0', Math.min(u.prestige_points / 5000, 1));
-    animateOrb('orbFill1', Math.min(u.level / 50, 1));
-    animateOrb('orbFill2', Math.min(u.current_streak / 30, 1));
-    animateOrb('orbFill3', Math.min(u.tournament_wins / 20, 1));
-    animateOrb('orbFill4', u.success_rate / 100);
-    animateOrb('orbFill5', Math.min(parseFloat(u.total_earnings) / 10000, 1));
-
-    // ── About
-    setText('profileBio', u.bio || 'No bio yet.');
-    setText('profileEmail', u.email);
-    setText('profileJoined', new Date(u.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }));
-    setText('profileVerLevel', u.verification_level);
-
-    // ── Prestige XP bar
+    // Prestige XP bar
     const pts = u.prestige_points;
     const milestones = [0, 200, 500, 1000, 1500, 2500, 5000, 10000];
     const next = milestones.find(m => m > pts) || milestones[milestones.length - 1];
     const prev = [...milestones].reverse().find(m => m <= pts) || 0;
     const pct  = prev === next ? 100 : ((pts - prev) / (next - prev)) * 100;
-    setText('prestigePoints', pts.toLocaleString());
-    setText('prestigeNext', next.toLocaleString());
-    setTimeout(() => {
-        const bar = document.getElementById('prestigeBar');
-        if (bar) bar.style.width = `${Math.min(pct, 100)}%`;
-    }, 400);
+    set('prestigePoints', pts.toLocaleString());
+    set('prestigeNext', next.toLocaleString());
+    delay(() => { setW('prestigeBar', Math.min(pct, 100)); }, 350);
 
-    // ── Tier road nodes
-    const tierOrder = ['Bronze','Silver','Gold','Platinum','Diamond','Elite','Legendary'];
-    const activeIdx = tierOrder.indexOf(u.access_tier);
-    document.querySelectorAll('.tr-node').forEach((node, i) => {
-        node.classList.remove('active', 'passed', 'legendary');
-        if (i < activeIdx)  node.classList.add('passed');
-        if (i === activeIdx) node.classList.add('active');
-        if (node.dataset.tier === 'Legendary') node.classList.add('legendary');
+    // Tier nodes
+    const TIERS = ['Bronze','Silver','Gold','Platinum','Diamond','Elite','Legendary'];
+    const activeIdx = TIERS.indexOf(u.access_tier);
+    document.querySelectorAll('.tnode').forEach((n, i) => {
+        n.classList.remove('active','passed','legendary');
+        if (i < activeIdx) n.classList.add('passed');
+        if (i === activeIdx) n.classList.add('active');
+        if (n.dataset.tier === 'Legendary') n.classList.add('legendary');
     });
-    // Color passed lines
-    document.querySelectorAll('.tr-line').forEach((line, i) => {
-        line.classList.toggle('passed', i < activeIdx);
+    document.querySelectorAll('.tline').forEach((l, i) => {
+        l.classList.toggle('passed', i < activeIdx);
     });
 
-    // ── Performance
+    // Performance
     const wrong = u.total_submissions - u.successful_submissions;
-    setText('perfSubmissions', u.total_submissions);
-    setText('perfCorrect', u.successful_submissions);
-    setText('perfWrong', wrong);
-    setText('perfWins', u.tournament_wins);
-    setText('successRateLabel', `${u.success_rate}%`);
-    setTimeout(() => {
-        const bar = document.getElementById('successBar');
-        if (bar) bar.style.width = `${u.success_rate}%`;
-    }, 600);
+    set('perfSubmissions', u.total_submissions);
+    set('perfCorrect', u.successful_submissions);
+    set('perfWrong', wrong);
+    set('perfWins', u.tournament_wins);
+    set('successRateLabel', `${u.success_rate}%`);
+    set('dlCorrect', u.successful_submissions);
+    set('dlWrong', wrong);
+    set('dlTotal', u.total_submissions);
+    set('donutPct', `${u.success_rate}%`);
+    delay(() => { setW('successBar', u.success_rate); }, 500);
+    delay(() => { buildDonut(u.successful_submissions, u.total_submissions); }, 500);
 
-    // Donut chart
-    if (window.buildDonut) {
-        setTimeout(() => buildDonut(u.successful_submissions, u.total_submissions), 400);
-    }
+    // Nav user menu
+    set('menuUsername', u.display_name || u.username);
+    set('menuTier', `${u.access_tier} Tier`);
+    set('menuPrestige', u.prestige_points.toLocaleString());
+    set('menuStreak', u.current_streak);
+    set('menuEarnings', `K${parseFloat(u.total_earnings).toFixed(0)}`);
 
-    // ── Nav dropdown
-    setText('menuUsername', u.display_name || u.username);
-    setText('menuTier', `${u.access_tier} Tier`);
-    setText('menuPrestige', u.prestige_points.toLocaleString());
-    setText('menuStreak', u.current_streak);
-    setText('navWallet', `K${parseFloat(u.total_earnings).toFixed(0)}`);
-
-    // ── Social
+    // Social
     renderSocial(u.social_connections || {});
 }
 
-function animateOrb(id, fraction) {
-    const circ = 2 * Math.PI * 25; // r=25
-    const el = document.getElementById(id);
-    if (!el) return;
-    setTimeout(() => {
-        el.style.strokeDasharray = `${fraction * circ} ${circ}`;
-    }, 500);
+function setAvatarImg(src) {
+    const img = `<img src="${src}" alt="avatar">`;
+    ['avatarDisplay','modalAvatar','umAvatar'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.innerHTML = img;
+    });
+    const na = document.getElementById('navAvatar');
+    if (na) na.innerHTML = img;
 }
 
-// ── Social Connections ────────────────────────────────────────
+// Donut
+function buildDonut(correct, total) {
+    const circ = 2 * Math.PI * 52; // r=52
+    const cFrac = total > 0 ? correct / total : 0;
+    const wFrac = total > 0 ? (total - correct) / total : 0;
+    const dc = document.getElementById('dCorrect');
+    const dw = document.getElementById('dWrong');
+    if (!dc || !dw) return;
+    dc.style.strokeDasharray = `${cFrac * circ} ${circ}`;
+    dc.style.strokeDashoffset = String(circ * 0.25);
+    dw.style.strokeDasharray = `${wFrac * circ} ${circ}`;
+    dw.style.strokeDashoffset = String(circ * 0.25 - cFrac * circ);
+}
+
+// ── Social ────────────────────────────────────────────────────
 function renderSocial(connections) {
     const list = document.getElementById('socialList');
     const platforms = Object.entries(connections).filter(([, v]) => v.connected);
-
     if (!platforms.length) {
-        list.innerHTML = '<div class="empty-msg"><i class="fas fa-plug-circle-xmark"></i><span>No accounts linked</span></div>';
+        list.innerHTML = '<div class="empty-state"><i class="fas fa-link-slash"></i><span>No accounts linked</span></div>';
         return;
     }
-
-    const icons = {
-        twitter:'fa-twitter', instagram:'fa-instagram',
-        youtube:'fa-youtube', tiktok:'fa-tiktok', facebook:'fa-facebook'
-    };
-
+    const ICONS = { twitter:'fa-twitter', instagram:'fa-instagram', youtube:'fa-youtube', tiktok:'fa-tiktok', facebook:'fa-facebook' };
     list.innerHTML = platforms.map(([p, d]) => `
-        <div class="social-card">
-            <i class="fab ${icons[p] || 'fa-link'}"></i>
-            <span class="sc-name">${p.charAt(0).toUpperCase()+p.slice(1)}</span>
-            <span class="sc-handle">@${d.username}</span>
-            ${d.verified ? '<i class="fas fa-check-circle sc-verified"></i>' : ''}
-        </div>
-    `).join('');
+        <div class="social-row">
+            <i class="fab ${ICONS[p] || 'fa-link'}"></i>
+            <span class="soc-name">${p[0].toUpperCase()+p.slice(1)}</span>
+            <span class="soc-handle">@${d.username}</span>
+            ${d.verified ? '<i class="fas fa-circle-check soc-check"></i>' : ''}
+        </div>`).join('');
 }
 
-// ── Activity Feed ─────────────────────────────────────────────
+// ── Activity ──────────────────────────────────────────────────
 async function loadActivities() {
     const token = localStorage.getItem('djangoAuthToken');
     const list  = document.getElementById('activityList');
@@ -197,42 +178,41 @@ async function loadActivities() {
         });
         if (!res.ok) throw new Error('Failed');
         const data = await res.json();
-        const activities = data.results || data;
+        const items = (data.results || data).slice(0, 15);
 
-        if (!activities.length) {
-            list.innerHTML = '<div class="empty-msg"><i class="fas fa-bolt-lightning"></i><span>No activity yet</span></div>';
+        if (!items.length) {
+            list.innerHTML = '<div class="empty-state"><i class="fas fa-bolt-lightning"></i><span>No activity yet</span></div>';
             return;
         }
 
-        const countEl = document.getElementById('activityCount');
-        if (countEl) countEl.textContent = activities.length > 15 ? '15+' : activities.length;
+        set('activityCount', items.length >= 15 ? '15+' : items.length);
 
-        list.innerHTML = activities.slice(0, 15).map((a, i) => {
-            const meta = ACTIVITY_ICONS[a.activity_type] || { icon:'fa-circle', color:'linear-gradient(135deg,#555,#777)' };
+        list.innerHTML = items.map((a, i) => {
+            const m = ACT_META[a.activity_type] || { icon:'fa-circle', bg:'linear-gradient(135deg,#6b7280,#9ca3af)' };
             return `
-                <div class="feed-item" style="animation-delay:${i * 0.05}s">
-                    <div class="feed-icon" style="background:${meta.color}">
-                        <i class="fas ${meta.icon}"></i>
-                    </div>
-                    <div class="feed-body">
-                        <div class="feed-desc">${a.description}</div>
-                        <div class="feed-time">${timeAgo(a.created_at)}</div>
-                    </div>
-                    ${a.points_change ? `<span class="feed-pts">+${a.points_change}</span>` : ''}
-                </div>`;
+            <div class="act-item" style="animation-delay:${i*0.04}s">
+                <div class="act-icon" style="background:${m.bg}">
+                    <i class="fas ${m.icon}"></i>
+                </div>
+                <div class="act-body">
+                    <div class="act-desc">${a.description}</div>
+                    <div class="act-time">${timeAgo(a.created_at)}</div>
+                </div>
+                ${a.points_change ? `<span class="act-pts">+${a.points_change}</span>` : ''}
+            </div>`;
         }).join('');
     } catch (e) {
-        list.innerHTML = '<div class="empty-msg"><i class="fas fa-triangle-exclamation"></i><span>Could not load activity</span></div>';
+        list.innerHTML = '<div class="empty-state"><i class="fas fa-triangle-exclamation"></i><span>Could not load activity</span></div>';
     }
 }
 
-// ── Edit Modal ────────────────────────────────────────────────
+// ── Edit modal ────────────────────────────────────────────────
 function openEditModal() {
     if (!profileData) return;
     document.getElementById('editDisplayName').value = profileData.display_name || '';
-    document.getElementById('editBio').value         = profileData.bio || '';
     document.getElementById('editUsername').value    = profileData.username || '';
-    document.getElementById('bioCharCount').textContent = (profileData.bio || '').length;
+    document.getElementById('editBio').value         = profileData.bio || '';
+    document.getElementById('bioCount').textContent  = (profileData.bio || '').length;
     document.getElementById('editError').style.display = 'none';
     document.getElementById('editModal').classList.add('open');
 }
@@ -243,14 +223,13 @@ function closeEditModal() {
 
 async function saveProfile() {
     const token = localStorage.getItem('djangoAuthToken');
-    const body = {
+    const btn   = document.querySelector('.mbtn.primary');
+    const body  = {
         display_name: document.getElementById('editDisplayName').value.trim(),
         bio:          document.getElementById('editBio').value.trim(),
         username:     document.getElementById('editUsername').value.trim(),
     };
-    const saveBtn = document.querySelector('.mbtn-save');
-    if (saveBtn) { saveBtn.disabled = true; saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...'; }
-
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving…'; }
     try {
         const res = await fetch(`${PROFILE_API}/auth/profile/`, {
             method: 'PATCH',
@@ -259,32 +238,29 @@ async function saveProfile() {
         });
         if (res.ok) {
             closeEditModal();
-            if (window.showToast) showToast('✅ Profile updated!');
+            showToast('Profile updated ✓');
             await loadProfile();
         } else {
             const err = await res.json();
             const msg = Object.values(err).flat().join(' ');
-            const errEl = document.getElementById('editError');
-            errEl.textContent = msg || 'Failed to save. Try again.';
-            errEl.style.display = 'block';
+            const el = document.getElementById('editError');
+            el.textContent = msg || 'Save failed. Try again.';
+            el.style.display = 'block';
         }
-    } catch (e) {
-        console.error('Save error:', e);
-    } finally {
-        if (saveBtn) { saveBtn.disabled = false; saveBtn.innerHTML = '<i class="fas fa-floppy-disk"></i> Save Changes'; }
+    } catch (e) { console.error(e); }
+    finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-floppy-disk"></i> Save Changes'; }
     }
 }
 
-// ── Avatar Upload ─────────────────────────────────────────────
+// ── Avatar upload ─────────────────────────────────────────────
 async function uploadAvatar(input) {
     const file = input.files[0];
     if (!file) return;
-    if (file.size > 5 * 1024 * 1024) { if (window.showToast) showToast('⚠️ Max file size is 5MB'); return; }
-
+    if (file.size > 5 * 1024 * 1024) { showToast('Max file size is 5 MB'); return; }
     const token = localStorage.getItem('djangoAuthToken');
     const form  = new FormData();
     form.append('profile_image', file);
-
     try {
         const res = await fetch(`${PROFILE_API}/auth/profile/`, {
             method: 'PATCH',
@@ -293,48 +269,39 @@ async function uploadAvatar(input) {
         });
         if (res.ok) {
             const reader = new FileReader();
-            reader.onload = e => {
-                document.getElementById('avatarDisplay').innerHTML = `<img src="${e.target.result}" alt="avatar">`;
-                const ma = document.getElementById('modalAvatar');
-                if (ma) ma.innerHTML = `<img src="${e.target.result}" alt="avatar">`;
-                const na = document.getElementById('navAvatarImg');
-                if (na) na.innerHTML = `<img src="${e.target.result}" alt="avatar">`;
-            };
+            reader.onload = e => setAvatarImg(e.target.result);
             reader.readAsDataURL(file);
-            if (window.showToast) showToast('📸 Avatar updated!');
+            showToast('Avatar updated ✓');
         }
-    } catch (e) { console.error('Avatar upload error:', e); }
+    } catch (e) { console.error(e); }
 }
 
 // ── Helpers ───────────────────────────────────────────────────
-function setText(id, val) {
-    const el = document.getElementById(id);
-    if (el) el.textContent = val;
-}
+function set(id, val) { const el = document.getElementById(id); if (el) el.textContent = val; }
+function show(id)     { const el = document.getElementById(id); if (el) el.style.display = 'inline-flex'; }
+function setW(id, pct){ const el = document.getElementById(id); if (el) el.style.width = `${pct}%`; }
+function delay(fn, ms){ setTimeout(fn, ms); }
 
-function show(id) {
-    const el = document.getElementById(id);
-    if (el) el.style.display = 'inline-flex';
-}
-
-function timeAgo(dateStr) {
-    const diff = Date.now() - new Date(dateStr).getTime();
+function timeAgo(d) {
+    const diff = Date.now() - new Date(d).getTime();
     if (diff < 60000)    return 'Just now';
-    if (diff < 3600000)  return `${Math.floor(diff / 60000)}m ago`;
-    if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
-    if (diff < 604800000)return `${Math.floor(diff / 86400000)}d ago`;
-    return new Date(dateStr).toLocaleDateString();
+    if (diff < 3600000)  return `${Math.floor(diff/60000)}m ago`;
+    if (diff < 86400000) return `${Math.floor(diff/3600000)}h ago`;
+    if (diff < 604800000)return `${Math.floor(diff/86400000)}d ago`;
+    return new Date(d).toLocaleDateString();
 }
 
-// ── Exports ───────────────────────────────────────────────────
+function showToast(msg) {
+    const t = document.getElementById('toast');
+    if (!t) return;
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// Exports
 window.openEditModal  = openEditModal;
 window.closeEditModal = closeEditModal;
 window.saveProfile    = saveProfile;
 window.uploadAvatar   = uploadAvatar;
-
-// Bio char counter
-document.addEventListener('DOMContentLoaded', () => {
-    const bio     = document.getElementById('editBio');
-    const counter = document.getElementById('bioCharCount');
-    if (bio && counter) bio.addEventListener('input', () => counter.textContent = bio.value.length);
-});
+window.showToast      = showToast;
