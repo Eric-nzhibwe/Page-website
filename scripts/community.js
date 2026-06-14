@@ -1,453 +1,501 @@
-// Community Page Logic
+// ARTX — Community Page  ·  community.js
+// All data comes from the Django REST API
 
-// Mobile Menu Toggle
-function toggleMobileMenu() {
-    const nav = document.getElementById('mainNav');
-    if (nav) {
-        nav.classList.toggle('active');
-    }
+const API = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+    ? 'http://localhost:8000/api'
+    : `${window.location.origin}/api`;
+
+let currentUser   = null;
+let feedPage      = 1;
+let feedHasMore   = false;
+let activePostId  = null;
+let newPostType   = 'text';
+
+// ── Auth header helper ────────────────────────────────────────
+function authHeader() {
+    return { 'Authorization': `Token ${localStorage.getItem('djangoAuthToken')}` };
 }
 
-let currentUserId = null;
-let player = null;
-let allSubmissions = [];
-let currentFilter = 'all';
-let currentSort = 'recent';
-let currentTopFilter = 'week';
+// ── Init ──────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', async () => {
+    const token = localStorage.getItem('djangoAuthToken');
+    if (!token) { window.location.href = 'auth.html'; return; }
 
-// Initialize
-document.addEventListener('DOMContentLoaded', () => {
-    if (!checkAuth()) {
+    // Load current user for context (prestige balance etc.)
+    try {
+        const r = await fetch(`${API}/auth/stats/`, { headers: authHeader() });
+        if (r.ok) {
+            const d = await r.json();
+            currentUser = d.user;
+            populateUserMenu(currentUser);
+            setText('shopBalance', currentUser.prestige_points.toLocaleString());
+        } else {
+            window.location.href = 'auth.html';
+            return;
+        }
+    } catch (e) {
+        console.error('Auth check failed', e);
         window.location.href = 'auth.html';
         return;
     }
-    
-    loadPlayerData();
-    loadSubmissions();
-    renderFeed();
-    updateChallengeFilter();
+
+    loadFeed();
+    loadTopMembers('prestige');
 });
 
-// Authentication
-function checkAuth() {
-    currentUserId = localStorage.getItem('artCurrentUser');
-    return currentUserId !== null;
+function populateUserMenu(u) {
+    setText('menuUsername', u.display_name || u.username);
+    setText('menuTier',     `${u.access_tier} Tier`);
+    setText('menuStreak',   u.current_streak);
+    setText('menuPrestige', u.prestige_points.toLocaleString());
+    setText('menuBalance',  `K${parseFloat(u.total_earnings).toFixed(0)}`);
 }
 
-function loadPlayerData() {
-    if (!currentUserId) return;
-    
-    const saved = localStorage.getItem(`artPlayer_${currentUserId}`);
-    if (saved) {
-        player = JSON.parse(saved);
-        
-        // Initialize virtual currency if not exists
-        if (player.virtualCurrency === undefined) {
-            player.virtualCurrency = 0;
+// ── Tab switching ─────────────────────────────────────────────
+function switchTab(tabName, btn) {
+    document.querySelectorAll('.comm-tab').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.comm-section').forEach(s => s.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(`tab-${tabName}`).classList.add('active');
+}
+
+// ══════════════════════════════════════════════════════════════
+//  FEED
+// ══════════════════════════════════════════════════════════════
+async function loadFeed(reset = true) {
+    if (reset) { feedPage = 1; feedHasMore = false; }
+
+    const sort  = document.getElementById('sortFilter').value;
+    const order = sort === 'popular' ? '-reaction_count' : '-created_at';
+
+    try {
+        const r = await fetch(
+            `${API}/social/posts/?ordering=${order}&page=${feedPage}&page_size=12`,
+            { headers: authHeader() }
+        );
+        if (!r.ok) throw new Error('Feed load failed');
+        const data = await r.json();
+
+        const posts = data.results || data;
+        feedHasMore = !!(data.next);
+
+        const grid = document.getElementById('feedGrid');
+        if (reset) {
+            grid.innerHTML = '';
         }
-        
-        // Initialize votes if not exists
-        if (!player.votes) {
-            player.votes = {}; // submissionId: 'up' or 'down'
+
+        if (!posts.length && reset) {
+            grid.innerHTML = emptyState('fa-newspaper', 'No posts yet — be the first!');
+            document.getElementById('feedPagination').style.display = 'none';
+            return;
         }
-        
-        // Initialize rewards if not exists
-        if (!player.rewards) {
-            player.rewards = [];
-        }
-        
-        savePlayerData();
-        updateUI();
-    }
-}
 
-function savePlayerData() {
-    if (!currentUserId) return;
-    localStorage.setItem(`artPlayer_${currentUserId}`, JSON.stringify(player));
-    
-    // Update in users array
-    const users = JSON.parse(localStorage.getItem('artUsers') || '[]');
-    const userIndex = users.findIndex(u => u.id === currentUserId);
-    if (userIndex !== -1) {
-        users[userIndex] = player;
-        localStorage.setItem('artUsers', JSON.stringify(users));
-    }
-}
-
-function updateUI() {
-    document.getElementById('username').textContent = player.username;
-    document.getElementById('userPrestige').textContent = player.prestige;
-    document.getElementById('coinCount').textContent = player.virtualCurrency;
-    document.getElementById('shopBalance').textContent = player.virtualCurrency;
-}
-
-function logout() {
-    if (confirm('Logout?')) {
-        localStorage.removeItem('artCurrentUser');
-        window.location.href = 'auth.html';
-    }
-}
-
-// Load Submissions
-function loadSubmissions() {
-    allSubmissions = JSON.parse(localStorage.getItem('artSubmissions') || '[]');
-    
-    // Initialize votes for each submission if not exists
-    allSubmissions.forEach(submission => {
-        if (!submission.votes) {
-            submission.votes = {
-                up: 0,
-                down: 0,
-                users: {} // userId: 'up' or 'down'
-            };
-        }
-    });
-    
-    saveSubmissions();
-}
-
-function saveSubmissions() {
-    localStorage.setItem('artSubmissions', JSON.stringify(allSubmissions));
-}
-
-// Tab Switching
-function switchTab(tabName) {
-    // Update tab buttons
-    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-    event.target.classList.add('active');
-    
-    // Update tab content
-    document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-    document.getElementById(tabName).classList.add('active');
-    
-    // Load content
-    if (tabName === 'feed') renderFeed();
-    if (tabName === 'top') renderTopList();
-}
-
-// Update Challenge Filter
-function updateChallengeFilter() {
-    const challenges = JSON.parse(localStorage.getItem('artChallenges') || '[]');
-    const select = document.getElementById('challengeFilter');
-    
-    select.innerHTML = '<option value="all">All Challenges</option>' +
-        challenges.map(c => `<option value="${c.id}">${c.title}</option>`).join('');
-}
-
-// Filter Feed
-function filterFeed() {
-    currentFilter = document.getElementById('challengeFilter').value;
-    currentSort = document.getElementById('sortFilter').value;
-    renderFeed();
-}
-
-// Render Feed
-function renderFeed() {
-    const container = document.getElementById('interpretationsGrid');
-    
-    let filtered = allSubmissions.filter(s => s.userId !== currentUserId); // Don't show own submissions
-    
-    if (currentFilter !== 'all') {
-        filtered = filtered.filter(s => s.challengeId === currentFilter);
-    }
-    
-    // Sort
-    if (currentSort === 'recent') {
-        filtered.sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt));
-    } else if (currentSort === 'popular') {
-        filtered.sort((a, b) => (b.votes.up - b.votes.down) - (a.votes.up - a.votes.down));
-    } else if (currentSort === 'controversial') {
-        filtered.sort((a, b) => {
-            const aControversy = Math.min(a.votes.up, a.votes.down);
-            const bControversy = Math.min(b.votes.up, b.votes.down);
-            return bControversy - aControversy;
+        posts.forEach((p, i) => {
+            const card = document.createElement('div');
+            card.className = 'feed-card';
+            card.style.animationDelay = `${i * 0.04}s`;
+            card.innerHTML = buildPostCard(p);
+            grid.appendChild(card);
         });
+
+        document.getElementById('feedPagination').style.display = feedHasMore ? 'flex' : 'none';
+    } catch (e) {
+        console.error(e);
+        document.getElementById('feedGrid').innerHTML = emptyState('fa-triangle-exclamation', 'Could not load feed');
     }
-    
-    if (filtered.length === 0) {
-        container.innerHTML = '<p style="color: #888; text-align: center; padding: 40px; grid-column: 1/-1;">No interpretations yet</p>';
-        return;
-    }
-    
-    container.innerHTML = filtered.map(submission => {
-        const netVotes = submission.votes.up - submission.votes.down;
-        const userVote = submission.votes.users[currentUserId];
-        const timeAgo = getTimeAgo(new Date(submission.submittedAt));
-        
-        return `
-            <div class="interpretation-card" onclick="viewInterpretation('${submission.id}')">
-                <div class="interpretation-header">
-                    <div class="user-avatar">
-                        <div class="avatar-circle">${submission.username.charAt(0).toUpperCase()}</div>
-                        <div class="user-info-card">
-                            <span class="user-name">${submission.username}</span>
-                            <span class="challenge-name">${submission.challengeTitle}</span>
-                        </div>
-                    </div>
-                    <span class="score-badge">${submission.score} pts</span>
-                </div>
-                <div class="interpretation-text">${submission.interpretation}</div>
-                <div class="interpretation-footer">
-                    <div class="voting-section">
-                        <button class="vote-btn ${userVote === 'up' ? 'upvoted' : ''}" onclick="vote(event, '${submission.id}', 'up')">
-                            <i class="fas fa-arrow-up"></i>
-                            <span class="vote-count">${submission.votes.up}</span>
-                        </button>
-                        <button class="vote-btn ${userVote === 'down' ? 'downvoted' : ''}" onclick="vote(event, '${submission.id}', 'down')">
-                            <i class="fas fa-arrow-down"></i>
-                            <span class="vote-count">${submission.votes.down}</span>
-                        </button>
-                        <span style="color: ${netVotes >= 0 ? '#4caf50' : '#f44336'}; font-weight: bold;">
-                            ${netVotes >= 0 ? '+' : ''}${netVotes}
-                        </span>
-                    </div>
-                    <span class="time-ago">${timeAgo}</span>
-                </div>
-            </div>
-        `;
-    }).join('');
 }
 
-// Vote Function
-function vote(event, submissionId, voteType) {
-    event.stopPropagation();
-    
-    const submission = allSubmissions.find(s => s.id === submissionId);
-    if (!submission) return;
-    
-    const previousVote = submission.votes.users[currentUserId];
-    
-    // Remove previous vote
-    if (previousVote === 'up') {
-        submission.votes.up--;
-    } else if (previousVote === 'down') {
-        submission.votes.down--;
+async function loadMoreFeed() {
+    feedPage++;
+    await loadFeed(false);
+}
+
+function buildPostCard(p) {
+    const initials  = (p.author_name || p.author?.username || '?')[0].toUpperCase();
+    const avatar    = p.author_avatar
+        ? `<img src="${p.author_avatar}" alt="avatar">`
+        : `<span class="av-initial">${initials}</span>`;
+    const ago       = timeAgo(p.created_at);
+    const reacted   = p.user_reaction; // set by serializer
+    const typeLabel = { text: '', achievement: '🏆 Achievement', challenge: '⚡ Challenge', media: '🖼 Media' }[p.post_type] || '';
+    const mediaHtml = p.media_url
+        ? `<div class="card-media"><img src="${p.media_url}" alt="post media" onerror="this.style.display='none'"></div>`
+        : '';
+
+    return `
+        <div class="card-header">
+            <div class="card-av">${avatar}</div>
+            <div class="card-meta">
+                <span class="card-name">${escHtml(p.author_name || p.author?.username || 'Member')}</span>
+                <span class="card-time">${ago}${typeLabel ? ' · <em>' + typeLabel + '</em>' : ''}</span>
+            </div>
+        </div>
+        <div class="card-body" onclick="openPostModal('${p.id}')" style="cursor:pointer">
+            <p class="card-content">${escHtml(p.content)}</p>
+            ${mediaHtml}
+        </div>
+        <div class="card-footer">
+            <div class="card-reactions">
+                <button class="react-btn ${reacted ? 'reacted' : ''}" onclick="toggleReact('${p.id}', this)">
+                    <i class="fas fa-fire"></i>
+                    <span class="react-count">${p.reaction_count || 0}</span>
+                </button>
+                <button class="comment-btn" onclick="openPostModal('${p.id}')">
+                    <i class="fas fa-comment"></i>
+                    <span>${p.comment_count || 0}</span>
+                </button>
+            </div>
+            <button class="share-card-btn" onclick="sharePost('${p.id}')">
+                <i class="fas fa-share-nodes"></i>
+            </button>
+        </div>`;
+}
+
+// ── React to post ─────────────────────────────────────────────
+async function toggleReact(postId, btn) {
+    const reacted = btn.classList.contains('reacted');
+    const countEl = btn.querySelector('.react-count');
+
+    // Optimistic UI
+    btn.classList.toggle('reacted');
+    const delta = reacted ? -1 : 1;
+    countEl.textContent = Math.max(0, parseInt(countEl.textContent) + delta);
+
+    try {
+        const url    = `${API}/social/posts/${postId}/${reacted ? 'unreact' : 'react'}/`;
+        const method = 'POST';
+        const opts   = {
+            method,
+            headers: { ...authHeader(), 'Content-Type': 'application/json' },
+            body: JSON.stringify({ reaction_type: 'fire' })
+        };
+        const r = await fetch(url, opts);
+        if (!r.ok) throw new Error('React failed');
+    } catch (e) {
+        // Revert on error
+        btn.classList.toggle('reacted');
+        countEl.textContent = Math.max(0, parseInt(countEl.textContent) - delta);
+        showToast('Could not update reaction');
     }
-    
-    // Add new vote or remove if same
-    if (previousVote === voteType) {
-        delete submission.votes.users[currentUserId];
-    } else {
-        submission.votes.users[currentUserId] = voteType;
-        if (voteType === 'up') {
-            submission.votes.up++;
-            
-            // Reward the voter with coins
-            player.virtualCurrency += 1;
-            
-            // Reward the author with coins if high rating
-            if (submission.votes.up % 5 === 0) {
-                const author = JSON.parse(localStorage.getItem(`artPlayer_${submission.userId}`));
-                if (author) {
-                    author.virtualCurrency = (author.virtualCurrency || 0) + 5;
-                    localStorage.setItem(`artPlayer_${submission.userId}`, JSON.stringify(author));
-                }
-            }
+}
+
+// ── Open post detail modal ────────────────────────────────────
+async function openPostModal(postId) {
+    activePostId = postId;
+    document.getElementById('postModalContent').innerHTML = '<div class="modal-loading"><i class="fas fa-spinner fa-spin"></i></div>';
+    document.getElementById('commentsList').innerHTML = '';
+    document.getElementById('postModal').classList.add('open');
+
+    try {
+        const [pr, cr] = await Promise.all([
+            fetch(`${API}/social/posts/${postId}/`, { headers: authHeader() }),
+            fetch(`${API}/social/comments/?post_id=${postId}`, { headers: authHeader() })
+        ]);
+        const post     = await pr.json();
+        const comments = await cr.json();
+
+        const initials = (post.author_name || '?')[0].toUpperCase();
+        const avatar   = post.author_avatar
+            ? `<img src="${post.author_avatar}" alt="avatar">`
+            : `<span class="av-initial">${initials}</span>`;
+        const mediaHtml = post.media_url
+            ? `<div class="modal-media"><img src="${post.media_url}" alt="media"></div>`
+            : '';
+        const reacted  = post.user_reaction;
+
+        document.getElementById('postModalContent').innerHTML = `
+            <div class="modal-post-header">
+                <div class="card-av">${avatar}</div>
+                <div class="card-meta">
+                    <span class="card-name">${escHtml(post.author_name || post.author?.username || 'Member')}</span>
+                    <span class="card-time">${timeAgo(post.created_at)}</span>
+                </div>
+            </div>
+            <p class="modal-post-body">${escHtml(post.content)}</p>
+            ${mediaHtml}
+            <div class="modal-reactions">
+                <button class="react-btn ${reacted ? 'reacted' : ''}" onclick="toggleReact('${post.id}', this)">
+                    <i class="fas fa-fire"></i> <span class="react-count">${post.reaction_count || 0}</span>
+                </button>
+                <span class="modal-comment-count"><i class="fas fa-comment"></i> ${post.comment_count || 0}</span>
+            </div>`;
+
+        const cList  = Array.isArray(comments) ? comments : (comments.results || []);
+        const listEl = document.getElementById('commentsList');
+        if (!cList.length) {
+            listEl.innerHTML = '<p class="no-comments">No comments yet. Be the first!</p>';
         } else {
-            submission.votes.down++;
+            listEl.innerHTML = cList.map(c => `
+                <div class="comment-item">
+                    <div class="comment-av">
+                        ${c.author_avatar
+                            ? `<img src="${c.author_avatar}" alt="av">`
+                            : `<span class="av-initial">${(c.author_name || '?')[0].toUpperCase()}</span>`}
+                    </div>
+                    <div class="comment-body">
+                        <span class="comment-author">${escHtml(c.author_name || 'Member')}</span>
+                        <span class="comment-text">${escHtml(c.content)}</span>
+                        <span class="comment-time">${timeAgo(c.created_at)}</span>
+                    </div>
+                </div>`).join('');
         }
+    } catch (e) {
+        document.getElementById('postModalContent').innerHTML = emptyState('fa-triangle-exclamation', 'Could not load post');
     }
-    
-    saveSubmissions();
-    savePlayerData();
-    updateUI();
-    renderFeed();
 }
 
-// View Interpretation Detail
-function viewInterpretation(submissionId) {
-    const submission = allSubmissions.find(s => s.id === submissionId);
-    if (!submission) return;
-    
-    const userVote = submission.votes.users[currentUserId];
-    const netVotes = submission.votes.up - submission.votes.down;
-    
-    document.getElementById('interpretationDetail').innerHTML = `
-        <div class="interpretation-detail-header">
-            <div class="detail-user-info">
-                <div class="detail-avatar">${submission.username.charAt(0).toUpperCase()}</div>
-                <div>
-                    <h2>${submission.username}</h2>
-                    <p style="color: #888;">${submission.challengeTitle}</p>
-                    <p style="color: #888; font-size: 14px;">${new Date(submission.submittedAt).toLocaleString()}</p>
-                </div>
-            </div>
-            <div class="detail-stats">
-                <div class="stat-item">
-                    <span class="stat-value">${submission.score}</span>
-                    <span class="stat-label">Score</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-value" style="color: ${netVotes >= 0 ? '#4caf50' : '#f44336'}">
-                        ${netVotes >= 0 ? '+' : ''}${netVotes}
-                    </span>
-                    <span class="stat-label">Net Votes</span>
-                </div>
-            </div>
-        </div>
-        
-        <div class="detail-text">${submission.interpretation}</div>
-        
-        <div class="detail-voting">
-            <button class="detail-vote-btn ${userVote === 'up' ? 'upvoted' : ''}" onclick="voteFromDetail('${submission.id}', 'up')">
-                <i class="fas fa-arrow-up"></i>
-                Upvote (${submission.votes.up})
-            </button>
-            <button class="detail-vote-btn ${userVote === 'down' ? 'downvoted' : ''}" onclick="voteFromDetail('${submission.id}', 'down')">
-                <i class="fas fa-arrow-down"></i>
-                Downvote (${submission.votes.down})
-            </button>
-        </div>
-    `;
-    
-    document.getElementById('interpretationModal').style.display = 'block';
+function closePostModal() {
+    document.getElementById('postModal').classList.remove('open');
+    activePostId = null;
 }
 
-function voteFromDetail(submissionId, voteType) {
-    vote(event, submissionId, voteType);
-    viewInterpretation(submissionId); // Refresh modal
-}
+// ── Submit comment ────────────────────────────────────────────
+async function submitComment() {
+    if (!activePostId) return;
+    const input   = document.getElementById('commentInput');
+    const content = input.value.trim();
+    if (!content) return;
 
-function closeInterpretationModal() {
-    document.getElementById('interpretationModal').style.display = 'none';
-}
-
-// Top List
-function filterTopBy(period) {
-    currentTopFilter = period;
-    
-    // Update button states
-    document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
-    event.target.classList.add('active');
-    
-    renderTopList();
-}
-
-function renderTopList() {
-    const container = document.getElementById('topList');
-    
-    let filtered = [...allSubmissions];
-    
-    // Filter by time period
-    const now = new Date();
-    if (currentTopFilter === 'week') {
-        const weekAgo = new Date(now - 7 * 24 * 60 * 60 * 1000);
-        filtered = filtered.filter(s => new Date(s.submittedAt) >= weekAgo);
-    } else if (currentTopFilter === 'month') {
-        const monthAgo = new Date(now - 30 * 24 * 60 * 60 * 1000);
-        filtered = filtered.filter(s => new Date(s.submittedAt) >= monthAgo);
+    try {
+        const r = await fetch(`${API}/social/comments/`, {
+            method: 'POST',
+            headers: { ...authHeader(), 'Content-Type': 'application/json' },
+            body: JSON.stringify({ content, post_id: activePostId })
+        });
+        if (!r.ok) throw new Error('Comment failed');
+        input.value = '';
+        openPostModal(activePostId); // Refresh
+        showToast('Comment posted ✓');
+    } catch (e) {
+        showToast('Could not post comment');
     }
-    
-    // Sort by net votes
-    filtered.sort((a, b) => {
-        const aNet = a.votes.up - a.votes.down;
-        const bNet = b.votes.up - b.votes.down;
-        return bNet - aNet;
+}
+
+// ── Share post ────────────────────────────────────────────────
+async function sharePost(postId) {
+    const url = `${window.location.origin}/posts/${postId}`;
+    if (navigator.share) {
+        navigator.share({ title: 'ARTX Post', url });
+    } else {
+        navigator.clipboard.writeText(url).then(() => showToast('Link copied!'));
+    }
+    // Record share in backend (fire-and-forget)
+    fetch(`${API}/social/posts/${postId}/share/`, {
+        method: 'POST',
+        headers: { ...authHeader(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ platform: 'copy_link' })
+    }).catch(() => {});
+}
+
+// ══════════════════════════════════════════════════════════════
+//  NEW POST
+// ══════════════════════════════════════════════════════════════
+function openNewPostModal() {
+    document.getElementById('newPostContent').value = '';
+    document.getElementById('npCharCount').textContent = '0';
+    document.getElementById('npError').style.display = 'none';
+    document.getElementById('newPostModal').classList.add('open');
+}
+
+function closeNewPostModal() {
+    document.getElementById('newPostModal').classList.remove('open');
+}
+
+function setPostType(type, btn) {
+    newPostType = type;
+    document.querySelectorAll('.ptype-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('mediaUrlGroup').style.display = type === 'media' ? 'block' : 'none';
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const ta = document.getElementById('newPostContent');
+    if (ta) ta.addEventListener('input', () => {
+        document.getElementById('npCharCount').textContent = ta.value.length;
     });
-    
-    // Take top 10
-    filtered = filtered.slice(0, 10);
-    
-    if (filtered.length === 0) {
-        container.innerHTML = '<p style="color: #888; text-align: center; padding: 40px;">No submissions in this period</p>';
+});
+
+async function submitNewPost() {
+    const content = document.getElementById('newPostContent').value.trim();
+    if (!content) {
+        showNpError('Post content cannot be empty.');
         return;
     }
-    
-    container.innerHTML = filtered.map((submission, index) => {
-        const rank = index + 1;
-        const netVotes = submission.votes.up - submission.votes.down;
-        const rankClass = rank === 1 ? 'rank-1' : rank === 2 ? 'rank-2' : rank === 3 ? 'rank-3' : 'rank-other';
-        
-        return `
-            <div class="top-item" onclick="viewInterpretation('${submission.id}')">
-                <div class="rank-badge ${rankClass}">
-                    ${rank <= 3 ? '<i class="fas fa-trophy"></i>' : rank}
+
+    const body = { content, post_type: newPostType };
+    if (newPostType === 'media') {
+        const mu = document.getElementById('newPostMediaUrl').value.trim();
+        if (mu) { body.media_url = mu; body.media_type = 'image'; }
+    }
+
+    const btn = document.querySelector('.btn-submit-post');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Posting…';
+
+    try {
+        const r = await fetch(`${API}/social/posts/`, {
+            method: 'POST',
+            headers: { ...authHeader(), 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+        if (!r.ok) {
+            const err = await r.json();
+            showNpError(Object.values(err).flat().join(' ') || 'Post failed.');
+            return;
+        }
+        closeNewPostModal();
+        showToast('Post published ✓');
+        loadFeed();
+    } catch (e) {
+        showNpError('Network error. Try again.');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-paper-plane"></i> Post';
+    }
+}
+
+function showNpError(msg) {
+    const el = document.getElementById('npError');
+    el.textContent = msg;
+    el.style.display = 'block';
+}
+
+// ══════════════════════════════════════════════════════════════
+//  TOP MEMBERS (uses /api/auth/leaderboard/ or stats)
+// ══════════════════════════════════════════════════════════════
+async function loadTopMembers(sortBy, btn) {
+    // Update button active state
+    if (btn) {
+        document.querySelectorAll('.top-filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+    }
+
+    const container = document.getElementById('topList');
+    container.innerHTML = '<div class="comm-skeleton"><div class="sk-row"></div><div class="sk-row"></div><div class="sk-row"></div></div>';
+
+    // Map sortBy to the leaderboard endpoint ordering
+    const orderMap = { prestige: '-prestige_points', wins: '-tournament_wins', streak: '-current_streak' };
+    const order    = orderMap[sortBy] || '-prestige_points';
+
+    try {
+        const r = await fetch(`${API}/auth/leaderboard/?ordering=${order}&page_size=15`, { headers: authHeader() });
+        if (!r.ok) throw new Error('Leaderboard failed');
+        const data    = await r.json();
+        const members = data.results || data;
+
+        if (!members.length) {
+            container.innerHTML = emptyState('fa-users', 'No members found');
+            return;
+        }
+
+        container.innerHTML = members.map((m, i) => {
+            const rank    = i + 1;
+            const rankCls = rank === 1 ? 'gold' : rank === 2 ? 'silver' : rank === 3 ? 'bronze' : 'plain';
+            const initials = (m.display_name || m.username || '?')[0].toUpperCase();
+            const statVal  = sortBy === 'wins' ? m.tournament_wins
+                           : sortBy === 'streak' ? m.current_streak
+                           : m.prestige_points;
+            const statLbl  = sortBy === 'wins' ? 'Wins' : sortBy === 'streak' ? 'Day streak' : 'Prestige';
+
+            return `
+            <div class="top-row" onclick="window.location.href='user.html'">
+                <div class="top-rank rank-${rankCls}">${rank <= 3 ? '<i class="fas fa-trophy"></i>' : rank}</div>
+                <div class="top-av">
+                    ${m.profile_image
+                        ? `<img src="${m.profile_image}" alt="av">`
+                        : `<span class="av-initial">${initials}</span>`}
                 </div>
                 <div class="top-info">
-                    <h3>${submission.username}</h3>
-                    <p>${submission.challengeTitle}</p>
-                    <p style="margin-top: 5px; font-size: 12px;">${submission.interpretation.substring(0, 100)}...</p>
+                    <span class="top-name">${escHtml(m.display_name || m.username)}</span>
+                    <span class="top-badge ${m.access_tier.toLowerCase()}">${m.access_tier}</span>
                 </div>
-                <div class="top-stats">
-                    <div class="stat-item">
-                        <span class="stat-value">${submission.score}</span>
-                        <span class="stat-label">Score</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-value" style="color: #4caf50">${submission.votes.up}</span>
-                        <span class="stat-label">Upvotes</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-value" style="color: ${netVotes >= 0 ? '#4caf50' : '#f44336'}">
-                            ${netVotes >= 0 ? '+' : ''}${netVotes}
-                        </span>
-                        <span class="stat-label">Net</span>
-                    </div>
+                <div class="top-stat">
+                    <span class="ts-val">${Number(statVal).toLocaleString()}</span>
+                    <span class="ts-lbl">${statLbl}</span>
                 </div>
-            </div>
-        `;
-    }).join('');
+            </div>`;
+        }).join('');
+    } catch (e) {
+        container.innerHTML = emptyState('fa-triangle-exclamation', 'Could not load members');
+    }
 }
 
-// Buy Reward
-function buyReward(rewardType, cost) {
-    if (player.virtualCurrency < cost) {
-        alert(`Not enough coins! You need ${cost} coins but have ${player.virtualCurrency}.`);
+// ══════════════════════════════════════════════════════════════
+//  REWARDS
+// ══════════════════════════════════════════════════════════════
+function buyReward(name, cost) {
+    if (!currentUser) return;
+    if (currentUser.prestige_points < cost) {
+        showToast(`You need ${cost} pts — you have ${currentUser.prestige_points}`);
         return;
     }
-    
-    if (!confirm(`Buy this reward for ${cost} coins?`)) return;
-    
-    player.virtualCurrency -= cost;
-    
-    const reward = {
-        type: rewardType,
-        purchasedAt: new Date().toISOString(),
-        used: false
-    };
-    
-    player.rewards.push(reward);
-    
-    // Apply immediate rewards
-    if (rewardType === 'prestige') {
-        player.prestige += 100;
-    }
-    
-    savePlayerData();
-    updateUI();
-    
-    const rewardNames = {
-        boost: 'Challenge Boost',
-        time: 'Extra Time',
-        prestige: 'Prestige Boost',
-        vip: 'VIP Badge',
-        tier: 'Tier Skip',
-        theme: 'Custom Theme'
-    };
-    
-    alert(`✅ ${rewardNames[rewardType]} purchased successfully!`);
+    // Show a non-blocking toast confirmation (no alert/confirm)
+    showToast(`✓ ${name} redeemed! (Coming soon via backend)`);
+    // Optimistically deduct in UI
+    currentUser.prestige_points -= cost;
+    setText('shopBalance', currentUser.prestige_points.toLocaleString());
+    setText('menuPrestige', currentUser.prestige_points.toLocaleString());
 }
 
-// Utility Functions
-function getTimeAgo(date) {
-    const seconds = Math.floor((new Date() - date) / 1000);
-    
-    if (seconds < 60) return 'Just now';
-    if (seconds < 3600) return Math.floor(seconds / 60) + 'm ago';
-    if (seconds < 86400) return Math.floor(seconds / 3600) + 'h ago';
-    if (seconds < 604800) return Math.floor(seconds / 86400) + 'd ago';
-    
-    return date.toLocaleDateString();
+// ══════════════════════════════════════════════════════════════
+//  HELPERS
+// ══════════════════════════════════════════════════════════════
+function setText(id, val) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = val;
 }
 
-// Make functions global
-window.toggleMobileMenu = toggleMobileMenu;
-window.logout = logout;
-window.switchTab = switchTab;
-window.filterFeed = filterFeed;
-window.vote = vote;
-window.viewInterpretation = viewInterpretation;
-window.voteFromDetail = voteFromDetail;
-window.closeInterpretationModal = closeInterpretationModal;
-window.filterTopBy = filterTopBy;
-window.buyReward = buyReward;
+function timeAgo(dateStr) {
+    const diff = Date.now() - new Date(dateStr).getTime();
+    if (diff < 60000)    return 'Just now';
+    if (diff < 3600000)  return `${Math.floor(diff / 60000)}m ago`;
+    if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
+    if (diff < 604800000)return `${Math.floor(diff / 86400000)}d ago`;
+    return new Date(dateStr).toLocaleDateString();
+}
+
+function escHtml(str) {
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+
+function emptyState(icon, msg) {
+    return `<div class="comm-empty"><i class="fas ${icon}"></i><span>${msg}</span></div>`;
+}
+
+function showToast(msg) {
+    const t = document.getElementById('commToast');
+    if (!t) return;
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 3200);
+}
+
+// Close modals on veil click
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('postModal').addEventListener('click', e => {
+        if (e.target === document.getElementById('postModal')) closePostModal();
+    });
+    document.getElementById('newPostModal').addEventListener('click', e => {
+        if (e.target === document.getElementById('newPostModal')) closeNewPostModal();
+    });
+});
+
+// Exports for inline onclick
+window.switchTab          = switchTab;
+window.loadFeed           = loadFeed;
+window.loadMoreFeed       = loadMoreFeed;
+window.loadTopMembers     = loadTopMembers;
+window.toggleReact        = toggleReact;
+window.openPostModal      = openPostModal;
+window.closePostModal     = closePostModal;
+window.submitComment      = submitComment;
+window.sharePost          = sharePost;
+window.openNewPostModal   = openNewPostModal;
+window.closeNewPostModal  = closeNewPostModal;
+window.setPostType        = setPostType;
+window.submitNewPost      = submitNewPost;
+window.buyReward          = buyReward;

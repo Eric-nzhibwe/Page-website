@@ -3,189 +3,339 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Join the ARTX community, share interpretations, and earn rewards!">
-    <title>Community</title>
+    <meta name="description" content="ARTX Community — posts, top creators, and rewards">
+    <title>ARTX — Community</title>
     <link rel="icon" type="image/jpeg" href="../images/ARTX.jpg">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="../styles/styles.css">
+    <link rel="stylesheet" href="../styles/icon-nav.css">
     <link rel="stylesheet" href="../styles/community.css">
-    <noscript>
-        <div style="background: #ffdddd; color: #900; padding: 1em; text-align: center;">
-            This site requires JavaScript to function properly. Please enable JavaScript in your browser.
-        </div>
-    </noscript>
 </head>
 <body>
-    <div class="container">
-        <!-- Header -->
-        <header class="header">
-            <div class="logo" onclick="window.location.href='../index.html'"><i class="fas fa-fire" aria-hidden="true"></i>ARTX</div>
-            <button class="mobile-menu-toggle" onclick="toggleMobileMenu()" aria-label="Open navigation menu">
-                <i class="fas fa-bars" aria-hidden="true"></i>
-            </button>
-            <nav class="nav" id="mainNav">
-                <button class="nav-btn" onclick="window.location.href='../index.html'">Dashboard</button>
-                <button class="nav-btn" onclick="window.location.href='challenges.html'">Challenges</button>
-                <button class="nav-btn active">Community</button>
-                <button class="nav-btn" onclick="window.location.href='influencers.html'">Influencers</button>
-            </nav>
-            <!-- User Menu Dropdown -->
-                <div class="user-menu-dropdown">
-                    <button class="btn-user-menu" onclick="toggleUserMenu()" aria-label="Open user menu">
-                        <i class="fas fa-user-circle" aria-hidden="true"></i>
-                        <i class="fas fa-chevron-down" aria-hidden="true"></i>
-                    </button>
-                    <div class="dropdown-content" id="userDropdown" role="menu" aria-label="User menu">
-                        <a href="wallet.html" role="menuitem">
-                            <i class="fas fa-wallet" aria-hidden="true"></i> My Wallet
-                        </a>
-                        <a href="chatbot.html" role="menuitem">
-                            <i class="fas fa-robot" aria-hidden="true"></i> AI Assistant
-                        </a>
-                        <a href="#" onclick="openMessenger(); return false;" role="menuitem">
-                            <i class="fas fa-comments" aria-hidden="true"></i> Messenger
-                            <span class="unread-badge" id="unreadBadge" style="display: none;">0</span>
-                        </a>
-                        <a href="user.html" role="menuitem">
-                            <i class="fas fa-user" aria-hidden="true"></i> User Profile
-                        </a>
-                        <div class="user-info" aria-label="User info">
-                            <div class="wallet-balance-badge" id="walletBalanceBadge" onclick="window.location.href='wallet.html'" style="cursor: pointer; display: none;">
-                                <i class="fas fa-wallet" aria-hidden="true"></i>
-                                <span id="walletBalance">K0.00</span> <!-- Should be set dynamically -->
-                            </div>
-                            <div class="streak-badge" id="streakBadge">
-                                <span class="streak-icon"><i class="fas fa-fire" aria-hidden="true"></i></span>
-                                <span id="streakCount">0</span> <!-- Should be set dynamically -->
-                            </div>
-                            <span class="prestige-badge" id="userPrestige">0</span> <!-- Should be set dynamically -->
-                            <div class="tier-badge" id="tierBadge">Bronze</div> <!-- Should be set dynamically -->
-                            <span class="username" id="username">Player</span> <!-- Should be set dynamically -->
-                            <a href="#" onclick="logout(); return false;" role="menuitem">
-                                <i class="fas fa-sign-out-alt" aria-hidden="true"></i> Logout
-                            </a>
-                        </div>
-                    </div>
-                </div>
-        </header>
 
-        <!-- Tabs -->
-        <div class="tabs">
-            <button class="tab-btn active" onclick="switchTab('feed')">
-                <i class="fas fa-fire" aria-hidden="true"></i> Community Feed
-            </button>
-            <button class="tab-btn" onclick="switchTab('top')">
-                <i class="fas fa-trophy" aria-hidden="true"></i> Top Interpretations
-            </button>
-            <button class="tab-btn" onclick="switchTab('rewards')">
-                <i class="fas fa-gift" aria-hidden="true"></i> Rewards Shop
-            </button>
+<!-- ═══════════════════════ NAVBAR (matches index.html) ═══════════════════════ -->
+<header class="header w-100">
+    <div class="header-left d-flex align-items-center">
+        <div class="logo" onclick="window.location.href='../index.html'" style="cursor:pointer">
+            <i class="fas fa-fire"></i>ARTX
         </div>
-
-        <!-- Community Feed Tab -->
-        <section id="feed" class="tab-content active">
-            <div class="section-header">
-                <h1><i class="fas fa-comments" aria-hidden="true"></i> Community Interpretations</h1>
-                <div class="filters">
-                    <select id="challengeFilter" onchange="filterFeed()">
-                        <option value="all">All Challenges</option>
-                    </select>
-                    <select id="sortFilter" onchange="filterFeed()">
-                        <option value="recent">Most Recent</option>
-                        <option value="popular">Most Popular</option>
-                        <option value="controversial">Controversial</option>
-                    </select>
-                </div>
-            </div>
-
-            <div class="interpretations-grid" id="interpretationsGrid"></div>
-        </section>
-
-        <!-- Top Interpretations Tab -->
-        <section id="top" class="tab-content">
-            <div class="section-header">
-                <h1><i class="fas fa-trophy" aria-hidden="true"></i> Top Rated Interpretations</h1>
-                <div class="filters">
-                    <button class="filter-btn active" onclick="filterTopBy('week')">This Week</button>
-                    <button class="filter-btn" onclick="filterTopBy('month')">This Month</button>
-                    <button class="filter-btn" onclick="filterTopBy('alltime')">All Time</button>
-                </div>
-            </div>
-
-            <div class="top-list" id="topList"></div>
-        </section>
-
-        <!-- Rewards Shop Tab -->
-        <section id="rewards" class="tab-content">
-            <div class="section-header">
-                <h1><i class="fas fa-store" aria-hidden="true"></i> Rewards Shop</h1>
-                <div class="balance-display">
-                    <i class="fas fa-coins" aria-hidden="true"></i> Your Balance: <span id="shopBalance">0</span> coins
-                </div>
-            </div>
-
-            <div class="rewards-grid">
-                <div class="reward-card">
-                    <div class="reward-icon"><i class="fas fa-bolt" aria-hidden="true"></i></div>
-                    <h3>Challenge Boost</h3>
-                    <p>2x points on next challenge</p>
-                    <div class="reward-price"><i class="fas fa-coins"></i> 50</div>
-                    <button class="btn-buy" onclick="buyReward('boost', 50)">Buy Now</button>
-                </div>
-
-                <div class="reward-card">
-                    <div class="reward-icon"><i class="fas fa-clock" aria-hidden="true"></i></div>
-                    <h3>Extra Time</h3>
-                    <p>+10 minutes on next challenge</p>
-                    <div class="reward-price"><i class="fas fa-coins"></i> 30</div>
-                    <button class="btn-buy" onclick="buyReward('time', 30)">Buy Now</button>
-                </div>
-
-                <div class="reward-card">
-                    <div class="reward-icon"><i class="fas fa-star" aria-hidden="true"></i></div>
-                    <h3>Prestige Boost</h3>
-                    <p>+100 instant prestige</p>
-                    <div class="reward-price"><i class="fas fa-coins"></i> 100</div>
-                    <button class="btn-buy" onclick="buyReward('prestige', 100)">Buy Now</button>
-                </div>
-
-                <div class="reward-card">
-                    <div class="reward-icon"><i class="fas fa-crown" aria-hidden="true"></i></div>
-                    <h3>VIP Badge</h3>
-                    <p>7-day VIP status</p>
-                    <div class="reward-price"><i class="fas fa-coins"></i> 200</div>
-                    <button class="btn-buy" onclick="buyReward('vip', 200)">Buy Now</button>
-                </div>
-
-                <div class="reward-card">
-                    <div class="reward-icon"><i class="fas fa-unlock" aria-hidden="true"></i></div>
-                    <h3>Tier Skip</h3>
-                    <p>Unlock next tier early</p>
-                    <div class="reward-price"><i class="fas fa-coins"></i> 500</div>
-                    <button class="btn-buy" onclick="buyReward('tier', 500)">Buy Now</button>
-                </div>
-
-                <div class="reward-card">
-                    <div class="reward-icon"><i class="fas fa-palette" aria-hidden="true"></i></div>
-                    <h3>Custom Theme</h3>
-                    <p>Personalize your profile</p>
-                    <div class="reward-price"><i class="fas fa-coins"></i> 150</div>
-                    <button class="btn-buy" onclick="buyReward('theme', 150)">Buy Now</button>
-                </div>
-            </div>
-        </section>
-    </div>
-
-    <!-- Interpretation Detail Modal -->
-    <div id="interpretationModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="interpretationDetail">
-        <div class="modal-content large">
-            <button class="close" onclick="closeInterpretationModal()" aria-label="Close modal">&times;</button>
-            <div id="interpretationDetail" tabindex="0"></div>
+        <div class="search-bar d-none d-md-flex align-items-center">
+            <i class="fas fa-search"></i>
+            <input type="text" placeholder="Search ARTX..." id="headerSearch">
         </div>
     </div>
 
-    <script src="../scripts/community.js"></script>
-    <!--
-        Note: For any POST actions (e.g., buyReward), ensure CSRF tokens are handled if integrating with Django backend.
-    -->
+    <nav class="icon-nav d-flex justify-content-center flex-grow-1">
+        <button class="icon-nav-btn" title="Home" onclick="window.location.href='../index.html'">
+            <i class="fas fa-home" style="color:black;"></i>
+        </button>
+        <button class="icon-nav-btn" title="Challenges" onclick="window.location.href='challenges.html'">
+            <i class="fas fa-trophy" style="color:black;"></i>
+        </button>
+        <button class="icon-nav-btn active" title="Community">
+            <i class="fas fa-users" style="color:black;"></i>
+        </button>
+        <button class="icon-nav-btn" title="Profile" onclick="window.location.href='user.html'">
+            <i class="fas fa-user-circle" style="color:black;"></i>
+        </button>
+    </nav>
+
+    <!-- Right Side Icons -->
+    <div class="header-right d-flex align-items-center">
+        <button class="header-icon-btn" onclick="window.location.href='../index.html'" title="Notifications">
+            <i class="fas fa-bell" style="color:black;"></i>
+        </button>
+        <button class="header-icon-btn" onclick="toggleQuickMenu()" title="Menu">
+            <i class="fas fa-th" style="color:black;"></i>
+        </button>
+        <div class="user-avatar-btn" onclick="toggleUserMenu()">
+            <i class="fas fa-user-circle" style="color:black;"></i>
+        </div>
+    </div>
+
+    <!-- Quick Menu Dropdown -->
+    <div class="quick-menu-dropdown" id="quickMenuDropdown">
+        <div class="quick-menu-header"><h3>Quick Access</h3></div>
+        <div class="quick-menu-grid">
+            <a href="../index.html" class="quick-menu-item">
+                <i class="fas fa-chart-line"></i><span>Dashboard</span>
+            </a>
+            <a href="challenges.html" class="quick-menu-item">
+                <i class="fas fa-trophy"></i><span>Challenges</span>
+            </a>
+            <a href="community.html" class="quick-menu-item">
+                <i class="fas fa-users"></i><span>Community</span>
+            </a>
+            <a href="wallet.html" class="quick-menu-item">
+                <i class="fas fa-wallet"></i><span>Wallet</span>
+            </a>
+            <a href="chatbot.html" class="quick-menu-item">
+                <i class="fas fa-robot"></i><span>AI Assistant</span>
+            </a>
+            <a href="influencers.html" class="quick-menu-item">
+                <i class="fas fa-star"></i><span>Influencers</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- User Menu Dropdown -->
+    <div class="user-menu-dropdown" id="userMenuDropdown">
+        <div class="user-menu-header">
+            <div class="user-menu-avatar"><i class="fas fa-user-circle"></i></div>
+            <div class="user-menu-info">
+                <h4 id="menuUsername">Player</h4>
+                <p id="menuTier">Bronze Tier</p>
+            </div>
+        </div>
+        <div class="user-menu-stats">
+            <div class="user-menu-stat">
+                <i class="fas fa-fire"></i>
+                <span id="menuStreak">0</span>
+            </div>
+            <div class="user-menu-stat">
+                <i class="fas fa-star"></i>
+                <span id="menuPrestige">0</span>
+            </div>
+            <div class="user-menu-stat">
+                <i class="fas fa-wallet"></i>
+                <span id="menuBalance">K0</span>
+            </div>
+        </div>
+        <div class="user-menu-links">
+            <a href="user.html"><i class="fas fa-user"></i> View Profile</a>
+            <a href="wallet.html"><i class="fas fa-wallet"></i> My Wallet</a>
+            <a href="chatbot.html"><i class="fas fa-robot"></i> AI Assistant</a>
+            <a href="#" onclick="logout(); return false;"><i class="fas fa-sign-out-alt"></i> Logout</a>
+        </div>
+    </div>
+</header>
+
+<!-- ═══════════════════════ PAGE CONTENT ═══════════════════════ -->
+<div class="comm-page">
+
+    <!-- Tabs -->
+    <div class="comm-tabs">
+        <button class="comm-tab active" data-tab="feed" onclick="switchTab('feed', this)">
+            <i class="fas fa-fire"></i> Community Feed
+        </button>
+        <button class="comm-tab" data-tab="top" onclick="switchTab('top', this)">
+            <i class="fas fa-trophy"></i> Top Members
+        </button>
+        <button class="comm-tab" data-tab="rewards" onclick="switchTab('rewards', this)">
+            <i class="fas fa-gift"></i> Rewards Shop
+        </button>
+    </div>
+
+    <!-- ── FEED TAB ── -->
+    <section id="tab-feed" class="comm-section active">
+        <div class="comm-section-head">
+            <div>
+                <h2>Community Feed</h2>
+                <p class="comm-sub">Posts from your fellow ARTX members</p>
+            </div>
+            <button class="btn-new-post" onclick="openNewPostModal()">
+                <i class="fas fa-plus"></i> New Post
+            </button>
+        </div>
+
+        <div class="feed-filters">
+            <select id="sortFilter" onchange="loadFeed()">
+                <option value="recent">Most Recent</option>
+                <option value="popular">Most Reactions</option>
+            </select>
+        </div>
+
+        <div id="feedGrid" class="feed-grid">
+            <div class="comm-skeleton">
+                <div class="sk-card"></div>
+                <div class="sk-card"></div>
+                <div class="sk-card"></div>
+            </div>
+        </div>
+
+        <div id="feedPagination" class="feed-pagination" style="display:none">
+            <button id="loadMoreBtn" class="btn-load-more" onclick="loadMoreFeed()">
+                <i class="fas fa-chevron-down"></i> Load More
+            </button>
+        </div>
+    </section>
+
+    <!-- ── TOP MEMBERS TAB ── -->
+    <section id="tab-top" class="comm-section">
+        <div class="comm-section-head">
+            <div>
+                <h2>Top Members</h2>
+                <p class="comm-sub">The highest-ranked ARTX community members</p>
+            </div>
+            <div class="top-filters">
+                <button class="top-filter-btn active" onclick="loadTopMembers('prestige', this)">Prestige</button>
+                <button class="top-filter-btn" onclick="loadTopMembers('wins', this)">Wins</button>
+                <button class="top-filter-btn" onclick="loadTopMembers('streak', this)">Streak</button>
+            </div>
+        </div>
+        <div id="topList" class="top-list">
+            <div class="comm-skeleton">
+                <div class="sk-row"></div>
+                <div class="sk-row"></div>
+                <div class="sk-row"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ── REWARDS TAB ── -->
+    <section id="tab-rewards" class="comm-section">
+        <div class="comm-section-head">
+            <div>
+                <h2>Rewards Shop</h2>
+                <p class="comm-sub">Spend your prestige points on exclusive perks</p>
+            </div>
+            <div class="balance-chip">
+                <i class="fas fa-star"></i>
+                <span id="shopBalance">0</span> pts
+            </div>
+        </div>
+        <div class="rewards-grid">
+            <div class="reward-card" data-cost="50">
+                <div class="reward-icon" style="background:linear-gradient(135deg,#556b2f,#7cba3d)">
+                    <i class="fas fa-bolt"></i>
+                </div>
+                <h3>Challenge Boost</h3>
+                <p>2× points on your next challenge submission</p>
+                <div class="reward-footer">
+                    <span class="reward-price"><i class="fas fa-star"></i> 50 pts</span>
+                    <button class="btn-reward" onclick="buyReward('Challenge Boost', 50)">Get</button>
+                </div>
+            </div>
+            <div class="reward-card" data-cost="30">
+                <div class="reward-icon" style="background:linear-gradient(135deg,#0e7490,#22d3ee)">
+                    <i class="fas fa-clock"></i>
+                </div>
+                <h3>Extra Time</h3>
+                <p>+10 minutes on your next timed challenge</p>
+                <div class="reward-footer">
+                    <span class="reward-price"><i class="fas fa-star"></i> 30 pts</span>
+                    <button class="btn-reward" onclick="buyReward('Extra Time', 30)">Get</button>
+                </div>
+            </div>
+            <div class="reward-card" data-cost="100">
+                <div class="reward-icon" style="background:linear-gradient(135deg,#9333ea,#c084fc)">
+                    <i class="fas fa-crown"></i>
+                </div>
+                <h3>VIP Badge</h3>
+                <p>Display a VIP badge on your profile for 7 days</p>
+                <div class="reward-footer">
+                    <span class="reward-price"><i class="fas fa-star"></i> 100 pts</span>
+                    <button class="btn-reward" onclick="buyReward('VIP Badge', 100)">Get</button>
+                </div>
+            </div>
+            <div class="reward-card" data-cost="200">
+                <div class="reward-icon" style="background:linear-gradient(135deg,#b45309,#f59e0b)">
+                    <i class="fas fa-fire"></i>
+                </div>
+                <h3>Streak Shield</h3>
+                <p>Protect your streak from breaking once</p>
+                <div class="reward-footer">
+                    <span class="reward-price"><i class="fas fa-star"></i> 200 pts</span>
+                    <button class="btn-reward" onclick="buyReward('Streak Shield', 200)">Get</button>
+                </div>
+            </div>
+            <div class="reward-card" data-cost="150">
+                <div class="reward-icon" style="background:linear-gradient(135deg,#0f766e,#34d399)">
+                    <i class="fas fa-palette"></i>
+                </div>
+                <h3>Custom Theme</h3>
+                <p>Unlock a unique colour theme for your profile</p>
+                <div class="reward-footer">
+                    <span class="reward-price"><i class="fas fa-star"></i> 150 pts</span>
+                    <button class="btn-reward" onclick="buyReward('Custom Theme', 150)">Get</button>
+                </div>
+            </div>
+            <div class="reward-card" data-cost="500">
+                <div class="reward-icon" style="background:linear-gradient(135deg,#1d4ed8,#60a5fa)">
+                    <i class="fas fa-star"></i>
+                </div>
+                <h3>Prestige Surge</h3>
+                <p>Instantly gain +500 prestige points</p>
+                <div class="reward-footer">
+                    <span class="reward-price"><i class="fas fa-star"></i> 500 pts</span>
+                    <button class="btn-reward" onclick="buyReward('Prestige Surge', 500)">Get</button>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+
+<!-- ── POST DETAIL MODAL ── -->
+<div class="modal-veil" id="postModal">
+    <div class="post-modal-box">
+        <button class="modal-close-btn" onclick="closePostModal()"><i class="fas fa-xmark"></i></button>
+        <div id="postModalContent"></div>
+        <!-- Comments -->
+        <div class="comment-section">
+            <h4><i class="fas fa-comments"></i> Comments</h4>
+            <div id="commentsList" class="comments-list"></div>
+            <div class="comment-input-row">
+                <input id="commentInput" type="text" placeholder="Write a comment…" maxlength="500"
+                    onkeydown="if(event.key==='Enter') submitComment()">
+                <button onclick="submitComment()"><i class="fas fa-paper-plane"></i></button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── NEW POST MODAL ── -->
+<div class="modal-veil" id="newPostModal">
+    <div class="new-post-box">
+        <button class="modal-close-btn" onclick="closeNewPostModal()"><i class="fas fa-xmark"></i></button>
+        <h3><i class="fas fa-pen-to-square"></i> New Post</h3>
+        <div class="post-type-row" id="postTypeRow">
+            <button class="ptype-btn active" data-type="text" onclick="setPostType('text', this)"><i class="fas fa-align-left"></i> Text</button>
+            <button class="ptype-btn" data-type="achievement" onclick="setPostType('achievement', this)"><i class="fas fa-trophy"></i> Achievement</button>
+            <button class="ptype-btn" data-type="media" onclick="setPostType('media', this)"><i class="fas fa-image"></i> Media</button>
+        </div>
+        <textarea id="newPostContent" placeholder="What's on your mind? Share your ARTX journey…" maxlength="2000" rows="5"></textarea>
+        <div id="mediaUrlGroup" style="display:none">
+            <input type="url" id="newPostMediaUrl" placeholder="Media URL (image or video)">
+        </div>
+        <div class="np-char"><span id="npCharCount">0</span>/2000</div>
+        <div class="np-error" id="npError" style="display:none"></div>
+        <div class="np-footer">
+            <button class="btn-submit-post" onclick="submitNewPost()">
+                <i class="fas fa-paper-plane"></i> Post
+            </button>
+            <button class="btn-cancel-post" onclick="closeNewPostModal()">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<!-- Toast -->
+<div class="comm-toast" id="commToast"></div>
+
+<script src="../scripts/app.js"></script>
+<script src="../scripts/community.js"></script>
+<script>
+    /* Navbar dropdown toggles — identical to index.html */
+    function toggleQuickMenu() {
+        const qm = document.getElementById('quickMenuDropdown');
+        const um = document.getElementById('userMenuDropdown');
+        if (um) um.classList.remove('show');
+        if (qm) qm.classList.toggle('show');
+    }
+    function toggleUserMenu() {
+        const um = document.getElementById('userMenuDropdown');
+        const qm = document.getElementById('quickMenuDropdown');
+        if (qm) qm.classList.remove('show');
+        if (um) um.classList.toggle('show');
+    }
+    document.addEventListener('click', e => {
+        const qm = document.getElementById('quickMenuDropdown');
+        const um = document.getElementById('userMenuDropdown');
+        if (qm && !qm.contains(e.target) && !e.target.closest('.header-icon-btn'))
+            qm.classList.remove('show');
+        if (um && !um.contains(e.target) && !e.target.closest('.user-avatar-btn'))
+            um.classList.remove('show');
+    });
+</script>
 </body>
 </html>
