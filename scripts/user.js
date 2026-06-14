@@ -55,10 +55,6 @@ async function loadProfile() {
 }
 
 function renderProfile(u, rank) {
-    // Header badges
-    document.getElementById('userPrestige').textContent = u.prestige_points;
-    document.getElementById('tierBadge').textContent = u.access_tier;
-
     // Hero
     document.getElementById('profileDisplayName').textContent = u.display_name || u.username;
     document.getElementById('profileUsername').textContent = `@${u.username}`;
@@ -66,18 +62,26 @@ function renderProfile(u, rank) {
     document.getElementById('profileRank').textContent = u.power_rank;
     if (u.is_verified) document.getElementById('profileVerified').style.display = 'inline-flex';
 
+    // Hero bio (shown directly under name)
+    const heroBio = document.getElementById('heroBio');
+    if (heroBio) heroBio.textContent = u.bio || '—';
+
+    // Avatar level badge
+    const lvlBadge = document.getElementById('avatarLevel');
+    if (lvlBadge) lvlBadge.textContent = u.level;
+
     // Avatar
     if (u.profile_image) {
         document.getElementById('avatarDisplay').innerHTML = `<img src="${u.profile_image}" alt="avatar">`;
     }
 
-    // Stats bar
+    // Stats ribbon
     document.getElementById('statPrestige').textContent = u.prestige_points.toLocaleString();
     document.getElementById('statLevel').textContent = u.level;
     document.getElementById('statStreak').textContent = u.current_streak;
     document.getElementById('statWins').textContent = u.tournament_wins;
     document.getElementById('statSuccessRate').textContent = `${u.success_rate}%`;
-    document.getElementById('statEarnings').textContent = `K${parseFloat(u.total_earnings).toFixed(2)}`;
+    document.getElementById('statEarnings').textContent = `K${parseFloat(u.total_earnings).toFixed(0)}`;
 
     // About
     document.getElementById('profileBio').textContent = u.bio || 'No bio yet.';
@@ -93,11 +97,16 @@ function renderProfile(u, rank) {
     const pct = prev === next ? 100 : ((pts - prev) / (next - prev)) * 100;
     document.getElementById('prestigePoints').textContent = pts.toLocaleString();
     document.getElementById('prestigeNext').textContent = next.toLocaleString();
-    document.getElementById('prestigeBar').style.width = `${Math.min(pct, 100)}%`;
+    // Animate bar after short delay for visual effect
+    setTimeout(() => {
+        document.getElementById('prestigeBar').style.width = `${Math.min(pct, 100)}%`;
+    }, 300);
 
-    // Tier ladder highlight
+    // Tier ladder highlight (abbreviated labels in ladder)
+    const tierMap = { 'Bronze': 'Bronze', 'Silver': 'Silver', 'Gold': 'Gold', 'Platinum': 'Plat', 'Diamond': 'Diam', 'Elite': 'Elite', 'Legendary': 'Legend' };
+    const activeLadderText = tierMap[u.access_tier] || u.access_tier;
     document.querySelectorAll('.tier-step').forEach(el => {
-        el.classList.toggle('active', el.textContent.trim() === u.access_tier);
+        el.classList.toggle('active', el.textContent.trim() === activeLadderText || el.textContent.trim() === u.access_tier);
     });
 
     // Performance
@@ -107,7 +116,20 @@ function renderProfile(u, rank) {
     document.getElementById('perfWrong').textContent = wrong;
     document.getElementById('perfWins').textContent = u.tournament_wins;
     document.getElementById('successRateLabel').textContent = `${u.success_rate}%`;
-    document.getElementById('successBar').style.width = `${u.success_rate}%`;
+    document.getElementById('accuracyPctDisplay') && (document.getElementById('accuracyPctDisplay').textContent = `${u.success_rate}%`);
+    setTimeout(() => {
+        document.getElementById('successBar').style.width = `${u.success_rate}%`;
+    }, 500);
+
+    // User menu dropdown info
+    const menuUsername = document.getElementById('menuUsername');
+    const menuTier     = document.getElementById('menuTier');
+    const menuPrestige = document.getElementById('menuPrestige');
+    const menuStreak   = document.getElementById('menuStreak');
+    if (menuUsername) menuUsername.textContent = u.display_name || u.username;
+    if (menuTier)     menuTier.textContent = `${u.access_tier} Tier`;
+    if (menuPrestige) menuPrestige.textContent = u.prestige_points.toLocaleString();
+    if (menuStreak)   menuStreak.textContent = u.current_streak;
 
     // Social connections
     renderSocial(u.social_connections || {});
@@ -146,9 +168,12 @@ async function loadActivities() {
         const activities = data.results || data;
 
         if (!activities.length) {
-            list.innerHTML = '<p class="empty-state">No activity yet.</p>';
+            list.innerHTML = '<div class="empty-state"><i class="fas fa-history"></i><span>No activity yet.</span></div>';
             return;
         }
+
+        const actCount = document.getElementById('activityCount');
+        if (actCount) actCount.textContent = activities.length > 15 ? '15+' : activities.length;
 
         list.innerHTML = activities.slice(0, 15).map(a => {
             const meta = ACTIVITY_ICONS[a.activity_type] || { icon: 'fa-circle', color: '#aaa' };
@@ -166,7 +191,7 @@ async function loadActivities() {
             `;
         }).join('');
     } catch (e) {
-        list.innerHTML = '<p class="empty-state">Could not load activity.</p>';
+        list.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-circle"></i><span>Could not load activity.</span></div>';
     }
 }
 
@@ -177,6 +202,9 @@ function openEditModal() {
     document.getElementById('editBio').value = profileData.bio || '';
     document.getElementById('editUsername').value = profileData.username || '';
     document.getElementById('editError').style.display = 'none';
+    // Update char counter
+    const counter = document.getElementById('bioCharCount');
+    if (counter) counter.textContent = (profileData.bio || '').length;
     document.getElementById('editModal').style.display = 'flex';
 }
 
