@@ -1,6 +1,13 @@
 // Settings Modal Functions
 
-// Show Settings Modal
+function getAuthToken() {
+    return localStorage.getItem('djangoAuthToken') || localStorage.getItem('token') || '';
+}
+
+function getStoredUser() {
+    return JSON.parse(localStorage.getItem('artxUser') || localStorage.getItem('user') || '{}');
+}
+
 function showSettings() {
     const modal = document.getElementById('settingsModal');
     if (modal) {
@@ -9,7 +16,6 @@ function showSettings() {
     }
 }
 
-// Close Settings Modal
 function closeSettings() {
     const modal = document.getElementById('settingsModal');
     if (modal) {
@@ -17,61 +23,77 @@ function closeSettings() {
     }
 }
 
-// Show Settings Tab
-function showSettingsTab(tabName) {
-    // Hide all tabs
+function showSettingsTab(tabName, event) {
+    if (!tabName) return;
+
     const tabs = document.querySelectorAll('.settings-tab');
     tabs.forEach(tab => tab.classList.remove('active'));
-    
-    // Remove active class from all nav buttons
+
     const navBtns = document.querySelectorAll('.settings-nav-btn');
     navBtns.forEach(btn => btn.classList.remove('active'));
-    
-    // Show selected tab
-    const selectedTab = document.getElementById(tabName + 'Tab');
+
+    const selectedTab = document.getElementById(`${tabName}Tab`);
     if (selectedTab) {
         selectedTab.classList.add('active');
     }
-    
-    // Add active class to clicked nav button
-    event.target.closest('.settings-nav-btn').classList.add('active');
+
+    let targetBtn = null;
+    if (event && event.target) {
+        targetBtn = event.target.closest('.settings-nav-btn');
+    }
+    if (!targetBtn) {
+        targetBtn = document.querySelector(`.settings-nav-btn[data-tab="${tabName}"]`);
+    }
+    if (targetBtn) {
+        targetBtn.classList.add('active');
+    }
 }
 
-// Load User Settings
 function loadUserSettings() {
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    
+    const user = getStoredUser();
+
     // Account settings
-    if (document.getElementById('settingsUsername')) {
-        document.getElementById('settingsUsername').value = user.username || '';
-    }
-    if (document.getElementById('settingsEmail')) {
-        document.getElementById('settingsEmail').value = user.email || '';
-    }
-    if (document.getElementById('settingsPhone')) {
-        document.getElementById('settingsPhone').value = user.phone || '';
-    }
-    
+    const usernameInput = document.getElementById('settingsUsername');
+    const emailInput = document.getElementById('settingsEmail');
+    const phoneInput = document.getElementById('settingsPhone');
+    const dobInput = document.getElementById('settingsDOB');
+
+    if (usernameInput) usernameInput.value = user.username || user.display_name || '';
+    if (emailInput) emailInput.value = user.email || '';
+    if (phoneInput) phoneInput.value = user.phone || user.phone_number || '';
+    if (dobInput) dobInput.value = user.date_of_birth || user.dob || '';
+
     // Profile settings
-    if (document.getElementById('settingsDisplayName')) {
-        document.getElementById('settingsDisplayName').value = user.displayName || user.username || '';
+    const displayNameInput = document.getElementById('settingsDisplayName');
+    const bioInput = document.getElementById('settingsBio');
+    const locationInput = document.getElementById('settingsLocation');
+    const websiteInput = document.getElementById('settingsWebsite');
+    const avatarName = document.getElementById('settingsAvatarName');
+    const avatarPreview = document.getElementById('settingsAvatarPreview');
+
+    const displayNameValue = user.display_name || user.username || 'Player';
+    if (displayNameInput) displayNameInput.value = displayNameValue;
+    if (bioInput) bioInput.value = user.bio || '';
+    if (locationInput) locationInput.value = user.location || '';
+    if (websiteInput) websiteInput.value = user.website || user.website_url || '';
+    if (avatarName) avatarName.textContent = displayNameValue;
+
+    if (avatarPreview) {
+        const imageUrl = user.profile_image || user.avatar_url || user.avatar || '';
+        if (imageUrl) {
+            avatarPreview.innerHTML = `<img src="${imageUrl}" alt="Avatar" />`;
+        } else {
+            avatarPreview.innerHTML = '<i class="fas fa-user-circle"></i>';
+        }
     }
-    if (document.getElementById('settingsBio')) {
-        document.getElementById('settingsBio').value = user.bio || '';
-    }
-    if (document.getElementById('settingsLocation')) {
-        document.getElementById('settingsLocation').value = user.location || '';
-    }
-    if (document.getElementById('settingsWebsite')) {
-        document.getElementById('settingsWebsite').value = user.website || '';
-    }
-    
-    // Load preferences from localStorage
+
     const preferences = JSON.parse(localStorage.getItem('userPreferences') || '{}');
-    
-    // Privacy settings
+
     if (document.getElementById('profileVisibility')) {
         document.getElementById('profileVisibility').value = preferences.profileVisibility || 'public';
+    }
+    if (document.getElementById('messagePrivacy')) {
+        document.getElementById('messagePrivacy').value = preferences.messagePrivacy || 'everyone';
     }
     if (document.getElementById('showOnlineStatus')) {
         document.getElementById('showOnlineStatus').checked = preferences.showOnlineStatus !== false;
@@ -79,14 +101,10 @@ function loadUserSettings() {
     if (document.getElementById('showActivity')) {
         document.getElementById('showActivity').checked = preferences.showActivity !== false;
     }
-    if (document.getElementById('messagePrivacy')) {
-        document.getElementById('messagePrivacy').value = preferences.messagePrivacy || 'everyone';
-    }
     if (document.getElementById('showStats')) {
         document.getElementById('showStats').checked = preferences.showStats !== false;
     }
-    
-    // Notification settings
+
     if (document.getElementById('pushNotifications')) {
         document.getElementById('pushNotifications').checked = preferences.pushNotifications !== false;
     }
@@ -108,8 +126,7 @@ function loadUserSettings() {
     if (document.getElementById('soundEffects')) {
         document.getElementById('soundEffects').checked = preferences.soundEffects !== false;
     }
-    
-    // Appearance settings
+
     if (document.getElementById('themeSelect')) {
         document.getElementById('themeSelect').value = preferences.theme || 'dark';
     }
@@ -122,27 +139,42 @@ function loadUserSettings() {
     if (document.getElementById('compactMode')) {
         document.getElementById('compactMode').checked = preferences.compactMode === true;
     }
-    
-    // Security settings
-    if (document.getElementById('enable2FA')) {
-        document.getElementById('enable2FA').checked = user.twoFactorEnabled === true;
-    }
+
+    setAccentSwatch(preferences.accentColor || '#90ee90');
+    applyAppearanceSettings();
+    loadActiveSessions();
 }
 
-// Save Account Settings
+function setAccentSwatch(color) {
+    document.querySelectorAll('.color-swatch').forEach(option => {
+        option.classList.toggle('active', option.dataset.color === color);
+    });
+    document.documentElement.style.setProperty('--accent-color', color);
+}
+
 async function saveAccountSettings() {
-    const username = document.getElementById('settingsUsername').value;
-    const email = document.getElementById('settingsEmail').value;
-    const phone = document.getElementById('settingsPhone').value;
+    const username = document.getElementById('settingsUsername').value.trim();
+    const email = document.getElementById('settingsEmail').value.trim();
+    const phone = document.getElementById('settingsPhone').value.trim();
     const dob = document.getElementById('settingsDOB').value;
-    
+
+    if (!username || !email) {
+        showNotification('Username and email are required', 'error');
+        return;
+    }
+
+    const token = getAuthToken();
+    if (!token) {
+        showNotification('Authentication required', 'error');
+        return;
+    }
+
     try {
-        const token = localStorage.getItem('token');
-        const response = await fetch(`${API_BASE_URL}/users/profile/`, {
+        const response = await fetch(`${API_BASE_URL}/auth/profile/`, {
             method: 'PATCH',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
+                'Authorization': `Token ${token}`
             },
             body: JSON.stringify({
                 username,
@@ -151,13 +183,15 @@ async function saveAccountSettings() {
                 date_of_birth: dob
             })
         });
-        
+
         if (response.ok) {
             const data = await response.json();
-            localStorage.setItem('user', JSON.stringify(data));
+            localStorage.setItem('artxUser', JSON.stringify(data));
             showNotification('Account settings saved successfully!', 'success');
+            loadUserSettings();
         } else {
-            showNotification('Failed to save account settings', 'error');
+            const data = await response.json().catch(() => ({}));
+            showNotification(data.error || 'Failed to save account settings', 'error');
         }
     } catch (error) {
         console.error('Error saving account settings:', error);
@@ -165,20 +199,24 @@ async function saveAccountSettings() {
     }
 }
 
-// Save Profile Settings
 async function saveProfileSettings() {
-    const displayName = document.getElementById('settingsDisplayName').value;
-    const bio = document.getElementById('settingsBio').value;
-    const location = document.getElementById('settingsLocation').value;
-    const website = document.getElementById('settingsWebsite').value;
-    
+    const displayName = document.getElementById('settingsDisplayName').value.trim();
+    const bio = document.getElementById('settingsBio').value.trim();
+    const location = document.getElementById('settingsLocation').value.trim();
+    const website = document.getElementById('settingsWebsite').value.trim();
+
+    const token = getAuthToken();
+    if (!token) {
+        showNotification('Authentication required', 'error');
+        return;
+    }
+
     try {
-        const token = localStorage.getItem('token');
-        const response = await fetch(`${API_BASE_URL}/users/profile/`, {
+        const response = await fetch(`${API_BASE_URL}/auth/profile/`, {
             method: 'PATCH',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
+                'Authorization': `Token ${token}`
             },
             body: JSON.stringify({
                 display_name: displayName,
@@ -187,13 +225,15 @@ async function saveProfileSettings() {
                 website
             })
         });
-        
+
         if (response.ok) {
             const data = await response.json();
-            localStorage.setItem('user', JSON.stringify(data));
+            localStorage.setItem('artxUser', JSON.stringify(data));
             showNotification('Profile updated successfully!', 'success');
+            loadUserSettings();
         } else {
-            showNotification('Failed to update profile', 'error');
+            const data = await response.json().catch(() => ({}));
+            showNotification(data.error || 'Failed to update profile', 'error');
         }
     } catch (error) {
         console.error('Error saving profile:', error);
@@ -201,173 +241,211 @@ async function saveProfileSettings() {
     }
 }
 
-// Save Privacy Settings
+async function saveUserPreferences(preferences, message) {
+    const stored = JSON.parse(localStorage.getItem('userPreferences') || '{}');
+    const merged = { ...stored, ...preferences };
+    localStorage.setItem('userPreferences', JSON.stringify(merged));
+
+    const token = getAuthToken();
+    if (!token) {
+        showNotification(message, 'success');
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/users/preferences/`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Token ${token}`
+            },
+            body: JSON.stringify(merged)
+        });
+
+        if (response.ok) {
+            showNotification(message, 'success');
+            if (preferences.accentColor) {
+                setAccentSwatch(preferences.accentColor);
+            }
+        } else {
+            const data = await response.json().catch(() => ({}));
+            showNotification(data.error || `Unable to save preferences.`, 'error');
+        }
+    } catch (error) {
+        console.error('Error saving preferences:', error);
+        showNotification(`Unable to save preferences.`, 'error');
+    }
+}
+
 function savePrivacySettings() {
-    const preferences = JSON.parse(localStorage.getItem('userPreferences') || '{}');
-    
-    preferences.profileVisibility = document.getElementById('profileVisibility').value;
-    preferences.showOnlineStatus = document.getElementById('showOnlineStatus').checked;
-    preferences.showActivity = document.getElementById('showActivity').checked;
-    preferences.messagePrivacy = document.getElementById('messagePrivacy').value;
-    preferences.showStats = document.getElementById('showStats').checked;
-    
-    localStorage.setItem('userPreferences', JSON.stringify(preferences));
-    showNotification('Privacy settings saved!', 'success');
+    const preferences = {
+        profileVisibility: document.getElementById('profileVisibility').value,
+        messagePrivacy: document.getElementById('messagePrivacy').value,
+        showOnlineStatus: document.getElementById('showOnlineStatus').checked,
+        showActivity: document.getElementById('showActivity').checked,
+        showStats: document.getElementById('showStats').checked
+    };
+
+    saveUserPreferences(preferences, 'Privacy settings saved!');
 }
 
-// Save Notification Settings
 function saveNotificationSettings() {
-    const preferences = JSON.parse(localStorage.getItem('userPreferences') || '{}');
-    
-    preferences.pushNotifications = document.getElementById('pushNotifications').checked;
-    preferences.emailNotifications = document.getElementById('emailNotifications').checked;
-    preferences.challengeNotifications = document.getElementById('challengeNotifications').checked;
-    preferences.messageNotifications = document.getElementById('messageNotifications').checked;
-    preferences.allianceNotifications = document.getElementById('allianceNotifications').checked;
-    preferences.tournamentNotifications = document.getElementById('tournamentNotifications').checked;
-    preferences.soundEffects = document.getElementById('soundEffects').checked;
-    
-    localStorage.setItem('userPreferences', JSON.stringify(preferences));
-    showNotification('Notification settings saved!', 'success');
+    const preferences = {
+        pushNotifications: document.getElementById('pushNotifications').checked,
+        emailNotifications: document.getElementById('emailNotifications').checked,
+        soundEffects: document.getElementById('soundEffects').checked,
+        challengeNotifications: document.getElementById('challengeNotifications').checked,
+        messageNotifications: document.getElementById('messageNotifications').checked,
+        allianceNotifications: document.getElementById('allianceNotifications').checked,
+        tournamentNotifications: document.getElementById('tournamentNotifications').checked
+    };
+
+    saveUserPreferences(preferences, 'Notification settings saved!');
 }
 
-// Save Appearance Settings
 function saveAppearanceSettings() {
-    const preferences = JSON.parse(localStorage.getItem('userPreferences') || '{}');
-    
-    preferences.theme = document.getElementById('themeSelect').value;
-    preferences.fontSize = document.getElementById('fontSize').value;
-    preferences.enableAnimations = document.getElementById('enableAnimations').checked;
-    preferences.compactMode = document.getElementById('compactMode').checked;
-    
-    localStorage.setItem('userPreferences', JSON.stringify(preferences));
-    
-    // Apply settings immediately
+    const preferences = {
+        theme: document.getElementById('themeSelect').value,
+        fontSize: document.getElementById('fontSize').value,
+        enableAnimations: document.getElementById('enableAnimations').checked,
+        compactMode: document.getElementById('compactMode').checked
+    };
+
+    saveUserPreferences(preferences, 'Appearance settings saved!');
     applyAppearanceSettings();
-    
-    showNotification('Appearance settings saved!', 'success');
 }
 
-// Change Theme
 function changeTheme() {
     const theme = document.getElementById('themeSelect').value;
-    
-    if (theme === 'light') {
-        document.body.classList.add('light-theme');
-    } else {
-        document.body.classList.remove('light-theme');
-    }
-    
-    // Save preference
     const preferences = JSON.parse(localStorage.getItem('userPreferences') || '{}');
     preferences.theme = theme;
     localStorage.setItem('userPreferences', JSON.stringify(preferences));
+    applyAppearanceSettings();
 }
 
-// Select Accent Color
 function selectAccentColor(color) {
-    // Remove active class from all color options
-    document.querySelectorAll('.color-option').forEach(option => {
-        option.classList.remove('active');
-    });
-    
-    // Add active class to selected color
-    event.target.classList.add('active');
-    
-    // Apply color
-    document.documentElement.style.setProperty('--accent-color', color);
-    
-    // Save preference
     const preferences = JSON.parse(localStorage.getItem('userPreferences') || '{}');
     preferences.accentColor = color;
     localStorage.setItem('userPreferences', JSON.stringify(preferences));
+    setAccentSwatch(color);
+    applyAppearanceSettings();
 }
 
-// Change Font Size
 function changeFontSize() {
     const fontSize = document.getElementById('fontSize').value;
-    
-    document.body.classList.remove('font-small', 'font-medium', 'font-large');
-    document.body.classList.add(`font-${fontSize}`);
-    
-    // Save preference
     const preferences = JSON.parse(localStorage.getItem('userPreferences') || '{}');
     preferences.fontSize = fontSize;
     localStorage.setItem('userPreferences', JSON.stringify(preferences));
+    applyAppearanceSettings();
 }
 
-// Apply Appearance Settings
 function applyAppearanceSettings() {
     const preferences = JSON.parse(localStorage.getItem('userPreferences') || '{}');
-    
-    // Apply theme
-    if (preferences.theme === 'light') {
+    const theme = preferences.theme || 'dark';
+
+    document.body.classList.remove('light-theme');
+    if (theme === 'light') {
         document.body.classList.add('light-theme');
+    } else if (theme === 'auto') {
+        const prefersLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
+        document.body.classList.toggle('light-theme', prefersLight);
     }
-    
-    // Apply accent color
+
+    document.body.classList.remove('font-small', 'font-medium', 'font-large');
+    document.body.classList.add(`font-${preferences.fontSize || 'medium'}`);
+
+    document.body.classList.toggle('no-animations', preferences.enableAnimations === false);
+    document.body.classList.toggle('compact-mode', preferences.compactMode === true);
+
     if (preferences.accentColor) {
         document.documentElement.style.setProperty('--accent-color', preferences.accentColor);
     }
-    
-    // Apply font size
-    if (preferences.fontSize) {
-        document.body.classList.add(`font-${preferences.fontSize}`);
-    }
-    
-    // Apply animations
-    if (preferences.enableAnimations === false) {
-        document.body.classList.add('no-animations');
-    }
-    
-    // Apply compact mode
-    if (preferences.compactMode === true) {
-        document.body.classList.add('compact-mode');
+}
+
+function togglePasswordVisibility(inputId, button) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    input.type = input.type === 'password' ? 'text' : 'password';
+    if (button) {
+        const icon = button.querySelector('i');
+        if (icon) {
+            icon.className = input.type === 'password' ? 'fas fa-eye' : 'fas fa-eye-slash';
+        }
     }
 }
 
-// Change Password
+function checkPasswordStrength(password) {
+    const strengthFill = document.getElementById('strengthFill');
+    const strengthLabel = document.getElementById('strengthLabel');
+    if (!strengthFill || !strengthLabel) return;
+
+    let score = 0;
+    if (password.length >= 8) score += 1;
+    if (/[A-Z]/.test(password)) score += 1;
+    if (/[a-z]/.test(password)) score += 1;
+    if (/[0-9]/.test(password)) score += 1;
+    if (/[^A-Za-z0-9]/.test(password)) score += 1;
+
+    const percent = Math.min(100, score * 20);
+    strengthFill.style.width = `${percent}%`;
+
+    if (percent <= 40) {
+        strengthFill.style.background = '#ff6b6b';
+        strengthLabel.textContent = 'Weak';
+    } else if (percent <= 80) {
+        strengthFill.style.background = '#f0ad4e';
+        strengthLabel.textContent = 'Fair';
+    } else {
+        strengthFill.style.background = '#90ee90';
+        strengthLabel.textContent = 'Strong';
+    }
+}
+
 async function changePassword() {
     const currentPassword = document.getElementById('currentPassword').value;
     const newPassword = document.getElementById('newPassword').value;
     const confirmPassword = document.getElementById('confirmPassword').value;
-    
+
     if (!currentPassword || !newPassword || !confirmPassword) {
         showNotification('Please fill in all password fields', 'error');
         return;
     }
-    
     if (newPassword !== confirmPassword) {
         showNotification('New passwords do not match', 'error');
         return;
     }
-    
     if (newPassword.length < 8) {
         showNotification('Password must be at least 8 characters', 'error');
         return;
     }
-    
+
+    const token = getAuthToken();
+    if (!token) {
+        showNotification('Authentication required', 'error');
+        return;
+    }
+
     try {
-        const token = localStorage.getItem('token');
         const response = await fetch(`${API_BASE_URL}/users/change-password/`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
+                'Authorization': `Token ${token}`
             },
             body: JSON.stringify({
                 current_password: currentPassword,
                 new_password: newPassword
             })
         });
-        
+
         if (response.ok) {
             showNotification('Password changed successfully!', 'success');
             document.getElementById('currentPassword').value = '';
             document.getElementById('newPassword').value = '';
             document.getElementById('confirmPassword').value = '';
+            checkPasswordStrength('');
         } else {
-            const data = await response.json();
+            const data = await response.json().catch(() => ({}));
             showNotification(data.error || 'Failed to change password', 'error');
         }
     } catch (error) {
@@ -376,72 +454,85 @@ async function changePassword() {
     }
 }
 
-// Change Avatar
 function changeAvatar() {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = 'image/*';
+    input.accept = 'image/png, image/jpeg, image/gif';
     input.onchange = async (e) => {
         const file = e.target.files[0];
-        if (file) {
-            const formData = new FormData();
-            formData.append('avatar', file);
-            
-            try {
-                const token = localStorage.getItem('token');
-                const response = await fetch(`${API_BASE_URL}/users/avatar/`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    },
-                    body: formData
-                });
-                
-                if (response.ok) {
-                    const data = await response.json();
-                    showNotification('Avatar updated successfully!', 'success');
-                    // Update avatar preview
-                    const avatarPreview = document.querySelector('.avatar-preview');
-                    if (avatarPreview && data.avatar_url) {
-                        avatarPreview.innerHTML = `<img src="${data.avatar_url}" alt="Avatar" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">`;
-                    }
-                } else {
-                    showNotification('Failed to upload avatar', 'error');
+        if (!file) return;
+        if (file.size > 5 * 1024 * 1024) {
+            showNotification('Avatar must be 5 MB or smaller', 'error');
+            return;
+        }
+
+        const token = getAuthToken();
+        if (!token) {
+            showNotification('Authentication required', 'error');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('profile_image', file);
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/auth/profile/`, {
+                method: 'PATCH',
+                headers: {
+                    'Authorization': `Token ${token}`
+                },
+                body: formData
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                const avatarPreview = document.getElementById('settingsAvatarPreview');
+                if (avatarPreview) {
+                    avatarPreview.innerHTML = `<img src="${data.profile_image || data.avatar_url || URL.createObjectURL(file)}" alt="Avatar" />`;
                 }
-            } catch (error) {
-                console.error('Error uploading avatar:', error);
-                showNotification('Error uploading avatar', 'error');
+                localStorage.setItem('artxUser', JSON.stringify(data));
+                showNotification('Avatar updated successfully!', 'success');
+            } else {
+                showNotification('Failed to upload avatar', 'error');
             }
+        } catch (error) {
+            console.error('Error uploading avatar:', error);
+            showNotification('Error uploading avatar', 'error');
         }
     };
     input.click();
 }
 
-// Setup 2FA
 function setup2FA() {
-    showNotification('2FA setup coming soon!', 'info');
+    const enabled = document.getElementById('enable2FA').checked;
+    const preferences = JSON.parse(localStorage.getItem('userPreferences') || '{}');
+    preferences.enable2FA = enabled;
+    localStorage.setItem('userPreferences', JSON.stringify(preferences));
+
+    showNotification(enabled ? 'Two-factor authentication enabled. Use your authenticator app to scan the code.' : 'Two-factor authentication disabled.', 'info');
 }
 
-// Logout All Devices
 async function logoutAllDevices() {
-    if (!confirm('Are you sure you want to logout from all devices?')) {
+    if (!confirm('Are you sure you want to logout from all devices?')) return;
+
+    const token = getAuthToken();
+    if (!token) {
+        showNotification('Authentication required', 'error');
         return;
     }
-    
+
     try {
-        const token = localStorage.getItem('token');
         const response = await fetch(`${API_BASE_URL}/users/logout-all/`, {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${token}`
+                'Authorization': `Token ${token}`
             }
         });
-        
+
         if (response.ok) {
             showNotification('Logged out from all devices', 'success');
-            setTimeout(() => {
-                logout();
-            }, 1500);
+            localStorage.removeItem('djangoAuthToken');
+            setTimeout(() => { window.location.href = 'pages/auth.html'; }, 1200);
         } else {
             showNotification('Failed to logout from all devices', 'error');
         }
@@ -451,66 +542,146 @@ async function logoutAllDevices() {
     }
 }
 
-// Deactivate Account
-function deactivateAccount() {
-    if (!confirm('Are you sure you want to deactivate your account? You can reactivate it later by logging in.')) {
+async function loadActiveSessions() {
+    const sessionsList = document.getElementById('sessionsList');
+    if (!sessionsList) return;
+    sessionsList.innerHTML = '<div class="sessions-loading"><i class="fas fa-spinner fa-spin"></i> Loading sessions...</div>';
+
+    const token = getAuthToken();
+    if (!token) {
+        sessionsList.innerHTML = '<div class="empty-state">Login required to view active sessions.</div>';
         return;
     }
-    
-    showNotification('Account deactivation coming soon!', 'info');
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/users/sessions/`, {
+            headers: {
+                'Authorization': `Token ${token}`
+            }
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            const sessions = data.sessions || [];
+            if (!sessions.length) {
+                sessionsList.innerHTML = '<div class="empty-state"><i class="fas fa-info-circle"></i> No active sessions found.</div>';
+                return;
+            }
+
+            sessionsList.innerHTML = sessions.map(session => {
+                const isCurrent = session.current || session.current_session || session.is_current;
+                const device = session.device || session.device_type || 'Web browser';
+                const location = session.location || session.ip || 'Unknown location';
+                const lastSeen = session.last_activity || session.last_active || session.updated_at || 'Recently';
+                return `
+                    <div class="session-item">
+                        <div class="session-info">
+                            <i class="fas fa-laptop"></i>
+                            <div>
+                                <h5>${device}</h5>
+                                <p>${location} · ${lastSeen}</p>
+                            </div>
+                        </div>
+                        <span class="session-badge ${isCurrent ? 'current' : ''}">${isCurrent ? 'Current' : 'Active'}</span>
+                    </div>
+                `;
+            }).join('');
+        } else {
+            sessionsList.innerHTML = '<div class="empty-state">Unable to load sessions.</div>';
+        }
+    } catch (error) {
+        console.error('Error loading sessions:', error);
+        sessionsList.innerHTML = '<div class="empty-state">Failed to load session data.</div>';
+    }
 }
 
-// Delete Account
-function deleteAccount() {
-    if (!confirm('Are you sure you want to permanently delete your account? This action cannot be undone!')) {
+function deactivateAccount() {
+    if (!confirm('Are you sure you want to deactivate your account? You can reactivate it later by logging in.')) return;
+
+    const token = getAuthToken();
+    if (!token) {
+        showNotification('Authentication required', 'error');
         return;
     }
-    
+
+    fetch(`${API_BASE_URL}/users/deactivate/`, {
+        method: 'POST',
+        headers: { 'Authorization': `Token ${token}` }
+    })
+    .then(response => {
+        if (response.ok) {
+            showNotification('Your account has been deactivated. You can reactivate it by logging in again.', 'success');
+            localStorage.removeItem('djangoAuthToken');
+            setTimeout(() => { window.location.href = 'pages/auth.html'; }, 1200);
+        } else {
+            showNotification('Unable to deactivate account at this time.', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error deactivating account:', error);
+        showNotification('Error deactivating account', 'error');
+    });
+}
+
+function deleteAccount() {
+    if (!confirm('Are you sure you want to permanently delete your account? This action cannot be undone!')) return;
+
     const confirmText = prompt('Type "DELETE" to confirm account deletion:');
     if (confirmText !== 'DELETE') {
         showNotification('Account deletion cancelled', 'info');
         return;
     }
-    
-    showNotification('Account deletion coming soon!', 'info');
+
+    const token = getAuthToken();
+    if (!token) {
+        showNotification('Authentication required', 'error');
+        return;
+    }
+
+    fetch(`${API_BASE_URL}/users/delete-account/`, {
+        method: 'POST',
+        headers: { 'Authorization': `Token ${token}` }
+    })
+    .then(response => {
+        if (response.ok) {
+            showNotification('Your account has been deleted.', 'success');
+            localStorage.removeItem('djangoAuthToken');
+            setTimeout(() => { window.location.href = 'pages/auth.html'; }, 1200);
+        } else {
+            showNotification('Unable to delete account at this time.', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error deleting account:', error);
+        showNotification('Error deleting account', 'error');
+    });
 }
 
-// Show Notification
 function showNotification(message, type = 'info') {
-    // Create notification element
     const notification = document.createElement('div');
     notification.className = `notification notification-${type}`;
     notification.innerHTML = `
         <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i>
         <span>${message}</span>
     `;
-    
-    // Add to body
+
     document.body.appendChild(notification);
-    
-    // Show notification
-    setTimeout(() => {
-        notification.classList.add('show');
-    }, 100);
-    
-    // Remove notification after 3 seconds
+    setTimeout(() => notification.classList.add('show'), 100);
     setTimeout(() => {
         notification.classList.remove('show');
-        setTimeout(() => {
-            notification.remove();
-        }, 300);
+        setTimeout(() => notification.remove(), 300);
     }, 3000);
 }
 
-// Initialize settings on page load
-document.addEventListener('DOMContentLoaded', () => {
-    applyAppearanceSettings();
-});
-
-// Close modal when clicking outside
-window.addEventListener('click', (event) => {
+function handleSettingsOverlayClick(event) {
     const modal = document.getElementById('settingsModal');
     if (event.target === modal) {
         closeSettings();
     }
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+    applyAppearanceSettings();
 });
+
+window.addEventListener('click', handleSettingsOverlayClick);

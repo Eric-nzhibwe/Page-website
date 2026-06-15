@@ -234,7 +234,7 @@
     margin-top: 10px;
 }
 
-.color-option {
+.color-swatch {
     width: 40px;
     height: 40px;
     border-radius: 8px;
@@ -243,17 +243,17 @@
     transition: all 0.3s ease;
 }
 
-.color-option:hover {
+.color-swatch:hover {
     transform: scale(1.1);
 }
 
-.color-option.active {
+.color-swatch.active {
     border-color: lightgreen;
     box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.2);
 }
 
 /* Session List */
-.session-list {
+.sessions-list {
     margin-bottom: 15px;
 }
 
@@ -334,8 +334,99 @@
 
 /* Buttons */
 .settings-tab .btn-primary,
-.settings-tab .btn-secondary {
+.settings-tab .btn-secondary,
+.btn-settings-save,
+.btn-settings-secondary,
+.btn-danger-outline,
+.btn-danger-solid {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px 20px;
+    border-radius: 10px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.25s ease;
     margin-top: 15px;
+}
+
+.btn-settings-save,
+.settings-tab .btn-primary {
+    background: var(--accent-color, #90ee90);
+    color: #000;
+}
+
+.btn-settings-secondary,
+.settings-tab .btn-secondary {
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+    border-color: rgba(255, 255, 255, 0.12);
+}
+
+.btn-danger-outline {
+    background: transparent;
+    color: #ff6b6b;
+    border-color: rgba(255, 107, 107, 0.4);
+}
+
+.btn-danger-solid {
+    background: #ff6b6b;
+    color: #fff;
+    border-color: transparent;
+}
+
+.btn-settings-save:hover,
+.btn-settings-secondary:hover,
+.btn-danger-outline:hover,
+.btn-danger-solid:hover {
+    transform: translateY(-1px);
+    opacity: 0.95;
+}
+
+.settings-close-btn {
+    background: transparent;
+    border: none;
+    color: #fff;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.settings-close-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.input-icon-wrap {
+    position: relative;
+}
+
+.input-icon-wrap i {
+    position: absolute;
+    top: 50%;
+    left: 14px;
+    transform: translateY(-50%);
+    color: #90ee90;
+    font-size: 14px;
+}
+
+.input-icon-wrap input,
+.input-icon-wrap select,
+.input-icon-wrap textarea {
+    padding-left: 40px;
+}
+
+.avatar-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
 }
 
 /* Responsive */
