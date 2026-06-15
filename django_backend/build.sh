@@ -16,8 +16,11 @@ cp -r ../images static/frontend/
 echo "==> Collecting static files"
 python manage.py collectstatic --no-input
 
+echo "==> Making migrations"
+python manage.py makemigrations --no-input
+
 echo "==> Running database migrations"
-python manage.py migrate
+python manage.py migrate --no-input
 
 echo "==> Creating superuser from env vars (if not exists)"
 python manage.py ensure_superuser

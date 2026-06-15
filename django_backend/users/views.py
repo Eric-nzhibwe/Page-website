@@ -2,7 +2,7 @@
 User views for ARTX Platform API
 """
 from rest_framework import generics, status, permissions
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
 from django.contrib.auth import login
@@ -25,6 +25,7 @@ class UserRegistrationView(generics.CreateAPIView):
     queryset = User.objects.all()
     serializer_class = UserRegistrationSerializer
     permission_classes = [permissions.AllowAny]
+    authentication_classes = []
     
     def create(self, request, *args, **kwargs):
         print(f"📝 Registration request received: {request.method}")
@@ -64,6 +65,7 @@ class UserRegistrationView(generics.CreateAPIView):
 
 @csrf_exempt
 @api_view(['POST'])
+@authentication_classes([])
 @permission_classes([permissions.AllowAny])
 def login_view(request):
     """User login endpoint — email or username, token-based."""
