@@ -412,3 +412,153 @@ def resend_otp_view(request):
         'message': 'OTP sent successfully',
         'session_id': new_session_id
     })
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Settings endpoints
+# ─────────────────────────────────────────────────────────────────────────────
+
+@api_view(['POST'])
+@permission_classes([permissions.IsAuthenticated])
+def change_password_view(request):
+    """Change the authenticated user's password."""
+    current_password = request.data.get('current_password', '').strip()
+    new_password     = request.data.get('new_password', '').strip()
+
+    if not current_password or not new_password:
+        return Response(
+            {'error': 'Both current_password and new_password are required.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if len(new_password) < 8:
+        return Response(
+            {'error': 'New password must be at least 8 characters.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    user = request.user
+    if not user.check_password(current_password):
+        return Response(
+            {'error': 'Current password is incorrect.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    user.set_password(new_password)
+    from django.utils import timezone as tz
+    user.password_changed_at = tz.now()
+    user.save()
+
+    # Rotate token so existing sessions are invalidated
+    from rest_framework.authtoken.models import Token
+    Token.objects.filter(user=user).delete()
+    new_token, _ = Token.objects.get_or_create(user=user)
+
+    return Response({
+        'message': 'Password changed successfully.',
+        'token': new_token.key,
+    })
+
+
+@api_view(['POST'])
+@permission_classes([permissions.IsAuthenticated])
+def upload_avatar_view(request):
+    """Upload / replace the user's profile image."""
+    if 'avatar' not in request.FILES:
+        return Response({'error': 'No file provided.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    file = request.FILES['avatar']
+    allowed_types = ('image/jpeg', 'image/png', 'image/gif', 'image/webp')
+    if file.content_type not in allowed_types:
+        return Response({'error': 'Unsupported file type.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    if file.size > 5 * 1024 * 1024:  # 5 MB limit
+        return Response({'error': 'File too large. Max 5 MB.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    user = request.user
+    user.profile_image = file
+    user.save()
+
+    request.build_absolute_uri(user.profile_image.url) if user.profile_image else None
+
+    return Response({
+        'message': 'Avatar updated successfully.',
+        'avatar_url': request.build_absolute_uri(user.profile_image.url),
+    })
+
+
+@api_view(['POST'])
+@permission_classes([permissions.IsAuthenticated])
+def logout_all_devices_view(request):
+    """Invalidate all tokens for the current user (logout all devices)."""
+    from rest_framework.authtoken.models import Token
+    Token.objects.filter(user=request.user).delete()
+    return Response({'message': 'Logged out from all devices successfully.'})
+
+
+@api_view(['GET'])
+@permission_classes([permissions.IsAuthenticated])
+def active_sessions_view(request):
+    """Return a list of active tokens / sessions for the current user."""
+    from rest_framework.authtoken.models import Token
+    tokens = Token.objects.filter(user=request.user).values('key', 'created')
+    sessions = [
+        {
+            'key_preview': f"...{t['key'][-6:]}",
+            'created': t['created'],
+            'is_current': request.auth and request.auth.key == t['key'],
+        }
+        for t in tokens
+    ]
+    return Response({'sessions': sessions})
+
+
+@api_view(['PATCH'])
+@permission_classes([permissions.IsAuthenticated])
+def update_preferences_view(request):
+    """Merge-update the user's stored preferences JSON."""
+    user = request.user
+    current = user.preferences or {}
+    current.update(request.data)
+    user.preferences = current
+    user.save(update_fields=['preferences'])
+    return Response({'message': 'Preferences saved.', 'preferences': user.preferences})
+
+
+@api_view(['POST'])
+@permission_classes([permissions.IsAuthenticated])
+def deactivate_account_view(request):
+    """Deactivate (soft-disable) the user's account."""
+    password = request.data.get('password', '').strip()
+    if not password or not request.user.check_password(password):
+        return Response({'error': 'Incorrect password.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    user = request.user
+    user.is_active = False
+    user.save(update_fields=['is_active'])
+
+    # Invalidate all tokens
+    from rest_framework.authtoken.models import Token
+    Token.objects.filter(user=user).delete()
+
+    return Response({'message': 'Account deactivated. You can reactivate it by contacting support.'})
+
+
+@api_view(['POST'])
+@permission_classes([permissions.IsAuthenticated])
+def delete_account_view(request):
+    """Permanently delete the user's account after password confirmation."""
+    password = request.data.get('password', '').strip()
+    confirm  = request.data.get('confirm', '').strip()
+
+    if confirm != 'DELETE':
+        return Response(
+            {'error': 'Please send confirm="DELETE" to confirm deletion.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if not password or not request.user.check_password(password):
+        return Response({'error': 'Incorrect password.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    request.user.delete()
+    return Response({'message': 'Account permanently deleted.'})

@@ -149,6 +149,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
         model  = User
         fields = [
             'id', 'username', 'email', 'display_name', 'bio', 'profile_image',
+            'phone', 'date_of_birth', 'location', 'website', 'preferences',
             'prestige_points', 'level', 'power_rank', 'access_tier',
             'current_streak', 'total_submissions', 'successful_submissions',
             'success_rate', 'total_earnings', 'tournament_wins',

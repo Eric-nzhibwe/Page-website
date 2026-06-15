@@ -33,6 +33,15 @@ class User(AbstractUser):
     total_earnings = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     tournament_wins = models.IntegerField(default=0, validators=[MinValueValidator(0)])
     
+    # Extended profile
+    phone = models.CharField(max_length=30, blank=True)
+    date_of_birth = models.DateField(null=True, blank=True)
+    location = models.CharField(max_length=100, blank=True)
+    website = models.URLField(max_length=255, blank=True)
+
+    # User preferences (privacy, notifications, appearance) stored as JSON
+    preferences = models.JSONField(default=dict, blank=True)
+
     # Verification and social
     is_verified = models.BooleanField(default=False)
     verification_level = models.IntegerField(default=0)  # 0=none, 1=email, 2=social, 3=identity
