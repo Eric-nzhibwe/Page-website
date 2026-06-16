@@ -1330,21 +1330,25 @@
     <div id="settingsModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="settingsModalTitle">
         <div class="modal-content settings-modal">
             <div class="settings-modal-header">
-                <div class="settings-header-left">
-                    <div class="settings-header-icon"><i class="fas fa-cog"></i></div>
-                    <div>
-                        <h2 id="settingsModalTitle">Settings</h2>
-                        <p class="settings-header-sub">Manage your account &amp; preferences</p>
+                <div class="header-glow-line"></div>
+                <div class="settings-header-inner">
+                    <div class="settings-header-left">
+                        <div class="settings-header-icon"><i class="fas fa-sliders-h"></i></div>
+                        <div class="settings-header-text">
+                            <h2 id="settingsModalTitle">Settings</h2>
+                            <p class="settings-header-sub">Manage your account &amp; preferences</p>
+                        </div>
                     </div>
+                    <button class="settings-close-btn" onclick="closeSettings()" aria-label="Close settings">
+                        <i class="fas fa-times"></i>
+                    </button>
                 </div>
-                <button class="settings-close-btn" onclick="closeSettings()" aria-label="Close settings">
-                    <i class="fas fa-times"></i>
-                </button>
             </div>
 
             <div class="settings-layout">
                 <!-- Sidebar Nav -->
                 <nav class="settings-nav" aria-label="Settings sections">
+                    <div class="settings-nav-divider">Profile</div>
                     <button class="settings-nav-btn active" onclick="showSettingsTab('account')" data-tab="account">
                         <span class="nav-icon"><i class="fas fa-user"></i></span>
                         <span class="nav-label">Account</span>
@@ -1355,6 +1359,7 @@
                         <span class="nav-label">Profile</span>
                         <span class="nav-arrow"><i class="fas fa-chevron-right"></i></span>
                     </button>
+                    <div class="settings-nav-divider">Preferences</div>
                     <button class="settings-nav-btn" onclick="showSettingsTab('privacy')" data-tab="privacy">
                         <span class="nav-icon"><i class="fas fa-shield-alt"></i></span>
                         <span class="nav-label">Privacy</span>
@@ -1370,6 +1375,7 @@
                         <span class="nav-label">Appearance</span>
                         <span class="nav-arrow"><i class="fas fa-chevron-right"></i></span>
                     </button>
+                    <div class="settings-nav-divider">Access</div>
                     <button class="settings-nav-btn" onclick="showSettingsTab('security')" data-tab="security">
                         <span class="nav-icon"><i class="fas fa-lock"></i></span>
                         <span class="nav-label">Security</span>
