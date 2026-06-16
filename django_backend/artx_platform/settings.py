@@ -93,20 +93,26 @@ WSGI_APPLICATION = 'artx_platform.wsgi.application'
 ASGI_APPLICATION = 'artx_platform.asgi.application'
 
 # Channels configuration
-if DEBUG:
-    CHANNEL_LAYERS = {
-        'default': {
-            'BACKEND': 'channels.layers.InMemoryChannelLayer',
-        },
-    }
-else:
-    # Production: Use Redis for channel layer
+REDIS_URL = config('REDIS_URL', default='')
+
+if REDIS_URL:
+    # Production with Redis (recommended for multi-worker deployments)
     CHANNEL_LAYERS = {
         'default': {
             'BACKEND': 'channels_redis.core.RedisChannelLayer',
             'CONFIG': {
-                "hosts": [(config('REDIS_URL', default='redis://localhost:6379/0'),)],
+                'hosts': [REDIS_URL],
             },
+        },
+    }
+else:
+    # No Redis available — InMemoryChannelLayer works fine for
+    # a single-dyno Render deployment (free tier).
+    # WebSocket broadcasts are in-process only; scale-out would
+    # require Redis, but for now this keeps WS fully functional.
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels.layers.InMemoryChannelLayer',
         },
     }
 

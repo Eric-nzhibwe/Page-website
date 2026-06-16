@@ -13,4 +13,7 @@ urlpatterns = [
     
     # Tournament participation
     path('<int:tournament_id>/join/', views.join_tournament, name='join_tournament'),
+
+    # Leaderboard (called by app.js)
+    path('leaderboard/', views.tournament_leaderboard, name='tournament_leaderboard'),
 ]

@@ -16,7 +16,7 @@ services:
     branch: main
     rootDir: django_backend
     buildCommand: chmod +x build.sh && ./build.sh
-    startCommand: gunicorn artx_platform.wsgi:application --bind 0.0.0.0:$PORT
+    startCommand: daphne -b 0.0.0.0 -p $PORT artx_platform.asgi:application
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.9

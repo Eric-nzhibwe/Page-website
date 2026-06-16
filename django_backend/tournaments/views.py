@@ -29,3 +29,31 @@ def join_tournament(request, tournament_id):
     """Join a tournament"""
     # TODO: Implement tournament join
     return Response({'message': 'Joined tournament'}, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def tournament_leaderboard(request):
+    """
+    Global leaderboard used by app.js.
+    Returns the top 50 users sorted by prestige_points.
+    """
+    from users.models import User
+    from django.db.models import F, Window
+    from django.db.models.functions import RowNumber
+
+    top_users = User.objects.filter(
+        is_active=True
+    ).annotate(
+        rank=Window(
+            expression=RowNumber(),
+            order_by=F('prestige_points').desc()
+        )
+    ).order_by('-prestige_points').values(
+        'id', 'username', 'display_name',
+        'prestige_points', 'access_tier', 'rank'
+    )[:50]
+
+    return Response({
+        'leaderboard': list(top_users)
+    }, status=status.HTTP_200_OK)
