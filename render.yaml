@@ -15,7 +15,7 @@ services:
     plan: free
     branch: main
     rootDir: django_backend
-    buildCommand: pip install -r requirements.txt && python manage.py makemigrations --no-input && python manage.py migrate --no-input && python manage.py collectstatic --no-input
+    buildCommand: chmod +x build.sh && ./build.sh
     startCommand: gunicorn artx_platform.wsgi:application --bind 0.0.0.0:$PORT
     envVars:
       - key: PYTHON_VERSION
@@ -69,4 +69,10 @@ services:
       - key: PAYSTACK_PUBLIC_KEY
         sync: false
       - key: OPENAI_API_KEY
+        sync: false
+      - key: DJANGO_SUPERUSER_EMAIL
+        sync: false
+      - key: DJANGO_SUPERUSER_USERNAME
+        sync: false
+      - key: DJANGO_SUPERUSER_PASSWORD
         sync: false
