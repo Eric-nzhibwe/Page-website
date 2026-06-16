@@ -108,9 +108,11 @@ async function handleLogin(event) {
         // ── Success ──
         if (data.token) {
             localStorage.setItem('djangoAuthToken', data.token);
+            localStorage.setItem('token', data.token);  // legacy compat
         }
         if (data.user) {
             localStorage.setItem('artxUser', JSON.stringify(data.user));
+            localStorage.setItem('user', JSON.stringify(data.user));  // legacy compat
         }
 
         showToast(`Welcome back, ${data.user?.username || 'player'}! 🔥`, 'success');
@@ -145,8 +147,8 @@ async function handleSignup(event) {
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
         return showFieldError('signupEmail', 'Please enter a valid email address.');
     }
-    if (password.length < 6) {
-        return showFieldError('signupPassword', 'Password must be at least 6 characters.');
+    if (password.length < 8) {
+        return showFieldError('signupPassword', 'Password must be at least 8 characters.');
     }
     if (password !== confirmPassword) {
         return showFieldError('signupConfirmPassword', 'Passwords do not match.');
@@ -172,17 +174,28 @@ async function handleSignup(event) {
 
         if (!res.ok) {
             let msg = data.message || data.error || 'Registration failed.';
-            if (data.details) {
-                if (data.details.username) msg = 'That username is already taken.';
-                else if (data.details.email) msg = 'That email is already registered.';
+            // Backend returns errors under `details` as field→array pairs
+            if (data.details && typeof data.details === 'object') {
+                const fieldMsgs = Object.values(data.details).flat();
+                if (fieldMsgs.length) msg = fieldMsgs[0];
+                // Surface field-specific errors
+                if (data.details.username) showFieldError('signupUsername', data.details.username[0] || 'Username already taken.');
+                if (data.details.email)    showFieldError('signupEmail',    data.details.email[0]    || 'Email already registered.');
+                if (data.details.password) showFieldError('signupPassword', data.details.password[0] || 'Password issue.');
             }
             showFormError('signupForm', msg);
             return;
         }
 
         // ── Success ──
-        if (data.token) localStorage.setItem('djangoAuthToken', data.token);
-        if (data.user)  localStorage.setItem('artxUser', JSON.stringify(data.user));
+        if (data.token) {
+            localStorage.setItem('djangoAuthToken', data.token);
+            localStorage.setItem('token', data.token);  // legacy compat
+        }
+        if (data.user) {
+            localStorage.setItem('artxUser', JSON.stringify(data.user));
+            localStorage.setItem('user', JSON.stringify(data.user));  // legacy compat
+        }
 
         showToast('Account created! Welcome to ARTX 🎉', 'success');
         setTimeout(() => { window.location.href = '../index.html'; }, 1000);
