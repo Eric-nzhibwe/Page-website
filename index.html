@@ -1359,6 +1359,11 @@
                         <span class="nav-label">Profile</span>
                         <span class="nav-arrow"><i class="fas fa-chevron-right"></i></span>
                     </button>
+                    <button class="settings-nav-btn" onclick="showSettingsTab('linked')" data-tab="linked">
+                        <span class="nav-icon"><i class="fas fa-link"></i></span>
+                        <span class="nav-label">Linked Accounts</span>
+                        <span class="nav-arrow"><i class="fas fa-chevron-right"></i></span>
+                    </button>
                     <div class="settings-nav-divider">Preferences</div>
                     <button class="settings-nav-btn" onclick="showSettingsTab('privacy')" data-tab="privacy">
                         <span class="nav-icon"><i class="fas fa-shield-alt"></i></span>
@@ -1513,6 +1518,48 @@
                             <button class="btn-settings-save" onclick="saveProfileSettings()">
                                 <i class="fas fa-save"></i> Save Profile
                             </button>
+                        </div>
+                    </div>
+
+                    <!-- ── Linked Accounts Tab ── -->
+                    <div id="linkedTab" class="settings-tab">
+                        <div class="tab-heading">
+                            <i class="fas fa-link"></i>
+                            <div>
+                                <h3>Linked Accounts</h3>
+                                <p>Connect your social media profiles to ARTX</p>
+                            </div>
+                        </div>
+                        <div class="settings-card">
+                            <div class="settings-card-title">Social Platforms</div>
+                            <p class="card-desc">Link your accounts to show them on your public profile and unlock social features.</p>
+                            <div id="linkedAccountsList" class="linked-accounts-list">
+                                <div class="linked-platform-row" data-platform="twitter">
+                                    <span class="lp-icon" style="color:#1da1f2"><i class="fab fa-twitter"></i></span>
+                                    <div class="lp-info"><strong>X (Twitter)</strong><span class="lp-handle" id="lpHandleTwitter">Not connected</span></div>
+                                    <button class="lp-btn" id="lpBtnTwitter" onclick="toggleSocialLink('twitter')">Connect</button>
+                                </div>
+                                <div class="linked-platform-row" data-platform="instagram">
+                                    <span class="lp-icon" style="color:#e1306c"><i class="fab fa-instagram"></i></span>
+                                    <div class="lp-info"><strong>Instagram</strong><span class="lp-handle" id="lpHandleInstagram">Not connected</span></div>
+                                    <button class="lp-btn" id="lpBtnInstagram" onclick="toggleSocialLink('instagram')">Connect</button>
+                                </div>
+                                <div class="linked-platform-row" data-platform="youtube">
+                                    <span class="lp-icon" style="color:#ff0000"><i class="fab fa-youtube"></i></span>
+                                    <div class="lp-info"><strong>YouTube</strong><span class="lp-handle" id="lpHandleYoutube">Not connected</span></div>
+                                    <button class="lp-btn" id="lpBtnYoutube" onclick="toggleSocialLink('youtube')">Connect</button>
+                                </div>
+                                <div class="linked-platform-row" data-platform="tiktok">
+                                    <span class="lp-icon" style="color:#333"><i class="fab fa-tiktok"></i></span>
+                                    <div class="lp-info"><strong>TikTok</strong><span class="lp-handle" id="lpHandleTiktok">Not connected</span></div>
+                                    <button class="lp-btn" id="lpBtnTiktok" onclick="toggleSocialLink('tiktok')">Connect</button>
+                                </div>
+                                <div class="linked-platform-row" data-platform="facebook">
+                                    <span class="lp-icon" style="color:#1877f2"><i class="fab fa-facebook"></i></span>
+                                    <div class="lp-info"><strong>Facebook</strong><span class="lp-handle" id="lpHandleFacebook">Not connected</span></div>
+                                    <button class="lp-btn" id="lpBtnFacebook" onclick="toggleSocialLink('facebook')">Connect</button>
+                                </div>
+                            </div>
                         </div>
                     </div>
 

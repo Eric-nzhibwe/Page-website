@@ -12,6 +12,7 @@
     <link rel="stylesheet" href="../styles/styles.css">
     <link rel="stylesheet" href="../styles/icon-nav.css">
     <link rel="stylesheet" href="../styles/user.css">
+    <link rel="stylesheet" href="../styles/settings.css">
 </head>
 <body>
 
@@ -155,6 +156,9 @@
             <div class="profile-actions">
                 <button class="btn-act-primary" onclick="openEditModal()">
                     <i class="fas fa-pen"></i> Edit Profile
+                </button>
+                <button class="btn-act-ghost" onclick="showSettings()" title="Settings">
+                    <i class="fas fa-sliders-h"></i>
                 </button>
                 <button class="btn-act-ghost" onclick="shareProfile()" title="Share profile">
                     <i class="fas fa-share-nodes"></i>
@@ -341,6 +345,16 @@
                 <label for="editBio">Bio <span class="mchar"><span id="bioCount">0</span>/500</span></label>
                 <textarea id="editBio" placeholder="Tell the community about yourself…" rows="3" maxlength="500"></textarea>
             </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                <div class="mfield" style="margin-bottom:0">
+                    <label for="editLocation">Location</label>
+                    <input id="editLocation" type="text" placeholder="City, Country" maxlength="100" autocomplete="off">
+                </div>
+                <div class="mfield" style="margin-bottom:0">
+                    <label for="editWebsite">Website</label>
+                    <input id="editWebsite" type="url" placeholder="https://yoursite.com" maxlength="255" autocomplete="off">
+                </div>
+            </div>
             <div class="merror" id="editError" style="display:none"></div>
         </div>
 
@@ -351,10 +365,503 @@
     </div>
 </div>
 
+<!-- Settings Modal -->
+<div id="settingsModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="settingsModalTitle">
+    <div class="modal-content settings-modal">
+        <div class="settings-modal-header">
+            <div class="header-glow-line"></div>
+            <div class="settings-header-inner">
+                <div class="settings-header-left">
+                    <div class="settings-header-icon"><i class="fas fa-sliders-h"></i></div>
+                    <div class="settings-header-text">
+                        <h2 id="settingsModalTitle">Settings</h2>
+                        <p class="settings-header-sub">Manage your account &amp; preferences</p>
+                    </div>
+                </div>
+                <button class="settings-close-btn" onclick="closeSettings()" aria-label="Close settings">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+
+        <div class="settings-layout">
+            <nav class="settings-nav" aria-label="Settings sections">
+                <div class="settings-nav-divider">Profile</div>
+                <button class="settings-nav-btn active" onclick="showSettingsTab('account')" data-tab="account">
+                    <span class="nav-icon"><i class="fas fa-user"></i></span>
+                    <span class="nav-label">Account</span>
+                    <span class="nav-arrow"><i class="fas fa-chevron-right"></i></span>
+                </button>
+                <button class="settings-nav-btn" onclick="showSettingsTab('profile')" data-tab="profile">
+                    <span class="nav-icon"><i class="fas fa-id-card"></i></span>
+                    <span class="nav-label">Profile</span>
+                    <span class="nav-arrow"><i class="fas fa-chevron-right"></i></span>
+                </button>
+                <button class="settings-nav-btn" onclick="showSettingsTab('linked')" data-tab="linked">
+                    <span class="nav-icon"><i class="fas fa-link"></i></span>
+                    <span class="nav-label">Linked Accounts</span>
+                    <span class="nav-arrow"><i class="fas fa-chevron-right"></i></span>
+                </button>
+                <div class="settings-nav-divider">Preferences</div>
+                <button class="settings-nav-btn" onclick="showSettingsTab('privacy')" data-tab="privacy">
+                    <span class="nav-icon"><i class="fas fa-shield-alt"></i></span>
+                    <span class="nav-label">Privacy</span>
+                    <span class="nav-arrow"><i class="fas fa-chevron-right"></i></span>
+                </button>
+                <button class="settings-nav-btn" onclick="showSettingsTab('notifications')" data-tab="notifications">
+                    <span class="nav-icon"><i class="fas fa-bell"></i></span>
+                    <span class="nav-label">Notifications</span>
+                    <span class="nav-arrow"><i class="fas fa-chevron-right"></i></span>
+                </button>
+                <button class="settings-nav-btn" onclick="showSettingsTab('appearance')" data-tab="appearance">
+                    <span class="nav-icon"><i class="fas fa-palette"></i></span>
+                    <span class="nav-label">Appearance</span>
+                    <span class="nav-arrow"><i class="fas fa-chevron-right"></i></span>
+                </button>
+                <div class="settings-nav-divider">Access</div>
+                <button class="settings-nav-btn" onclick="showSettingsTab('security')" data-tab="security">
+                    <span class="nav-icon"><i class="fas fa-lock"></i></span>
+                    <span class="nav-label">Security</span>
+                    <span class="nav-arrow"><i class="fas fa-chevron-right"></i></span>
+                </button>
+            </nav>
+
+            <div class="settings-content">
+
+                <!-- Account Tab -->
+                <div id="accountTab" class="settings-tab active">
+                    <div class="tab-heading">
+                        <i class="fas fa-user"></i>
+                        <div><h3>Account Information</h3><p>Update your login details and personal info</p></div>
+                    </div>
+                    <div class="settings-card">
+                        <div class="settings-card-title">Basic Details</div>
+                        <div class="form-row-2">
+                            <div class="form-group">
+                                <label for="settingsUsername">Username</label>
+                                <div class="input-icon-wrap">
+                                    <i class="fas fa-at"></i>
+                                    <input type="text" id="settingsUsername" class="modal-input" placeholder="Your username">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="settingsEmail">Email Address</label>
+                                <div class="input-icon-wrap">
+                                    <i class="fas fa-envelope"></i>
+                                    <input type="email" id="settingsEmail" class="modal-input" placeholder="you@email.com">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-row-2">
+                            <div class="form-group">
+                                <label for="settingsPhone">Phone Number</label>
+                                <div class="input-icon-wrap">
+                                    <i class="fas fa-phone"></i>
+                                    <input type="tel" id="settingsPhone" class="modal-input" placeholder="+260 XXX XXX XXX">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="settingsDOB">Date of Birth</label>
+                                <div class="input-icon-wrap">
+                                    <i class="fas fa-calendar"></i>
+                                    <input type="date" id="settingsDOB" class="modal-input">
+                                </div>
+                            </div>
+                        </div>
+                        <button class="btn-settings-save" onclick="saveAccountSettings()">
+                            <i class="fas fa-save"></i> Save Changes
+                        </button>
+                    </div>
+                    <div class="settings-card danger-card">
+                        <div class="settings-card-title danger-title"><i class="fas fa-exclamation-triangle"></i> Danger Zone</div>
+                        <p class="danger-desc">These actions are irreversible. Please be certain before proceeding.</p>
+                        <div class="danger-actions">
+                            <button class="btn-danger-outline" onclick="deactivateAccount()">
+                                <i class="fas fa-user-slash"></i> Deactivate Account
+                            </button>
+                            <button class="btn-danger-solid" onclick="deleteAccount()">
+                                <i class="fas fa-trash-alt"></i> Delete Account
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Profile Tab -->
+                <div id="profileTab" class="settings-tab">
+                    <div class="tab-heading">
+                        <i class="fas fa-id-card"></i>
+                        <div><h3>Profile Settings</h3><p>Customize how others see you on ARTX</p></div>
+                    </div>
+                    <div class="settings-card">
+                        <div class="avatar-upload-section">
+                            <div class="avatar-ring">
+                                <div class="avatar-preview" id="settingsAvatarPreview">
+                                    <i class="fas fa-user-circle"></i>
+                                </div>
+                                <button class="avatar-edit-btn" onclick="changeAvatar()" aria-label="Change avatar">
+                                    <i class="fas fa-camera"></i>
+                                </button>
+                            </div>
+                            <div class="avatar-info">
+                                <h4 id="settingsAvatarName">Player</h4>
+                                <p>JPG, PNG or GIF · Max 5 MB</p>
+                                <button class="btn-settings-secondary" onclick="changeAvatar()">
+                                    <i class="fas fa-upload"></i> Upload Photo
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="settings-card">
+                        <div class="settings-card-title">Public Info</div>
+                        <div class="form-group">
+                            <label for="settingsDisplayName">Display Name</label>
+                            <div class="input-icon-wrap">
+                                <i class="fas fa-signature"></i>
+                                <input type="text" id="settingsDisplayName" class="modal-input" placeholder="How others see you">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="settingsBio">Bio</label>
+                            <textarea id="settingsBio" class="modal-textarea" placeholder="Tell others about yourself..." rows="3"></textarea>
+                        </div>
+                        <div class="form-row-2">
+                            <div class="form-group">
+                                <label for="settingsLocation">Location</label>
+                                <div class="input-icon-wrap">
+                                    <i class="fas fa-map-marker-alt"></i>
+                                    <input type="text" id="settingsLocation" class="modal-input" placeholder="City, Country">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="settingsWebsite">Website</label>
+                                <div class="input-icon-wrap">
+                                    <i class="fas fa-globe"></i>
+                                    <input type="url" id="settingsWebsite" class="modal-input" placeholder="https://yoursite.com">
+                                </div>
+                            </div>
+                        </div>
+                        <button class="btn-settings-save" onclick="saveProfileSettings()">
+                            <i class="fas fa-save"></i> Save Profile
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Linked Accounts Tab -->
+                <div id="linkedTab" class="settings-tab">
+                    <div class="tab-heading">
+                        <i class="fas fa-link"></i>
+                        <div><h3>Linked Accounts</h3><p>Connect your social media profiles to ARTX</p></div>
+                    </div>
+                    <div class="settings-card">
+                        <div class="settings-card-title">Social Platforms</div>
+                        <p class="card-desc">Link your accounts to show them on your public profile and unlock social features.</p>
+                        <div id="linkedAccountsList" class="linked-accounts-list">
+                            <div class="linked-platform-row" data-platform="twitter">
+                                <span class="lp-icon" style="color:#1da1f2"><i class="fab fa-twitter"></i></span>
+                                <div class="lp-info"><strong>X (Twitter)</strong><span class="lp-handle" id="lpHandleTwitter">Not connected</span></div>
+                                <button class="lp-btn" id="lpBtnTwitter" onclick="toggleSocialLink('twitter')">Connect</button>
+                            </div>
+                            <div class="linked-platform-row" data-platform="instagram">
+                                <span class="lp-icon" style="color:#e1306c"><i class="fab fa-instagram"></i></span>
+                                <div class="lp-info"><strong>Instagram</strong><span class="lp-handle" id="lpHandleInstagram">Not connected</span></div>
+                                <button class="lp-btn" id="lpBtnInstagram" onclick="toggleSocialLink('instagram')">Connect</button>
+                            </div>
+                            <div class="linked-platform-row" data-platform="youtube">
+                                <span class="lp-icon" style="color:#ff0000"><i class="fab fa-youtube"></i></span>
+                                <div class="lp-info"><strong>YouTube</strong><span class="lp-handle" id="lpHandleYoutube">Not connected</span></div>
+                                <button class="lp-btn" id="lpBtnYoutube" onclick="toggleSocialLink('youtube')">Connect</button>
+                            </div>
+                            <div class="linked-platform-row" data-platform="tiktok">
+                                <span class="lp-icon" style="color:#333"><i class="fab fa-tiktok"></i></span>
+                                <div class="lp-info"><strong>TikTok</strong><span class="lp-handle" id="lpHandleTiktok">Not connected</span></div>
+                                <button class="lp-btn" id="lpBtnTiktok" onclick="toggleSocialLink('tiktok')">Connect</button>
+                            </div>
+                            <div class="linked-platform-row" data-platform="facebook">
+                                <span class="lp-icon" style="color:#1877f2"><i class="fab fa-facebook"></i></span>
+                                <div class="lp-info"><strong>Facebook</strong><span class="lp-handle" id="lpHandleFacebook">Not connected</span></div>
+                                <button class="lp-btn" id="lpBtnFacebook" onclick="toggleSocialLink('facebook')">Connect</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Privacy Tab -->
+                <div id="privacyTab" class="settings-tab">
+                    <div class="tab-heading">
+                        <i class="fas fa-shield-alt"></i>
+                        <div><h3>Privacy Settings</h3><p>Control who can see your information</p></div>
+                    </div>
+                    <div class="settings-card">
+                        <div class="settings-card-title">Visibility</div>
+                        <div class="setting-row">
+                            <div class="setting-row-info">
+                                <span class="setting-row-icon"><i class="fas fa-eye"></i></span>
+                                <div><h4>Profile Visibility</h4><p>Control who can see your profile</p></div>
+                            </div>
+                            <select id="profileVisibility" class="settings-select">
+                                <option value="public">Everyone</option>
+                                <option value="friends">Friends Only</option>
+                                <option value="alliance">Alliance Only</option>
+                                <option value="private">Only Me</option>
+                            </select>
+                        </div>
+                        <div class="setting-row">
+                            <div class="setting-row-info">
+                                <span class="setting-row-icon"><i class="fas fa-comment-dots"></i></span>
+                                <div><h4>Who Can Message You</h4><p>Control who can send you direct messages</p></div>
+                            </div>
+                            <select id="messagePrivacy" class="settings-select">
+                                <option value="everyone">Everyone</option>
+                                <option value="friends">Friends Only</option>
+                                <option value="none">No One</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="settings-card">
+                        <div class="settings-card-title">Activity &amp; Status</div>
+                        <div class="setting-row">
+                            <div class="setting-row-info">
+                                <span class="setting-row-icon"><i class="fas fa-circle" style="color:#4caf50;"></i></span>
+                                <div><h4>Show Online Status</h4><p>Let others see when you're online</p></div>
+                            </div>
+                            <label class="toggle-switch" aria-label="Toggle online status">
+                                <input type="checkbox" id="showOnlineStatus" checked><span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="setting-row">
+                            <div class="setting-row-info">
+                                <span class="setting-row-icon"><i class="fas fa-rss"></i></span>
+                                <div><h4>Activity Status</h4><p>Show your activity in the feed</p></div>
+                            </div>
+                            <label class="toggle-switch" aria-label="Toggle activity status">
+                                <input type="checkbox" id="showActivity" checked><span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="setting-row">
+                            <div class="setting-row-info">
+                                <span class="setting-row-icon"><i class="fas fa-chart-bar"></i></span>
+                                <div><h4>Show Stats Publicly</h4><p>Display your prestige and rank</p></div>
+                            </div>
+                            <label class="toggle-switch" aria-label="Toggle public stats">
+                                <input type="checkbox" id="showStats" checked><span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                    <button class="btn-settings-save" onclick="savePrivacySettings()">
+                        <i class="fas fa-save"></i> Save Privacy Settings
+                    </button>
+                </div>
+
+                <!-- Notifications Tab -->
+                <div id="notificationsTab" class="settings-tab">
+                    <div class="tab-heading">
+                        <i class="fas fa-bell"></i>
+                        <div><h3>Notification Preferences</h3><p>Choose what you want to be notified about</p></div>
+                    </div>
+                    <div class="settings-card">
+                        <div class="settings-card-title">Channels</div>
+                        <div class="setting-row">
+                            <div class="setting-row-info">
+                                <span class="setting-row-icon"><i class="fas fa-mobile-alt"></i></span>
+                                <div><h4>Push Notifications</h4><p>Receive notifications on your device</p></div>
+                            </div>
+                            <label class="toggle-switch"><input type="checkbox" id="pushNotifications" checked><span class="toggle-slider"></span></label>
+                        </div>
+                        <div class="setting-row">
+                            <div class="setting-row-info">
+                                <span class="setting-row-icon"><i class="fas fa-envelope"></i></span>
+                                <div><h4>Email Notifications</h4><p>Get updates via email</p></div>
+                            </div>
+                            <label class="toggle-switch"><input type="checkbox" id="emailNotifications" checked><span class="toggle-slider"></span></label>
+                        </div>
+                        <div class="setting-row">
+                            <div class="setting-row-info">
+                                <span class="setting-row-icon"><i class="fas fa-volume-up"></i></span>
+                                <div><h4>Sound Effects</h4><p>Play sounds for notifications</p></div>
+                            </div>
+                            <label class="toggle-switch"><input type="checkbox" id="soundEffects" checked><span class="toggle-slider"></span></label>
+                        </div>
+                    </div>
+                    <div class="settings-card">
+                        <div class="settings-card-title">Activity Alerts</div>
+                        <div class="setting-row">
+                            <div class="setting-row-info">
+                                <span class="setting-row-icon"><i class="fas fa-trophy"></i></span>
+                                <div><h4>Challenge Updates</h4><p>New challenges and results</p></div>
+                            </div>
+                            <label class="toggle-switch"><input type="checkbox" id="challengeNotifications" checked><span class="toggle-slider"></span></label>
+                        </div>
+                        <div class="setting-row">
+                            <div class="setting-row-info">
+                                <span class="setting-row-icon"><i class="fas fa-comment"></i></span>
+                                <div><h4>Messages</h4><p>When you receive a new message</p></div>
+                            </div>
+                            <label class="toggle-switch"><input type="checkbox" id="messageNotifications" checked><span class="toggle-slider"></span></label>
+                        </div>
+                        <div class="setting-row">
+                            <div class="setting-row-info">
+                                <span class="setting-row-icon"><i class="fas fa-users"></i></span>
+                                <div><h4>Alliance Activity</h4><p>Updates from your alliance</p></div>
+                            </div>
+                            <label class="toggle-switch"><input type="checkbox" id="allianceNotifications" checked><span class="toggle-slider"></span></label>
+                        </div>
+                        <div class="setting-row">
+                            <div class="setting-row-info">
+                                <span class="setting-row-icon"><i class="fas fa-flag-checkered"></i></span>
+                                <div><h4>Tournament Reminders</h4><p>Upcoming tournament alerts</p></div>
+                            </div>
+                            <label class="toggle-switch"><input type="checkbox" id="tournamentNotifications" checked><span class="toggle-slider"></span></label>
+                        </div>
+                    </div>
+                    <button class="btn-settings-save" onclick="saveNotificationSettings()">
+                        <i class="fas fa-save"></i> Save Notification Settings
+                    </button>
+                </div>
+
+                <!-- Appearance Tab -->
+                <div id="appearanceTab" class="settings-tab">
+                    <div class="tab-heading">
+                        <i class="fas fa-palette"></i>
+                        <div><h3>Appearance</h3><p>Make ARTX look the way you like it</p></div>
+                    </div>
+                    <div class="settings-card">
+                        <div class="settings-card-title">Theme &amp; Display</div>
+                        <div class="setting-row">
+                            <div class="setting-row-info">
+                                <span class="setting-row-icon"><i class="fas fa-moon"></i></span>
+                                <div><h4>Theme</h4><p>Choose your preferred color scheme</p></div>
+                            </div>
+                            <select id="themeSelect" class="settings-select" onchange="changeTheme()">
+                                <option value="dark">Dark Mode</option>
+                                <option value="light">Light Mode</option>
+                                <option value="auto">Auto (System)</option>
+                            </select>
+                        </div>
+                        <div class="setting-row">
+                            <div class="setting-row-info">
+                                <span class="setting-row-icon"><i class="fas fa-text-height"></i></span>
+                                <div><h4>Font Size</h4><p>Adjust text size for readability</p></div>
+                            </div>
+                            <select id="fontSize" class="settings-select" onchange="changeFontSize()">
+                                <option value="small">Small</option>
+                                <option value="medium" selected>Medium</option>
+                                <option value="large">Large</option>
+                            </select>
+                        </div>
+                        <div class="setting-row">
+                            <div class="setting-row-info">
+                                <span class="setting-row-icon"><i class="fas fa-magic"></i></span>
+                                <div><h4>Animations</h4><p>Enable UI animations and transitions</p></div>
+                            </div>
+                            <label class="toggle-switch"><input type="checkbox" id="enableAnimations" checked><span class="toggle-slider"></span></label>
+                        </div>
+                        <div class="setting-row">
+                            <div class="setting-row-info">
+                                <span class="setting-row-icon"><i class="fas fa-compress-alt"></i></span>
+                                <div><h4>Compact Mode</h4><p>Show more content with tighter spacing</p></div>
+                            </div>
+                            <label class="toggle-switch"><input type="checkbox" id="compactMode"><span class="toggle-slider"></span></label>
+                        </div>
+                    </div>
+                    <div class="settings-card">
+                        <div class="settings-card-title">Accent Color</div>
+                        <p class="card-desc">Choose a color that highlights interactive elements</p>
+                        <div class="color-picker-grid">
+                            <button class="color-swatch active" data-color="#90ee90" style="background:#90ee90;" onclick="selectAccentColor('#90ee90')" aria-label="Green"></button>
+                            <button class="color-swatch" data-color="#4facfe" style="background:#4facfe;" onclick="selectAccentColor('#4facfe')" aria-label="Blue"></button>
+                            <button class="color-swatch" data-color="#f093fb" style="background:#f093fb;" onclick="selectAccentColor('#f093fb')" aria-label="Pink"></button>
+                            <button class="color-swatch" data-color="#ffd700" style="background:#ffd700;" onclick="selectAccentColor('#ffd700')" aria-label="Gold"></button>
+                            <button class="color-swatch" data-color="#ff6b6b" style="background:#ff6b6b;" onclick="selectAccentColor('#ff6b6b')" aria-label="Red"></button>
+                            <button class="color-swatch" data-color="#a78bfa" style="background:#a78bfa;" onclick="selectAccentColor('#a78bfa')" aria-label="Purple"></button>
+                        </div>
+                    </div>
+                    <button class="btn-settings-save" onclick="saveAppearanceSettings()">
+                        <i class="fas fa-save"></i> Save Appearance
+                    </button>
+                </div>
+
+                <!-- Security Tab -->
+                <div id="securityTab" class="settings-tab">
+                    <div class="tab-heading">
+                        <i class="fas fa-lock"></i>
+                        <div><h3>Security</h3><p>Keep your account safe and secure</p></div>
+                    </div>
+                    <div class="settings-card">
+                        <div class="settings-card-title">Change Password</div>
+                        <div class="form-group">
+                            <label for="currentPassword">Current Password</label>
+                            <div class="input-icon-wrap">
+                                <i class="fas fa-lock"></i>
+                                <input type="password" id="currentPassword" class="modal-input" placeholder="Enter current password">
+                                <button type="button" class="toggle-pw-btn" onclick="togglePasswordVisibility('currentPassword', this)" aria-label="Show password">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="form-row-2">
+                            <div class="form-group">
+                                <label for="newPassword">New Password</label>
+                                <div class="input-icon-wrap">
+                                    <i class="fas fa-key"></i>
+                                    <input type="password" id="newPassword" class="modal-input" placeholder="Enter new password" oninput="checkPasswordStrength(this.value)">
+                                    <button type="button" class="toggle-pw-btn" onclick="togglePasswordVisibility('newPassword', this)" aria-label="Show password">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                </div>
+                                <div class="password-strength" id="passwordStrength">
+                                    <div class="strength-bar"><span id="strengthFill"></span></div>
+                                    <span id="strengthLabel">—</span>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="confirmPassword">Confirm New Password</label>
+                                <div class="input-icon-wrap">
+                                    <i class="fas fa-key"></i>
+                                    <input type="password" id="confirmPassword" class="modal-input" placeholder="Confirm new password">
+                                    <button type="button" class="toggle-pw-btn" onclick="togglePasswordVisibility('confirmPassword', this)" aria-label="Show password">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <button class="btn-settings-save" onclick="changePassword()">
+                            <i class="fas fa-key"></i> Update Password
+                        </button>
+                    </div>
+                    <div class="settings-card">
+                        <div class="settings-card-title">Two-Factor Authentication</div>
+                        <div class="setting-row">
+                            <div class="setting-row-info">
+                                <span class="setting-row-icon"><i class="fas fa-mobile-alt"></i></span>
+                                <div><h4>Enable 2FA</h4><p>Add an extra layer of security to your account</p></div>
+                            </div>
+                            <label class="toggle-switch"><input type="checkbox" id="enable2FA"><span class="toggle-slider"></span></label>
+                        </div>
+                        <button class="btn-settings-secondary" onclick="setup2FA()">
+                            <i class="fas fa-qrcode"></i> Setup Authenticator App
+                        </button>
+                    </div>
+                    <div class="settings-card">
+                        <div class="settings-card-title">Active Sessions</div>
+                        <div id="sessionsList" class="sessions-list">
+                            <div class="sessions-loading"><i class="fas fa-spinner fa-spin"></i> Loading sessions...</div>
+                        </div>
+                        <button class="btn-danger-outline" onclick="logoutAllDevices()">
+                            <i class="fas fa-sign-out-alt"></i> Logout All Devices
+                        </button>
+                    </div>
+                </div>
+
+            </div><!-- /settings-content -->
+        </div><!-- /settings-layout -->
+    </div>
+</div>
+
 <!-- Toast -->
 <div class="toast" id="toast"></div>
 
 <script src="../scripts/app.js"></script>
+<script src="../scripts/settings.js"></script>
 <script src="../scripts/user.js"></script>
 <script>
 /* ── Dropdown toggles — identical to index.html ─────────── */

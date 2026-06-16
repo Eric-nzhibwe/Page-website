@@ -213,6 +213,11 @@ function openEditModal() {
     document.getElementById('editUsername').value    = profileData.username || '';
     document.getElementById('editBio').value         = profileData.bio || '';
     document.getElementById('bioCount').textContent  = (profileData.bio || '').length;
+    // Location & Website
+    const locEl = document.getElementById('editLocation');
+    const webEl = document.getElementById('editWebsite');
+    if (locEl) locEl.value = profileData.location || '';
+    if (webEl) webEl.value = profileData.website  || '';
     document.getElementById('editError').style.display = 'none';
     document.getElementById('editModal').classList.add('open');
 }
@@ -228,7 +233,11 @@ async function saveProfile() {
         display_name: document.getElementById('editDisplayName').value.trim(),
         bio:          document.getElementById('editBio').value.trim(),
         username:     document.getElementById('editUsername').value.trim(),
+        location:     (document.getElementById('editLocation') || {}).value?.trim() || undefined,
+        website:      (document.getElementById('editWebsite')  || {}).value?.trim() || undefined,
     };
+    // Strip undefined fields
+    Object.keys(body).forEach(k => body[k] === undefined && delete body[k]);
     if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving…'; }
     try {
         const res = await fetch(`${PROFILE_API}/auth/profile/`, {

@@ -10,6 +10,7 @@ function showSettings() {
     modal.style.display = 'flex';
     document.body.style.overflow = 'hidden';
     loadUserSettings();
+    loadLinkedAccounts();
     loadActiveSessions();
 }
 
@@ -464,6 +465,78 @@ async function deleteAccount() {
         setTimeout(() => { if (typeof logout === 'function') logout(); }, 2000);
     } catch (err) {
         showToast(err.message || 'Failed to delete account', 'error');
+    }
+}
+
+// ── Linked Accounts ───────────────────────────────────────────────────────
+
+function loadLinkedAccounts() {
+    const user = getStoredUser();
+    const connections = user.social_connections || {};
+    const platforms = ['twitter', 'instagram', 'youtube', 'tiktok', 'facebook'];
+
+    platforms.forEach(p => {
+        const conn = connections[p] || {};
+        const handleEl = document.getElementById(`lpHandle${capitalize(p)}`);
+        const btnEl    = document.getElementById(`lpBtn${capitalize(p)}`);
+        const rowEl    = document.querySelector(`[data-platform="${p}"]`);
+
+        if (!handleEl || !btnEl) return;
+
+        if (conn.connected) {
+            handleEl.textContent = `@${conn.username || p}`;
+            handleEl.classList.add('connected-handle');
+            btnEl.textContent = 'Disconnect';
+            btnEl.classList.add('disconnect-btn');
+            if (rowEl) rowEl.classList.add('connected');
+        } else {
+            handleEl.textContent = 'Not connected';
+            handleEl.classList.remove('connected-handle');
+            btnEl.textContent = 'Connect';
+            btnEl.classList.remove('disconnect-btn');
+            if (rowEl) rowEl.classList.remove('connected');
+        }
+    });
+}
+
+function capitalize(str) { return str.charAt(0).toUpperCase() + str.slice(1); }
+
+async function toggleSocialLink(platform) {
+    const user = getStoredUser();
+    const connections = user.social_connections || {};
+    const isConnected = connections[platform] && connections[platform].connected;
+
+    if (isConnected) {
+        // Disconnect
+        if (!confirm(`Disconnect your ${capitalize(platform)} account?`)) return;
+        const updated = { ...connections };
+        updated[platform] = { connected: false };
+        try {
+            const data = await apiFetch('/api/auth/profile/', 'PATCH', {
+                social_connections: updated,
+            });
+            updateLocalUser(data);
+            loadLinkedAccounts();
+            showToast(`${capitalize(platform)} disconnected`, 'info');
+        } catch (err) {
+            showToast(err.message || 'Failed to disconnect', 'error');
+        }
+    } else {
+        // Connect — prompt for username
+        const handle = prompt(`Enter your ${capitalize(platform)} username (without @):`);
+        if (!handle || !handle.trim()) return;
+        const updated = { ...connections };
+        updated[platform] = { connected: true, username: handle.trim(), verified: false };
+        try {
+            const data = await apiFetch('/api/auth/profile/', 'PATCH', {
+                social_connections: updated,
+            });
+            updateLocalUser(data);
+            loadLinkedAccounts();
+            showToast(`${capitalize(platform)} linked!`, 'success');
+        } catch (err) {
+            showToast(err.message || 'Failed to link account', 'error');
+        }
     }
 }
 
