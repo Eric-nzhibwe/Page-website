@@ -69,6 +69,11 @@ function timeAgo(iso) {
 // Return either the real post id (UUID from API) or the static string id
 function resolvePostId(rawId) { return rawId; }
 
+// Returns true if the post only exists locally (never synced to the server)
+function _isLocalId(id) {
+    return typeof id === 'string' && id.startsWith('local-');
+}
+
 // ─────────────────────────────────────────────────────────────
 //  REACTIONS (fire toggle on post cards)
 // ─────────────────────────────────────────────────────────────
@@ -235,6 +240,21 @@ async function _loadComments(postId, reset = false) {
             </div>`).join('') + '</div>';
     }
 
+    // ── Local-only posts: skip the API entirely ──
+    if (_isLocalId(postId)) {
+        const all  = JSON.parse(localStorage.getItem('artxComments') || '{}');
+        const cmts = (all[postId] || []).slice().reverse();
+        if (reset) list.innerHTML = '';
+        if (cmts.length === 0 && reset) {
+            list.innerHTML = '<p class="artx-empty-msg"><i class="fas fa-comment-slash"></i> No comments yet — be the first!</p>';
+            if (moreW) moreW.style.display = 'none';
+        } else {
+            cmts.forEach(c => list.appendChild(_makeCommentEl(c)));
+            if (moreW) moreW.style.display = 'none';
+        }
+        return;
+    }
+
     // ── Try real API first ──
     try {
         const res = await fetch(`${SOCIAL_API}/comments/?post_id=${postId}&page=${_commentPage}`, {
@@ -379,21 +399,21 @@ async function _submitComment() {
         return;
     }
 
-    // ── Fallback: REST API ──
-    try {
-        const res = await fetch(`${SOCIAL_API}/comments/`, {
-            method:  'POST',
-            headers: authHeaders(),
-            body:    JSON.stringify({ post_id: _commentPostId, content: text })
-        });
-        if (res.ok) {
-            const data = await res.json();
-            Object.assign(newComment, data);
-            posted = true;
-        }
-    } catch { /* fall through */ }
-
-    // ── localStorage fallback ──
+    // ── Fallback: REST API (only for real server posts, not local-only ones) ──
+    if (!_isLocalId(_commentPostId)) {
+        try {
+            const res = await fetch(`${SOCIAL_API}/comments/`, {
+                method:  'POST',
+                headers: authHeaders(),
+                body:    JSON.stringify({ post_id: _commentPostId, content: text })
+            });
+            if (res.ok) {
+                const data = await res.json();
+                Object.assign(newComment, data);
+                posted = true;
+            }
+        } catch { /* fall through */ }
+    }
     if (!posted) {
         const all = JSON.parse(localStorage.getItem('artxComments') || '{}');
         if (!all[_commentPostId]) all[_commentPostId] = [];

@@ -1,8 +1,10 @@
 """
 Views for social features - Posts, Comments, Shares, and Follows
 """
+import uuid
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.pagination import PageNumberPagination
@@ -145,6 +147,12 @@ class CommentViewSet(viewsets.ModelViewSet):
             'reactions', 'replies__author', 'replies__reactions'
         )
         if post_id:
+            # Validate that post_id is a valid UUID before hitting the DB.
+            # Local/offline IDs (e.g. "local-1234") must never reach this point.
+            try:
+                uuid.UUID(str(post_id))
+            except (ValueError, AttributeError):
+                raise ValidationError({'post_id': f'"{post_id}" is not a valid post ID.'})
             return qs.filter(post_id=post_id, parent_comment__isnull=True)
         return qs.none()  # Don't list all comments without a post_id
 
