@@ -42,20 +42,11 @@ class UserRegistrationView(generics.CreateAPIView):
                 'message': str(serializer.errors)
             }, status=status.HTTP_400_BAD_REQUEST)
         
-        user = serializer.save()
-        
+        user = serializer.save()  # welcome email is sent inside serializer.create()
+
         # Create token for immediate login
         token, created = Token.objects.get_or_create(user=user)
-        
-        # Send welcome email
-        try:
-            from notifications.tasks import send_welcome_email
-            send_welcome_email(user.id)
-            print(f"✅ Welcome email sent to {user.email}")
-        except Exception as e:
-            print(f"⚠️ Could not send welcome email: {e}")
-            # Don't fail registration if email fails
-        
+
         return Response({
             'user': UserProfileSerializer(user).data,
             'token': token.key,
@@ -115,6 +106,19 @@ def login_view(request):
 
     # Establish Django session too (for browser clients)
     login(request, user, backend='users.backends.EmailOrUsernameBackend')
+
+    # Send login notification email (non-blocking)
+    try:
+        from notifications.tasks import send_login_notification_email
+        login_data = {
+            'device_info': request.META.get('HTTP_USER_AGENT', 'Unknown device')[:120],
+            'location_info': 'Secure connection',
+            'active_tournaments_count': 'Several',
+            'unread_notifications_count': 'Check',
+        }
+        send_login_notification_email(user.id, login_data)
+    except Exception:
+        pass  # Never block login if email fails
 
     return Response({
         'token': token.key,
