@@ -1841,3 +1841,10 @@ body, html {
 }
 
 .user-search-box input::placeholder { color: var(--artx-muted); }
+
+/* ── Mobile bottom nav — ensure user menu opened from bottom nav sits above it ── */
+@media (max-width: 1023px) {
+  #userMenuDropdown.show {
+    z-index: 1200 !important; /* above mobile-bottom-nav z-index 850 */
+  }
+}

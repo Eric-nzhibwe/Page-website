@@ -2068,8 +2068,9 @@
         <button class="icon-nav-btn" title="Profile" onclick="window.location.href='pages/user.html'">
             <i class="fas fa-user-circle"></i>
         </button>
-        <button class="icon-nav-btn" onclick="toggleUserMenu()" title="More">
+        <button class="icon-nav-btn" onclick="toggleMobileMoreMenu(this)" title="More">
             <i class="fas fa-bars"></i>
+            <span style="font-size:10px;">More</span>
         </button>
     </nav>
 
@@ -2082,6 +2083,55 @@
             btn.classList.toggle('active', btn.getAttribute('data-view') === viewName);
         });
     }
+
+    // Mobile bottom-nav "More" — opens the user menu anchored above the nav bar
+    function toggleMobileMoreMenu(btn) {
+        const dropdown = document.getElementById('userMenuDropdown');
+        const quickMenu = document.getElementById('quickMenuDropdown');
+
+        // Close quick menu if open
+        if (quickMenu && quickMenu.classList.contains('show')) {
+            quickMenu.classList.remove('show');
+        }
+
+        if (!dropdown) return;
+
+        const isOpen = dropdown.classList.contains('show');
+
+        if (isOpen) {
+            dropdown.classList.remove('show');
+            dropdown.style.removeProperty('top');
+            dropdown.style.removeProperty('bottom');
+            dropdown.style.removeProperty('right');
+            dropdown.style.removeProperty('position');
+        } else {
+            // Position above the bottom nav
+            const navH = document.getElementById('mobileBottomNav').offsetHeight;
+            dropdown.style.position  = 'fixed';
+            dropdown.style.bottom    = (navH + 8) + 'px';
+            dropdown.style.top       = 'auto';
+            dropdown.style.right     = '8px';
+            dropdown.classList.add('show');
+        }
+    }
+
+    // Close mobile more menu when clicking outside
+    document.addEventListener('click', function(e) {
+        const dropdown = document.getElementById('userMenuDropdown');
+        const moreBtn  = document.querySelector('.mobile-bottom-nav .icon-nav-btn[title="More"]');
+        if (dropdown && dropdown.classList.contains('show')) {
+            if (!dropdown.contains(e.target) && (!moreBtn || !moreBtn.contains(e.target))) {
+                // Only reset positioning if it was opened from the bottom nav
+                if (dropdown.style.bottom) {
+                    dropdown.classList.remove('show');
+                    dropdown.style.removeProperty('top');
+                    dropdown.style.removeProperty('bottom');
+                    dropdown.style.removeProperty('right');
+                    dropdown.style.removeProperty('position');
+                }
+            }
+        }
+    });
     </script>
 
     <script src="scripts/websocket-client.js"></script>
