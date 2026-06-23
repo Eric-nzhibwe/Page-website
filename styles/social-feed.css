@@ -1713,11 +1713,11 @@
 
 /* ── Create Challenge Banner ── */
 .create-challenge-banner {
-    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    background: linear-gradient(to right, whitesmoke, darkolivegreen);
     border-radius: 12px;
     padding: 14px 18px;
-    box-shadow: 0 4px 15px rgba(108, 99, 255, 0.25);
-    border: 1px solid rgba(108, 99, 255, 0.3);
+    box-shadow: 0 4px 12px rgba(85, 107, 47, 0.3);
+    border: 1px solid rgba(85, 107, 47, 0.4);
 }
 
 .create-challenge-banner-content {
@@ -1736,8 +1736,9 @@
 
 .create-challenge-banner-text > i {
     font-size: 24px;
-    color: #f5a623;
+    color: #ffd700;
     flex-shrink: 0;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.3);
 }
 
 .create-challenge-banner-text div {
@@ -1749,18 +1750,18 @@
 .create-challenge-banner-text strong {
     font-size: 15px;
     font-weight: 700;
-    color: #fff;
+    color: #1a1a1a;
     line-height: 1.2;
 }
 
 .create-challenge-banner-text span {
     font-size: 12px;
-    color: rgba(255, 255, 255, 0.65);
+    color: rgba(255, 255, 255, 0.85);
 }
 
 .create-challenge-banner-btn {
     flex-shrink: 0;
-    background: linear-gradient(135deg, #6c63ff, #a855f7);
+    background: linear-gradient(to left, darkolivegreen, darkgreen);
     color: #fff;
     border: none;
     border-radius: 8px;
@@ -1771,17 +1772,20 @@
     display: flex;
     align-items: center;
     gap: 6px;
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
     white-space: nowrap;
+    box-shadow: 0 2px 8px rgba(85, 107, 47, 0.5);
 }
 
 .create-challenge-banner-btn:hover {
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(108, 99, 255, 0.45);
+    filter: brightness(1.1);
+    box-shadow: 0 4px 14px rgba(85, 107, 47, 0.55);
 }
 
 .create-challenge-banner-btn:active {
     transform: translateY(0);
+    filter: brightness(0.95);
 }
 
 @media (max-width: 480px) {
