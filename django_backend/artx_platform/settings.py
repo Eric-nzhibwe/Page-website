@@ -102,17 +102,21 @@ if REDIS_URL:
             'BACKEND': 'channels_redis.core.RedisChannelLayer',
             'CONFIG': {
                 'hosts': [REDIS_URL],
+                'capacity': 100,        # max messages per channel
+                'expiry':   10,         # seconds before message expires
             },
         },
     }
 else:
-    # No Redis available — InMemoryChannelLayer works fine for
-    # a single-dyno Render deployment (free tier).
-    # WebSocket broadcasts are in-process only; scale-out would
-    # require Redis, but for now this keeps WS fully functional.
+    # No Redis — InMemoryChannelLayer with a capped capacity to prevent
+    # unbounded RAM growth on Render's free tier.
     CHANNEL_LAYERS = {
         'default': {
             'BACKEND': 'channels.layers.InMemoryChannelLayer',
+            'CONFIG': {
+                'capacity': 50,   # drop oldest messages when full
+                'expiry':   10,
+            },
         },
     }
 
@@ -128,7 +132,7 @@ if _raw_db_url:
     DATABASES = {
         'default': dj_database_url.config(
             default=_raw_db_url,
-            conn_max_age=600,
+            conn_max_age=60,        # 60 s — avoids exhausting free-tier connection pool
             ssl_require=not DEBUG,
         )
     }
@@ -176,6 +180,10 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Cap request sizes to protect free-tier RAM (5 MB body, 3 MB per file)
+DATA_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024   # 5 MB
+FILE_UPLOAD_MAX_MEMORY_SIZE = 3 * 1024 * 1024   # 3 MB
 
 # Custom User Model
 AUTH_USER_MODEL = 'users.User'
@@ -277,59 +285,45 @@ PAWAPAY_WEBHOOK_SECRET = config('PAWAPAY_WEBHOOK_SECRET', default='')
 # ⚠️ IMPORTANT: Keep this in .env file ONLY - DO NOT commit to git
 OPENAI_API_KEY = config('OPENAI_API_KEY', default='OPENAI_KEY_REDACTED')
 
-# Logging
+# Logging — console-only (no filesystem writes; Render's disk is ephemeral)
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
     'formatters': {
-        'verbose': {
-            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
-            'style': '{',
-        },
         'simple': {
-            'format': '{levelname} {message}',
+            'format': '{levelname} {asctime} {module} {message}',
             'style': '{',
         },
     },
     'handlers': {
-        'file': {
-            'level': 'INFO',
-            'class': 'logging.FileHandler',
-            'filename': BASE_DIR / 'logs' / 'artx.log',
-            'formatter': 'verbose',
-        },
         'console': {
-            'level': 'INFO',
+            'level': 'WARNING',   # INFO is too noisy in production; use WARNING+
             'class': 'logging.StreamHandler',
             'formatter': 'simple',
         },
     },
     'loggers': {
-        'artx_platform.frontend_views': {
-            'handlers': ['console', 'file'],
-            'level': 'INFO',
+        'django': {
+            'handlers': ['console'],
+            'level': 'WARNING',
+            'propagate': False,
+        },
+        'artx_platform': {
+            'handlers': ['console'],
+            'level': 'WARNING',
             'propagate': False,
         },
         'payments': {
-            'handlers': ['console', 'file'],
-            'level': 'DEBUG',
+            'handlers': ['console'],
+            'level': 'WARNING',
             'propagate': False,
         },
     },
     'root': {
-        'handlers': ['console', 'file'],
-        'level': 'INFO',
+        'handlers': ['console'],
+        'level': 'WARNING',
     },
 }
-
-# Create logs directory with proper error handling
-LOGS_DIR = BASE_DIR / 'logs'
-if not LOGS_DIR.exists():
-    try:
-        LOGS_DIR.mkdir(parents=True, mode=0o755, exist_ok=True)
-    except Exception as e:
-        import warnings
-        warnings.warn(f"Could not create logs directory: {e}")
 
 # Security settings for production
 if not DEBUG:
