@@ -631,9 +631,20 @@
                         </div>
                     </div>
 
-                    <!-- Sample Challenge 3 -->
-                    <div class="challenge-card" data-status="active" data-id="3">
+                    <!-- Sample Challenge 3 — Image Interpretation -->
+                    <div class="challenge-card"
+                         data-status="active"
+                         data-id="3"
+                         data-category="image-interpretation"
+                         data-image="https://picsum.photos/seed/artx3/600/340"
+                         data-prize="250"
+                         data-entry-fee="25"
+                         data-difficulty="easy"
+                         data-participants="8"
+                         data-answer-numbers="7,3,19">
+                        <!-- Prize top-right, Entry fee top-left -->
                         <div class="challenge-badge prize">K250 Prize</div>
+                        <div class="challenge-badge entry-fee-badge">K25 Entry</div>
                         <div class="challenge-header">
                             <div class="challenge-icon">
                                 <i class="fas fa-image"></i>
@@ -644,12 +655,21 @@
                             </div>
                         </div>
                         <h3 class="challenge-title">Image Interpretation Challenge</h3>
-                        <p class="challenge-description">Analyze the provided image and write a detailed interpretation
-                            (min 100 words). Best interpretation wins!</p>
+                        <p class="challenge-description">Pay the entry fee to reveal the image for 30 seconds. Spot the hidden numbers and submit them to win!</p>
+                        <!-- Blurred image preview -->
+                        <div class="challenge-image-blurred-wrap">
+                            <img src="https://picsum.photos/seed/artx3/600/340"
+                                 alt="Hidden challenge image"
+                                 class="challenge-card-img img-blurred-card">
+                            <div class="blurred-img-overlay">
+                                <i class="fas fa-lock"></i>
+                                <span>Pay to reveal</span>
+                            </div>
+                        </div>
                         <div class="challenge-details">
                             <div class="challenge-detail">
-                                <i class="fas fa-clock"></i>
-                                <span>2 days left</span>
+                                <i class="fas fa-stopwatch"></i>
+                                <span>30s reveal</span>
                             </div>
                             <div class="challenge-detail">
                                 <i class="fas fa-users"></i>
@@ -661,10 +681,10 @@
                             </div>
                         </div>
                         <div class="challenge-footer">
-                            <button class="btn-primary" onclick="attemptChallenge(3)">
-                                <i class="fas fa-play"></i> Attempt
+                            <button class="btn-primary" onclick="openImgInterpDetails('3')">
+                                <i class="fas fa-gamepad"></i> Play
                             </button>
-                            <button class="btn-secondary" onclick="viewChallengeDetails(3)">
+                            <button class="btn-secondary" onclick="openImgInterpDetails('3')">
                                 <i class="fas fa-info-circle"></i> Details
                             </button>
                         </div>
@@ -1169,6 +1189,14 @@
                         <div id="challengeImagePreview" class="image-preview-single"></div>
                     </div>
 
+                    <!-- Hidden Numbers for Image Interpretation -->
+                    <div class="form-group" id="challengeAnswerNumbersGroup" style="display: none;">
+                        <label>Hidden Numbers / Points <span class="required">*</span></label>
+                        <input type="text" id="challengeAnswerNumbers" class="modal-input"
+                            placeholder="e.g. 7, 13, 42  (comma-separated)">
+                        <small>Players must spot these numbers in your image to win. Keep this secret!</small>
+                    </div>
+
                     <div class="form-group">
                         <label>Difficulty <span class="required">*</span></label>
                         <select id="challengeDifficulty" class="modal-input" required>
@@ -1266,6 +1294,102 @@
                         <i class="fas fa-paper-plane"></i> Submit Attempt
                     </button>
                 </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Image Interpretation: Details Modal -->
+    <div id="imgInterpDetailsModal" class="modal">
+        <div class="modal-content img-interp-details-modal">
+            <div class="modal-header">
+                <h2><i class="fas fa-eye"></i> Challenge Details</h2>
+                <span class="close" onclick="closeImgInterpDetails()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="img-interp-details-body">
+                    <div class="img-interp-blur-preview">
+                        <img id="imgInterpPreviewThumb" src="" alt="Blurred challenge image">
+                        <div class="blur-overlay-label"><i class="fas fa-lock"></i> Pay to reveal</div>
+                    </div>
+                    <h3 id="imgInterpDetailsTitle" class="img-interp-details-title"></h3>
+                    <p id="imgInterpDetailsDesc" class="img-interp-details-desc"></p>
+
+                    <div class="img-interp-rules-box">
+                        <h4><i class="fas fa-list-ul"></i> How it works</h4>
+                        <ul>
+                            <li><i class="fas fa-image"></i> A blurred image will be revealed for <strong>30 seconds</strong> after you pay the entry fee.</li>
+                            <li><i class="fas fa-search"></i> Study the image closely and pick out the numbers or points you see.</li>
+                            <li><i class="fas fa-pen"></i> Enter those numbers as your answer before time runs out.</li>
+                            <li><i class="fas fa-trophy"></i> Correct answers win the prize money — wrong answers lose the entry fee.</li>
+                        </ul>
+                    </div>
+
+                    <div class="img-interp-meta-row">
+                        <div class="img-interp-meta-item">
+                            <i class="fas fa-stopwatch"></i>
+                            <span>30 second reveal</span>
+                        </div>
+                        <div class="img-interp-meta-item" id="imgInterpDetailsDiff">
+                            <i class="fas fa-signal"></i>
+                            <span>—</span>
+                        </div>
+                        <div class="img-interp-meta-item">
+                            <i class="fas fa-users"></i>
+                            <span id="imgInterpDetailsParticipants">0 players</span>
+                        </div>
+                    </div>
+
+                    <div class="img-interp-entry-fee-box">
+                        <div class="entry-fee-label">Entry Fee</div>
+                        <div class="entry-fee-amount" id="imgInterpDetailsEntry">K0.00</div>
+                        <div class="entry-fee-prize">Prize Pool: <strong id="imgInterpDetailsPrize">K0.00</strong></div>
+                    </div>
+
+                    <button class="btn-play-now" id="imgInterpPlayBtn" onclick="startImgInterpGame()">
+                        <i class="fas fa-play"></i> Pay & Play
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Image Interpretation: Game Modal -->
+    <div id="imgInterpGameModal" class="modal">
+        <div class="modal-content img-interp-game-modal">
+            <!-- Countdown bar -->
+            <div class="img-interp-timer-bar">
+                <div class="img-interp-timer-fill" id="imgInterpTimerFill"></div>
+            </div>
+            <div class="img-interp-game-header">
+                <h3 id="imgInterpGameTitle" class="img-interp-game-title"></h3>
+                <div class="img-interp-countdown" id="imgInterpCountdown">
+                    <i class="fas fa-stopwatch"></i>
+                    <span id="imgInterpSecondsLeft">30</span>s
+                </div>
+            </div>
+
+            <div class="img-interp-image-wrap">
+                <img id="imgInterpGameImage" src="" alt="Interpret this image" class="img-interp-game-img">
+                <div class="img-interp-go-overlay" id="imgInterpGoOverlay">
+                    <div class="go-pulse"><i class="fas fa-eye"></i></div>
+                    <p>Get ready…</p>
+                </div>
+            </div>
+
+            <div class="img-interp-answer-section" id="imgInterpAnswerSection">
+                <p class="img-interp-answer-hint">
+                    <i class="fas fa-lightbulb"></i> Enter the numbers / points you spotted in the image, separated by commas.
+                </p>
+                <div class="img-interp-input-row">
+                    <input type="text" id="imgInterpAnswer" class="img-interp-answer-input"
+                        placeholder="e.g.  7, 13, 42" inputmode="text" autocomplete="off">
+                    <button class="btn-submit-interp" id="imgInterpSubmitBtn" onclick="submitImgInterpAnswer()">
+                        <i class="fas fa-paper-plane"></i> Submit
+                    </button>
+                </div>
+                <p class="img-interp-time-warning" id="imgInterpTimeWarning" style="display:none;">
+                    <i class="fas fa-exclamation-triangle"></i> Time is almost up!
+                </p>
             </div>
         </div>
     </div>
@@ -1965,6 +2089,7 @@
     <script src="scripts/social-feed.js"></script>
     <script src="scripts/marketplace.js"></script>
     <script src="scripts/challenges-enhanced.js"></script>
+    <script src="scripts/image-interpretation.js"></script>
     <script src="scripts/settings.js"></script>
     <script src="scripts/social-features.js"></script>
     <script src="scripts/realtime-updates.js"></script>

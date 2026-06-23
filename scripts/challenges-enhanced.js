@@ -40,15 +40,17 @@ function handleCategoryChange() {
     const category = document.getElementById('challengeCategory').value;
     const imageGroup = document.getElementById('challengeImageGroup');
     const challengeImage = document.getElementById('challengeImage');
+    const answerGroup = document.getElementById('challengeAnswerNumbersGroup');
     
     if (category === 'image-interpretation') {
         imageGroup.style.display = 'block';
         challengeImage.required = true;
+        answerGroup.style.display = 'block';
     } else {
         imageGroup.style.display = 'none';
         challengeImage.required = false;
-        // Clear image preview
         document.getElementById('challengeImagePreview').innerHTML = '';
+        answerGroup.style.display = 'none';
     }
 }
 
@@ -97,7 +99,6 @@ function removeChallengeImage() {
     document.getElementById('challengeImage').value = '';
     document.getElementById('challengeImagePreview').innerHTML = '';
 }
-
 // Open create challenge modal
 function openCreateChallengeModal() {
     const modal = document.getElementById('createChallengeModal');
@@ -112,6 +113,11 @@ function closeCreateChallengeModal() {
     if (modal) {
         modal.style.display = 'none';
         document.getElementById('createChallengeForm').reset();
+        // Also clear image state
+        challengeImageData = null;
+        document.getElementById('challengeImagePreview').innerHTML = '';
+        document.getElementById('challengeImageGroup').style.display = 'none';
+        document.getElementById('challengeAnswerNumbersGroup').style.display = 'none';
     }
 }
 
@@ -158,15 +164,32 @@ function publishChallenge(event) {
     const challengeCard = document.createElement('div');
     challengeCard.className = 'challenge-card';
     challengeCard.setAttribute('data-status', 'active');
-    challengeCard.setAttribute('data-id', Date.now());
     challengeCard.setAttribute('data-category', category);
+    challengeCard.style.animation = 'fadeIn 0.5s';
+    
+    // For image-interpretation: entry fee = 10% of prize, image is blurred on card
+    const isImgInterp = category === 'image-interpretation';
+    const entryFee = isImgInterp ? Math.max(10, prize * 0.10) : 0;
+    const cardId = Date.now();
+
+    challengeCard.setAttribute('data-id', cardId);
     if (challengeImageData) {
         challengeCard.setAttribute('data-image', challengeImageData);
     }
-    challengeCard.style.animation = 'fadeIn 0.5s';
-    
+    if (isImgInterp) {
+        challengeCard.setAttribute('data-prize', prize.toFixed(2));
+        challengeCard.setAttribute('data-entry-fee', entryFee.toFixed(2));
+        challengeCard.setAttribute('data-difficulty', difficulty);
+        challengeCard.setAttribute('data-participants', '0');
+        const answerNumbers = document.getElementById('challengeAnswerNumbers')?.value.trim() || '';
+        if (answerNumbers) {
+            challengeCard.setAttribute('data-answer-numbers', answerNumbers);
+        }
+    }
+
     challengeCard.innerHTML = `
         <div class="challenge-badge prize">K${prize.toFixed(2)} Prize</div>
+        ${isImgInterp ? `<div class="challenge-badge entry-fee-badge">K${entryFee.toFixed(2)} Entry</div>` : ''}
         <div class="challenge-header">
             <div class="challenge-icon">
                 <i class="fas ${icon}"></i>
@@ -178,11 +201,19 @@ function publishChallenge(event) {
         </div>
         <h3 class="challenge-title">${title}</h3>
         <p class="challenge-description">${description}</p>
-        ${challengeImageHTML}
+        ${isImgInterp && challengeImageData ? `
+            <div class="challenge-image-blurred-wrap">
+                <img src="${challengeImageData}" alt="${title}" class="challenge-card-img img-blurred-card">
+                <div class="blurred-img-overlay">
+                    <i class="fas fa-lock"></i>
+                    <span>Pay to reveal</span>
+                </div>
+            </div>
+        ` : challengeImageHTML}
         <div class="challenge-details">
             <div class="challenge-detail">
                 <i class="fas fa-clock"></i>
-                <span>${duration} days left</span>
+                <span>${isImgInterp ? '30s reveal' : duration + ' days left'}</span>
             </div>
             <div class="challenge-detail">
                 <i class="fas fa-users"></i>
@@ -194,10 +225,10 @@ function publishChallenge(event) {
             </div>
         </div>
         <div class="challenge-footer">
-            <button class="btn-primary" onclick="attemptChallenge(${Date.now()})">
-                <i class="fas fa-play"></i> Attempt
+            <button class="btn-primary" onclick="${isImgInterp ? `openImgInterpDetails('${cardId}')` : `attemptChallenge('${cardId}')`}">
+                <i class="fas fa-${isImgInterp ? 'gamepad' : 'play'}"></i> ${isImgInterp ? 'Play' : 'Attempt'}
             </button>
-            <button class="btn-secondary" onclick="viewChallengeDetails(${Date.now()})">
+            <button class="btn-secondary" onclick="${isImgInterp ? `openImgInterpDetails('${cardId}')` : `viewChallengeDetails('${cardId}')`}">
                 <i class="fas fa-info-circle"></i> Details
             </button>
         </div>
