@@ -1011,6 +1011,51 @@
                 </div>
             </div>
         </section>
+
+        <!-- People View — mobile access to Online Now / Discover / Suggested -->
+        <section id="people" class="view">
+            <div class="people-view-container">
+
+                <!-- Search bar -->
+                <div class="people-search-bar">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="peopleSearchInput" placeholder="Search players…"
+                        oninput="searchUsers(this.value)">
+                </div>
+
+                <!-- Online Now -->
+                <div class="people-section-card">
+                    <h3 class="people-section-title">
+                        <span class="online-dot-indicator"></span> Online Now
+                    </h3>
+                    <div id="onlineUsersMobile" class="online-users-mobile-grid">
+                        <p class="people-loading"><i class="fas fa-spinner fa-spin"></i> Loading…</p>
+                    </div>
+                </div>
+
+                <!-- Discover Users -->
+                <div class="people-section-card">
+                    <h3 class="people-section-title">
+                        <i class="fas fa-compass"></i> Discover Players
+                    </h3>
+                    <div id="discoverUsersListMobile" class="discover-users-list">
+                        <p class="people-loading"><i class="fas fa-spinner fa-spin"></i> Loading…</p>
+                    </div>
+                </div>
+
+                <!-- Suggested For You -->
+                <div class="people-section-card">
+                    <h3 class="people-section-title">
+                        <i class="fas fa-user-plus"></i> Suggested For You
+                    </h3>
+                    <div id="suggestedUsersListMobile" class="suggestions-list">
+                        <p class="people-loading"><i class="fas fa-spinner fa-spin"></i> Loading…</p>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
     </div>
 
     <!-- Create Post Modal -->
@@ -2065,12 +2110,11 @@
         <button class="icon-nav-btn" data-view="marketplace" title="Marketplace" onclick="switchView('marketplace')">
             <i class="fas fa-store"></i>
         </button>
-        <button class="icon-nav-btn" title="Profile" onclick="window.location.href='pages/user.html'">
-            <i class="fas fa-user-circle"></i>
+        <button class="icon-nav-btn" data-view="people" title="People" onclick="switchView('people')">
+            <i class="fas fa-users"></i>
         </button>
         <button class="icon-nav-btn" onclick="toggleMobileMoreMenu(this)" title="More">
             <i class="fas fa-bars"></i>
-            <span style="font-size:10px;">More</span>
         </button>
     </nav>
 
@@ -2118,17 +2162,15 @@
     // Close mobile more menu when clicking outside
     document.addEventListener('click', function(e) {
         const dropdown = document.getElementById('userMenuDropdown');
-        const moreBtn  = document.querySelector('.mobile-bottom-nav .icon-nav-btn[title="More"]');
-        if (dropdown && dropdown.classList.contains('show')) {
+        if (dropdown && dropdown.classList.contains('show') && dropdown.style.bottom) {
+            // Only handle closing when opened from the bottom nav (has inline bottom style)
+            const moreBtn = document.querySelector('.mobile-bottom-nav .icon-nav-btn[title="More"]');
             if (!dropdown.contains(e.target) && (!moreBtn || !moreBtn.contains(e.target))) {
-                // Only reset positioning if it was opened from the bottom nav
-                if (dropdown.style.bottom) {
-                    dropdown.classList.remove('show');
-                    dropdown.style.removeProperty('top');
-                    dropdown.style.removeProperty('bottom');
-                    dropdown.style.removeProperty('right');
-                    dropdown.style.removeProperty('position');
-                }
+                dropdown.classList.remove('show');
+                dropdown.style.removeProperty('top');
+                dropdown.style.removeProperty('bottom');
+                dropdown.style.removeProperty('right');
+                dropdown.style.removeProperty('position');
             }
         }
     });

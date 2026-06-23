@@ -144,6 +144,8 @@ class UserLoginSerializer(serializers.Serializer):
 class UserProfileSerializer(serializers.ModelSerializer):
     success_rate       = serializers.ReadOnlyField()
     social_connections = serializers.JSONField(read_only=True)
+    followers_count    = serializers.SerializerMethodField()
+    following_count    = serializers.SerializerMethodField()
 
     class Meta:
         model  = User
@@ -155,13 +157,21 @@ class UserProfileSerializer(serializers.ModelSerializer):
             'success_rate', 'total_earnings', 'tournament_wins',
             'is_verified', 'verification_level', 'social_connections',
             'created_at', 'last_login_date',
+            'followers_count', 'following_count',
         ]
         read_only_fields = [
             'id', 'prestige_points', 'level', 'power_rank', 'access_tier',
             'current_streak', 'total_submissions', 'successful_submissions',
             'success_rate', 'total_earnings', 'tournament_wins',
             'is_verified', 'verification_level', 'created_at', 'last_login_date',
+            'followers_count', 'following_count',
         ]
+
+    def get_followers_count(self, obj):
+        return obj.followers.count()
+
+    def get_following_count(self, obj):
+        return obj.following.count()
 
 
 class UserActivitySerializer(serializers.ModelSerializer):

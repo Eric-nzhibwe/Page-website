@@ -1796,3 +1796,157 @@
         font-size: 14px;
     }
 }
+
+/* ═══════════════════════════════════════════════════════
+   PEOPLE VIEW  (mobile-only full-page view)
+   ═══════════════════════════════════════════════════════ */
+.people-view-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    padding-bottom: 80px; /* clear bottom nav */
+}
+
+/* Sticky search bar at top */
+.people-search-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #fff;
+    border-bottom: 1.5px solid #e2e8d8;
+    padding: 12px 16px;
+    position: sticky;
+    top: 54px; /* below header */
+    z-index: 10;
+}
+
+.people-search-bar i {
+    color: #65676b;
+    flex-shrink: 0;
+}
+
+.people-search-bar input {
+    flex: 1;
+    border: none;
+    background: #f0f4ec;
+    border-radius: 20px;
+    padding: 9px 14px;
+    font-size: 14px;
+    outline: none;
+    color: #1a1a1a;
+}
+
+.people-search-bar input:focus {
+    box-shadow: 0 0 0 2px rgba(85,107,47,.2);
+}
+
+/* Section cards */
+.people-section-card {
+    background: #fff;
+    border-bottom: 8px solid #f2f4f0;
+    padding: 16px 16px 20px;
+}
+
+.people-section-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #1a1a1a;
+    margin: 0 0 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.people-section-title i {
+    color: darkolivegreen;
+}
+
+/* Pulsing green dot for Online Now */
+.online-dot-indicator {
+    width: 10px;
+    height: 10px;
+    background: #22c55e;
+    border-radius: 50%;
+    display: inline-block;
+    flex-shrink: 0;
+    animation: onlinePulse 2s infinite;
+    box-shadow: 0 0 0 2px rgba(34,197,94,.25);
+}
+
+@keyframes onlinePulse {
+    0%,100% { box-shadow: 0 0 0 2px rgba(34,197,94,.25); }
+    50%      { box-shadow: 0 0 0 6px rgba(34,197,94,.08); }
+}
+
+/* Online users — horizontal avatar scroll */
+.online-users-mobile-grid {
+    display: flex;
+    gap: 14px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scrollbar-width: none;
+}
+
+.online-users-mobile-grid::-webkit-scrollbar { display: none; }
+
+.online-user-chip {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    flex-shrink: 0;
+    cursor: pointer;
+}
+
+.online-user-chip .chip-avatar {
+    position: relative;
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, darkolivegreen, lightgreen);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 24px;
+    border: 2.5px solid #fff;
+    box-shadow: 0 2px 6px rgba(85,107,47,.2);
+}
+
+.online-user-chip .chip-avatar img {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.online-user-chip .chip-badge {
+    position: absolute;
+    bottom: 1px;
+    right: 1px;
+    width: 12px;
+    height: 12px;
+    background: #22c55e;
+    border-radius: 50%;
+    border: 2px solid #fff;
+}
+
+.online-user-chip .chip-name {
+    font-size: 11px;
+    font-weight: 600;
+    color: #333;
+    max-width: 56px;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.people-loading {
+    color: #65676b;
+    font-size: 13px;
+    padding: 8px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}

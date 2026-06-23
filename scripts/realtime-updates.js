@@ -100,6 +100,9 @@ async function toggleFollow(userId, btnEl) {
         // Update ALL buttons for this user across the page
         _updateAllFollowButtons(userId);
 
+        // Refresh follower count displayed anywhere on the page
+        _refreshFollowCounts(userId);
+
     } catch {
         _applyFollowState(userId, isFollowing, btnEl);
         _rtToast('Network error. Please try again.', 'error');
@@ -145,6 +148,22 @@ function _updateAllFollowButtons(userId) {
         .forEach(btn => _styleFollowBtn(btn, following));
 }
 
+/** Fetch and update follower/following counts after a follow action */
+async function _refreshFollowCounts(userId) {
+    try {
+        const res = await fetch(`${_RT_BASE}/social/follows/counts/?user_id=${userId}`, {
+            headers: _rtHeaders()
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        // Update any elements on the page that show counts for this user
+        const fcEl = document.getElementById('statFollowers');
+        const fgEl = document.getElementById('statFollowing');
+        if (fcEl) fcEl.textContent = data.followers_count ?? fcEl.textContent;
+        if (fgEl) fgEl.textContent = data.following_count ?? fgEl.textContent;
+    } catch { /* silent */ }
+}
+
 /** Build a follow button element */
 function _makeFollowBtn(userId, isFollowing) {
     const btn = document.createElement('button');
@@ -180,46 +199,59 @@ async function _loadFollowingSet() {
 
 async function loadDiscoverUsers() {
     const container = document.getElementById('discoverUsersList');
-    if (!container) return;
+    const mobileContainer = document.getElementById('discoverUsersListMobile');
+    if (!container && !mobileContainer) return;
 
-    _showUserSkeleton(container, 4);
+    if (container) _showUserSkeleton(container, 4);
+    if (mobileContainer) _showUserSkeleton(mobileContainer, 4);
 
     try {
         const res = await fetch(`${_RT_BASE}/auth/discover/`, { headers: _rtHeaders() });
         if (!res.ok) throw new Error('API error');
         const users = await res.json();
-        _renderDiscoverList(container, users, 'discover');
+        if (container) _renderDiscoverList(container, users, 'discover');
+        if (mobileContainer) _renderDiscoverList(mobileContainer, users, 'discover');
     } catch {
-        container.innerHTML = '<p class="artx-no-users">Could not load users.</p>';
+        const err = '<p class="artx-no-users">Could not load users.</p>';
+        if (container) container.innerHTML = err;
+        if (mobileContainer) mobileContainer.innerHTML = err;
     }
 }
 
 async function loadSuggestedUsers() {
     const container = document.getElementById('suggestedUsersList');
-    if (!container) return;
+    const mobileContainer = document.getElementById('suggestedUsersListMobile');
+    if (!container && !mobileContainer) return;
 
-    _showUserSkeleton(container, 3);
+    if (container) _showUserSkeleton(container, 3);
+    if (mobileContainer) _showUserSkeleton(mobileContainer, 3);
 
     try {
         const res = await fetch(`${_RT_BASE}/auth/discover/?limit=6`, { headers: _rtHeaders() });
         if (!res.ok) throw new Error('API error');
         const users = await res.json();
-        _renderDiscoverList(container, users.slice(0, 6), 'suggested');
+        if (container) _renderDiscoverList(container, users.slice(0, 6), 'suggested');
+        if (mobileContainer) _renderDiscoverList(mobileContainer, users.slice(0, 6), 'suggested');
     } catch {
-        container.innerHTML = '<p class="artx-no-users">Could not load suggestions.</p>';
+        const err = '<p class="artx-no-users">Could not load suggestions.</p>';
+        if (container) container.innerHTML = err;
+        if (mobileContainer) mobileContainer.innerHTML = err;
     }
 }
 
 async function searchUsers(query) {
     const container = document.getElementById('discoverUsersList');
-    if (!container) return;
+    const mobileContainer = document.getElementById('discoverUsersListMobile');
+
+    if (!container && !mobileContainer) return;
 
     if (!query || query.trim().length < 1) {
         loadDiscoverUsers();
         return;
     }
 
-    _showUserSkeleton(container, 3);
+    if (container) _showUserSkeleton(container, 3);
+    if (mobileContainer) _showUserSkeleton(mobileContainer, 3);
 
     try {
         const res = await fetch(`${_RT_BASE}/auth/search/?q=${encodeURIComponent(query)}`, {
@@ -227,13 +259,18 @@ async function searchUsers(query) {
         });
         if (!res.ok) throw new Error('API error');
         const users = await res.json();
+        const noResult = `<p class="artx-no-users">No users found for "<strong>${_rtEsc(query)}</strong>"</p>`;
         if (users.length === 0) {
-            container.innerHTML = `<p class="artx-no-users">No users found for "<strong>${_rtEsc(query)}</strong>"</p>`;
+            if (container) container.innerHTML = noResult;
+            if (mobileContainer) mobileContainer.innerHTML = noResult;
         } else {
-            _renderDiscoverList(container, users, 'search');
+            if (container) _renderDiscoverList(container, users, 'search');
+            if (mobileContainer) _renderDiscoverList(mobileContainer, users, 'search');
         }
     } catch {
-        container.innerHTML = '<p class="artx-no-users">Search failed. Please try again.</p>';
+        const err = '<p class="artx-no-users">Search failed. Please try again.</p>';
+        if (container) container.innerHTML = err;
+        if (mobileContainer) mobileContainer.innerHTML = err;
     }
 }
 
@@ -304,39 +341,64 @@ async function _pollOnlineUsers() {
 
 function _renderOnlineUsers(users) {
     const container = document.getElementById('onlineUsers');
-    if (!container) return;
+    const mobileContainer = document.getElementById('onlineUsersMobile');
+
+    const noUsers = '<p class="artx-no-users">No users online right now.</p>';
+    const noUsersMobile = '<p class="people-loading">No users online right now.</p>';
 
     if (!users || users.length === 0) {
-        container.innerHTML = '<p class="artx-no-users">No users online right now.</p>';
+        if (container) container.innerHTML = noUsers;
+        if (mobileContainer) mobileContainer.innerHTML = noUsersMobile;
         return;
     }
 
-    container.innerHTML = '';
-    users.forEach(u => {
-        const isFollowing = _followingSet.has(String(u.id));
-        const item = document.createElement('div');
-        item.className = 'artx-online-item';
-        item.dataset.userId = u.id;
+    // Desktop sidebar render
+    if (container) {
+        container.innerHTML = '';
+        users.forEach(u => {
+            const isFollowing = _followingSet.has(String(u.id));
+            const item = document.createElement('div');
+            item.className = 'artx-online-item';
+            item.dataset.userId = u.id;
+            const avatarHTML = u.profile_image
+                ? `<img src="${_rtEsc(u.profile_image)}" alt="${_rtEsc(u.display_name)}" class="artx-user-avatar-img">`
+                : `<i class="fas fa-user-circle"></i>`;
+            item.innerHTML = `
+              <div class="artx-online-avatar">
+                ${avatarHTML}
+                <span class="artx-online-dot" title="Online"></span>
+              </div>
+              <div class="artx-user-info">
+                <strong class="artx-user-name">${_rtEsc(u.display_name || u.username)}</strong>
+                <span class="artx-online-label">Active</span>
+              </div>`;
+            const btn = _makeFollowBtn(u.id, isFollowing);
+            btn.classList.add('artx-follow-btn--sm');
+            item.appendChild(btn);
+            container.appendChild(item);
+        });
+    }
 
-        const avatarHTML = u.profile_image
-            ? `<img src="${_rtEsc(u.profile_image)}" alt="${_rtEsc(u.display_name)}" class="artx-user-avatar-img">`
-            : `<i class="fas fa-user-circle"></i>`;
-
-        item.innerHTML = `
-          <div class="artx-online-avatar">
-            ${avatarHTML}
-            <span class="artx-online-dot" title="Online"></span>
-          </div>
-          <div class="artx-user-info">
-            <strong class="artx-user-name">${_rtEsc(u.display_name || u.username)}</strong>
-            <span class="artx-online-label">Active</span>
-          </div>`;
-
-        const btn = _makeFollowBtn(u.id, isFollowing);
-        btn.classList.add('artx-follow-btn--sm');
-        item.appendChild(btn);
-        container.appendChild(item);
-    });
+    // Mobile people view — horizontal avatar chips
+    if (mobileContainer) {
+        mobileContainer.innerHTML = '';
+        users.forEach(u => {
+            const chip = document.createElement('div');
+            chip.className = 'online-user-chip';
+            chip.title = u.display_name || u.username;
+            const avatarInner = u.profile_image
+                ? `<img src="${_rtEsc(u.profile_image)}" alt="${_rtEsc(u.display_name)}">`
+                : `<i class="fas fa-user-circle"></i>`;
+            chip.innerHTML = `
+              <div class="chip-avatar">
+                ${avatarInner}
+                <span class="chip-badge"></span>
+              </div>
+              <span class="chip-name">${_rtEsc((u.display_name || u.username).split(' ')[0])}</span>`;
+            chip.onclick = () => window.location.href = `pages/user.html?id=${u.id}`;
+            mobileContainer.appendChild(chip);
+        });
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -489,17 +551,32 @@ async function _pollNotifications() {
         const res = await fetch(`${_RT_BASE}/notifications/`, { headers: _rtHeaders() });
         if (!res.ok) return;
         const data  = await res.json();
-        const list  = Array.isArray(data) ? data : (data.results || []);
-        let   badge = 0;
+        // Backend returns { notifications: [...], unread_count: n }
+        const list  = data.notifications || (Array.isArray(data) ? data : (data.results || []));
+        let   badge = data.unread_count ?? 0;
+        const newIds = [];
 
         list.forEach(n => {
-            if (!n.is_read) badge++;
-            if (_seenNotifIds.has(n.id)) return; // already shown
+            if (_seenNotifIds.has(n.id)) return;
             _seenNotifIds.add(n.id);
+            newIds.push(n.id);
             if (!n.is_read) {
-                _rtToast(n.message || n.title || 'New notification', 'info');
+                // Build a meaningful toast for follow notifications
+                const msg = n.type === 'follow'
+                    ? `${n.actor?.display_name || 'Someone'} started following you 👤`
+                    : (n.message || n.title || 'New notification');
+                _rtToast(msg, 'info');
             }
         });
+
+        // Mark newly seen notifications as read on the backend
+        if (newIds.length > 0) {
+            fetch(`${_RT_BASE}/notifications/read/`, {
+                method: 'POST',
+                headers: _rtHeaders(),
+                body: JSON.stringify({ ids: newIds }),
+            }).catch(() => {});
+        }
 
         // Update bell badge
         const bellBadge = document.getElementById('notificationBadge');

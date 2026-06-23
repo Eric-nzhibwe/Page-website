@@ -23,11 +23,21 @@ const ACT_META = {
 document.addEventListener('DOMContentLoaded', async () => {
     const token = localStorage.getItem('djangoAuthToken');
     if (!token) { window.location.href = '/pages/auth.html'; return; }
-    await loadProfile();
-    await loadActivities();
+
+    // Check if we're viewing another user's profile (?id=X)
+    const params     = new URLSearchParams(window.location.search);
+    const viewUserId = params.get('id');
+    const myId       = localStorage.getItem('userId');
+
+    if (viewUserId && String(viewUserId) !== String(myId)) {
+        await loadOtherProfile(viewUserId);
+    } else {
+        await loadProfile();
+        await loadActivities();
+    }
 });
 
-// ── Load profile ──────────────────────────────────────────────
+// ── Load own profile ──────────────────────────────────────────
 async function loadProfile() {
     const token = localStorage.getItem('djangoAuthToken');
     try {
@@ -38,8 +48,126 @@ async function loadProfile() {
         const data = await res.json();
         profileData = data.user;
         renderProfile(profileData, data.rank);
+        await loadFollowCounts(profileData.id);
     } catch (e) {
         console.error('Profile load error:', e);
+    }
+}
+
+// ── Load another user's profile ───────────────────────────────
+async function loadOtherProfile(userId) {
+    const token = localStorage.getItem('djangoAuthToken');
+
+    // Hide own-profile actions, show follow button, hide settings
+    const btnEdit     = document.getElementById('btnEditProfile');
+    const btnSettings = document.getElementById('btnSettings');
+    const btnFollow   = document.getElementById('btnFollowProfile');
+    const avatarCam   = document.querySelector('.av-cam');
+    if (btnEdit)     btnEdit.style.display     = 'none';
+    if (btnSettings) btnSettings.style.display = 'none';
+    if (btnFollow)   btnFollow.style.display   = 'inline-flex';
+    if (avatarCam)   avatarCam.style.display   = 'none';
+
+    try {
+        // Fetch public profile (reuse the stats endpoint with user_id param if available,
+        // or fall back to discover list match)
+        const res = await fetch(`${PROFILE_API}/auth/discover/?limit=100`, {
+            headers: { 'Authorization': `Token ${token}` }
+        });
+        if (res.ok) {
+            const users = await res.json();
+            const list  = Array.isArray(users) ? users : (users.results || []);
+            const u     = list.find(x => String(x.id) === String(userId));
+            if (u) {
+                renderOtherProfile(u);
+            }
+        }
+        // Load follow counts + is_following state
+        await loadFollowCounts(userId, true);
+    } catch (e) {
+        console.error('Other profile load error:', e);
+    }
+}
+
+// ── Render another user's basic info ─────────────────────────
+function renderOtherProfile(u) {
+    set('profileDisplayName', u.display_name || u.username);
+    set('profileUsername', `@${u.username}`);
+    set('profileTier', u.access_tier || 'Bronze');
+    set('profileRank', u.power_rank || '—');
+    set('heroBio', u.bio || '');
+    set('profileBio', u.bio || 'No bio yet.');
+    set('statPrestige', (u.prestige_points || 0).toLocaleString());
+    set('statLevel', u.level || 1);
+    if (u.profile_image) setAvatarImg(u.profile_image);
+    if (window.applyTierPalette) applyTierPalette(u.access_tier);
+    document.title = `ARTX — ${u.display_name || u.username}`;
+}
+
+// ── Load and display follow counts ───────────────────────────
+async function loadFollowCounts(userId, checkIsFollowing = false) {
+    const token = localStorage.getItem('djangoAuthToken');
+    try {
+        const res = await fetch(`${PROFILE_API}/social/follows/counts/?user_id=${userId}`, {
+            headers: { 'Authorization': `Token ${token}` }
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        set('statFollowers', data.followers_count ?? 0);
+        set('statFollowing', data.following_count ?? 0);
+
+        if (checkIsFollowing) {
+            const btnFollow = document.getElementById('btnFollowProfile');
+            if (btnFollow) {
+                _profileIsFollowing = data.is_following;
+                _profileViewedId    = userId;
+                _styleProfileFollowBtn(data.is_following);
+            }
+        }
+    } catch { /* silent */ }
+}
+
+// ── Follow button state for profile page ─────────────────────
+let _profileIsFollowing = false;
+let _profileViewedId    = null;
+
+function _styleProfileFollowBtn(isFollowing) {
+    const btn = document.getElementById('btnFollowProfile');
+    if (!btn) return;
+    btn.innerHTML = isFollowing
+        ? '<i class="fas fa-check"></i> Following'
+        : '<i class="fas fa-user-plus"></i> Follow';
+    btn.classList.toggle('btn-following', isFollowing);
+}
+
+async function toggleProfileFollow() {
+    if (!_profileViewedId) return;
+    const token    = localStorage.getItem('djangoAuthToken');
+    const endpoint = _profileIsFollowing
+        ? `${PROFILE_API}/social/follows/unfollow/`
+        : `${PROFILE_API}/social/follows/follow/`;
+
+    // Optimistic
+    _profileIsFollowing = !_profileIsFollowing;
+    _styleProfileFollowBtn(_profileIsFollowing);
+
+    try {
+        const res = await fetch(endpoint, {
+            method:  'POST',
+            headers: { 'Authorization': `Token ${token}`, 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ user_id: _profileViewedId }),
+        });
+        if (!res.ok) {
+            // Rollback
+            _profileIsFollowing = !_profileIsFollowing;
+            _styleProfileFollowBtn(_profileIsFollowing);
+            return;
+        }
+        // Refresh counts
+        await loadFollowCounts(_profileViewedId, false);
+    } catch {
+        _profileIsFollowing = !_profileIsFollowing;
+        _styleProfileFollowBtn(_profileIsFollowing);
     }
 }
 
@@ -77,6 +205,9 @@ function renderProfile(u, rank) {
     set('statWins', u.tournament_wins);
     set('statSuccessRate', `${u.success_rate}%`);
     set('statEarnings', `K${parseFloat(u.total_earnings).toFixed(0)}`);
+    // Follow counts (returned by serializer)
+    set('statFollowers', u.followers_count ?? 0);
+    set('statFollowing', u.following_count ?? 0);
 
     // Prestige XP bar
     const pts = u.prestige_points;

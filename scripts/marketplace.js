@@ -41,8 +41,17 @@ document.addEventListener('click', function(event) {
     }
     
     // Check if click is outside user menu
-    if (userMenu && !event.target.closest('.user-avatar-btn') && !event.target.closest('.user-menu-dropdown')) {
+    // Also exclude the mobile bottom nav "More" button so it doesn't close instantly
+    if (userMenu && 
+        !event.target.closest('.user-avatar-btn') && 
+        !event.target.closest('.user-menu-dropdown') &&
+        !event.target.closest('.mobile-bottom-nav')) {
         userMenu.classList.remove('show');
+        // Reset any bottom-nav positioning when closed from outside
+        userMenu.style.removeProperty('bottom');
+        userMenu.style.removeProperty('top');
+        userMenu.style.removeProperty('right');
+        userMenu.style.removeProperty('position');
     }
 });
 

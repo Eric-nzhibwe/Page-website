@@ -300,6 +300,22 @@ class FollowViewSet(viewsets.ViewSet):
         
         return Response({'is_following': is_following})
 
+    @action(detail=False, methods=['get'])
+    def counts(self, request):
+        """Return follower count, following count, and is_following for a user."""
+        user_id = request.query_params.get('user_id', request.user.id)
+        user = get_object_or_404(User, id=user_id)
+        is_following = Follow.objects.filter(
+            follower=request.user,
+            following=user
+        ).exists()
+        return Response({
+            'user_id':         user.id,
+            'followers_count': Follow.objects.filter(following=user).count(),
+            'following_count': Follow.objects.filter(follower=user).count(),
+            'is_following':    is_following,
+        })
+
 
 class StoryViewSet(viewsets.ModelViewSet):
     """
