@@ -328,6 +328,26 @@ LOGGING = {
     },
 }
 
+# CSRF trusted origins — built unconditionally so it works in both
+# DEBUG and non-DEBUG modes. Render sets RENDER_EXTERNAL_HOSTNAME and
+# RENDER_EXTERNAL_URL automatically; CSRF_TRUSTED_ORIGINS env var is an
+# explicit escape-hatch for any additional domains.
+_csrf_origins = ['http://localhost:8000', 'http://127.0.0.1:8000']
+if _render_host:
+    _csrf_origins.append(f'https://{_render_host}')
+_render_ext_url = config('RENDER_EXTERNAL_URL', default='').rstrip('/')
+if _render_ext_url and _render_ext_url not in _csrf_origins:
+    _csrf_origins.append(_render_ext_url)
+_extra_origins = config(
+    'CSRF_TRUSTED_ORIGINS',
+    default='',
+    cast=lambda v: [s.strip() for s in v.split(',') if s.strip()]
+)
+for _o in _extra_origins:
+    if _o not in _csrf_origins:
+        _csrf_origins.append(_o)
+CSRF_TRUSTED_ORIGINS = _csrf_origins
+
 # Security settings for production
 if not DEBUG:
     SECURE_BROWSER_XSS_FILTER = True
@@ -342,7 +362,3 @@ if not DEBUG:
     SECURE_SSL_REDIRECT = True
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
-    # Allow the admin to work inside Render's iframe-based preview
-    CSRF_TRUSTED_ORIGINS = [
-        f'https://{_render_host}',
-    ] if _render_host else []
