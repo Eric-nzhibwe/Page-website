@@ -7,6 +7,7 @@ from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.authentication import TokenAuthentication, SessionAuthentication
 from rest_framework.pagination import PageNumberPagination
 from django.shortcuts import get_object_or_404
 from django.db.models import Q
@@ -31,6 +32,7 @@ class PostViewSet(viewsets.ModelViewSet):
     """
     serializer_class = PostSerializer
     permission_classes = [IsAuthenticated]
+    authentication_classes = [TokenAuthentication, SessionAuthentication]
     pagination_class = StandardResultsSetPagination
     
     def get_queryset(self):
@@ -139,6 +141,7 @@ class CommentViewSet(viewsets.ModelViewSet):
     """
     serializer_class = CommentSerializer
     permission_classes = [IsAuthenticated]
+    authentication_classes = [TokenAuthentication, SessionAuthentication]
 
     def get_queryset(self):
         """Get top-level comments for a specific post."""
@@ -211,6 +214,7 @@ class FollowViewSet(viewsets.ViewSet):
     ViewSet for Follow relationships with real-time updates
     """
     permission_classes = [IsAuthenticated]
+    authentication_classes = [TokenAuthentication, SessionAuthentication]
     
     @action(detail=False, methods=['post'])
     def follow(self, request):
@@ -323,6 +327,7 @@ class StoryViewSet(viewsets.ModelViewSet):
     """
     serializer_class = StorySerializer
     permission_classes = [IsAuthenticated]
+    authentication_classes = [TokenAuthentication, SessionAuthentication]
     pagination_class = StandardResultsSetPagination
     
     def get_queryset(self):
