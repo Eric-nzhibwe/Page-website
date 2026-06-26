@@ -359,88 +359,94 @@ async function _submitComment() {
         reaction_count: 0
     };
 
-    // ── Try WebSocket first (instant, real-time) ──
-    let postedViaWS = false;
-    if (wsClient.feedConnected || wsClient._postConns?.has(String(_commentPostId))) {
-        // Ensure the post-room WS is connected
-        if (!wsClient._postConns?.has(String(_commentPostId))) {
-            wsClient.connectToPost(_commentPostId, {
-                onComment: c => {
-                    // Comments from others arriving while modal is open
-                    const list = document.getElementById('artxCommentsList');
-                    if (!list) return;
-                    const el = _makeCommentEl(c);
-                    el.classList.add('artx-comment--new');
-                    list.appendChild(el);
-                }
-            });
-        }
-        postedViaWS = wsClient.sendComment(_commentPostId, text);
-    }
+    // Always reset the button at the end, no matter what
+    const _resetBtn = () => {
+        sendBtn.disabled = false;
+        sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Post';
+    };
 
-    if (postedViaWS) {
-        // Optimistic insert (WS will echo back the real object)
+    try {
+        // ── Try WebSocket first (instant, real-time) ──
+        let postedViaWS = false;
+        if (wsClient.feedConnected || wsClient._postConns?.has(String(_commentPostId))) {
+            if (!wsClient._postConns?.has(String(_commentPostId))) {
+                wsClient.connectToPost(_commentPostId, {
+                    onComment: c => {
+                        const list = document.getElementById('artxCommentsList');
+                        if (!list) return;
+                        const el = _makeCommentEl(c);
+                        el.classList.add('artx-comment--new');
+                        list.appendChild(el);
+                    }
+                });
+            }
+            postedViaWS = wsClient.sendComment(_commentPostId, text);
+        }
+
+        if (postedViaWS) {
+            const list = document.getElementById('artxCommentsList');
+            const emptyMsg = list?.querySelector('.artx-empty-msg');
+            if (emptyMsg) emptyMsg.remove();
+            if (list) {
+                const el = _makeCommentEl(newComment);
+                el.classList.add('artx-comment--new');
+                list.appendChild(el);
+                el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+            _bumpCount(_commentPostId, 'comment');
+            input.value = '';
+            input.style.height = 'auto';
+            _updateCharCount(input);
+            _resetBtn();
+            socialToast('Comment posted! 💬', 'success');
+            return;
+        }
+
+        // ── Fallback: REST API ──
+        let posted = false;
+        if (!_isLocalId(_commentPostId)) {
+            try {
+                const res = await fetch(`${SOCIAL_API}/comments/`, {
+                    method:  'POST',
+                    headers: authHeaders(),
+                    body:    JSON.stringify({ post_id: _commentPostId, content: text })
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    Object.assign(newComment, data);
+                    posted = true;
+                }
+            } catch { /* network error — fall through to local save */ }
+        }
+
+        if (!posted) {
+            const all = JSON.parse(localStorage.getItem('artxComments') || '{}');
+            if (!all[_commentPostId]) all[_commentPostId] = [];
+            all[_commentPostId].push(newComment);
+            localStorage.setItem('artxComments', JSON.stringify(all));
+        }
+
+        // Inject into list
         const list = document.getElementById('artxCommentsList');
-        const emptyMsg = list?.querySelector('.artx-empty-msg');
-        if (emptyMsg) emptyMsg.remove();
         if (list) {
+            const emptyMsg = list.querySelector('.artx-empty-msg');
+            if (emptyMsg) emptyMsg.remove();
             const el = _makeCommentEl(newComment);
             el.classList.add('artx-comment--new');
             list.appendChild(el);
             el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
+
         _bumpCount(_commentPostId, 'comment');
         input.value = '';
         input.style.height = 'auto';
         _updateCharCount(input);
-        sendBtn.disabled = false;
-        sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Post';
         socialToast('Comment posted! 💬', 'success');
-        return;
+
+    } finally {
+        // Guaranteed to run — spinner always stops
+        _resetBtn();
     }
-
-    // ── Fallback: REST API (only for real server posts, not local-only ones) ──
-    if (!_isLocalId(_commentPostId)) {
-        try {
-            const res = await fetch(`${SOCIAL_API}/comments/`, {
-                method:  'POST',
-                headers: authHeaders(),
-                body:    JSON.stringify({ post_id: _commentPostId, content: text })
-            });
-            if (res.ok) {
-                const data = await res.json();
-                Object.assign(newComment, data);
-                posted = true;
-            }
-        } catch { /* fall through */ }
-    }
-    if (!posted) {
-        const all = JSON.parse(localStorage.getItem('artxComments') || '{}');
-        if (!all[_commentPostId]) all[_commentPostId] = [];
-        all[_commentPostId].push(newComment);
-        localStorage.setItem('artxComments', JSON.stringify(all));
-    }
-
-    // Inject into list with animation
-    const list = document.getElementById('artxCommentsList');
-    const emptyMsg = list.querySelector('.artx-empty-msg');
-    if (emptyMsg) emptyMsg.remove();
-
-    const el = _makeCommentEl(newComment);
-    el.classList.add('artx-comment--new');
-    list.appendChild(el);
-    el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-
-    // Update count on the post card
-    _bumpCount(_commentPostId, 'comment');
-
-    input.value = '';
-    input.style.height = 'auto';
-    _updateCharCount(input);
-    sendBtn.disabled = false;
-    sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Post';
-
-    socialToast('Comment posted! 💬', 'success');
 }
 
 async function _reactToComment(commentId, btn) {
