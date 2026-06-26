@@ -554,7 +554,6 @@ def handle_pawapay_webhook_event(payload: dict) -> tuple:
                     payment.status        = 'completed'
                     payment.completed_at  = timezone.now()
                     payment.save(update_fields=['status', 'completed_at', 'metadata', 'updated_at'])
-                    payment.mark_completed()
                     credit_wallet_from_payment(payment)
                     _audit(action='completed', payment=payment,
                            prev=prev, new='completed',

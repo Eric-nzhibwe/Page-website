@@ -265,8 +265,8 @@ EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
 EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
 
-if EMAIL_MODE == 'console':
-    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+if EMAIL_MODE == 'smtp':
+    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 
 DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='ARTX Platform <noreply@artx.com>')
 
@@ -277,13 +277,16 @@ STRIPE_SECRET_KEY = config('STRIPE_SECRET_KEY', default='')
 STRIPE_WEBHOOK_SECRET = config('STRIPE_WEBHOOK_SECRET', default='')
 
 # PawaPay Configuration (African Mobile Money)
-PAWAPAY_API_KEY = config('PAWAPAY_API_KEY', default='eyJraWQiOiIxIiwiYWxnIjoiRVMyNTYifQ.eyJ0dCI6IkFBVCIsInN1YiI6IjE4NjI3IiwibWF2IjoiMSIsImV4cCI6MjA5NTE1MTkxNywiaWF0IjoxNzc5NTMyNzE3LCJwbSI6IkRBRixQQUYiLCJqdGkiOiIxOWU5MGYwMy0xMmZkLTQ5ODktOTZkMC0zMWFiMzdhMTYwODkifQ.bSbEHIQVAyBBZepcNDvbOQWbCagX7vri4MNdGsHlQJRDGwGD1qnxZBEFZwddiW3ynjMZhcTdgLRBKmKJBBNEEg')
+PAWAPAY_API_KEY = config('PAWAPAY_API_KEY', default='')
 PAWAPAY_API_URL = config('PAWAPAY_API_URL', default='https://api.pawapay.cloud')
 PAWAPAY_WEBHOOK_SECRET = config('PAWAPAY_WEBHOOK_SECRET', default='')
 
+# Paystack
+PAYSTACK_SECRET_KEY = config('PAYSTACK_SECRET_KEY', default='')
+
 # OpenAI Configuration (for AI Chatbot)
 # ⚠️ IMPORTANT: Keep this in .env file ONLY - DO NOT commit to git
-OPENAI_API_KEY = config('OPENAI_API_KEY', default='OPENAI_KEY_REDACTED')
+OPENAI_API_KEY = config('OPENAI_API_KEY', default='')
 
 # Logging — console-only (no filesystem writes; Render's disk is ephemeral)
 LOGGING = {

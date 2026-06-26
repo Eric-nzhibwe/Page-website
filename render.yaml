@@ -15,7 +15,7 @@ services:
     plan: free
     branch: main
     rootDir: django_backend
-    buildCommand: chmod +x build.sh && ./build.sh
+    buildCommand: pip install -r requirements.txt && python manage.py migrate --no-input && python manage.py ensure_superuser
     startCommand: daphne -b 0.0.0.0 -p $PORT artx_platform.asgi:application
     envVars:
       - key: PYTHON_VERSION
