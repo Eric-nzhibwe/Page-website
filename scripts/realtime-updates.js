@@ -536,10 +536,137 @@ function _buildPostCard(post) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  NOTIFICATION POLLING  (deduplicated)
+//  NOTIFICATION WebSocket  (real-time bell badge + toasts)
 // ─────────────────────────────────────────────────────────────────────────────
-const _seenNotifIds  = new Set();
-let   _notifTimer    = null;
+let _notifWs        = null;
+let _notifWsRetries = 0;
+const _seenNotifIds = new Set();
+let   _notifTimer   = null;          // fallback poll timer
+
+function _wsBase() {
+    const proto = window.location.protocol === 'https:' ? 'wss' : 'ws';
+    const host  = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+        ? 'localhost:8000'
+        : window.location.host;
+    return `${proto}://${host}`;
+}
+
+function _connectNotifWs() {
+    const token = localStorage.getItem('djangoAuthToken');
+    if (!token) return;
+
+    if (_notifWs && (_notifWs.readyState === WebSocket.OPEN || _notifWs.readyState === WebSocket.CONNECTING)) return;
+
+    _notifWs = new WebSocket(`${_wsBase()}/ws/notifications/?token=${token}`);
+
+    _notifWs.onopen = () => {
+        _notifWsRetries = 0;
+        // Cancel fallback poll — WS is live
+        if (_notifTimer) { clearInterval(_notifTimer); _notifTimer = null; }
+    };
+
+    _notifWs.onmessage = (e) => {
+        try {
+            const msg = JSON.parse(e.data);
+            _handleNotifMessage(msg);
+        } catch { /* ignore malformed */ }
+    };
+
+    _notifWs.onclose = () => {
+        _notifWs = null;
+        // Exponential back-off reconnect (max 30 s)
+        const delay = Math.min(1000 * 2 ** _notifWsRetries, 30_000);
+        _notifWsRetries++;
+        setTimeout(_connectNotifWs, delay);
+        // Start fallback polling while disconnected
+        if (!_notifTimer) _startNotifPoller();
+    };
+
+    _notifWs.onerror = () => { _notifWs?.close(); };
+
+    // Keep-alive ping every 25 s
+    setInterval(() => {
+        if (_notifWs?.readyState === WebSocket.OPEN) {
+            _notifWs.send(JSON.stringify({ action: 'ping' }));
+        }
+    }, 25_000);
+}
+
+function _handleNotifMessage(msg) {
+    switch (msg.type) {
+
+        case 'notifications_snapshot': {
+            // Initial snapshot on connect — seed seen-ids and set badge
+            const list = msg.notifications || [];
+            list.forEach(n => _seenNotifIds.add(n.id));
+            _updateBellBadge(msg.unread_count ?? 0);
+            break;
+        }
+
+        case 'new_notification': {
+            const n = msg.notification;
+            if (!n || _seenNotifIds.has(n.id)) break;
+            _seenNotifIds.add(n.id);
+
+            // Toast
+            const toastMsg = n.type === 'follow'
+                ? `${n.actor?.display_name || 'Someone'} started following you 👤`
+                : n.type === 'comment'
+                    ? `${n.actor?.display_name || 'Someone'} commented on your post 💬`
+                    : n.type === 'reaction'
+                        ? `${n.actor?.display_name || 'Someone'} reacted to your post 🔥`
+                        : (n.title || 'New notification');
+            _rtToast(toastMsg, 'info');
+
+            // Increment badge
+            const badge = document.getElementById('notificationBadge');
+            if (badge) {
+                const current = parseInt(badge.textContent, 10) || 0;
+                _updateBellBadge(current + 1);
+            }
+
+            // Prepend to open notification dropdown if it's visible
+            _prependNotifToDropdown(n);
+            break;
+        }
+
+        case 'marked_read': {
+            _updateBellBadge(0);
+            break;
+        }
+    }
+}
+
+function _updateBellBadge(count) {
+    const badge = document.getElementById('notificationBadge');
+    if (!badge) return;
+    badge.textContent    = count > 99 ? '99+' : count;
+    badge.style.display  = count > 0 ? 'inline-block' : 'none';
+}
+
+function _prependNotifToDropdown(n) {
+    // Only insert if the dropdown panel is currently open/visible
+    const panel = document.getElementById('notificationsPanel') ||
+                  document.querySelector('.notifications-dropdown');
+    if (!panel || panel.style.display === 'none' || panel.hidden) return;
+
+    const list = panel.querySelector('.notifications-list, .notif-list, ul');
+    if (!list) return;
+
+    const actor = n.actor?.display_name || n.actor?.username || 'Someone';
+    const item  = document.createElement('li');
+    item.className = 'notif-item notif-item--new';
+    item.innerHTML = `
+        <a href="${_rtEsc(n.link || '#')}" class="notif-link">
+            <strong>${_rtEsc(actor)}</strong> ${_rtEsc(n.title)}
+            <span class="notif-time">just now</span>
+        </a>`;
+    list.insertBefore(item, list.firstChild);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  NOTIFICATION POLLING  (fallback when WS is disconnected)
+// ─────────────────────────────────────────────────────────────────────────────
 
 function _startNotifPoller() {
     _pollNotifications();
@@ -547,11 +674,13 @@ function _startNotifPoller() {
 }
 
 async function _pollNotifications() {
+    // Skip if WS is live — no need to poll
+    if (_notifWs?.readyState === WebSocket.OPEN) return;
+
     try {
         const res = await fetch(`${_RT_BASE}/notifications/`, { headers: _rtHeaders() });
         if (!res.ok) return;
         const data  = await res.json();
-        // Backend returns { notifications: [...], unread_count: n }
         const list  = data.notifications || (Array.isArray(data) ? data : (data.results || []));
         let   badge = data.unread_count ?? 0;
         const newIds = [];
@@ -561,7 +690,6 @@ async function _pollNotifications() {
             _seenNotifIds.add(n.id);
             newIds.push(n.id);
             if (!n.is_read) {
-                // Build a meaningful toast for follow notifications
                 const msg = n.type === 'follow'
                     ? `${n.actor?.display_name || 'Someone'} started following you 👤`
                     : (n.message || n.title || 'New notification');
@@ -569,7 +697,6 @@ async function _pollNotifications() {
             }
         });
 
-        // Mark newly seen notifications as read on the backend
         if (newIds.length > 0) {
             fetch(`${_RT_BASE}/notifications/read/`, {
                 method: 'POST',
@@ -578,12 +705,7 @@ async function _pollNotifications() {
             }).catch(() => {});
         }
 
-        // Update bell badge
-        const bellBadge = document.getElementById('notificationBadge');
-        if (bellBadge) {
-            bellBadge.textContent = badge > 99 ? '99+' : badge;
-            bellBadge.style.display = badge > 0 ? 'inline-block' : 'none';
-        }
+        _updateBellBadge(badge);
     } catch { /* silent */ }
 }
 
@@ -677,8 +799,9 @@ function _initRealtimeUpdates() {
         _startOnlinePoller();
     });
 
-    // ── 4. Notification polling (bell badge) — WS not yet on this channel ─────
-    _startNotifPoller();
+    // ── 4. Notification WebSocket (real-time bell badge + toasts) ────────────
+    _connectNotifWs();
+    // Fallback poller starts automatically if WS fails to connect
 
     // ── 5. Pause everything when tab is hidden ────────────────────────────────
     document.addEventListener('visibilitychange', () => {
@@ -687,7 +810,7 @@ function _initRealtimeUpdates() {
             clearInterval(_onlinePollTimer);
             _notifTimer = _onlinePollTimer = null;
         } else {
-            _startNotifPoller();
+            _connectNotifWs();   // reconnect WS if it dropped while hidden
             _startOnlinePoller();
         }
     });

@@ -13,10 +13,11 @@ from .models import InAppNotification
 #  IN-APP NOTIFICATION HELPERS  (called from consumers / views)
 # ─────────────────────────────────────────────────────────────────────────────
 def create_notification(recipient, notif_type, title, message, actor=None, link=''):
-    """Create an in-app notification.  Safe to call from sync or async context."""
+    """Create an in-app notification and push it to the recipient's WebSocket."""
     if recipient == actor:
         return None  # never notify yourself
-    return InAppNotification.objects.create(
+
+    notif = InAppNotification.objects.create(
         recipient=recipient,
         actor=actor,
         notif_type=notif_type,
@@ -24,6 +25,26 @@ def create_notification(recipient, notif_type, title, message, actor=None, link=
         message=message,
         link=link,
     )
+
+    # Push to the recipient's live WebSocket connection (if any)
+    try:
+        from channels.layers import get_channel_layer
+        from asgiref.sync import async_to_sync
+        from notifications.consumers import user_group, _serialize_notif
+
+        channel_layer = get_channel_layer()
+        if channel_layer:
+            async_to_sync(channel_layer.group_send)(
+                user_group(recipient.id),
+                {
+                    'type':         'notify_new',       # maps to NotificationConsumer.notify_new()
+                    'notification': _serialize_notif(notif),
+                }
+            )
+    except Exception:
+        pass  # Never let a push failure break the calling request
+
+    return notif
 
 
 # ─────────────────────────────────────────────────────────────────────────────
