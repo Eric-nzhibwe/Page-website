@@ -4,10 +4,19 @@
     max-width: 900px;
     margin: 0 auto;
     height: 100vh;
+    /* on mobile, shrink height so the input isn't hidden behind the bottom nav */
+    height: calc(100vh - var(--mobile-nav-h, 56px));
     display: flex;
     flex-direction: column;
     background: linear-gradient(to right, whitesmoke, darkolivegreen);
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+@media (min-width: 1024px) {
+    /* restore full height on desktop where the nav is hidden */
+    .chatbot-container {
+        height: 100vh;
+    }
 }
 
 /* Header */

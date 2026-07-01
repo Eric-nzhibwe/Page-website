@@ -130,5 +130,60 @@
     </div>
 
     <script src="../scripts/chatbot.js"></script>
+
+    <!-- Mobile Bottom Navigation Bar (hidden on desktop via CSS) -->
+    <nav class="mobile-bottom-nav" id="mobileBottomNav">
+        <button class="icon-nav-btn" title="Home" onclick="window.location.href='../index.html'">
+            <i class="fas fa-home"></i>
+        </button>
+        <button class="icon-nav-btn" title="Challenges" onclick="window.location.href='../index.html#challenges'">
+            <i class="fas fa-trophy"></i>
+        </button>
+        <button class="icon-nav-btn" title="Marketplace" onclick="window.location.href='../index.html#marketplace'">
+            <i class="fas fa-store"></i>
+        </button>
+        <button class="icon-nav-btn" title="People" onclick="window.location.href='community.html'">
+            <i class="fas fa-users"></i>
+        </button>
+        <button class="icon-nav-btn active" onclick="toggleMobileMoreMenu(this)" title="More">
+            <i class="fas fa-bars"></i>
+        </button>
+    </nav>
+
+    <script>
+    function toggleMobileMoreMenu(btn) {
+        const dropdown = document.getElementById('userMenuDropdown');
+        if (!dropdown) return;
+        const isOpen = dropdown.classList.contains('show');
+        if (isOpen) {
+            dropdown.classList.remove('show');
+            dropdown.style.removeProperty('top');
+            dropdown.style.removeProperty('bottom');
+            dropdown.style.removeProperty('right');
+            dropdown.style.removeProperty('position');
+        } else {
+            const navH = document.getElementById('mobileBottomNav').offsetHeight;
+            dropdown.style.position = 'fixed';
+            dropdown.style.bottom   = (navH + 8) + 'px';
+            dropdown.style.top      = 'auto';
+            dropdown.style.right    = '8px';
+            dropdown.classList.add('show');
+        }
+    }
+
+    document.addEventListener('click', function(e) {
+        const dropdown = document.getElementById('userMenuDropdown');
+        if (dropdown && dropdown.classList.contains('show') && dropdown.style.bottom) {
+            const moreBtn = document.querySelector('.mobile-bottom-nav .icon-nav-btn[title="More"]');
+            if (!dropdown.contains(e.target) && (!moreBtn || !moreBtn.contains(e.target))) {
+                dropdown.classList.remove('show');
+                dropdown.style.removeProperty('top');
+                dropdown.style.removeProperty('bottom');
+                dropdown.style.removeProperty('right');
+                dropdown.style.removeProperty('position');
+            }
+        }
+    });
+    </script>
 </body>
 </html>

@@ -4,6 +4,8 @@
     max-width: 1200px;
     margin: 0 auto;
     padding: 20px;
+    /* leave room for the fixed mobile bottom nav */
+    padding-bottom: calc(20px + var(--mobile-nav-h, 56px));
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
