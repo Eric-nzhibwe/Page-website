@@ -155,21 +155,65 @@
         </section>
     </div>
 
-    <!-- Influencer Detail Modal -->
-    <div id="influencerModal" class="modal">
-        <div class="modal-content large">
-            <span class="close" onclick="closeInfluencerModal()">&times;</span>
-            <div id="influencerDetail"></div>
-        </div>
-    </div>
+    <!-- Mobile Bottom Navigation Bar (hidden on desktop via CSS) -->
+    <nav class="mobile-bottom-nav" id="mobileBottomNav">
+        <button class="icon-nav-btn" title="Home" onclick="window.location.href='../index.html'">
+            <i class="fas fa-home"></i>
+        </button>
+        <button class="icon-nav-btn" title="Challenges" onclick="window.location.href='challenges.html'">
+            <i class="fas fa-trophy"></i>
+        </button>
+        <button class="icon-nav-btn" title="Community" onclick="window.location.href='community.html'">
+            <i class="fas fa-users"></i>
+        </button>
+        <button class="icon-nav-btn" title="Profile" onclick="window.location.href='user.html'">
+            <i class="fas fa-user-circle"></i>
+        </button>
+        <button class="icon-nav-btn active" title="Influencers">
+            <i class="fas fa-star"></i>
+        </button>
+    </nav>
 
-    <!-- Event Detail Modal -->
-    <div id="eventModal" class="modal">
-        <div class="modal-content large">
-            <span class="close" onclick="closeEventModal()">&times;</span>
-            <div id="eventDetail"></div>
-        </div>
-    </div>
+    <script>
+    // Mobile more menu toggle
+    function toggleMobileMoreMenu(btn) {
+        const dropdown = document.getElementById('userMenuDropdown');
+        if (!dropdown) return;
+
+        const isOpen = dropdown.classList.contains('show');
+
+        if (isOpen) {
+            dropdown.classList.remove('show');
+            dropdown.style.removeProperty('top');
+            dropdown.style.removeProperty('bottom');
+            dropdown.style.removeProperty('right');
+            dropdown.style.removeProperty('position');
+        } else {
+            // Position above the bottom nav
+            const navH = document.getElementById('mobileBottomNav').offsetHeight;
+            dropdown.style.position  = 'fixed';
+            dropdown.style.bottom    = (navH + 8) + 'px';
+            dropdown.style.top       = 'auto';
+            dropdown.style.right     = '8px';
+            dropdown.classList.add('show');
+        }
+    }
+
+    // Close mobile more menu when clicking outside
+    document.addEventListener('click', function(e) {
+        const dropdown = document.getElementById('userMenuDropdown');
+        if (dropdown && dropdown.classList.contains('show') && dropdown.style.bottom) {
+            const moreBtn = document.querySelector('.mobile-bottom-nav .icon-nav-btn[title="More"]');
+            if (!dropdown.contains(e.target) && (!moreBtn || !moreBtn.contains(e.target))) {
+                dropdown.classList.remove('show');
+                dropdown.style.removeProperty('top');
+                dropdown.style.removeProperty('bottom');
+                dropdown.style.removeProperty('right');
+                dropdown.style.removeProperty('position');
+            }
+        }
+    });
+    </script>
 
     <script src="../scripts/influencers.js"></script>
 </body>
