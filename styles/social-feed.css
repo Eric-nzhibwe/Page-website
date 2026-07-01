@@ -161,7 +161,7 @@
     width: 50px;
     height: 50px;
     border-radius: 50%;
-    background: linear-gradient(135deg, darkolivegreen, lightgreen);
+    background: black;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -328,13 +328,13 @@
     }
 
     .stories-container::-webkit-scrollbar-thumb {
-        background: rgba(85, 107, 47, 0.5);
+        background: transparent;
         border-radius: 10px;
         transition: background 0.3s;
     }
 
     .stories-container::-webkit-scrollbar-thumb:hover {
-        background: rgba(85, 107, 47, 0.8);
+        background: white;
     }
 
     /* Hide scrollbar for Firefox but keep functionality */
