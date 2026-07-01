@@ -166,10 +166,10 @@
         <button class="icon-nav-btn" title="Marketplace" onclick="window.location.href='../index.html'">
             <i class="fas fa-store"></i>
         </button>
-        <button class="icon-nav-btn active" title="People" onclick="window.location.href='community.html'">
+        <button class="icon-nav-btn" title="People" onclick="window.location.href='community.html'">
             <i class="fas fa-users"></i>
         </button>
-        <button class="icon-nav-btn" onclick="toggleMobileMoreMenu(this)" title="More">
+        <button class="icon-nav-btn active" onclick="toggleMobileMoreMenu(this)" title="More">
             <i class="fas fa-bars"></i>
         </button>
     </nav>
@@ -216,5 +216,28 @@
     </script>
 
     <script src="../scripts/influencers.js"></script>
+    <script>
+    /* Navbar dropdown toggles — identical to index.html */
+    function toggleQuickMenu() {
+        const qm = document.getElementById('quickMenuDropdown');
+        const um = document.getElementById('userMenuDropdown');
+        if (um) um.classList.remove('show');
+        if (qm) qm.classList.toggle('show');
+    }
+    function toggleUserMenu() {
+        const um = document.getElementById('userMenuDropdown');
+        const qm = document.getElementById('quickMenuDropdown');
+        if (qm) qm.classList.remove('show');
+        if (um) um.classList.toggle('show');
+    }
+    document.addEventListener('click', e => {
+        const qm = document.getElementById('quickMenuDropdown');
+        const um = document.getElementById('userMenuDropdown');
+        if (qm && !qm.contains(e.target) && !e.target.closest('.header-icon-btn'))
+            qm.classList.remove('show');
+        if (um && !um.contains(e.target) && !e.target.closest('.user-avatar-btn'))
+            um.classList.remove('show');
+    });
+    </script>
 </body>
 </html>

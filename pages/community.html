@@ -11,12 +11,14 @@
     <link rel="stylesheet" href="../styles/styles.css">
     <link rel="stylesheet" href="../styles/icon-nav.css">
     <link rel="stylesheet" href="../styles/community.css">
+    <link rel="stylesheet" href="../styles/responsive-pro.css">
 </head>
 <body>
 
 <!-- ═══════════════════════ NAVBAR (matches index.html) ═══════════════════════ -->
 <header class="header w-100">
     <div class="header-left d-flex align-items-center">
+        <div class="logo" onclick="window.location.href='../index.html'" style="cursor:pointer">
             <i class="fas fa-fire"></i>ARTX
         </div>
         <div class="search-bar d-none d-md-flex align-items-center">
@@ -32,11 +34,11 @@
         <button class="icon-nav-btn" title="Challenges" onclick="window.location.href='challenges.html'">
             <i class="fas fa-trophy" style="color:black;"></i>
         </button>
+        <button class="icon-nav-btn" title="Marketplace" onclick="window.location.href='../index.html'">
+            <i class="fas fa-store" style="color:black;"></i>
+        </button>
         <button class="icon-nav-btn active" title="Community">
             <i class="fas fa-users" style="color:black;"></i>
-        </button>
-        <button class="icon-nav-btn" title="Profile" onclick="window.location.href='user.html'">
-            <i class="fas fa-user-circle" style="color:black;"></i>
         </button>
     </nav>
 
@@ -345,11 +347,11 @@
         <button class="icon-nav-btn" title="Challenges" onclick="window.location.href='challenges.html'">
             <i class="fas fa-trophy"></i>
         </button>
-        <button class="icon-nav-btn active" title="Community">
-            <i class="fas fa-users"></i>
+        <button class="icon-nav-btn" title="Marketplace" onclick="window.location.href='../index.html'">
+            <i class="fas fa-store"></i>
         </button>
-        <button class="icon-nav-btn" title="Profile" onclick="window.location.href='user.html'">
-            <i class="fas fa-user-circle"></i>
+        <button class="icon-nav-btn active" title="People">
+            <i class="fas fa-users"></i>
         </button>
         <button class="icon-nav-btn" onclick="toggleMobileMoreMenu(this)" title="More">
             <i class="fas fa-bars"></i>
