@@ -5,63 +5,120 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Influencer Hub</title>
     <link rel="icon" type="image/jpeg" href="../Images/ARTX.jpg">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="../styles/styles.css">
+    <link rel="stylesheet" href="../styles/icon-nav.css">
     <link rel="stylesheet" href="../styles/influencers.css">
+    <link rel="stylesheet" href="../styles/responsive-pro.css">
 </head>
 <body>
-    <div class="container">
-        <!-- Header -->
-        <header class="header">
-            <div class="logo" onclick="window.location.href='../index.html'"><i class="fas fa-fire"></i>ARTX</div>
-            <button class="mobile-menu-toggle" onclick="toggleMobileMenu()">
-                <i class="fas fa-bars"></i>
+    <!-- Header with Bootstrap (matches index.html) -->
+    <header class="header w-100">
+        <div class="header-left d-flex align-items-center">
+            <div class="logo" onclick="window.location.href='../index.html'" style="cursor:pointer">
+                <i class="fas fa-fire"></i>ARTX
+            </div>
+            <div class="search-bar d-none d-md-flex align-items-center">
+                <i class="fas fa-search"></i>
+                <input type="text" placeholder="Search ARTX..." id="headerSearch">
+            </div>
+        </div>
+
+        <nav class="icon-nav d-flex justify-content-center flex-grow-1">
+            <button class="icon-nav-btn" title="Home" onclick="window.location.href='../index.html'">
+                <i class="fas fa-home" style="color:black;"></i>
             </button>
-            <nav class="nav" id="mainNav">
-                <button class="nav-btn" onclick="window.location.href='../index.html'">Dashboard</button>
-                <button class="nav-btn" onclick="window.location.href='challenges.html'">Challenges</button>
-                <button class="nav-btn" onclick="window.location.href='community.html'">Community</button>
-                <button class="nav-btn active">Influencers</button>
-            </nav>
-            <!-- User Menu Dropdown -->
-                <div class="user-menu-dropdown">
-                    <button class="btn-user-menu" onclick="toggleUserMenu()">
-                        <i class="fas fa-user-circle"></i>
-                        <i class="fas fa-chevron-down"></i>
-                    </button>
-                    <div class="dropdown-content" id="userDropdown">
-                        <a href="pages/wallet.html">
-                            <i class="fas fa-wallet"></i> My Wallet
-                        </a>
-                        <a href="pages/chatbot.html">
-                            <i class="fas fa-robot"></i> AI Assistant
-                        </a>
-                        <a href="#" onclick="openMessenger(); return false;">
-                            <i class="fas fa-comments"></i> Messenger
-                            <span class="unread-badge" id="unreadBadge" style="display: none;">0</span>
-                        </a>
-                        <a href="pages/user.html">
-                            <i class="fas fa-user"></i> User Profile
-                        </a>
-                        <div class="user-info">
-                <div class="wallet-balance-badge" id="walletBalanceBadge" onclick="window.location.href='pages/wallet.html'" style="cursor: pointer; display: none;">
-                    <i class="fas fa-wallet"></i>
-                    <span id="walletBalance">K0.00</span>
-                </div>
-                <div class="streak-badge" id="streakBadge">
-                    <span class="streak-icon"><i class="fas fa-fire"></i></span>
-                    <span id="streakCount">0</span>
-                </div>
-                <span class="prestige-badge" id="userPrestige">0</span>
-                <div class="tier-badge" id="tierBadge">Bronze</div>
-                <span class="username" id="username">Player</span>
-            
-                        <a href="#" onclick="logout(); return false;">
-                            <i class="fas fa-sign-out-alt"></i> Logout
-                        </a>
-                    </div>
+            <button class="icon-nav-btn" title="Challenges" onclick="window.location.href='challenges.html'">
+                <i class="fas fa-trophy" style="color:black;"></i>
+            </button>
+            <button class="icon-nav-btn" title="Community" onclick="window.location.href='community.html'">
+                <i class="fas fa-users" style="color:black;"></i>
+            </button>
+            <button class="icon-nav-btn active" title="Influencers">
+                <i class="fas fa-star" style="color:black;"></i>
+            </button>
+        </nav>
+
+        <!-- Right Side Icons -->
+        <div class="header-right d-flex align-items-center">
+            <button class="header-icon-btn" onclick="window.location.href='../index.html'" title="Notifications">
+                <i class="fas fa-bell" style="color:black;"></i>
+            </button>
+            <button class="header-icon-btn" onclick="toggleQuickMenu()" title="Menu">
+                <i class="fas fa-th" style="color:black;"></i>
+            </button>
+            <div class="user-avatar-btn" onclick="toggleUserMenu()">
+                <i class="fas fa-user-circle" style="color:black;"></i>
+            </div>
+        </div>
+
+        <!-- Quick Menu Dropdown -->
+        <div class="quick-menu-dropdown" id="quickMenuDropdown">
+            <div class="quick-menu-header"><h3>Quick Access</h3></div>
+            <div class="quick-menu-grid">
+                <a href="../index.html" class="quick-menu-item">
+                    <i class="fas fa-chart-line"></i><span>Dashboard</span>
+                </a>
+                <a href="challenges.html" class="quick-menu-item">
+                    <i class="fas fa-trophy"></i><span>Challenges</span>
+                </a>
+                <a href="community.html" class="quick-menu-item">
+                    <i class="fas fa-users"></i><span>Community</span>
+                </a>
+                <a href="wallet.html" class="quick-menu-item">
+                    <i class="fas fa-wallet"></i><span>Wallet</span>
+                </a>
+                <a href="chatbot.html" class="quick-menu-item">
+                    <i class="fas fa-robot"></i><span>AI Assistant</span>
+                </a>
+                <a href="influencers.html" class="quick-menu-item">
+                    <i class="fas fa-star"></i><span>Influencers</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- User Menu Dropdown -->
+        <div class="user-menu-dropdown" id="userMenuDropdown">
+            <div class="user-menu-header">
+                <div class="user-menu-avatar"><i class="fas fa-user-circle"></i></div>
+                <div class="user-menu-info">
+                    <h4 id="menuUsername">Player</h4>
+                    <p id="menuTier">Bronze Tier</p>
                 </div>
             </div>
-        </header>
+            <div class="user-menu-stats">
+                <div class="user-menu-stat">
+                    <i class="fas fa-fire"></i>
+                    <span id="menuStreak">0</span>
+                </div>
+                <div class="user-menu-stat">
+                    <i class="fas fa-star"></i>
+                    <span id="menuPrestige">0</span>
+                </div>
+                <div class="user-menu-stat">
+                    <i class="fas fa-wallet"></i>
+                    <span id="menuBalance">K0.00</span>
+                </div>
+            </div>
+            <div class="user-menu-links">
+                <a href="user.html">
+                    <i class="fas fa-user"></i> View Profile
+                </a>
+                <a href="wallet.html">
+                    <i class="fas fa-wallet"></i> My Wallet
+                </a>
+                <a href="#" onclick="window.location.href='../index.html'; return false;">
+                    <i class="fas fa-cog"></i> Settings
+                </a>
+                <a href="#" onclick="logout(); return false;">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <div class="container-fluid p-0 m-0">
 
         <!-- Hero Section -->
         <section class="hero">
