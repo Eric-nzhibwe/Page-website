@@ -147,24 +147,62 @@ def conversation_new_view(request):
 @permission_classes([permissions.IsAuthenticated])
 def ai_status_view(request):
     """
-    Returns which AI engine is active.
-    Frontend uses this to show the status badge.
+    Actually tests the Groq API with a real call so the status is guaranteed.
+    Returns engine info + whether a live test message succeeded.
     """
     from django.conf import settings as django_settings
+    import requests as http
 
-    # Groq uses plain requests — no SDK package check needed
     groq_key = getattr(django_settings, 'GROQ_API_KEY', '').strip()
 
-    if groq_key:
+    if not groq_key:
         return Response({
-            'engine': 'groq',
-            'model':  'llama-3.3-70b-versatile',
-            'status': 'online',
-            'label':  'LLaMA 3.3 70B',
+            'engine': 'fallback',
+            'model':  'rule-based',
+            'status': 'limited',
+            'label':  'Basic Mode — no API key set',
+            'tested': False,
         })
-    return Response({
-        'engine': 'fallback',
-        'model':  'rule-based',
-        'status': 'limited',
-        'label':  'Basic Mode',
-    })
+
+    # Fire a real test message to Groq
+    try:
+        resp = http.post(
+            'https://api.groq.com/openai/v1/chat/completions',
+            headers={
+                'Authorization': f'Bearer {groq_key}',
+                'Content-Type':  'application/json',
+            },
+            json={
+                'model':      'llama-3.3-70b-versatile',
+                'messages':   [{'role': 'user', 'content': 'Reply with exactly: OK'}],
+                'max_tokens': 5,
+            },
+            timeout=10,
+        )
+
+        if resp.status_code == 200:
+            return Response({
+                'engine': 'groq',
+                'model':  'llama-3.3-70b-versatile',
+                'status': 'online',
+                'label':  'LLaMA 3.3 70B',
+                'tested': True,   # ← real API call succeeded
+            })
+        else:
+            error = resp.json().get('error', {}).get('message', resp.text[:100])
+            return Response({
+                'engine': 'fallback',
+                'model':  'rule-based',
+                'status': 'error',
+                'label':  f'Groq error: {error}',
+                'tested': True,
+            })
+
+    except Exception as e:
+        return Response({
+            'engine': 'fallback',
+            'model':  'rule-based',
+            'status': 'error',
+            'label':  f'Connection failed: {str(e)[:80]}',
+            'tested': True,
+        })

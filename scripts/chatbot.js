@@ -65,20 +65,26 @@ async function checkAiStatus() {
     const token  = localStorage.getItem('djangoAuthToken');
     const label  = document.getElementById('aiStatusLabel');
     const dot    = document.querySelector('.status-dot');
-    const header = document.querySelector('.chat-header-status');
+
+    // Show "checking" while we wait
+    dot.className   = 'status-dot';
+    label.innerHTML = 'Checking…';
 
     try {
         const res  = await fetch(`${CHAT_API}/chatbot/status/`, {
             headers: { 'Authorization': `Token ${token}` }
         });
-        if (!res.ok) throw new Error();
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
 
         currentAiSource = data.engine;
 
-        if (data.engine === 'groq') {
+        if (data.engine === 'groq' && data.status === 'online') {
             dot.className   = 'status-dot online';
-            label.innerHTML = `${data.label} <span class="engine-badge gemini">Groq</span>`;
+            label.innerHTML = `${data.label} <span class="engine-badge gemini">✓ Live</span>`;
+        } else if (data.status === 'error') {
+            dot.className   = 'status-dot error';
+            label.innerHTML = `<span class="engine-badge fallback">${data.label}</span>`;
         } else {
             dot.className   = 'status-dot limited';
             label.innerHTML = `Basic Mode <span class="engine-badge fallback">Limited</span>`;
