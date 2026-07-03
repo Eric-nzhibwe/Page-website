@@ -202,8 +202,11 @@ AUTHENTICATION_BACKENDS = [
 # REST Framework
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework.authentication.SessionAuthentication',
+        # TokenAuthentication MUST be first — SessionAuthentication enforces
+        # CSRF on POST requests which breaks token-authenticated API calls
+        # from the frontend (no CSRF cookie is sent with fetch requests).
         'rest_framework.authentication.TokenAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
