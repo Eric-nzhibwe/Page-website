@@ -12,7 +12,6 @@ from .serializers import (
     ChatMessageSerializer,
     ChatRequestSerializer
 )
-from .ai_service import ai_service
 
 
 @api_view(['POST'])
@@ -48,32 +47,59 @@ def chat_view(request):
     # Get user context for AI
     user_context = {
         'username': request.user.username,
-        'prestige_points': request.user.prestige_points,
-        'tier': request.user.access_tier,
+        'prestige_points': getattr(request.user, 'prestige_points', None),
+        'tier': getattr(request.user, 'access_tier', None),
     }
-    
+
     # Add wallet balance if available
     try:
         from payments.models import Wallet
         wallet = Wallet.objects.get(user=request.user)
         user_context['wallet_balance'] = float(wallet.available_balance)
-    except:
+    except Exception:
         pass
-    
-    # Get AI response
-    ai_response = ai_service.get_response(message, user_context)
-    
+
+    # Build conversation history for multi-turn memory (last 20 messages)
+    prior_messages = ChatMessage.objects.filter(
+        conversation=conversation
+    ).order_by('created_at')[:20]
+
+    history = [
+        {"role": "user" if msg.role == "user" else "assistant", "content": msg.content}
+        for msg in prior_messages
+    ]
+
+    # Get AI response (passes full history for ChatGPT-style memory)
+    from django.conf import settings as django_settings
+    gemini_key = getattr(django_settings, 'GEMINI_API_KEY', '').strip()
+
+    # Try Gemini — track whether it actually responded
+    ai_response = None
+    ai_source   = 'fallback'
+
+    if gemini_key:
+        from .ai_service import _gemini_response
+        ai_response = _gemini_response(message, history, user_context)
+        if ai_response:
+            ai_source = 'gemini'
+
+    # Fall back to rule-based if Gemini didn't answer
+    if not ai_response:
+        from .ai_service import _rule_based_response
+        ai_response = _rule_based_response(message, user_context)
+
     # Save AI message
     ai_message = ChatMessage.objects.create(
         conversation=conversation,
         role='assistant',
         content=ai_response
     )
-    
+
     return Response({
         'conversation_id': conversation.id,
         'user_message': ChatMessageSerializer(user_message).data,
-        'ai_message': ChatMessageSerializer(ai_message).data
+        'ai_message': ChatMessageSerializer(ai_message).data,
+        'ai_source': ai_source,
     })
 
 
@@ -115,4 +141,32 @@ def conversation_new_view(request):
     return Response({
         'conversation_id': conversation.id,
         'message': 'New conversation started'
+    })
+
+
+@api_view(['GET'])
+@permission_classes([permissions.IsAuthenticated])
+def ai_status_view(request):
+    """
+    Returns which AI engine is active.
+    Frontend uses this to show the status badge.
+    """
+    from django.conf import settings as django_settings
+    import importlib
+
+    gemini_key = getattr(django_settings, 'GEMINI_API_KEY', '').strip()
+    gemini_pkg  = importlib.util.find_spec('google.generativeai') is not None
+
+    if gemini_key and gemini_pkg:
+        return Response({
+            'engine': 'gemini',
+            'model':  'gemini-2.5-flash',
+            'status': 'online',
+            'label':  'Gemini 2.5 Flash',
+        })
+    return Response({
+        'engine': 'fallback',
+        'model':  'rule-based',
+        'status': 'limited',
+        'label':  'Basic Mode',
     })

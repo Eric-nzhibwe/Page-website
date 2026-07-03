@@ -3,187 +3,155 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Assistant</title>
+    <title>ARTX AI Assistant</title>
+    <link rel="icon" type="image/jpeg" href="../images/ARTX.jpg">
     <link rel="stylesheet" href="../styles/styles.css">
     <link rel="stylesheet" href="../styles/chatbot.css">
     <link rel="stylesheet" href="../styles/responsive-pro.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div class="chatbot-container">
-        <!-- Chatbot Header -->
-        <div class="chatbot-header">
-            <button class="back-btn" onclick="window.location.href='../index.html'">
-                <i class="fas fa-arrow-left"></i>
-            </button>
-            <div class="chatbot-title">
-                <div class="ai-avatar">
-                    <i class="fas fa-robot"></i>
-                </div>
-                <div class="title-info">
-                    <h1>ARTX AI Assistant</h1>
-                    <span class="status-indicator">
-                        <span class="status-dot"></span>
-                        Online
-                    </span>
-                </div>
-            </div>
-            <button class="clear-btn" onclick="clearConversation()" title="Clear conversation">
-                <i class="fas fa-trash-alt"></i>
-            </button>
-        </div>
+<div class="chat-page">
 
-        <!-- Quick Actions -->
-        <div class="quick-actions" id="quickActions">
-            <button class="quick-action-btn" onclick="sendQuickMessage('How do I deposit funds?')">
-                <i class="fas fa-wallet"></i>
-                Deposit Help
-            </button>
-            <button class="quick-action-btn" onclick="sendQuickMessage('How do I earn money?')">
-                <i class="fas fa-trophy"></i>
-                Earning Guide
-            </button>
-            <button class="quick-action-btn" onclick="sendQuickMessage('How do tournaments work?')">
-                <i class="fas fa-gamepad"></i>
-                Tournaments
-            </button>
-            <button class="quick-action-btn" onclick="sendQuickMessage('Tell me about prestige points')">
-                <i class="fas fa-star"></i>
-                Prestige System
-            </button>
-        </div>
+    <!-- ── HEADER ── -->
+    <header class="chat-header">
+        <button class="chat-nav-btn" onclick="window.location.href='../index.html'" title="Back">
+            <i class="fas fa-arrow-left"></i>
+        </button>
 
-        <!-- Chat Messages -->
-        <div class="chat-messages" id="chatMessages">
-            <!-- Welcome message -->
-            <div class="message bot-message">
-                <div class="message-avatar">
-                    <i class="fas fa-robot"></i>
-                </div>
-                <div class="message-content">
-                    <div class="message-text">
-                        👋 Hello! I'm your ARTX AI Assistant. I'm here to help you with:
-                        <br><br>
-                        💰 Wallet & Payments<br>
-                        🎮 Games & Challenges<br>
-                        🏆 Tournaments & Alliances<br>
-                        📊 Prestige & Levels<br>
-                        ❓ General Questions<br>
-                        <br>
-                        How can I help you today?
-                    </div>
-                    <div class="message-time">Just now</div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Typing Indicator -->
-        <div class="typing-indicator" id="typingIndicator" style="display: none;">
-            <div class="typing-avatar">
+        <div class="chat-header-identity">
+            <div class="chat-ai-orb">
                 <i class="fas fa-robot"></i>
             </div>
-            <div class="typing-dots">
-                <span></span>
-                <span></span>
-                <span></span>
-            </div>
-        </div>
-
-        <!-- Chat Input -->
-        <div class="chat-input-container">
-            <form id="chatForm" onsubmit="sendMessage(event)">
-                <div class="input-wrapper">
-                    <textarea 
-                        id="messageInput" 
-                        placeholder="Ask me anything about ARTX..." 
-                        rows="1"
-                        maxlength="500"
-                    ></textarea>
-                    <div class="input-actions">
-                        <span class="char-count" id="charCount">0/500</span>
-                        <button type="submit" class="send-btn" id="sendBtn">
-                            <i class="fas fa-paper-plane"></i>
-                        </button>
-                    </div>
+            <div>
+                <div class="chat-header-name">ARTX AI</div>
+                <div class="chat-header-status" id="aiStatusBadge">
+                    <span class="status-dot"></span>
+                    <span id="aiStatusLabel">Connecting…</span>
                 </div>
-            </form>
+            </div>
         </div>
 
-        <!-- Suggestions (shown when input is empty) -->
-        <div class="suggestions" id="suggestions">
-            <div class="suggestions-title">💡 Try asking:</div>
-            <div class="suggestion-chips">
-                <button class="suggestion-chip" onclick="sendQuickMessage('How do I withdraw money?')">
-                    How do I withdraw money?
+        <button class="chat-nav-btn" onclick="clearConversation()" title="New chat">
+            <i class="fas fa-pen-to-square"></i>
+        </button>
+    </header>
+
+    <!-- ── MESSAGES ── -->
+    <main class="chat-messages" id="chatMessages">
+
+        <!-- Welcome card (hidden once chat starts) -->
+        <div class="welcome-screen" id="welcomeScreen">
+            <div class="welcome-orb">
+                <i class="fas fa-robot"></i>
+            </div>
+            <h2>ARTX AI Assistant</h2>
+            <p>Powered by Google Gemini. Ask me anything about the platform — or anything at all.</p>
+
+            <div class="starter-grid">
+                <button class="starter-card" onclick="sendQuickMessage('How do I deposit funds into my wallet?')">
+                    <i class="fas fa-wallet"></i>
+                    <span>Deposit funds</span>
                 </button>
-                <button class="suggestion-chip" onclick="sendQuickMessage('What are access tiers?')">
-                    What are access tiers?
+                <button class="starter-card" onclick="sendQuickMessage('How do I earn money on ARTX?')">
+                    <i class="fas fa-coins"></i>
+                    <span>Earn money</span>
                 </button>
-                <button class="suggestion-chip" onclick="sendQuickMessage('How do I join an alliance?')">
-                    How do I join an alliance?
+                <button class="starter-card" onclick="sendQuickMessage('How do tournaments work?')">
+                    <i class="fas fa-trophy"></i>
+                    <span>Tournaments</span>
                 </button>
-                <button class="suggestion-chip" onclick="sendQuickMessage('What payment methods are supported?')">
-                    What payment methods are supported?
+                <button class="starter-card" onclick="sendQuickMessage('Explain the prestige tier system')">
+                    <i class="fas fa-star"></i>
+                    <span>Prestige tiers</span>
+                </button>
+                <button class="starter-card" onclick="sendQuickMessage('What payment methods does ARTX support?')">
+                    <i class="fas fa-credit-card"></i>
+                    <span>Payments</span>
+                </button>
+                <button class="starter-card" onclick="sendQuickMessage('How do alliances work?')">
+                    <i class="fas fa-users"></i>
+                    <span>Alliances</span>
                 </button>
             </div>
         </div>
+
+    </main>
+
+    <!-- ── TYPING INDICATOR ── -->
+    <div class="chat-typing" id="typingIndicator" style="display:none">
+        <div class="typing-bubble">
+            <span></span><span></span><span></span>
+        </div>
+        <span class="typing-label">ARTX AI is thinking…</span>
     </div>
 
-    <script src="../scripts/chatbot.js"></script>
+    <!-- ── INPUT BAR ── -->
+    <footer class="chat-input-bar">
+        <form id="chatForm" onsubmit="sendMessage(event)">
+            <div class="chat-input-wrap" id="inputWrap">
+                <textarea
+                    id="messageInput"
+                    placeholder="Message ARTX AI…"
+                    rows="1"
+                    maxlength="1000"
+                    aria-label="Message input"
+                ></textarea>
+                <button type="submit" class="chat-send-btn" id="sendBtn" disabled title="Send">
+                    <i class="fas fa-arrow-up"></i>
+                </button>
+            </div>
+            <p class="chat-disclaimer">ARTX AI can make mistakes. Verify important info.</p>
+        </form>
+    </footer>
 
-    <!-- Mobile Bottom Navigation Bar (hidden on desktop via CSS) -->
-    <nav class="mobile-bottom-nav" id="mobileBottomNav">
-        <button class="icon-nav-btn" title="Home" onclick="window.location.href='../index.html'">
-            <i class="fas fa-home"></i>
-        </button>
-        <button class="icon-nav-btn" title="Challenges" onclick="window.location.href='../index.html#challenges'">
-            <i class="fas fa-trophy"></i>
-        </button>
-        <button class="icon-nav-btn" title="Marketplace" onclick="window.location.href='../index.html#marketplace'">
-            <i class="fas fa-store"></i>
-        </button>
-        <button class="icon-nav-btn" title="People" onclick="window.location.href='community.html'">
-            <i class="fas fa-users"></i>
-        </button>
-        <button class="icon-nav-btn active" onclick="toggleMobileMoreMenu(this)" title="More">
-            <i class="fas fa-bars"></i>
-        </button>
-    </nav>
+</div>
 
-    <script>
-    function toggleMobileMoreMenu(btn) {
-        const dropdown = document.getElementById('userMenuDropdown');
-        if (!dropdown) return;
-        const isOpen = dropdown.classList.contains('show');
-        if (isOpen) {
+<!-- ── MOBILE BOTTOM NAV ── -->
+<nav class="mobile-bottom-nav" id="mobileBottomNav">
+    <button class="icon-nav-btn" title="Home" onclick="window.location.href='../index.html'">
+        <i class="fas fa-home"></i>
+    </button>
+    <button class="icon-nav-btn" title="Challenges" onclick="window.location.href='challenges.html'">
+        <i class="fas fa-trophy"></i>
+    </button>
+    <button class="icon-nav-btn" title="Marketplace" onclick="window.location.href='../index.html'">
+        <i class="fas fa-store"></i>
+    </button>
+    <button class="icon-nav-btn" title="People" onclick="window.location.href='community.html'">
+        <i class="fas fa-users"></i>
+    </button>
+    <button class="icon-nav-btn active" onclick="toggleMobileMoreMenu(this)" title="More">
+        <i class="fas fa-bars"></i>
+    </button>
+</nav>
+
+<script src="../scripts/chatbot.js"></script>
+<script>
+function toggleMobileMoreMenu(btn) {
+    const dropdown = document.getElementById('userMenuDropdown');
+    if (!dropdown) return;
+    const isOpen = dropdown.classList.contains('show');
+    if (isOpen) {
+        dropdown.classList.remove('show');
+        ['top','bottom','right','position'].forEach(p => dropdown.style.removeProperty(p));
+    } else {
+        const navH = document.getElementById('mobileBottomNav').offsetHeight;
+        Object.assign(dropdown.style, { position:'fixed', bottom:(navH+8)+'px', top:'auto', right:'8px' });
+        dropdown.classList.add('show');
+    }
+}
+document.addEventListener('click', e => {
+    const dropdown = document.getElementById('userMenuDropdown');
+    if (dropdown?.classList.contains('show') && dropdown.style.bottom) {
+        const btn = document.querySelector('.mobile-bottom-nav .icon-nav-btn[title="More"]');
+        if (!dropdown.contains(e.target) && !btn?.contains(e.target)) {
             dropdown.classList.remove('show');
-            dropdown.style.removeProperty('top');
-            dropdown.style.removeProperty('bottom');
-            dropdown.style.removeProperty('right');
-            dropdown.style.removeProperty('position');
-        } else {
-            const navH = document.getElementById('mobileBottomNav').offsetHeight;
-            dropdown.style.position = 'fixed';
-            dropdown.style.bottom   = (navH + 8) + 'px';
-            dropdown.style.top      = 'auto';
-            dropdown.style.right    = '8px';
-            dropdown.classList.add('show');
+            ['top','bottom','right','position'].forEach(p => dropdown.style.removeProperty(p));
         }
     }
-
-    document.addEventListener('click', function(e) {
-        const dropdown = document.getElementById('userMenuDropdown');
-        if (dropdown && dropdown.classList.contains('show') && dropdown.style.bottom) {
-            const moreBtn = document.querySelector('.mobile-bottom-nav .icon-nav-btn[title="More"]');
-            if (!dropdown.contains(e.target) && (!moreBtn || !moreBtn.contains(e.target))) {
-                dropdown.classList.remove('show');
-                dropdown.style.removeProperty('top');
-                dropdown.style.removeProperty('bottom');
-                dropdown.style.removeProperty('right');
-                dropdown.style.removeProperty('position');
-            }
-        }
-    });
-    </script>
+});
+</script>
 </body>
 </html>
