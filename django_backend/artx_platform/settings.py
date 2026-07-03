@@ -178,6 +178,11 @@ STATICFILES_DIRS = [
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
+# Auto-create required media subdirectories on startup
+# so a fresh clone never 404s on missing upload folders
+for _media_dir in ['profiles', 'posts', 'messages']:
+    (BASE_DIR / 'media' / _media_dir).mkdir(parents=True, exist_ok=True)
+
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
@@ -287,6 +292,14 @@ PAYSTACK_SECRET_KEY = config('PAYSTACK_SECRET_KEY', default='')
 # OpenAI Configuration (for AI Chatbot)
 # ⚠️ IMPORTANT: Keep this in .env file ONLY - DO NOT commit to git
 OPENAI_API_KEY = config('OPENAI_API_KEY', default='')
+
+# Google Gemini (free tier — recommended)
+# Get key at https://aistudio.google.com/app/apikey
+GEMINI_API_KEY = config('GEMINI_API_KEY', default='GEMINI_KEY_REDACTED')
+
+# Groq / LLaMA 3 (free tier — very fast)
+# Get key at https://console.groq.com/keys
+GROQ_API_KEY = config('GROQ_API_KEY', default='')
 
 # Logging — console-only (no filesystem writes; Render's disk is ephemeral)
 LOGGING = {
