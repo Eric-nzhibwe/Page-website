@@ -17,3 +17,4 @@ dj-database-url==2.1.0
 channels==4.0.0
 channels-redis==4.2.0
 google-generativeai==0.8.3
+groq==0.11.0

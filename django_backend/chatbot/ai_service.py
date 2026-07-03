@@ -1,22 +1,24 @@
 """
-ARTX AI Service — powered by Google Gemini
-============================================
-Primary:  Google Gemini 1.5 Flash (free tier)
+ARTX AI Service — powered by Groq (LLaMA 3.3)
+================================================
+Primary:  Groq API — free tier, extremely fast, ChatGPT-quality
 Fallback: Smart rule-based responses
 
 Setup:
-  1. pip install google-generativeai==0.8.3
-  2. Add GEMINI_API_KEY=<your_key> to your .env file
-  3. Get a free key at https://aistudio.google.com/app/apikey
+  1. pip install groq
+  2. Get a FREE key at https://console.groq.com/keys
+  3. Add GROQ_API_KEY=gsk_... to your .env file
+  4. Restart the server — that's it.
 """
 import logging
 from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
+# ── Model to use — llama-3.3-70b is Groq's best free model ──────────────────
+GROQ_MODEL = "llama-3.3-70b-versatile"
 
-# ── System prompt — defines Gemini's personality ──────────────────────────────
-
+# ── System prompt ─────────────────────────────────────────────────────────────
 SYSTEM_PROMPT = """You are ARTX AI, the smart assistant built into the ARTX competitive gaming platform.
 
 ## Your personality
@@ -47,7 +49,7 @@ SYSTEM_PROMPT = """You are ARTX AI, the smart assistant built into the ARTX comp
 """
 
 
-def _build_gemini_system(user_context: dict | None) -> str:
+def _build_system(user_context: dict | None) -> str:
     """Append live user data to the system prompt when available."""
     prompt = SYSTEM_PROMPT
     if not user_context:
@@ -69,90 +71,78 @@ def _build_gemini_system(user_context: dict | None) -> str:
     return prompt
 
 
-def _gemini_response(
+def _groq_response(
     message: str,
     history: list,
     user_context: dict | None,
 ) -> str | None:
     """
-    Call Gemini 1.5 Flash with full conversation history.
+    Call Groq LLaMA 3.3 with full conversation history.
 
     history items: {"role": "user"|"assistant", "content": "..."}
-    Returns the response text, or None if Gemini is unavailable.
+    Returns the response text, or None if Groq is unavailable.
     """
-    api_key = getattr(settings, "GEMINI_API_KEY", None)
+    api_key = getattr(settings, "GROQ_API_KEY", "").strip()
     if not api_key:
-        logger.warning("GEMINI_API_KEY not set — falling back to rule-based responses.")
+        logger.warning("GROQ_API_KEY not set — falling back to rule-based responses.")
         return None
 
     try:
-        import google.generativeai as genai
+        from groq import Groq  # pip install groq
 
-        genai.configure(api_key=api_key)
+        client = Groq(api_key=api_key)
 
-        model = genai.GenerativeModel(
-            model_name="gemini-2.5-flash",
-            system_instruction=_build_gemini_system(user_context),
-            generation_config={
-                "temperature": 0.75,
-                "max_output_tokens": 700,
-                "top_p": 0.95,
-            },
-            safety_settings=[
-                # Relax safety filters slightly so gaming/competition talk isn't blocked
-                {"category": "HARM_CATEGORY_HARASSMENT",        "threshold": "BLOCK_ONLY_HIGH"},
-                {"category": "HARM_CATEGORY_HATE_SPEECH",       "threshold": "BLOCK_ONLY_HIGH"},
-                {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_ONLY_HIGH"},
-                {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_ONLY_HIGH"},
-            ],
+        # Build messages array: system + history + current message
+        messages = [{"role": "system", "content": _build_system(user_context)}]
+
+        # Include last 20 turns for memory
+        for turn in history[-20:]:
+            role    = turn.get("role", "user")
+            content = turn.get("content", "").strip()
+            if role in ("user", "assistant") and content:
+                messages.append({"role": role, "content": content})
+
+        messages.append({"role": "user", "content": message})
+
+        completion = client.chat.completions.create(
+            model=GROQ_MODEL,
+            messages=messages,
+            temperature=0.75,
+            max_tokens=700,
+            top_p=0.95,
         )
 
-        # Convert history to Gemini format (role: "user" | "model")
-        gemini_history = []
-        for turn in history[-20:]:  # last 10 exchanges
-            role = "model" if turn.get("role") == "assistant" else "user"
-            content = turn.get("content", "").strip()
-            if content:
-                gemini_history.append({"role": role, "parts": [content]})
-
-        chat = model.start_chat(history=gemini_history)
-        response = chat.send_message(message)
-        return response.text.strip()
+        return completion.choices[0].message.content.strip()
 
     except ImportError:
-        logger.error("google-generativeai not installed. Run: pip install google-generativeai==0.8.3")
+        logger.error("groq package not installed. Run: pip install groq")
         return None
     except Exception as e:
-        logger.error(f"Gemini API error: {e}")
+        logger.error(f"Groq API error: {e}")
         return None
 
 
 # ── Smart rule-based fallback ─────────────────────────────────────────────────
 
 def _rule_based_response(message: str, user_context: dict | None) -> str:
-    """
-    Covers the most common queries when Gemini is unavailable.
-    Honest about its limitations and always tells the user how to enable Gemini.
-    """
-    m = message.lower()
+    """Covers common queries when Groq is unavailable."""
+    m   = message.lower()
     ctx = user_context or {}
 
-    # ── Greetings
     if any(w in m for w in ["hi", "hello", "hey", "howdy", "sup", "good morning", "good evening"]):
         name = ctx.get("username", "there")
         return f"Hey {name}! 👋 I'm ARTX AI. Ask me about your wallet, challenges, tiers — or anything else!"
 
-    if any(w in m for w in ["how are you", "how r u", "you okay", "hows it"]):
+    if any(w in m for w in ["how are you", "how r u", "you okay"]):
         return "Doing great, thanks! How can I help you today? 😊"
 
-    # ── Wallet / balance
     if any(w in m for w in ["balance", "how much", "my wallet", "my money"]):
         bal = ctx.get("wallet_balance")
         if bal is not None:
             return f"Your current wallet balance is **K{float(bal):.2f}**. Want to top it up or make a withdrawal?"
         return "Head to the **Wallet** page to check your balance. You can deposit via mobile money (MTN/Airtel) or card anytime."
 
-    if any(w in m for w in ["deposit", "add money", "top up", "fund my"]):
+    if any(w in m for w in ["deposit", "add money", "top up", "fund"]):
         return (
             "To deposit funds:\n"
             "1. Open the **Wallet** page\n"
@@ -172,36 +162,30 @@ def _rule_based_response(message: str, user_context: dict | None) -> str:
             "Withdrawals are processed within 24 hours."
         )
 
-    # ── Prestige / tiers
     if any(w in m for w in ["prestige", "tier", "level", "rank", "points", "bronze", "gold", "diamond", "legendary"]):
         pts  = ctx.get("prestige_points")
         tier = ctx.get("tier")
         intro = f"You're at **{pts} prestige points** — **{tier} tier**.\n\n" if pts is not None else ""
         return (
-            intro
-            + "Tier ladder:\n"
+            intro +
+            "Tier ladder:\n"
             "🥉 Bronze → 🥈 Silver → 🥇 Gold → 💎 Platinum → 💠 Diamond → ⭐ Elite → 🏆 Legendary\n\n"
             "Earn points by completing challenges, winning tournaments, and keeping your daily streak."
         )
 
-    # ── Challenges / games
-    if any(w in m for w in ["challenge", "play", "compete", "game", "quiz", "question"]):
-        return "Challenges are ARTX's core feature — answer correctly to earn prestige and cash. Browse the **Challenges** tab to find one that matches your level!"
+    if any(w in m for w in ["challenge", "play", "compete", "game", "quiz"]):
+        return "Challenges are ARTX's core feature — answer correctly to earn prestige and cash. Browse the **Challenges** tab to get started!"
 
-    # ── Tournaments
     if any(w in m for w in ["tournament", "competition", "event", "contest"]):
-        return "Tournaments are timed events with prize pools. Top scorers share the winnings. Check the **Challenges** section for what's live right now."
+        return "Tournaments are timed events with prize pools. Top scorers share the winnings. Check the **Challenges** section for live events."
 
-    # ── Alliances
     if any(w in m for w in ["alliance", "team", "clan", "group", "squad"]):
-        return "Alliances let you team up for group challenges and shared rewards. Visit **Community** to browse existing alliances or create your own."
+        return "Alliances let you team up for group challenges and shared rewards. Visit **Community** to browse or create one."
 
-    # ── Streaks
-    if any(w in m for w in ["streak", "daily", "consecutive", "login bonus"]):
-        return "Log in and complete at least one challenge every day to build your streak. The longer your streak, the more prestige you earn per challenge! 🔥"
+    if any(w in m for w in ["streak", "daily", "consecutive"]):
+        return "Log in and complete at least one challenge every day to build your streak. Longer streaks = more prestige per challenge! 🔥"
 
-    # ── Payments
-    if any(w in m for w in ["payment", "mtn", "airtel", "mpesa", "stripe", "paystack", "pawapay", "mobile money"]):
+    if any(w in m for w in ["payment", "mtn", "airtel", "mpesa", "stripe", "paystack", "mobile money"]):
         return (
             "ARTX supports:\n"
             "📱 **Mobile Money** via PawaPay — MTN, Airtel, M-Pesa\n"
@@ -210,32 +194,23 @@ def _rule_based_response(message: str, user_context: dict | None) -> str:
             "All transactions are in Zambian Kwacha (ZMW)."
         )
 
-    # ── Messenger
-    if any(w in m for w in ["message", "messenger", "dm", "inbox", "chat with"]):
-        return "The **Messenger** lets you send real-time messages and media to any ARTX user. Find it in your profile menu."
+    if any(w in m for w in ["thank", "thanks", "cheers", "appreciate"]):
+        return "You're welcome! Let me know if there's anything else. 😊"
 
-    # ── Help
-    if any(w in m for w in ["help", "what can you do", "support", "guide", "how do i"]):
+    if any(w in m for w in ["help", "what can you do", "support"]):
         return (
-            "I can help you with:\n"
+            "I can help with:\n"
             "💰 Wallet, deposits & withdrawals\n"
             "🎮 Challenges, tournaments & games\n"
             "⭐ Prestige points, tiers & streaks\n"
-            "🤝 Alliances & community\n"
-            "💬 Messaging & platform features\n\n"
+            "🤝 Alliances & community\n\n"
             "I also answer general questions — just ask!"
         )
 
-    # ── Thanks
-    if any(w in m for w in ["thank", "thanks", "cheers", "appreciate", "great job"]):
-        return "You're welcome! Let me know if there's anything else I can help with. 😊"
-
-    # ── Unknown — honest about the fallback
     return (
-        "I'm running in basic mode right now and don't have a specific answer for that.\n\n"
-        "To unlock full AI responses (like ChatGPT), add your **GEMINI_API_KEY** to the `.env` file "
-        "and restart the server. Get a free key at https://aistudio.google.com/app/apikey\n\n"
-        "In the meantime, try asking about your wallet, challenges, tiers, or anything ARTX-related!"
+        "I'm running in basic mode and can't answer that right now.\n\n"
+        "Add **GROQ_API_KEY** to your `.env` to unlock full AI (free at console.groq.com/keys). "
+        "In the meantime, ask me about wallets, challenges, tiers, or anything ARTX-related!"
     )
 
 
@@ -243,16 +218,8 @@ def _rule_based_response(message: str, user_context: dict | None) -> str:
 
 class AIService:
     """
-    Primary: Google Gemini 1.5 Flash (requires GEMINI_API_KEY in .env)
+    Primary:  Groq LLaMA 3.3 70B (requires GROQ_API_KEY in .env)
     Fallback: Smart rule-based responses
-
-    Usage:
-        from chatbot.ai_service import ai_service
-        reply = ai_service.get_response(
-            message="How do I withdraw money?",
-            user_context={"username": "eric", "wallet_balance": 250.00, "tier": "Gold"},
-            history=[{"role": "user", "content": "..."}, {"role": "assistant", "content": "..."}]
-        )
     """
 
     def get_response(
@@ -263,13 +230,11 @@ class AIService:
     ) -> str:
         history = history or []
 
-        # Try Gemini first
-        result = _gemini_response(message, history, user_context)
+        result = _groq_response(message, history, user_context)
         if result:
             return result
 
-        # Fallback to rule-based
-        logger.info("Gemini unavailable — using rule-based fallback")
+        logger.info("Groq unavailable — using rule-based fallback")
         return _rule_based_response(message, user_context)
 
 

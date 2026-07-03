@@ -76,9 +76,9 @@ async function checkAiStatus() {
 
         currentAiSource = data.engine;
 
-        if (data.engine === 'gemini') {
+        if (data.engine === 'groq') {
             dot.className   = 'status-dot online';
-            label.innerHTML = `${data.label} <span class="engine-badge gemini">Gemini</span>`;
+            label.innerHTML = `${data.label} <span class="engine-badge gemini">Groq</span>`;
         } else {
             dot.className   = 'status-dot limited';
             label.innerHTML = `Basic Mode <span class="engine-badge fallback">Limited</span>`;
@@ -174,7 +174,7 @@ function appendMessage(text, sender, source = null, isError = false) {
     const time = new Date().toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit' });
 
     const sourceBadge = (sender === 'bot' && source)
-        ? `<span class="msg-source-badge ${source === 'gemini' ? '' : 'fallback'}">${source === 'gemini' ? '✦ Gemini' : 'Basic'}</span>`
+        ? `<span class="msg-source-badge ${source === 'groq' ? '' : 'fallback'}">${source === 'groq' ? '✦ Groq' : 'Basic'}</span>`
         : '';
 
     row.innerHTML = `

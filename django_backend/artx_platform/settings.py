@@ -300,7 +300,7 @@ OPENAI_API_KEY = config('OPENAI_API_KEY', default='')
 # Get key at https://aistudio.google.com/app/apikey
 GEMINI_API_KEY = config('GEMINI_API_KEY', default='')
 
-# Groq / LLaMA 3 (free tier — very fast)
+# Groq / LLaMA 3.3 (free tier — PRIMARY AI engine)
 # Get key at https://console.groq.com/keys
 GROQ_API_KEY = config('GROQ_API_KEY', default='')
 

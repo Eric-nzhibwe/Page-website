@@ -69,21 +69,20 @@ def chat_view(request):
         for msg in prior_messages
     ]
 
-    # Get AI response (passes full history for ChatGPT-style memory)
-    from django.conf import settings as django_settings
-    gemini_key = getattr(django_settings, 'GEMINI_API_KEY', '').strip()
-
-    # Try Gemini — track whether it actually responded
+    # Try Groq — track whether it actually responded
     ai_response = None
     ai_source   = 'fallback'
 
-    if gemini_key:
-        from .ai_service import _gemini_response
-        ai_response = _gemini_response(message, history, user_context)
-        if ai_response:
-            ai_source = 'gemini'
+    from django.conf import settings as django_settings
+    groq_key = getattr(django_settings, 'GROQ_API_KEY', '').strip()
 
-    # Fall back to rule-based if Gemini didn't answer
+    if groq_key:
+        from .ai_service import _groq_response
+        ai_response = _groq_response(message, history, user_context)
+        if ai_response:
+            ai_source = 'groq'
+
+    # Fall back to rule-based if Groq didn't answer
     if not ai_response:
         from .ai_service import _rule_based_response
         ai_response = _rule_based_response(message, user_context)
@@ -152,17 +151,17 @@ def ai_status_view(request):
     Frontend uses this to show the status badge.
     """
     from django.conf import settings as django_settings
-    import importlib
+    import importlib.util
 
-    gemini_key = getattr(django_settings, 'GEMINI_API_KEY', '').strip()
-    gemini_pkg  = importlib.util.find_spec('google.generativeai') is not None
+    groq_key = getattr(django_settings, 'GROQ_API_KEY', '').strip()
+    groq_pkg = importlib.util.find_spec('groq') is not None
 
-    if gemini_key and gemini_pkg:
+    if groq_key and groq_pkg:
         return Response({
-            'engine': 'gemini',
-            'model':  'gemini-2.5-flash',
+            'engine': 'groq',
+            'model':  'llama-3.3-70b-versatile',
             'status': 'online',
-            'label':  'Gemini 2.5 Flash',
+            'label':  'LLaMA 3.3 70B',
         })
     return Response({
         'engine': 'fallback',
