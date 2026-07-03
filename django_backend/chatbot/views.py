@@ -151,12 +151,11 @@ def ai_status_view(request):
     Frontend uses this to show the status badge.
     """
     from django.conf import settings as django_settings
-    import importlib.util
 
+    # Groq uses plain requests — no SDK package check needed
     groq_key = getattr(django_settings, 'GROQ_API_KEY', '').strip()
-    groq_pkg = importlib.util.find_spec('groq') is not None
 
-    if groq_key and groq_pkg:
+    if groq_key:
         return Response({
             'engine': 'groq',
             'model':  'llama-3.3-70b-versatile',

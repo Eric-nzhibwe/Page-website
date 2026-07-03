@@ -1,22 +1,22 @@
 """
 ARTX AI Service — powered by Groq (LLaMA 3.3)
 ================================================
-Primary:  Groq API — free tier, extremely fast, ChatGPT-quality
+Primary:  Groq REST API — called directly with `requests` (no extra SDK needed)
 Fallback: Smart rule-based responses
 
 Setup:
-  1. pip install groq
-  2. Get a FREE key at https://console.groq.com/keys
-  3. Add GROQ_API_KEY=gsk_... to your .env file
-  4. Restart the server — that's it.
+  1. Get a FREE key at https://console.groq.com/keys
+  2. Add GROQ_API_KEY=gsk_... to your .env file
+  3. Restart the server — done, no pip install needed.
 """
 import logging
+import requests as http
 from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
-# ── Model to use — llama-3.3-70b is Groq's best free model ──────────────────
-GROQ_MODEL = "llama-3.3-70b-versatile"
+GROQ_MODEL   = "llama-3.3-70b-versatile"
+GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 
 # ── System prompt ─────────────────────────────────────────────────────────────
 SYSTEM_PROMPT = """You are ARTX AI, the smart assistant built into the ARTX competitive gaming platform.
@@ -77,7 +77,8 @@ def _groq_response(
     user_context: dict | None,
 ) -> str | None:
     """
-    Call Groq LLaMA 3.3 with full conversation history.
+    Call Groq LLaMA 3.3 directly via its REST API using the `requests`
+    library that is already in requirements.txt — no extra SDK needed.
 
     history items: {"role": "user"|"assistant", "content": "..."}
     Returns the response text, or None if Groq is unavailable.
@@ -88,14 +89,9 @@ def _groq_response(
         return None
 
     try:
-        from groq import Groq  # pip install groq
-
-        client = Groq(api_key=api_key)
-
-        # Build messages array: system + history + current message
+        # Build messages: system + history + current turn
         messages = [{"role": "system", "content": _build_system(user_context)}]
 
-        # Include last 20 turns for memory
         for turn in history[-20:]:
             role    = turn.get("role", "user")
             content = turn.get("content", "").strip()
@@ -104,19 +100,29 @@ def _groq_response(
 
         messages.append({"role": "user", "content": message})
 
-        completion = client.chat.completions.create(
-            model=GROQ_MODEL,
-            messages=messages,
-            temperature=0.75,
-            max_tokens=700,
-            top_p=0.95,
+        response = http.post(
+            GROQ_API_URL,
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type":  "application/json",
+            },
+            json={
+                "model":       GROQ_MODEL,
+                "messages":    messages,
+                "temperature": 0.75,
+                "max_tokens":  700,
+                "top_p":       0.95,
+            },
+            timeout=30,
         )
 
-        return completion.choices[0].message.content.strip()
+        if response.status_code != 200:
+            logger.error(f"Groq API returned {response.status_code}: {response.text[:300]}")
+            return None
 
-    except ImportError:
-        logger.error("groq package not installed. Run: pip install groq")
-        return None
+        data = response.json()
+        return data["choices"][0]["message"]["content"].strip()
+
     except Exception as e:
         logger.error(f"Groq API error: {e}")
         return None
