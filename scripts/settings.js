@@ -1,6 +1,92 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// Settings — ARTX Platform
+// ARTX Settings — Complete Implementation
 // ─────────────────────────────────────────────────────────────────────────────
+
+const _SM_API = (
+    window.location.hostname === 'localhost' ||
+    window.location.hostname === '127.0.0.1'
+) ? 'http://localhost:8000/api' : `${window.location.origin}/api`;
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function _smToken() {
+    return localStorage.getItem('djangoAuthToken') || '';
+}
+
+function _smGetUser() {
+    if (typeof currentUser !== 'undefined' && currentUser) return currentUser;
+    try { return JSON.parse(localStorage.getItem('artxUser') || '{}'); } catch { return {}; }
+}
+
+function _smHeaders(multipart) {
+    const h = { 'Authorization': `Token ${_smToken()}` };
+    if (!multipart) h['Content-Type'] = 'application/json';
+    return h;
+}
+
+/** Set value of an input / textarea by element ID */
+function _smVal(id, val) {
+    const el = document.getElementById(id);
+    if (el && val != null) el.value = val;
+}
+
+/** Set selected option of a <select> by element ID */
+function _smSel(id, val) {
+    const el = document.getElementById(id);
+    if (el && val != null) el.value = val;
+}
+
+/** Set checkbox checked state by element ID */
+function _smChk(id, checked) {
+    const el = document.getElementById(id);
+    if (el) el.checked = !!checked;
+}
+
+/** Read checkbox state */
+function _smGetChk(id) {
+    const el = document.getElementById(id);
+    return el ? el.checked : false;
+}
+
+/** Read select value */
+function _smGetSel(id) {
+    const el = document.getElementById(id);
+    return el ? el.value : '';
+}
+
+/** Read input value */
+function _smGetVal(id) {
+    const el = document.getElementById(id);
+    return el ? el.value.trim() : '';
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+
+let _smToastTimer = null;
+
+function showToast(msg, type = 'success') {
+    // type: 'success' | 'error' | 'info' | 'warning'
+    let toast = document.getElementById('smToast');
+    if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'smToast';
+        toast.className = 'artx-toast';
+        toast.innerHTML = `<i></i><span></span><button class="sm-toast-close" onclick="this.parentElement.classList.remove('visible')">×</button>`;
+        document.body.appendChild(toast);
+    }
+
+    const icons = { success: 'fas fa-circle-check', error: 'fas fa-circle-xmark', info: 'fas fa-circle-info', warning: 'fas fa-triangle-exclamation' };
+    toast.querySelector('i').className = icons[type] || icons.info;
+    toast.querySelector('span').textContent = msg;
+    toast.className = `artx-toast artx-toast-${type}`;
+
+    // force reflow then show
+    toast.offsetHeight;
+    toast.classList.add('visible');
+
+    clearTimeout(_smToastTimer);
+    _smToastTimer = setTimeout(() => toast.classList.remove('visible'), 3800);
+}
 
 // ── Open / Close ──────────────────────────────────────────────────────────────
 
@@ -12,6 +98,7 @@ function showSettings() {
     loadUserSettings();
     loadLinkedAccounts();
     loadActiveSessions();
+    showSettingsTab('account');
 }
 
 function closeSettings() {
@@ -25,13 +112,11 @@ function closeSettings() {
     }, 250);
 }
 
-// Close when clicking the backdrop
 window.addEventListener('click', (e) => {
     const modal = document.getElementById('settingsModal');
     if (e.target === modal) closeSettings();
 });
 
-// Close on Escape key
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
         const modal = document.getElementById('settingsModal');
@@ -41,622 +126,599 @@ document.addEventListener('keydown', (e) => {
 
 // ── Tab switching ─────────────────────────────────────────────────────────────
 
-function showSettingsTab(tabName) {
+function showSettingsTab(name) {
     document.querySelectorAll('.settings-tab').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.settings-nav-btn').forEach(b => b.classList.remove('active'));
 
-    const tab = document.getElementById(tabName + 'Tab');
+    const tab = document.getElementById(name + 'Tab');
     if (tab) tab.classList.add('active');
 
-    // Mark the nav button whose data-tab matches
-    const btn = document.querySelector(`.settings-nav-btn[data-tab="${tabName}"]`);
+    const btn = document.querySelector(`.settings-nav-btn[data-tab="${name}"]`);
     if (btn) btn.classList.add('active');
 }
 
-// ── Load user data into fields ────────────────────────────────────────────────
+// ── Load user data ────────────────────────────────────────────────────────────
 
 function loadUserSettings() {
-    const user  = getStoredUser();
+    const user  = _smGetUser();
     const prefs = JSON.parse(localStorage.getItem('userPreferences') || '{}');
+    const p     = Object.assign({}, prefs, user.preferences || {});
 
-    // Merge server-side preferences if present on the user object
-    const merged = Object.assign({}, prefs, user.preferences || {});
+    // Account tab
+    _smVal('settingsUsername', user.username);
+    _smVal('settingsEmail',    user.email);
+    _smVal('settingsPhone',    user.phone);
+    _smVal('settingsDOB',      user.date_of_birth);
 
-    // ── Account
-    setValue('settingsUsername', user.username);
-    setValue('settingsEmail', user.email);
-    setValue('settingsPhone', user.phone);
-    setValue('settingsDOB', user.date_of_birth);
+    // Profile tab
+    _smVal('settingsDisplayName', user.display_name || user.username);
+    _smVal('settingsBio',         user.bio);
+    _smVal('settingsLocation',    user.location);
+    _smVal('settingsWebsite',     user.website);
 
-    // ── Profile
-    setValue('settingsDisplayName', user.display_name || user.username);
-    setValue('settingsBio', user.bio);
-    setValue('settingsLocation', user.location);
-    setValue('settingsWebsite', user.website);
-
-    // Show avatar if available
-    const avatarPreview = document.getElementById('settingsAvatarPreview');
-    if (avatarPreview && user.profile_image) {
-        avatarPreview.innerHTML = `<img src="${user.profile_image}" alt="Avatar">`;
+    // Avatar preview
+    const avPrev = document.getElementById('settingsAvatarPreview');
+    if (avPrev) {
+        if (user.profile_image) {
+            avPrev.innerHTML = `<img src="${user.profile_image}" alt="Avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+        } else {
+            avPrev.innerHTML = '<i class="fas fa-user-circle"></i>';
+        }
     }
-    const avatarName = document.getElementById('settingsAvatarName');
-    if (avatarName) avatarName.textContent = user.display_name || user.username || 'Player';
+    const avName = document.getElementById('settingsAvatarName');
+    if (avName) avName.textContent = user.display_name || user.username || 'Player';
 
-    // ── Privacy
-    setSelect('profileVisibility', merged.profileVisibility || 'public');
-    setSelect('messagePrivacy',    merged.messagePrivacy    || 'everyone');
-    setChecked('showOnlineStatus', merged.showOnlineStatus  !== false);
-    setChecked('showActivity',     merged.showActivity      !== false);
-    setChecked('showStats',        merged.showStats         !== false);
+    // Privacy tab
+    _smSel('profileVisibility', p.profileVisibility || 'public');
+    _smSel('messagePrivacy',    p.messagePrivacy    || 'everyone');
+    _smChk('showOnlineStatus',  p.showOnlineStatus  !== false);
+    _smChk('showActivity',      p.showActivity      !== false);
+    _smChk('showStats',         p.showStats         !== false);
 
-    // ── Notifications
-    setChecked('pushNotifications',      merged.pushNotifications      !== false);
-    setChecked('emailNotifications',     merged.emailNotifications     !== false);
-    setChecked('challengeNotifications', merged.challengeNotifications !== false);
-    setChecked('messageNotifications',   merged.messageNotifications   !== false);
-    setChecked('allianceNotifications',  merged.allianceNotifications  !== false);
-    setChecked('tournamentNotifications',merged.tournamentNotifications !== false);
-    setChecked('soundEffects',           merged.soundEffects           !== false);
+    // Notifications tab
+    _smChk('pushNotifications',      p.pushNotifications      !== false);
+    _smChk('emailNotifications',     p.emailNotifications     !== false);
+    _smChk('soundEffects',           p.soundEffects           !== false);
+    _smChk('challengeNotifications', p.challengeNotifications !== false);
+    _smChk('messageNotifications',   p.messageNotifications   !== false);
+    _smChk('allianceNotifications',  p.allianceNotifications  !== false);
+    _smChk('tournamentNotifications',p.tournamentNotifications !== false);
 
-    // ── Appearance
-    setSelect('themeSelect', merged.theme    || 'dark');
-    setSelect('fontSize',    merged.fontSize || 'medium');
-    setChecked('enableAnimations', merged.enableAnimations !== false);
-    setChecked('compactMode',      merged.compactMode      === true);
+    // Appearance tab
+    _smSel('themeSelect', p.theme    || 'dark');
+    _smSel('fontSize',    p.fontSize || 'medium');
+    _smChk('enableAnimations', p.enableAnimations !== false);
+    _smChk('compactMode',      p.compactMode === true);
 
-    // Mark the saved accent colour
-    if (merged.accentColor) {
+    if (p.accentColor) {
         document.querySelectorAll('.color-swatch').forEach(s => {
-            s.classList.toggle('active', s.dataset.color === merged.accentColor);
+            s.classList.toggle('active', s.dataset.color === p.accentColor);
         });
     }
 
-    // ── Security
-    setChecked('enable2FA', user.twoFactorEnabled === true);
+    // Security tab
+    _smChk('enable2FA', user.two_factor_enabled === true || user.twoFactorEnabled === true);
 }
 
-// small helpers
-function setValue(id, val)    { const el = document.getElementById(id); if (el && val != null) el.value = val; }
-function setSelect(id, val)   { setValue(id, val); }
-function setChecked(id, bool) { const el = document.getElementById(id); if (el) el.checked = !!bool; }
-
-// ── Account ───────────────────────────────────────────────────────────────────
+// ── Save Account Settings ─────────────────────────────────────────────────────
 
 async function saveAccountSettings() {
-    const btn = event.currentTarget;
-    setLoading(btn, true);
+    const btn = document.querySelector('#accountTab .btn-settings-save');
+    if (btn) { btn.classList.add('loading'); btn.disabled = true; }
 
     const payload = {
-        username:       getVal('settingsUsername'),
-        email:          getVal('settingsEmail'),
-        phone:          getVal('settingsPhone'),
-        date_of_birth:  getVal('settingsDOB') || null,
+        username:      _smGetVal('settingsUsername'),
+        email:         _smGetVal('settingsEmail'),
+        phone:         _smGetVal('settingsPhone'),
+        date_of_birth: _smGetVal('settingsDOB') || null,
     };
 
     try {
-        const data = await apiFetch('/api/auth/profile/', 'PATCH', payload);
-        updateLocalUser(data);
-        showToast('Account settings saved!', 'success');
+        const res = await fetch(`${_SM_API}/auth/profile/`, {
+            method:  'PATCH',
+            headers: _smHeaders(),
+            body:    JSON.stringify(payload),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || data.username?.[0] || data.email?.[0] || 'Save failed');
+
+        // Sync global currentUser
+        if (typeof currentUser !== 'undefined' && currentUser) Object.assign(currentUser, data);
+        showToast('Account settings saved', 'success');
     } catch (err) {
-        showToast(err.message || 'Failed to save account settings', 'error');
+        showToast(err.message, 'error');
     } finally {
-        setLoading(btn, false);
+        if (btn) { btn.classList.remove('loading'); btn.disabled = false; }
     }
 }
 
-// ── Profile ───────────────────────────────────────────────────────────────────
+// ── Save Profile Settings ─────────────────────────────────────────────────────
 
 async function saveProfileSettings() {
-    const btn = event.currentTarget;
-    setLoading(btn, true);
+    const btn = document.querySelector('#profileTab .btn-settings-save');
+    if (btn) { btn.classList.add('loading'); btn.disabled = true; }
 
     const payload = {
-        display_name: getVal('settingsDisplayName'),
-        bio:          getVal('settingsBio'),
-        location:     getVal('settingsLocation'),
-        website:      getVal('settingsWebsite'),
+        display_name: _smGetVal('settingsDisplayName'),
+        bio:          _smGetVal('settingsBio'),
+        location:     _smGetVal('settingsLocation'),
+        website:      _smGetVal('settingsWebsite'),
     };
 
     try {
-        const data = await apiFetch('/api/auth/profile/', 'PATCH', payload);
-        updateLocalUser(data);
-        // Update avatar name label
-        const nameEl = document.getElementById('settingsAvatarName');
-        if (nameEl) nameEl.textContent = data.display_name || data.username;
-        showToast('Profile updated!', 'success');
+        const res = await fetch(`${_SM_API}/auth/profile/`, {
+            method:  'PATCH',
+            headers: _smHeaders(),
+            body:    JSON.stringify(payload),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Save failed');
+
+        if (typeof currentUser !== 'undefined' && currentUser) Object.assign(currentUser, data);
+
+        // Refresh visible profile name / bio if on user page
+        const dnEl = document.getElementById('profileDisplayName');
+        if (dnEl && data.display_name) dnEl.textContent = data.display_name;
+        const bioEl = document.getElementById('heroBio') || document.getElementById('profileBio');
+        if (bioEl && data.bio != null) bioEl.textContent = data.bio;
+
+        showToast('Profile saved', 'success');
     } catch (err) {
-        showToast(err.message || 'Failed to update profile', 'error');
+        showToast(err.message, 'error');
     } finally {
-        setLoading(btn, false);
+        if (btn) { btn.classList.remove('loading'); btn.disabled = false; }
     }
 }
 
-async function changeAvatar() {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/*';
-    input.onchange = async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-
-        if (file.size > 5 * 1024 * 1024) {
-            showToast('Image must be under 5 MB', 'error');
-            return;
-        }
-
-        const formData = new FormData();
-        formData.append('avatar', file);
-
-        try {
-            const token = getAuthToken();
-            const res = await fetch(`${getApiBase()}/api/auth/avatar/`, {
-                method: 'POST',
-                headers: { 'Authorization': `Token ${token}` },
-                body: formData,
-            });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error || 'Upload failed');
-
-            // Preview
-            const preview = document.getElementById('settingsAvatarPreview');
-            if (preview) preview.innerHTML = `<img src="${data.avatar_url}" alt="Avatar">`;
-
-            const user = JSON.parse(localStorage.getItem('user') || '{}');
-            user.profile_image = data.avatar_url;
-            localStorage.setItem('user', JSON.stringify(user));
-
-            showToast('Avatar updated!', 'success');
-        } catch (err) {
-            showToast(err.message || 'Failed to upload avatar', 'error');
-        }
-    };
-    input.click();
-}
-
-// ── Privacy ───────────────────────────────────────────────────────────────────
+// ── Save Privacy Settings ─────────────────────────────────────────────────────
 
 async function savePrivacySettings() {
-    const btn = event.currentTarget;
-    setLoading(btn, true);
+    const btn = document.querySelector('#privacyTab .btn-settings-save');
+    if (btn) { btn.classList.add('loading'); btn.disabled = true; }
 
-    const prefs = {
-        profileVisibility: getVal('profileVisibility'),
-        messagePrivacy:    getVal('messagePrivacy'),
-        showOnlineStatus:  getChecked('showOnlineStatus'),
-        showActivity:      getChecked('showActivity'),
-        showStats:         getChecked('showStats'),
-    };
+    const prefs = _smLoadPrefs();
+    prefs.profileVisibility = _smGetSel('profileVisibility');
+    prefs.messagePrivacy    = _smGetSel('messagePrivacy');
+    prefs.showOnlineStatus  = _smGetChk('showOnlineStatus');
+    prefs.showActivity      = _smGetChk('showActivity');
+    prefs.showStats         = _smGetChk('showStats');
 
-    await savePreferences(prefs, btn, 'Privacy settings saved!');
+    try {
+        await _smSavePrefs(prefs);
+        showToast('Privacy settings saved', 'success');
+    } catch (err) {
+        showToast(err.message, 'error');
+    } finally {
+        if (btn) { btn.classList.remove('loading'); btn.disabled = false; }
+    }
 }
 
-// ── Notifications ─────────────────────────────────────────────────────────────
+// ── Save Notification Settings ────────────────────────────────────────────────
 
 async function saveNotificationSettings() {
-    const btn = event.currentTarget;
-    setLoading(btn, true);
+    const btn = document.querySelector('#notificationsTab .btn-settings-save');
+    if (btn) { btn.classList.add('loading'); btn.disabled = true; }
 
-    const prefs = {
-        pushNotifications:       getChecked('pushNotifications'),
-        emailNotifications:      getChecked('emailNotifications'),
-        challengeNotifications:  getChecked('challengeNotifications'),
-        messageNotifications:    getChecked('messageNotifications'),
-        allianceNotifications:   getChecked('allianceNotifications'),
-        tournamentNotifications: getChecked('tournamentNotifications'),
-        soundEffects:            getChecked('soundEffects'),
-    };
+    const prefs = _smLoadPrefs();
+    prefs.pushNotifications      = _smGetChk('pushNotifications');
+    prefs.emailNotifications     = _smGetChk('emailNotifications');
+    prefs.soundEffects           = _smGetChk('soundEffects');
+    prefs.challengeNotifications = _smGetChk('challengeNotifications');
+    prefs.messageNotifications   = _smGetChk('messageNotifications');
+    prefs.allianceNotifications  = _smGetChk('allianceNotifications');
+    prefs.tournamentNotifications= _smGetChk('tournamentNotifications');
 
-    await savePreferences(prefs, btn, 'Notification settings saved!');
+    try {
+        await _smSavePrefs(prefs);
+        showToast('Notification preferences saved', 'success');
+    } catch (err) {
+        showToast(err.message, 'error');
+    } finally {
+        if (btn) { btn.classList.remove('loading'); btn.disabled = false; }
+    }
 }
 
-// ── Appearance ────────────────────────────────────────────────────────────────
+// ── Save Appearance Settings ──────────────────────────────────────────────────
 
 async function saveAppearanceSettings() {
-    const btn = event.currentTarget;
-    setLoading(btn, true);
+    const btn = document.querySelector('#appearanceTab .btn-settings-save');
+    if (btn) { btn.classList.add('loading'); btn.disabled = true; }
 
-    const prefs = {
-        theme:            getVal('themeSelect'),
-        fontSize:         getVal('fontSize'),
-        enableAnimations: getChecked('enableAnimations'),
-        compactMode:      getChecked('compactMode'),
-    };
+    const prefs = _smLoadPrefs();
+    prefs.theme            = _smGetSel('themeSelect');
+    prefs.fontSize         = _smGetSel('fontSize');
+    prefs.enableAnimations = _smGetChk('enableAnimations');
+    prefs.compactMode      = _smGetChk('compactMode');
 
-    // Persist accent colour already stored live
-    const stored = JSON.parse(localStorage.getItem('userPreferences') || '{}');
-    if (stored.accentColor) prefs.accentColor = stored.accentColor;
+    const activeSwatch = document.querySelector('.color-swatch.active');
+    if (activeSwatch) prefs.accentColor = activeSwatch.dataset.color;
 
-    applyAppearanceSettings(prefs);
-    await savePreferences(prefs, btn, 'Appearance saved!');
+    try {
+        await _smSavePrefs(prefs);
+        _applyAppearance(prefs);
+        showToast('Appearance saved', 'success');
+    } catch (err) {
+        showToast(err.message, 'error');
+    } finally {
+        if (btn) { btn.classList.remove('loading'); btn.disabled = false; }
+    }
 }
+
+// ── Preferences helpers ───────────────────────────────────────────────────────
+
+function _smLoadPrefs() {
+    try { return JSON.parse(localStorage.getItem('userPreferences') || '{}'); } catch { return {}; }
+}
+
+async function _smSavePrefs(prefs) {
+    localStorage.setItem('userPreferences', JSON.stringify(prefs));
+    const res = await fetch(`${_SM_API}/auth/preferences/`, {
+        method:  'PATCH',
+        headers: _smHeaders(),
+        body:    JSON.stringify(prefs),
+    });
+    if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d.detail || 'Failed to save preferences');
+    }
+}
+
+// ── Appearance live helpers ───────────────────────────────────────────────────
 
 function changeTheme() {
-    const theme = getVal('themeSelect');
-    applyTheme(theme);
-    patchLocalPrefs({ theme });
-}
-
-function selectAccentColor(color) {
-    document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
-    event.currentTarget.classList.add('active');
-    document.documentElement.style.setProperty('--accent-color', color);
-    patchLocalPrefs({ accentColor: color });
+    const theme = _smGetSel('themeSelect');
+    document.documentElement.setAttribute('data-theme', theme);
 }
 
 function changeFontSize() {
-    const size = getVal('fontSize');
-    document.body.classList.remove('font-small', 'font-medium', 'font-large');
-    document.body.classList.add(`font-${size}`);
-    patchLocalPrefs({ fontSize: size });
+    const size = _smGetSel('fontSize');
+    const map  = { small: '13px', medium: '15px', large: '17px' };
+    document.documentElement.style.fontSize = map[size] || '15px';
 }
 
-function applyAppearanceSettings(prefs) {
-    if (!prefs) prefs = JSON.parse(localStorage.getItem('userPreferences') || '{}');
-    applyTheme(prefs.theme || 'dark');
-    if (prefs.accentColor) document.documentElement.style.setProperty('--accent-color', prefs.accentColor);
-    document.body.classList.remove('font-small', 'font-medium', 'font-large');
-    if (prefs.fontSize) document.body.classList.add(`font-${prefs.fontSize}`);
-    document.body.classList.toggle('no-animations', prefs.enableAnimations === false);
-    document.body.classList.toggle('compact-mode',  prefs.compactMode === true);
+function selectAccentColor(color) {
+    document.querySelectorAll('.color-swatch').forEach(s => {
+        s.classList.toggle('active', s.dataset.color === color);
+    });
+    document.documentElement.style.setProperty('--accent-color', color);
 }
 
-function applyTheme(theme) {
-    if (theme === 'auto') {
-        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        document.body.classList.toggle('light-theme', !prefersDark);
-    } else {
-        document.body.classList.toggle('light-theme', theme === 'light');
+function _applyAppearance(prefs) {
+    if (prefs.theme)     document.documentElement.setAttribute('data-theme', prefs.theme);
+    if (prefs.fontSize) {
+        const map = { small: '13px', medium: '15px', large: '17px' };
+        document.documentElement.style.fontSize = map[prefs.fontSize] || '15px';
     }
+    if (prefs.accentColor) {
+        document.documentElement.style.setProperty('--accent-color', prefs.accentColor);
+    }
+    document.documentElement.classList.toggle('no-animations', !prefs.enableAnimations);
+    document.documentElement.classList.toggle('compact-mode',   !!prefs.compactMode);
 }
 
-// ── Security ──────────────────────────────────────────────────────────────────
+// ── Change Password ───────────────────────────────────────────────────────────
 
 async function changePassword() {
-    const currentPassword = getVal('currentPassword');
-    const newPassword     = getVal('newPassword');
-    const confirmPassword = getVal('confirmPassword');
-    const btn = event.currentTarget;
+    const btn = document.querySelector('#securityTab .btn-settings-save');
+    const current = _smGetVal('currentPassword');
+    const newPw   = _smGetVal('newPassword');
+    const confirm = _smGetVal('confirmPassword');
 
-    if (!currentPassword || !newPassword || !confirmPassword) {
-        showToast('Please fill in all password fields', 'error'); return;
+    if (!current || !newPw || !confirm) {
+        showToast('Please fill in all password fields', 'warning'); return;
     }
-    if (newPassword !== confirmPassword) {
+    if (newPw !== confirm) {
         showToast('New passwords do not match', 'error'); return;
     }
-    if (newPassword.length < 8) {
+    if (newPw.length < 8) {
         showToast('Password must be at least 8 characters', 'error'); return;
     }
 
-    setLoading(btn, true);
+    if (btn) { btn.classList.add('loading'); btn.disabled = true; }
+
     try {
-        const data = await apiFetch('/api/auth/change-password/', 'POST', {
-            current_password: currentPassword,
-            new_password:     newPassword,
+        const res = await fetch(`${_SM_API}/auth/change-password/`, {
+            method:  'POST',
+            headers: _smHeaders(),
+            body:    JSON.stringify({ current_password: current, new_password: newPw }),
         });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.detail || data.current_password?.[0] || data.new_password?.[0] || 'Password change failed');
 
-        // Server rotates the token — update it locally
-        if (data.token) {
-            localStorage.setItem('token', data.token);
-        }
-
-        document.getElementById('currentPassword').value = '';
-        document.getElementById('newPassword').value     = '';
-        document.getElementById('confirmPassword').value = '';
-        document.getElementById('passwordStrength').style.display = 'none';
-
-        showToast('Password changed successfully!', 'success');
+        // Clear fields
+        _smVal('currentPassword', ''); _smVal('newPassword', ''); _smVal('confirmPassword', '');
+        const strengthEl = document.getElementById('passwordStrength');
+        if (strengthEl) strengthEl.style.display = 'none';
+        showToast('Password updated successfully', 'success');
     } catch (err) {
-        showToast(err.message || 'Failed to change password', 'error');
+        showToast(err.message, 'error');
     } finally {
-        setLoading(btn, false);
+        if (btn) { btn.classList.remove('loading'); btn.disabled = false; }
     }
 }
 
-function checkPasswordStrength(value) {
-    const bar    = document.getElementById('strengthFill');
-    const label  = document.getElementById('strengthLabel');
-    const wrap   = document.getElementById('passwordStrength');
-    if (!bar || !label || !wrap) return;
+// ── Password strength meter ───────────────────────────────────────────────────
 
-    wrap.style.display = value.length ? 'flex' : 'none';
+function checkPasswordStrength(val) {
+    const wrap  = document.getElementById('passwordStrength');
+    const fill  = document.getElementById('strengthFill');
+    const label = document.getElementById('strengthLabel');
+    if (!wrap) return;
+
+    if (!val) { wrap.style.display = 'none'; return; }
+    wrap.style.display = 'flex';
 
     let score = 0;
-    if (value.length >= 8)              score++;
-    if (value.length >= 12)             score++;
-    if (/[A-Z]/.test(value))            score++;
-    if (/[0-9]/.test(value))            score++;
-    if (/[^A-Za-z0-9]/.test(value))     score++;
+    if (val.length >= 8)  score++;
+    if (val.length >= 12) score++;
+    if (/[A-Z]/.test(val)) score++;
+    if (/[0-9]/.test(val)) score++;
+    if (/[^A-Za-z0-9]/.test(val)) score++;
 
     const levels = [
-        { pct: '20%',  color: '#ff4444', text: 'Very Weak'  },
-        { pct: '40%',  color: '#ff8800', text: 'Weak'       },
-        { pct: '60%',  color: '#ffcc00', text: 'Fair'       },
-        { pct: '80%',  color: '#88cc00', text: 'Strong'     },
-        { pct: '100%', color: '#4caf50', text: 'Very Strong' },
+        { pct: '20%', color: '#e53935', text: 'Weak' },
+        { pct: '40%', color: '#fb8c00', text: 'Fair' },
+        { pct: '60%', color: '#fdd835', text: 'Good' },
+        { pct: '80%', color: '#7cb342', text: 'Strong' },
+        { pct: '100%',color: '#43a047', text: 'Excellent' },
     ];
-    const l = levels[Math.min(score, 4)];
-    bar.style.width      = l.pct;
-    bar.style.background = l.color;
-    label.textContent    = l.text;
-    label.style.color    = l.color;
+    const lvl = levels[Math.min(score, levels.length) - 1] || levels[0];
+    if (fill) { fill.style.width = lvl.pct; fill.style.background = lvl.color; }
+    if (label) { label.textContent = lvl.text; label.style.color = lvl.color; }
 }
+
+// ── Toggle password visibility ────────────────────────────────────────────────
 
 function togglePasswordVisibility(inputId, btn) {
     const input = document.getElementById(inputId);
     if (!input) return;
     const isHidden = input.type === 'password';
     input.type = isHidden ? 'text' : 'password';
-    btn.querySelector('i').className = isHidden ? 'fas fa-eye-slash' : 'fas fa-eye';
+    const icon = btn.querySelector('i');
+    if (icon) { icon.className = isHidden ? 'fas fa-eye-slash' : 'fas fa-eye'; }
 }
+
+// ── 2FA ───────────────────────────────────────────────────────────────────────
+
+async function setup2FA() {
+    showToast('Authenticator setup coming soon', 'info');
+}
+
+// ── Sessions ──────────────────────────────────────────────────────────────────
 
 async function loadActiveSessions() {
     const list = document.getElementById('sessionsList');
     if (!list) return;
+    list.innerHTML = '<div class="sessions-loading"><i class="fas fa-spinner fa-spin"></i> Loading sessions...</div>';
 
     try {
-        const data = await apiFetch('/api/auth/sessions/', 'GET');
-        if (!data.sessions || data.sessions.length === 0) {
-            list.innerHTML = '<p class="sessions-empty">No active sessions found.</p>';
-            return;
+        const res  = await fetch(`${_SM_API}/auth/sessions/`, { headers: _smHeaders() });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Failed to load sessions');
+
+        const sessions = Array.isArray(data) ? data : (data.sessions || data.results || []);
+        if (!sessions.length) {
+            list.innerHTML = '<p class="sessions-loading">No active sessions found.</p>'; return;
         }
 
-        list.innerHTML = data.sessions.map(s => `
-            <div class="session-card ${s.is_current ? 'current' : ''}">
-                <span class="session-device-icon">
-                    <i class="fas fa-${s.is_current ? 'desktop' : 'globe'}"></i>
-                </span>
-                <div class="session-details">
-                    <strong>${s.is_current ? 'This Device' : 'Other Device'}</strong>
-                    <span>Token ending in ${s.key_preview} &middot; ${formatDate(s.created)}</span>
-                </div>
-                ${s.is_current ? '<span class="session-badge-current">Current</span>' : ''}
-            </div>
-        `).join('');
+        list.innerHTML = sessions.map(s => `
+            <div class="session-item ${s.is_current ? 'current-session' : ''}">
+                <span class="session-device"><i class="fas fa-${_smDeviceIcon(s.device_type || s.device || '')}"></i> ${s.device_name || s.device || 'Unknown device'}</span>
+                <span class="session-meta">${s.location || ''} · ${s.last_active || s.created || ''}</span>
+                ${s.is_current ? '<span class="session-badge">Current</span>' : ''}
+            </div>`).join('');
     } catch {
-        list.innerHTML = '<p class="sessions-empty">Could not load sessions.</p>';
+        list.innerHTML = '<p class="sessions-loading">Could not load sessions.</p>';
     }
 }
 
-function setup2FA() {
-    showToast('2FA setup coming soon!', 'info');
+function _smDeviceIcon(type) {
+    if (/mobile|phone|android|ios/i.test(type)) return 'mobile-alt';
+    if (/tablet/i.test(type)) return 'tablet-alt';
+    return 'desktop';
 }
 
 async function logoutAllDevices() {
-    if (!confirm('Logout from all devices? You will need to sign in again on every device.')) return;
-    const btn = event.currentTarget;
-    setLoading(btn, true);
+    if (!confirm('This will log you out of all other devices. Continue?')) return;
     try {
-        await apiFetch('/api/auth/logout-all/', 'POST');
-        showToast('Logged out from all devices', 'success');
-        setTimeout(() => { if (typeof logout === 'function') logout(); }, 1500);
+        const res  = await fetch(`${_SM_API}/auth/logout-all/`, { method: 'POST', headers: _smHeaders() });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.detail || 'Failed');
+        showToast('Logged out of all other devices', 'success');
+        loadActiveSessions();
     } catch (err) {
-        showToast(err.message || 'Failed to logout all devices', 'error');
-        setLoading(btn, false);
+        showToast(err.message, 'error');
     }
 }
 
-// ── Danger Zone ───────────────────────────────────────────────────────────────
+// ── Linked Accounts ───────────────────────────────────────────────────────────
+
+async function loadLinkedAccounts() {
+    const user = _smGetUser();
+    const socials = user.social_connections || user.social_accounts || {};
+
+    const platforms = ['twitter', 'instagram', 'youtube', 'tiktok', 'facebook'];
+    platforms.forEach(p => {
+        const handle  = socials[p] || null;
+        const handleEl = document.getElementById(`lpHandle${_cap(p)}`);
+        const btnEl    = document.getElementById(`lpBtn${_cap(p)}`);
+        const rowEl    = document.querySelector(`.linked-platform-row[data-platform="${p}"]`);
+
+        if (handleEl) {
+            handleEl.textContent = handle ? `@${handle}` : 'Not connected';
+            handleEl.style.color  = handle ? 'var(--color-primary, #556b2f)' : '';
+        }
+        if (btnEl) {
+            btnEl.textContent  = handle ? 'Disconnect' : 'Connect';
+            btnEl.className    = handle ? 'lp-btn disconnect' : 'lp-btn';
+        }
+        if (rowEl) rowEl.classList.toggle('connected', !!handle);
+    });
+}
+
+function _cap(str) { return str.charAt(0).toUpperCase() + str.slice(1); }
+
+async function toggleSocialLink(platform) {
+    const handleEl = document.getElementById(`lpHandle${_cap(platform)}`);
+    const btnEl    = document.getElementById(`lpBtn${_cap(platform)}`);
+    const isConnected = btnEl && btnEl.classList.contains('disconnect');
+
+    if (isConnected) {
+        if (!confirm(`Disconnect your ${platform} account?`)) return;
+        if (btnEl) { btnEl.textContent = '...'; btnEl.disabled = true; }
+        try {
+            const res  = await fetch(`${_SM_API}/auth/social/disconnect/${platform}/`, { method: 'DELETE', headers: _smHeaders() });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(data.detail || 'Failed to disconnect');
+            if (handleEl) { handleEl.textContent = 'Not connected'; handleEl.style.color = ''; }
+            if (btnEl)    { btnEl.textContent = 'Connect'; btnEl.className = 'lp-btn'; }
+            const rowEl = document.querySelector(`.linked-platform-row[data-platform="${platform}"]`);
+            if (rowEl) rowEl.classList.remove('connected');
+
+            // Sync user object
+            const user = _smGetUser();
+            if (user.social_connections) delete user.social_connections[platform];
+            if (typeof currentUser !== 'undefined' && currentUser && currentUser.social_connections)
+                delete currentUser.social_connections[platform];
+
+            showToast(`${_cap(platform)} disconnected`, 'success');
+        } catch (err) {
+            showToast(err.message, 'error');
+            if (btnEl) { btnEl.textContent = 'Disconnect'; btnEl.disabled = false; }
+        }
+    } else {
+        // Connect — prompt for handle
+        const handle = prompt(`Enter your ${_cap(platform)} username (without @):`);
+        if (!handle || !handle.trim()) return;
+        if (btnEl) { btnEl.textContent = '...'; btnEl.disabled = true; }
+        try {
+            const res  = await fetch(`${_SM_API}/auth/social/connect/`, {
+                method:  'POST',
+                headers: _smHeaders(),
+                body:    JSON.stringify({ platform, handle: handle.trim() }),
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(data.detail || 'Failed to connect');
+            if (handleEl) { handleEl.textContent = `@${handle.trim()}`; handleEl.style.color = 'var(--color-primary, #556b2f)'; }
+            if (btnEl)    { btnEl.textContent = 'Disconnect'; btnEl.className = 'lp-btn disconnect'; btnEl.disabled = false; }
+            const rowEl = document.querySelector(`.linked-platform-row[data-platform="${platform}"]`);
+            if (rowEl) rowEl.classList.add('connected');
+
+            if (typeof currentUser !== 'undefined' && currentUser) {
+                if (!currentUser.social_connections) currentUser.social_connections = {};
+                currentUser.social_connections[platform] = handle.trim();
+            }
+
+            showToast(`${_cap(platform)} connected`, 'success');
+        } catch (err) {
+            showToast(err.message, 'error');
+            if (btnEl) { btnEl.textContent = 'Connect'; btnEl.disabled = false; }
+        }
+    }
+}
+
+// ── Avatar upload ─────────────────────────────────────────────────────────────
+
+function changeAvatar() {
+    let input = document.getElementById('smAvatarInput');
+    if (!input) {
+        input = document.createElement('input');
+        input.type = 'file';
+        input.id   = 'smAvatarInput';
+        input.accept = 'image/jpeg,image/png,image/gif,image/webp';
+        input.style.display = 'none';
+        document.body.appendChild(input);
+    }
+    input.onchange = _smUploadAvatar;
+    input.click();
+}
+
+async function _smUploadAvatar(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) { showToast('File must be under 5 MB', 'error'); return; }
+
+    const form = new FormData();
+    form.append('avatar', file);
+
+    showToast('Uploading…', 'info');
+    try {
+        const res  = await fetch(`${_SM_API}/auth/avatar/`, {
+            method:  'POST',
+            headers: { 'Authorization': `Token ${_smToken()}` }, // no Content-Type — let browser set multipart
+            body:    form,
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.detail || 'Upload failed');
+
+        const imgUrl = data.profile_image || data.avatar_url || data.url;
+        if (imgUrl) {
+            const prev = document.getElementById('settingsAvatarPreview');
+            if (prev) prev.innerHTML = `<img src="${imgUrl}" alt="Avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+
+            // Also update profile page avatar if present
+            const av = document.getElementById('avatarDisplay') || document.getElementById('smAvatarImg');
+            if (av) { av.innerHTML = `<img src="${imgUrl}" alt="Avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`; }
+
+            if (typeof currentUser !== 'undefined' && currentUser) currentUser.profile_image = imgUrl;
+        }
+        showToast('Profile photo updated', 'success');
+    } catch (err) {
+        showToast(err.message, 'error');
+    }
+    // reset so same file can be re-selected
+    e.target.value = '';
+}
+
+// ── Danger zone ───────────────────────────────────────────────────────────────
 
 async function deactivateAccount() {
-    const password = prompt('Enter your password to deactivate your account:');
-    if (!password) return;
+    const confirmed = confirm(
+        'Deactivate your account?\n\nYour profile will be hidden and you won\'t be able to log in until you reactivate it.'
+    );
+    if (!confirmed) return;
 
     try {
-        await apiFetch('/api/auth/deactivate/', 'POST', { password });
-        showToast('Account deactivated. Signing you out…', 'info');
-        setTimeout(() => { if (typeof logout === 'function') logout(); }, 2000);
+        const res  = await fetch(`${_SM_API}/auth/deactivate/`, { method: 'POST', headers: _smHeaders() });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.detail || 'Deactivation failed');
+        showToast('Account deactivated. Logging out…', 'info');
+        setTimeout(() => {
+            localStorage.removeItem('djangoAuthToken');
+            window.location.href = '../pages/auth.html';
+        }, 2000);
     } catch (err) {
-        showToast(err.message || 'Failed to deactivate account', 'error');
+        showToast(err.message, 'error');
     }
 }
 
 async function deleteAccount() {
-    const confirmed = confirm(
-        '⚠️ This will permanently delete your account and all your data.\nThis action cannot be undone.\n\nAre you absolutely sure?'
-    );
-    if (!confirmed) return;
-
-    const password = prompt('Enter your password to confirm:');
-    if (!password) return;
+    const first  = confirm('⚠️ Delete your ARTX account?\n\nThis is PERMANENT — all your data, prestige, and earnings will be lost.');
+    if (!first) return;
+    const second = prompt('Type DELETE to confirm account deletion:');
+    if (second !== 'DELETE') { showToast('Deletion cancelled', 'info'); return; }
 
     try {
-        await apiFetch('/api/auth/delete-account/', 'POST', { password, confirm: 'DELETE' });
-        showToast('Account deleted. Goodbye!', 'info');
-        setTimeout(() => { if (typeof logout === 'function') logout(); }, 2000);
+        const res  = await fetch(`${_SM_API}/auth/delete-account/`, { method: 'DELETE', headers: _smHeaders() });
+        if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            throw new Error(data.detail || 'Deletion failed');
+        }
+        showToast('Account deleted. Goodbye.', 'info');
+        setTimeout(() => {
+            localStorage.clear();
+            window.location.href = '../pages/auth.html';
+        }, 2000);
     } catch (err) {
-        showToast(err.message || 'Failed to delete account', 'error');
+        showToast(err.message, 'error');
     }
 }
 
-// ── Linked Accounts ───────────────────────────────────────────────────────
+// ── Boot: apply saved appearance on page load ─────────────────────────────────
 
-function loadLinkedAccounts() {
-    const user = getStoredUser();
-    const connections = user.social_connections || {};
-    const platforms = ['twitter', 'instagram', 'youtube', 'tiktok', 'facebook'];
-
-    platforms.forEach(p => {
-        const conn = connections[p] || {};
-        const handleEl = document.getElementById(`lpHandle${capitalize(p)}`);
-        const btnEl    = document.getElementById(`lpBtn${capitalize(p)}`);
-        const rowEl    = document.querySelector(`[data-platform="${p}"]`);
-
-        if (!handleEl || !btnEl) return;
-
-        if (conn.connected) {
-            handleEl.textContent = `@${conn.username || p}`;
-            handleEl.classList.add('connected-handle');
-            btnEl.textContent = 'Disconnect';
-            btnEl.classList.add('disconnect-btn');
-            if (rowEl) rowEl.classList.add('connected');
-        } else {
-            handleEl.textContent = 'Not connected';
-            handleEl.classList.remove('connected-handle');
-            btnEl.textContent = 'Connect';
-            btnEl.classList.remove('disconnect-btn');
-            if (rowEl) rowEl.classList.remove('connected');
-        }
-    });
-}
-
-function capitalize(str) { return str.charAt(0).toUpperCase() + str.slice(1); }
-
-async function toggleSocialLink(platform) {
-    const user = getStoredUser();
-    const connections = user.social_connections || {};
-    const isConnected = connections[platform] && connections[platform].connected;
-
-    if (isConnected) {
-        // Disconnect
-        if (!confirm(`Disconnect your ${capitalize(platform)} account?`)) return;
-        const updated = { ...connections };
-        updated[platform] = { connected: false };
-        try {
-            const data = await apiFetch('/api/auth/profile/', 'PATCH', {
-                social_connections: updated,
-            });
-            updateLocalUser(data);
-            loadLinkedAccounts();
-            showToast(`${capitalize(platform)} disconnected`, 'info');
-        } catch (err) {
-            showToast(err.message || 'Failed to disconnect', 'error');
-        }
-    } else {
-        // Connect — prompt for username
-        const handle = prompt(`Enter your ${capitalize(platform)} username (without @):`);
-        if (!handle || !handle.trim()) return;
-        const updated = { ...connections };
-        updated[platform] = { connected: true, username: handle.trim(), verified: false };
-        try {
-            const data = await apiFetch('/api/auth/profile/', 'PATCH', {
-                social_connections: updated,
-            });
-            updateLocalUser(data);
-            loadLinkedAccounts();
-            showToast(`${capitalize(platform)} linked!`, 'success');
-        } catch (err) {
-            showToast(err.message || 'Failed to link account', 'error');
-        }
-    }
-}
-
-// ── Shared helpers ────────────────────────────────────────────────────────────
-
-function getVal(id)     { const el = document.getElementById(id); return el ? el.value.trim() : ''; }
-function getChecked(id) { const el = document.getElementById(id); return el ? el.checked : false; }
-
-/** Canonical token key — same as auth.js / app.js */
-function getAuthToken() {
-    return localStorage.getItem('djangoAuthToken') || localStorage.getItem('token') || '';
-}
-
-/** Canonical user object — same keys as auth.js / app.js */
-function getStoredUser() {
+(function _smBoot() {
     try {
-        return JSON.parse(localStorage.getItem('artxUser') || localStorage.getItem('user') || '{}');
-    } catch { return {}; }
-}
-
-function getApiBase() {
-    if (typeof API_BASE_URL !== 'undefined' && API_BASE_URL) {
-        // API_BASE_URL is already like "http://localhost:8000/api" — strip the /api suffix
-        return API_BASE_URL.replace(/\/api\/?$/, '');
-    }
-    return (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-        ? 'http://localhost:8000'
-        : window.location.origin;
-}
-
-async function apiFetch(path, method = 'GET', body = null) {
-    const token = getAuthToken();
-    const opts  = {
-        method,
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Token ${token}`,
-        },
-    };
-    if (body && method !== 'GET') opts.body = JSON.stringify(body);
-
-    const res  = await fetch(`${getApiBase()}${path}`, opts);
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.error || data.detail || `Request failed (${res.status})`);
-    return data;
-}
-
-async function savePreferences(prefs, btn, successMsg) {
-    // Always persist locally first for offline resilience
-    patchLocalPrefs(prefs);
-    try {
-        await apiFetch('/api/auth/preferences/', 'PATCH', prefs);
-        showToast(successMsg, 'success');
-    } catch (err) {
-        // Already saved locally — still surface the server error
-        showToast((err.message || 'Server save failed') + ' (saved locally)', 'warning');
-    } finally {
-        setLoading(btn, false);
-    }
-}
-
-function patchLocalPrefs(patch) {
-    const prefs = JSON.parse(localStorage.getItem('userPreferences') || '{}');
-    Object.assign(prefs, patch);
-    localStorage.setItem('userPreferences', JSON.stringify(prefs));
-}
-
-function updateLocalUser(data) {
-    // Update both key names so every script stays in sync
-    const user = getStoredUser();
-    Object.assign(user, data);
-    localStorage.setItem('artxUser', JSON.stringify(user));
-    localStorage.setItem('user', JSON.stringify(user));  // legacy compat
-}
-
-function setLoading(btn, state) {
-    if (!btn) return;
-    btn.disabled = state;
-    btn.classList.toggle('loading', state);
-}
-
-function formatDate(isoStr) {
-    if (!isoStr) return 'Unknown';
-    try {
-        return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(isoStr));
-    } catch { return isoStr; }
-}
-
-// ── Toast notifications ───────────────────────────────────────────────────────
-
-function showToast(message, type = 'info') {
-    // Remove existing toasts of the same message to avoid spam
-    document.querySelectorAll('.artx-toast').forEach(t => {
-        if (t.dataset.msg === message) t.remove();
-    });
-
-    const icons = { success: 'check-circle', error: 'exclamation-circle', info: 'info-circle', warning: 'exclamation-triangle' };
-    const toast = document.createElement('div');
-    toast.className = `artx-toast artx-toast-${type}`;
-    toast.dataset.msg = message;
-    toast.innerHTML = `
-        <i class="fas fa-${icons[type] || 'info-circle'}"></i>
-        <span>${message}</span>
-        <button class="toast-close" onclick="this.closest('.artx-toast').remove()" aria-label="Dismiss">&times;</button>
-    `;
-
-    document.body.appendChild(toast);
-    requestAnimationFrame(() => toast.classList.add('visible'));
-
-    setTimeout(() => {
-        toast.classList.remove('visible');
-        setTimeout(() => toast.remove(), 350);
-    }, 4000);
-}
-
-// Keep backward compat alias
-function showNotification(msg, type) { showToast(msg, type); }
-
-// ── Boot ──────────────────────────────────────────────────────────────────────
-
-document.addEventListener('DOMContentLoaded', () => {
-    applyAppearanceSettings();
-});
+        const prefs = JSON.parse(localStorage.getItem('userPreferences') || '{}');
+        _applyAppearance(prefs);
+    } catch { /* silent */ }
+})();
