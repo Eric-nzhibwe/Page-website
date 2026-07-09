@@ -26,6 +26,12 @@
   --sg-shadow-lg:   0 8px 32px rgba(85,107,47,0.14);
   --sg-glow:        0 0 0 3px rgba(85,107,47,0.18);
   --sg-transition:  0.2s ease;
+
+  /* Global site accent tokens — updated by selectAccentColor() */
+  --artx-primary:    #556b2f;
+  --artx-primary-lt: #6b8a3a;
+  --artx-accent:     #90ee90;
+  --artx-glow:       rgba(85,107,47,0.18);
 }
 
 /* ── Backdrop ────────────────────────────────────────────────── */
@@ -927,6 +933,131 @@
 .artx-toast-info i { color: var(--sg-primary); }
 .artx-toast-warning { border-left: 4px solid #e6a817; }
 .artx-toast-warning i { color: #e6a817; }
+
+/* ── Global accent override layer ────────────────────────────
+   When JS sets --artx-primary / --artx-accent on :root,
+   these rules remap the site's hardcoded darkolivegreen tokens.
+   ─────────────────────────────────────────────────────────── */
+
+/* Smooth all color transitions site-wide when accent changes */
+*, *::before, *::after {
+  transition:
+    color            0.32s ease,
+    background-color 0.32s ease,
+    border-color     0.32s ease,
+    box-shadow       0.32s ease,
+    fill             0.32s ease;
+}
+/* but keep transform / opacity / layout props un-throttled */
+.btn-settings-save, .btn-settings-secondary,
+.btn-danger-outline, .btn-danger-solid,
+.settings-nav-btn, .lp-btn, .toggle-slider, .toggle-slider::before,
+.color-swatch, .avatar-edit-btn { transition: all 0.22s ease; }
+
+/* Header gradient picks up primary vars */
+.settings-modal-header {
+  background: linear-gradient(135deg,
+    var(--sg-primary-dk, #3d4f22) 0%,
+    var(--sg-primary,    #556b2f) 55%,
+    var(--sg-primary-lt, #6b8a3a) 100%);
+}
+
+/* Save button gradient picks up primary vars */
+.btn-settings-save {
+  background: linear-gradient(135deg,
+    var(--sg-primary,    #556b2f) 0%,
+    var(--sg-primary-lt, #6b8a3a) 100%);
+  box-shadow: 0 3px 12px var(--artx-glow, rgba(85,107,47,0.28));
+}
+.btn-settings-save:hover {
+  background: linear-gradient(135deg,
+    var(--sg-primary-lt, #6b8a3a) 0%,
+    var(--sg-primary,    #556b2f) 100%);
+  box-shadow: 0 6px 20px var(--artx-glow, rgba(85,107,47,0.36));
+}
+
+/* Toggle checked state */
+.toggle-switch input:checked + .toggle-slider {
+  background: var(--sg-primary, #556b2f);
+  box-shadow: 0 0 0 3px var(--artx-glow, rgba(85,107,47,0.14));
+}
+
+/* Active nav btn indicator */
+.settings-nav-btn.active::before {
+  background: linear-gradient(to bottom,
+    var(--sg-primary, #556b2f),
+    var(--sg-accent,  #90ee90));
+}
+.settings-nav-btn.active .nav-icon,
+.settings-nav-btn:hover .nav-icon {
+  background: var(--sg-primary, #556b2f);
+  border-color: var(--sg-primary, #556b2f);
+}
+
+/* Card top accent line */
+.settings-card:hover::before {
+  background: linear-gradient(to right,
+    var(--sg-primary, #556b2f),
+    var(--sg-accent,  #90ee90),
+    transparent);
+}
+
+/* Focused inputs */
+.modal-input:focus,
+.modal-textarea:focus,
+.settings-select:focus {
+  border-color: var(--sg-primary, #556b2f);
+  box-shadow: var(--sg-glow, 0 0 0 3px rgba(85,107,47,0.18));
+}
+
+/* Connect button */
+.lp-btn { border-color: var(--sg-primary, #556b2f); color: var(--sg-primary, #556b2f); }
+.lp-btn:hover { background: var(--sg-primary, #556b2f); }
+
+/* Avatar ring */
+.avatar-ring::before {
+  background: conic-gradient(
+    from 0deg,
+    var(--sg-primary, #556b2f) 0%,
+    var(--sg-accent,  #90ee90) 40%,
+    var(--sg-primary, #556b2f) 70%,
+    var(--sg-accent,  #90ee90) 100%);
+}
+
+/* ── Color ripple effect ──────────────────────────────────────── */
+.color-swatch { overflow: hidden; }
+.sm-color-ripple {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  opacity: 0.55;
+  transform: scale(0);
+  pointer-events: none;
+}
+.sm-color-ripple.expanding {
+  animation: colorRipple 0.55s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+@keyframes colorRipple {
+  0%   { transform: scale(0);   opacity: 0.6; }
+  60%  { transform: scale(2.2); opacity: 0.3; }
+  100% { transform: scale(3.5); opacity: 0;   }
+}
+
+/* ── Accent name label ───────────────────────────────────────── */
+.sm-accent-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-top: 10px;
+  transition: opacity 0.4s ease, color 0.32s ease;
+}
+
+/* ── Swatch selected ring uses current accent ────────────────── */
+.color-swatch.active {
+  box-shadow: 0 0 0 3px var(--sg-primary, #556b2f), 0 4px 14px rgba(0,0,0,0.18);
+}
 
 /* ── Scrollbars ──────────────────────────────────────────────── */
 .settings-nav::-webkit-scrollbar,

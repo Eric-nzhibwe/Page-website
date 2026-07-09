@@ -1,3 +1,15 @@
+/* ── Accent color token layer ──────────────────────────────────
+   JS sets --artx-primary / --artx-accent on :root when the user
+   picks an accent color in Settings → Appearance.
+   The overrides below reroute the hardcoded darkolivegreen usages.
+   ─────────────────────────────────────────────────────────────── */
+:root {
+    --artx-primary:    darkolivegreen;
+    --artx-primary-lt: #6b8a3a;
+    --artx-accent:     lightgreen;
+    --artx-glow:       rgba(85,107,47,0.18);
+}
+
 * {
     margin: 0;
     padding: 0;

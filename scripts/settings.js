@@ -194,6 +194,17 @@ function loadUserSettings() {
         document.querySelectorAll('.color-swatch').forEach(s => {
             s.classList.toggle('active', s.dataset.color === p.accentColor);
         });
+        _applyAccentVars(p.accentColor);
+    }
+
+    // Inject accent name label below swatches if not already there
+    const grid = document.querySelector('.color-picker-grid');
+    if (grid && !document.getElementById('smAccentLabel')) {
+        const lbl = document.createElement('span');
+        lbl.id = 'smAccentLabel';
+        lbl.className = 'sm-accent-label';
+        lbl.style.opacity = '0';
+        grid.parentElement.appendChild(lbl);
     }
 
     // Security tab
@@ -376,21 +387,87 @@ function changeFontSize() {
     document.documentElement.style.fontSize = map[size] || '15px';
 }
 
+// ── Accent color palette ──────────────────────────────────────────────────────
+// Each entry: { hex, name, primary (darker), primaryLt, glow }
+const ACCENT_PALETTES = {
+    '#90ee90': { name: 'Green',  primary: '#556b2f', primaryLt: '#6b8a3a', primaryDk: '#3d4f22', glow: 'rgba(85,107,47,0.18)' },
+    '#4facfe': { name: 'Blue',   primary: '#1565c0', primaryLt: '#1e88e5', primaryDk: '#0d47a1', glow: 'rgba(21,101,192,0.18)' },
+    '#f093fb': { name: 'Pink',   primary: '#8e24aa', primaryLt: '#ab47bc', primaryDk: '#6a1b9a', glow: 'rgba(142,36,170,0.18)' },
+    '#ffd700': { name: 'Gold',   primary: '#b8860b', primaryLt: '#d4a017', primaryDk: '#8b6508', glow: 'rgba(184,134,11,0.18)'  },
+    '#ff6b6b': { name: 'Red',    primary: '#c62828', primaryLt: '#e53935', primaryDk: '#8e0000', glow: 'rgba(198,40,40,0.18)'   },
+    '#a78bfa': { name: 'Purple', primary: '#4527a0', primaryLt: '#5e35b1', primaryDk: '#311b92', glow: 'rgba(69,39,160,0.18)'   },
+};
+
 function selectAccentColor(color) {
+    // Update active swatch
     document.querySelectorAll('.color-swatch').forEach(s => {
         s.classList.toggle('active', s.dataset.color === color);
     });
-    document.documentElement.style.setProperty('--accent-color', color);
+
+    _applyAccentVars(color);
+    _spawnColorRipple(color);
+
+    // Show a subtle label under the swatches
+    const palette = ACCENT_PALETTES[color];
+    const labelEl = document.getElementById('smAccentLabel');
+    if (labelEl && palette) {
+        labelEl.textContent = palette.name;
+        labelEl.style.color = palette.primary;
+        labelEl.style.opacity = '1';
+        clearTimeout(labelEl._t);
+        labelEl._t = setTimeout(() => { labelEl.style.opacity = '0'; }, 1800);
+    }
+}
+
+function _applyAccentVars(color) {
+    const palette = ACCENT_PALETTES[color] || ACCENT_PALETTES['#90ee90'];
+    const root = document.documentElement;
+
+    // Settings modal variables
+    root.style.setProperty('--sg-primary',     palette.primary);
+    root.style.setProperty('--sg-primary-lt',  palette.primaryLt);
+    root.style.setProperty('--sg-primary-dk',  palette.primaryDk);
+    root.style.setProperty('--sg-accent',      color);
+    root.style.setProperty('--sg-glow',        `0 0 0 3px ${palette.glow}`);
+
+    // Global site variables (picks up hardcoded darkolivegreen via CSS override layer)
+    root.style.setProperty('--artx-primary',   palette.primary);
+    root.style.setProperty('--artx-primary-lt',palette.primaryLt);
+    root.style.setProperty('--artx-accent',    color);
+    root.style.setProperty('--artx-glow',      palette.glow);
+
+    // Transition all color changes smoothly
+    root.style.setProperty('--color-transition', 'color 0.35s ease, background-color 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease');
+}
+
+function _spawnColorRipple(color) {
+    // Find the active swatch to spawn ripple from
+    const swatch = document.querySelector(`.color-swatch[data-color="${color}"]`);
+    if (!swatch) return;
+
+    const ripple = document.createElement('span');
+    ripple.className = 'sm-color-ripple';
+    ripple.style.cssText = `background:${color};`;
+    swatch.appendChild(ripple);
+
+    // Force reflow
+    ripple.offsetWidth;
+    ripple.classList.add('expanding');
+    setTimeout(() => ripple.remove(), 600);
 }
 
 function _applyAppearance(prefs) {
-    if (prefs.theme)     document.documentElement.setAttribute('data-theme', prefs.theme);
+    if (prefs.theme) document.documentElement.setAttribute('data-theme', prefs.theme);
     if (prefs.fontSize) {
         const map = { small: '13px', medium: '15px', large: '17px' };
         document.documentElement.style.fontSize = map[prefs.fontSize] || '15px';
     }
     if (prefs.accentColor) {
-        document.documentElement.style.setProperty('--accent-color', prefs.accentColor);
+        _applyAccentVars(prefs.accentColor);
+        // Sync active swatch on load
+        document.querySelectorAll('.color-swatch').forEach(s => {
+            s.classList.toggle('active', s.dataset.color === prefs.accentColor);
+        });
     }
     document.documentElement.classList.toggle('no-animations', !prefs.enableAnimations);
     document.documentElement.classList.toggle('compact-mode',   !!prefs.compactMode);
