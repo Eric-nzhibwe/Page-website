@@ -5,10 +5,12 @@
 
 /* ── Variables ──────────────────────────────────────────────── */
 :root {
-  --sg-primary:     #556b2f;
-  --sg-primary-lt:  #6b8a3a;
-  --sg-primary-dk:  #3d4f22;
-  --sg-accent:      #90ee90;
+  /* Settings-modal vars — mirror the global artx tokens so they
+     update automatically when JS changes --artx-* */
+  --sg-primary:     var(--artx-primary,    #556b2f);
+  --sg-primary-lt:  var(--artx-primary-lt, #6b8a3a);
+  --sg-primary-dk:  var(--artx-primary-dk, #3d4f22);
+  --sg-accent:      var(--artx-accent,     #90ee90);
   --sg-accent-glow: rgba(144,238,144,0.35);
   --sg-bg:          #ffffff;
   --sg-surface:     #f7f9f4;
@@ -24,14 +26,8 @@
   --sg-radius-sm:   9px;
   --sg-shadow:      0 2px 14px rgba(85,107,47,0.08);
   --sg-shadow-lg:   0 8px 32px rgba(85,107,47,0.14);
-  --sg-glow:        0 0 0 3px rgba(85,107,47,0.18);
+  --sg-glow:        var(--artx-glow, 0 0 0 3px rgba(85,107,47,0.18));
   --sg-transition:  0.2s ease;
-
-  /* Global site accent tokens — updated by selectAccentColor() */
-  --artx-primary:    #556b2f;
-  --artx-primary-lt: #6b8a3a;
-  --artx-accent:     #90ee90;
-  --artx-glow:       rgba(85,107,47,0.18);
 }
 
 /* ── Backdrop ────────────────────────────────────────────────── */

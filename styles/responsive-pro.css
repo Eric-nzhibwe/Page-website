@@ -7,8 +7,8 @@
    CSS CUSTOM PROPERTIES (Design Tokens)
    =================================================================== */
 :root {
-  --artx-green:       #556b2f;
-  --artx-green-light: #8fb83a;
+  --artx-green:       var(--artx-primary,    #556b2f);
+  --artx-green-light: var(--artx-primary-lt, #6b8a3a);
   --artx-green-faint: #f0f6e8;
   --artx-gold:        #f5c518;
   --artx-accent:      #e8534a;

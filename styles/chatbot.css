@@ -1,5 +1,5 @@
 /* ============================================================
-   ARTX AI Chatbot — matches the system's whitesmoke/darkolivegreen palette
+   ARTX AI Chatbot — matches the system's whitesmoke/var(--artx-primary) palette
    ============================================================ */
 
 :root {
@@ -8,16 +8,16 @@
   --c-surface:      #ffffff;
   --c-surface2:     #eeeeee;
   --c-border:       #d4d4aa;
-  --c-green:        #556b2f;          /* darkolivegreen */
-  --c-green-light:  #90ee90;          /* lightgreen */
-  --c-green-mid:    #6aaa40;
-  --c-green-glow:   rgba(85,107,47,.13);
+  --c-green:        var(--artx-primary);
+  --c-green-light:  var(--artx-accent);
+  --c-green-mid:    var(--artx-primary-lt);
+  --c-green-glow:   var(--artx-glow);
   --c-text:         #1a1a1a;
   --c-text-soft:    #555;
   --c-muted:        #888;
-  --c-user-bubble:  #556b2f;          /* user messages = brand green */
+  --c-user-bubble:  var(--artx-primary);          /* user messages = brand green */
   --c-bot-bubble:   #ffffff;
-  --c-header-bg:    linear-gradient(to right, whitesmoke, darkolivegreen);
+  --c-header-bg:    linear-gradient(to right, whitesmoke, var(--artx-primary));
   --c-radius:       16px;
   --c-font:         'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   --mobile-nav-h:   56px;

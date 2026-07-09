@@ -423,21 +423,15 @@ function _applyAccentVars(color) {
     const palette = ACCENT_PALETTES[color] || ACCENT_PALETTES['#90ee90'];
     const root = document.documentElement;
 
-    // Settings modal variables
-    root.style.setProperty('--sg-primary',     palette.primary);
-    root.style.setProperty('--sg-primary-lt',  palette.primaryLt);
-    root.style.setProperty('--sg-primary-dk',  palette.primaryDk);
-    root.style.setProperty('--sg-accent',      color);
-    root.style.setProperty('--sg-glow',        `0 0 0 3px ${palette.glow}`);
-
-    // Global site variables (picks up hardcoded darkolivegreen via CSS override layer)
-    root.style.setProperty('--artx-primary',   palette.primary);
-    root.style.setProperty('--artx-primary-lt',palette.primaryLt);
-    root.style.setProperty('--artx-accent',    color);
-    root.style.setProperty('--artx-glow',      palette.glow);
-
-    // Transition all color changes smoothly
-    root.style.setProperty('--color-transition', 'color 0.35s ease, background-color 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease');
+    // Settings modal variables (--sg-* mirror --artx-* via CSS var() fallback)
+    root.style.setProperty('--artx-primary',    palette.primary);
+    root.style.setProperty('--artx-primary-lt', palette.primaryLt);
+    root.style.setProperty('--artx-primary-dk', palette.primaryDk);
+    root.style.setProperty('--artx-accent',     color);
+    // --artx-glow as raw rgba (used by chatbot.css, wallet shadows etc)
+    root.style.setProperty('--artx-glow',       palette.glow);
+    // --sg-glow needs box-shadow format for settings modal
+    root.style.setProperty('--sg-glow',         `0 0 0 3px ${palette.glow}`);
 }
 
 function _spawnColorRipple(color) {
