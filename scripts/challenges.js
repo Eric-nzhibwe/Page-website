@@ -163,6 +163,20 @@ async function loadMySubmissions() {
         console.error('Error loading submissions:', error);
         mySubmissions = [];
     }
+
+    // Also load image interpretation submissions and merge their challenge IDs
+    try {
+        const imgData = await apiService.getMyImageSubmissions();
+        const imgSubs = Array.isArray(imgData) ? imgData : imgData.results || [];
+        // Merge so hasSubmitted checks work on renderChallenges
+        imgSubs.forEach(sub => {
+            if (!mySubmissions.find(s => s.challenge === sub.challenge)) {
+                mySubmissions.push(sub);
+            }
+        });
+    } catch (_) {
+        // Non-fatal — image submission list just won't pre-mark cards
+    }
 }
 
 // Filter Challenges
@@ -190,17 +204,84 @@ function renderChallenges(filter = 'all') {
     
     container.innerHTML = filtered.map(challenge => {
         const timeRemaining = getTimeRemaining(challenge.ends_at);
-        const hasSubmitted = mySubmissions.some(s => s.challenge === challenge.id);
-        const pointsRange = `${challenge.min_points}-${challenge.max_points} pts`;
-        
+        const isImgInterp   = challenge.challenge_type === 'image_interpretation';
+        const hasSubmitted  = isImgInterp
+            ? (challenge.user_has_img_submitted || mySubmissions.some(s => s.challenge === challenge.id))
+            : mySubmissions.some(s => s.challenge === challenge.id);
+        const pointsRange   = `${challenge.min_points}-${challenge.max_points} pts`;
+        const entryFee      = parseFloat(challenge.entry_fee || 0);
+        const prize         = parseFloat(challenge.prize_amount || 0);
+
+        // ── Image area: blurred for image_interpretation, normal otherwise ──
+        const imageHTML = isImgInterp ? `
+            <div class="ii-card-img-wrap">
+                <img src="${challenge.image_url}" alt="${challenge.title}" class="ii-card-img">
+                <div class="ii-card-img-overlay">
+                    <i class="fas fa-lock"></i>
+                    <span>Pay to reveal</span>
+                </div>
+            </div>
+        ` : `
+            <img src="${challenge.image_url}" alt="${challenge.title}" class="challenge-image">
+        `;
+
+        // ── Prize / entry fee badges ──
+        const prizeBadge = prize > 0
+            ? `<div class="challenge-badge prize"><i class="fas fa-trophy"></i> K${prize.toFixed(2)} Prize</div>`
+            : '';
+        const entryBadge = isImgInterp && entryFee > 0
+            ? `<div class="ii-entry-badge"><i class="fas fa-coins"></i> K${entryFee.toFixed(2)} Entry</div>`
+            : '';
+
+        // ── Footer buttons ──
+        const footerHTML = isImgInterp ? `
+            <div class="challenge-footer">
+                <span class="reward-badge"><i class="fas fa-star"></i> ${pointsRange}</span>
+                <div class="challenge-buttons">
+                    <button class="btn-secondary"
+                        onclick="openImgInterpPreview('${challenge.id}'); event.stopPropagation();">
+                        <i class="fas fa-info-circle"></i> Details
+                    </button>
+                    <button class="btn-participate"
+                        ${hasSubmitted ? 'disabled' : ''}
+                        onclick="openImgInterpPreview('${challenge.id}'); event.stopPropagation();">
+                        ${hasSubmitted ? '<i class="fas fa-check"></i> Submitted' : '<i class="fas fa-gamepad"></i> Play'}
+                    </button>
+                </div>
+            </div>
+        ` : `
+            <div class="challenge-footer">
+                <span class="reward-badge"><i class="fas fa-star"></i> ${pointsRange}</span>
+                <div class="challenge-buttons">
+                    <button class="btn-secondary"
+                        onclick="viewChallengeDetails('${challenge.id}'); event.stopPropagation();">
+                        <i class="fas fa-info-circle"></i> Details
+                    </button>
+                    <button class="btn-participate"
+                        ${hasSubmitted ? 'disabled' : ''}
+                        onclick="openChallenge('${challenge.id}'); event.stopPropagation();">
+                        ${hasSubmitted ? '<i class="fas fa-check"></i> Submitted' : 'Participate'}
+                    </button>
+                </div>
+            </div>
+        `;
+
         return `
-            <div class="challenge-card" onclick="openChallenge('${challenge.id}')">
-                <img src="${challenge.image_url}" alt="${challenge.title}" class="challenge-image">
+            <div class="challenge-card"
+                data-id="${challenge.id}"
+                data-challenge-type="${challenge.challenge_type || 'text_interpretation'}"
+                onclick="${isImgInterp ? `openImgInterpPreview('${challenge.id}')` : `openChallenge('${challenge.id}')`}">
+
+                ${prizeBadge}
+                ${entryBadge}
+                ${imageHTML}
+
                 <div class="challenge-body">
                     <div class="challenge-header">
                         <div>
                             <h3 class="challenge-title">${challenge.title}</h3>
                             <span class="difficulty-badge difficulty-${challenge.difficulty}">${challenge.difficulty}</span>
+                            ${isImgInterp ? '<span class="difficulty-badge" style="background:#7b2fbe;color:#fff;margin-left:4px;"><i class="fas fa-image"></i> Image</span>' : ''}
                         </div>
                     </div>
                     <p class="challenge-description">${challenge.description}</p>
@@ -216,17 +297,7 @@ function renderChallenges(filter = 'all') {
                         </span>
                     </div>
                 </div>
-                <div class="challenge-footer">
-                    <span class="reward-badge"><i class="fas fa-star"></i> ${pointsRange}</span>
-                    <div class="challenge-buttons">
-                        <button class="btn-secondary" onclick="viewChallengeDetails('${challenge.id}'); event.stopPropagation();">
-                            <i class="fas fa-info-circle"></i> Details
-                        </button>
-                        <button class="btn-participate" ${hasSubmitted ? 'disabled' : ''} onclick="event.stopPropagation();">
-                            ${hasSubmitted ? 'Submitted' : 'Participate'}
-                        </button>
-                    </div>
-                </div>
+                ${footerHTML}
             </div>
         `;
     }).join('');
@@ -662,22 +733,35 @@ function renderMySubmissions() {
     // Sort by date (newest first)
     mySubmissions.sort((a, b) => new Date(b.submitted_at) - new Date(a.submitted_at));
     
-    container.innerHTML = mySubmissions.map(submission => `
-        <div class="submission-item">
-            <div class="submission-status ${submission.status === 'scored' ? 'status-scored' : 'status-pending'}">
-                <i class="fas fa-${submission.status === 'scored' ? 'check' : 'clock'}"></i>
+    container.innerHTML = mySubmissions.map(submission => {
+        const isImgInterp  = submission.observation_score !== undefined;
+        const score        = submission.final_score || 0;
+        const statusClass  = submission.status === 'scored' ? 'status-scored' : 'status-pending';
+        const statusIcon   = submission.status === 'scored' ? 'check' : 'clock';
+        const extraInfo    = isImgInterp
+            ? `<p style="margin-top:4px;font-size:12px;color:#aaa;">
+                   <i class="fas fa-eye"></i> ${submission.observation_score || 0}% observation &nbsp;·&nbsp;
+                   <i class="fas fa-brain"></i> ${submission.interpretation_score || 0}% interpretation
+               </p>`
+            : `<p style="margin-top:5px;">${submission.word_count || 0} words</p>`;
+
+        return `
+            <div class="submission-item">
+                <div class="submission-status ${statusClass}">
+                    <i class="fas fa-${statusIcon}"></i>
+                </div>
+                <div class="submission-info">
+                    <h4>${submission.challenge_title || 'Challenge'}</h4>
+                    <p>Submitted ${new Date(submission.submitted_at).toLocaleString()}</p>
+                    ${extraInfo}
+                </div>
+                <div class="submission-score">
+                    <div class="score-value">${score}</div>
+                    <div class="score-label">POINTS</div>
+                </div>
             </div>
-            <div class="submission-info">
-                <h4>${submission.challenge_title}</h4>
-                <p>Submitted ${new Date(submission.submitted_at).toLocaleString()}</p>
-                <p style="margin-top: 5px;">${submission.word_count} words</p>
-            </div>
-            <div class="submission-score">
-                <div class="score-value">${submission.final_score || 0}</div>
-                <div class="score-label">POINTS</div>
-            </div>
-        </div>
-    `).join('');
+        `;
+    }).join('');
 }
 
 // Switch Upload Tabs

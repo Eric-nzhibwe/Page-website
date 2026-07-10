@@ -314,11 +314,26 @@ LOGGING = {
             'style': '{',
         },
     },
+    'filters': {
+        # Suppress 404 warnings for /media/ paths — these are expected on Render
+        # where the ephemeral filesystem loses uploaded files on restart.
+        # All other 404s still log normally.
+        'suppress_media_404': {
+            '()': 'django.utils.log.CallbackFilter',
+            'callback': lambda record: not (
+                record.levelname == 'WARNING'
+                and hasattr(record, 'status_code')
+                and record.status_code == 404
+                and '/media/' in getattr(record, 'request', type('', (), {'path': ''})()).path
+            ),
+        },
+    },
     'handlers': {
         'console': {
-            'level': 'WARNING',   # INFO is too noisy in production; use WARNING+
+            'level': 'WARNING',
             'class': 'logging.StreamHandler',
             'formatter': 'simple',
+            'filters': ['suppress_media_404'],
         },
     },
     'loggers': {
@@ -326,6 +341,12 @@ LOGGING = {
             'handlers': ['console'],
             'level': 'WARNING',
             'propagate': False,
+        },
+        'django.request': {
+            'handlers': ['console'],
+            'level': 'WARNING',
+            'propagate': False,
+            'filters': ['suppress_media_404'],
         },
         'artx_platform': {
             'handlers': ['console'],

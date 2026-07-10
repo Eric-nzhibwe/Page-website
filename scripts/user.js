@@ -99,7 +99,9 @@ function renderOtherProfile(u) {
     set('profileBio', u.bio || 'No bio yet.');
     set('statPrestige', (u.prestige_points || 0).toLocaleString());
     set('statLevel', u.level || 1);
-    if (u.profile_image) setAvatarImg(u.profile_image);
+    // Use server-verified URL to avoid /media/ 404s on Render's ephemeral filesystem
+    const avatarUrl = u.profile_image_url || (u.profile_image && !u.profile_image.startsWith('/media/') ? u.profile_image : null);
+    if (avatarUrl) setAvatarImg(avatarUrl);
     if (window.applyTierPalette) applyTierPalette(u.access_tier);
     document.title = `ARTX — ${u.display_name || u.username}`;
 }
@@ -190,9 +192,10 @@ function renderProfile(u, rank) {
     const lvl = document.getElementById('avatarLevel');
     if (lvl) lvl.querySelector('b').textContent = u.level;
 
-    // Avatar image
-    if (u.profile_image) {
-        setAvatarImg(u.profile_image);
+    // Avatar image — use server-verified URL to avoid /media/ 404s on Render
+    const _avatarUrl = u.profile_image_url || (u.profile_image && !u.profile_image.startsWith('/media/') ? u.profile_image : null);
+    if (_avatarUrl) {
+        setAvatarImg(_avatarUrl);
     }
 
     // Tier palette (cover + ring colour)

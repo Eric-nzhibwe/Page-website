@@ -234,6 +234,97 @@ window.generateId = generateId;
 window.isMobile = isMobile;
 window.truncateText = truncateText;
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Avatar utilities
+// Render has an ephemeral filesystem — uploaded profile images disappear on
+// every redeploy. These helpers make every <img> fall back gracefully to a
+// generated letter-avatar rather than showing a broken image.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Return the safest profile image URL for a user object.
+ * Prefers profile_image_url (server-verified to exist) over profile_image.
+ * Returns null if neither is set — caller should use avatarFallbackHTML().
+ *
+ * @param {object} user  - User object from the API
+ * @returns {string|null}
+ */
+function getAvatarUrl(user) {
+    if (!user) return null;
+    // profile_image_url is the server-side-verified field added in UserProfileSerializer
+    const url = user.profile_image_url || user.profile_image || null;
+    if (!url) return null;
+    // Reject bare /media/ paths that are known to 404 on Render
+    if (url.startsWith('/media/')) return null;
+    return url;
+}
+
+/**
+ * Build the HTML for a user avatar.
+ * If a valid image URL exists, renders an <img> with an onerror fallback.
+ * Otherwise renders a coloured letter-circle based on the username.
+ *
+ * @param {object} user       - User object {username, display_name, profile_image_url}
+ * @param {string} extraStyle - Optional extra inline styles for the <img>
+ * @returns {string}          - HTML string
+ */
+function avatarHTML(user, extraStyle = 'width:100%;height:100%;object-fit:cover;border-radius:50%') {
+    const url  = getAvatarUrl(user);
+    const name = (user && (user.display_name || user.username)) || '?';
+    const initial = name.charAt(0).toUpperCase();
+
+    if (url) {
+        const escaped = escapeHTML(url);
+        const alt     = escapeHTML(name);
+        // onerror replaces the broken img with a letter-avatar span
+        return `<img src="${escaped}" alt="${alt}" style="${extraStyle}"
+                    onerror="this.replaceWith(artxLetterAvatar('${escapeHTML(initial)}'))">`;
+    }
+    return `<i class="fas fa-user-circle" aria-label="${escapeHTML(name)}"></i>`;
+}
+
+/**
+ * Create a letter-avatar DOM element (called by onerror handlers).
+ * @param {string} letter
+ * @returns {HTMLElement}
+ */
+function artxLetterAvatar(letter) {
+    const colours = ['#6c63ff','#e74c3c','#2ecc71','#f39c12','#1abc9c','#9b59b6','#3498db','#e67e22'];
+    const colour  = colours[letter.charCodeAt(0) % colours.length];
+    const el = document.createElement('span');
+    el.style.cssText = [
+        'display:inline-flex', 'align-items:center', 'justify-content:center',
+        'width:100%', 'height:100%', 'border-radius:50%',
+        `background:${colour}`, 'color:#fff', 'font-weight:700', 'font-size:14px',
+        'user-select:none',
+    ].join(';');
+    el.textContent = letter;
+    return el;
+}
+
+/**
+ * Apply a graceful onerror fallback to every profile <img> already in the DOM.
+ * Call once after dynamic content is rendered.
+ */
+function patchBrokenAvatars() {
+    document.querySelectorAll('img[src*="/media/profiles/"]').forEach(img => {
+        if (img.dataset.avatarPatched) return;
+        img.dataset.avatarPatched = '1';
+        const letter = (img.alt || '?').charAt(0).toUpperCase();
+        img.addEventListener('error', () => {
+            img.replaceWith(artxLetterAvatar(letter));
+        });
+    });
+}
+
+window.getAvatarUrl         = getAvatarUrl;
+window.avatarHTML            = avatarHTML;
+window.artxLetterAvatar      = artxLetterAvatar;
+window.patchBrokenAvatars    = patchBrokenAvatars;
+
+// Patch any avatars that were already in the DOM when this script loaded
+document.addEventListener('DOMContentLoaded', patchBrokenAvatars);
+
 // Add CSS animations
 const style = document.createElement('style');
 style.textContent = `

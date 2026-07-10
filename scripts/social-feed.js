@@ -265,9 +265,11 @@ function _insertPostCard(post) {
     const media  = post._localMedia || post.media || [];
     const when   = post.created_at ? _timeAgo(post.created_at) : 'Just now';
 
-    const avatarHTML = author.profile_image
-        ? `<img src="${_esc(author.profile_image)}" alt="${name}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`
-        : `<i class="fas fa-user-circle"></i>`;
+    const avatarHTML_str = (typeof avatarHTML === 'function')
+        ? avatarHTML(author)
+        : (author.profile_image
+            ? `<img src="${_esc(author.profile_image)}" alt="${name}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`
+            : `<i class="fas fa-user-circle"></i>`);
 
     let mediaHTML = '';
     if (media[0]?.type === 'achievement') {
@@ -657,10 +659,11 @@ function _appendPostCard(post, container) {
     const name   = _esc(author.display_name || author.username || 'User');
     const when   = post.created_at ? _timeAgo(post.created_at) : 'Just now';
 
-    const avatarHTML = author.profile_image
-        ? `<img src="${_esc(author.profile_image)}" alt="${name}"
-               style="width:100%;height:100%;object-fit:cover;border-radius:50%">`
-        : `<i class="fas fa-user-circle"></i>`;
+    const avatarHTML_str = (typeof avatarHTML === 'function')
+        ? avatarHTML(author)
+        : (author.profile_image
+            ? `<img src="${_esc(author.profile_image)}" alt="${name}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`
+            : `<i class="fas fa-user-circle"></i>`);
 
     let mediaHTML = '';
     if (post.media_url) {

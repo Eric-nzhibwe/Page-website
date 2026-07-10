@@ -71,14 +71,15 @@ def serve_frontend_file(request, file_path=''):
                 # Add content length
                 response['Content-Length'] = len(content)
                 
-                logger.info(f"Served: {file_path} ({len(content)} bytes, {content_type})")
                 return response
                 
         except Exception as e:
             logger.error(f"Error reading file {file_path}: {e}")
             raise Http404(f"Error reading file: {file_path}")
     else:
-        logger.error(f"File not found: {file_path} (full path: {full_path})")
+        # Only log non-media 404s to avoid spam from ephemeral upload files
+        if not file_path.startswith('media/'):
+            logger.warning(f"File not found: {file_path}")
         raise Http404(f"File not found: {file_path}")
 
 @csrf_exempt

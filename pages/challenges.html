@@ -10,6 +10,8 @@
     <link rel="stylesheet" href="../styles/styles.css">
     <link rel="stylesheet" href="../styles/icon-nav.css">
     <link rel="stylesheet" href="../styles/challenges.css">
+    <link rel="stylesheet" href="../styles/challenges-enhanced.css">
+    <link rel="stylesheet" href="../styles/image-interpretation.css">
     <link rel="stylesheet" href="../styles/responsive-pro.css">
 </head>
 <body>
@@ -343,8 +345,182 @@
     });
     </script>
 
+    <!-- ═══════════════════════════════════════════════════════════════
+         IMAGE INTERPRETATION — PREVIEW MODAL
+         Shows blurred image, rules, entry fee, and Play button
+    ════════════════════════════════════════════════════════════════ -->
+    <div id="imgInterpPreviewModal" class="ii-modal-backdrop" style="display:none;">
+        <div class="ii-modal-box ii-preview-box">
+
+            <!-- Header -->
+            <div class="ii-modal-header">
+                <h2><i class="fas fa-image"></i> Image Interpretation</h2>
+                <button class="ii-close-btn" onclick="closeImgInterpPreview()" aria-label="Close">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <!-- Blurred thumbnail -->
+            <div class="ii-blur-wrap">
+                <img id="iiPreviewThumb" src="" alt="Challenge image" class="ii-blur-img">
+                <div class="ii-blur-label">
+                    <i class="fas fa-lock"></i>
+                    <span>Image revealed after joining</span>
+                </div>
+            </div>
+
+            <!-- Body -->
+            <div class="ii-modal-body">
+                <h3 id="iiPreviewTitle" class="ii-preview-title"></h3>
+                <p  id="iiPreviewDescription" class="ii-preview-desc"></p>
+
+                <!-- Meta pills -->
+                <div class="ii-meta-row">
+                    <span class="ii-meta-pill"><i class="fas fa-signal"></i> <span id="iiPreviewDifficulty">Medium</span></span>
+                    <span class="ii-meta-pill"><i class="fas fa-clock"></i> <span id="iiPreviewTimeLimit">2 min</span></span>
+                    <span class="ii-meta-pill"><i class="fas fa-eye"></i> <span id="iiPreviewPointCount">? hidden points</span></span>
+                </div>
+
+                <!-- How it works -->
+                <div class="ii-rules-box">
+                    <h4><i class="fas fa-list-check"></i> How it works</h4>
+                    <ul>
+                        <li><i class="fas fa-1"></i> The full image is revealed — a countdown begins.</li>
+                        <li><i class="fas fa-2"></i> Identify as many meaningful visual elements as you can.</li>
+                        <li><i class="fas fa-3"></i> Explain what each element represents or communicates.</li>
+                        <li><i class="fas fa-4"></i> Describe the image's overall story or message.</li>
+                        <li><i class="fas fa-5"></i> Submit before time runs out.</li>
+                    </ul>
+                    <p class="ii-rules-note"><i class="fas fa-robot"></i> Scored by AI: 60% observation accuracy + 40% interpretation quality.</p>
+                </div>
+
+                <!-- Entry fee / prize box (hidden when free) -->
+                <div id="iiPreviewFeeBox" class="ii-fee-box" style="display:none;">
+                    <div>
+                        <div class="ii-fee-label">Entry Fee</div>
+                        <div class="ii-fee-amount" id="iiPreviewEntryAmount">K0.00</div>
+                    </div>
+                    <div class="ii-fee-prize" id="iiPreviewPrizeText"></div>
+                </div>
+
+                <!-- Play button -->
+                <button id="iiPreviewPlayBtn" class="ii-btn-play" onclick="startImgInterpGame()">
+                    <i class="fas fa-play"></i> Join Free
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         IMAGE INTERPRETATION — GAME MODAL
+         Full image + 3-step submission flow
+    ════════════════════════════════════════════════════════════════ -->
+    <div id="imgInterpGameModal" class="ii-modal-backdrop" style="display:none;">
+        <div class="ii-modal-box ii-game-modal-content">
+
+            <!-- Timer progress bar -->
+            <div class="ii-timer-bar">
+                <div id="iiTimerFill" class="ii-timer-fill"></div>
+            </div>
+
+            <!-- Game header -->
+            <div class="ii-game-header">
+                <h3 id="iiGameTitle" class="ii-game-title"></h3>
+                <div id="iiCountdownDisplay" class="ii-countdown">2:00</div>
+            </div>
+
+            <!-- Image -->
+            <div class="ii-image-wrap">
+                <img id="iiGameImage" src="" alt="Challenge image" class="ii-game-img ii-img-blurred">
+
+                <!-- 3-2-1 overlay -->
+                <div id="iiGoOverlay" class="ii-go-overlay" style="display:none;"></div>
+            </div>
+
+            <!-- Answer section (disabled until image is revealed) -->
+            <div id="iiAnswerSection" class="ii-answer-section ii-disabled">
+
+                <!-- Step progress indicators -->
+                <div class="ii-step-progress">
+                    <div class="ii-step-dot active" title="Step 1: Observe"></div>
+                    <div class="ii-step-connector"></div>
+                    <div class="ii-step-dot" title="Step 2: Interpret"></div>
+                    <div class="ii-step-connector"></div>
+                    <div class="ii-step-dot" title="Step 3: Overall"></div>
+                </div>
+
+                <!-- ── STEP 1: OBSERVATION ── -->
+                <div id="iiStepObserve" class="ii-step">
+                    <p class="ii-step-hint">
+                        <i class="fas fa-eye"></i>
+                        <strong>Step 1:</strong> What visual elements do you see? List each one — objects, symbols, colours, expressions, background details.
+                    </p>
+                    <div id="iiPointsList" class="ii-points-list">
+                        <p class="ii-empty-hint"><i class="fas fa-eye"></i> Study the image and add what you see below.</p>
+                    </div>
+                    <div class="ii-add-point-row">
+                        <input
+                            type="text"
+                            id="iiPointInput"
+                            class="ii-point-input"
+                            placeholder="e.g. Broken clock, Wilted tree, Child looking up…"
+                            onkeydown="iiPointInputKeydown(event)"
+                        >
+                        <button class="ii-btn-add" onclick="iiAddPoint()">
+                            <i class="fas fa-plus"></i> Add
+                        </button>
+                    </div>
+                    <button class="ii-btn-next" onclick="iiGoToInterpret()">
+                        Next: Interpret <i class="fas fa-arrow-right"></i>
+                    </button>
+                </div>
+
+                <!-- ── STEP 2: INTERPRETATION ── -->
+                <div id="iiStepInterpret" class="ii-step" style="display:none;">
+                    <p class="ii-step-hint">
+                        <i class="fas fa-brain"></i>
+                        <strong>Step 2:</strong> For each element you spotted, explain what it represents — what idea, emotion, or message does it carry?
+                    </p>
+                    <div id="iiInterpForms" class="ii-interp-forms"></div>
+                    <div class="ii-step-nav">
+                        <button class="ii-btn-back" onclick="iiBackToObserve()">
+                            <i class="fas fa-arrow-left"></i> Back
+                        </button>
+                        <button class="ii-btn-next" onclick="iiGoToOverall()">
+                            Next: Overall Message <i class="fas fa-arrow-right"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ── STEP 3: OVERALL MESSAGE ── -->
+                <div id="iiStepOverall" class="ii-step" style="display:none;">
+                    <p class="ii-step-hint">
+                        <i class="fas fa-scroll"></i>
+                        <strong>Step 3:</strong> What is the image's overall story or message? How do all the elements work together?
+                    </p>
+                    <textarea
+                        id="iiOverallMessage"
+                        class="ii-overall-input"
+                        rows="4"
+                        placeholder="Describe the overall message, theme, or story this image is communicating…"
+                    ></textarea>
+                    <div class="ii-step-nav">
+                        <button class="ii-btn-back" onclick="iiBackToInterpret()">
+                            <i class="fas fa-arrow-left"></i> Back
+                        </button>
+                        <button id="iiSubmitFinalBtn" class="ii-btn-submit" onclick="iiSubmitFinal()">
+                            <i class="fas fa-paper-plane"></i> Submit
+                        </button>
+                    </div>
+                </div>
+
+            </div><!-- /iiAnswerSection -->
+        </div><!-- /ii-game-modal-content -->
+    </div><!-- /imgInterpGameModal -->
+
     <script src="../scripts/api-service.js"></script>
     <script src="../scripts/realtime-service.js"></script>
+    <script src="../scripts/image-interpretation.js"></script>
     <script src="../scripts/challenges.js"></script>
 </body>
 </html>

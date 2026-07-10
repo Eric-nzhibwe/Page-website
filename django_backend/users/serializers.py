@@ -146,11 +146,13 @@ class UserProfileSerializer(serializers.ModelSerializer):
     social_connections = serializers.JSONField(read_only=True)
     followers_count    = serializers.SerializerMethodField()
     following_count    = serializers.SerializerMethodField()
+    profile_image_url  = serializers.SerializerMethodField()
 
     class Meta:
         model  = User
         fields = [
             'id', 'username', 'email', 'display_name', 'bio', 'profile_image',
+            'profile_image_url',
             'phone', 'date_of_birth', 'location', 'website', 'preferences',
             'prestige_points', 'level', 'power_rank', 'access_tier',
             'current_streak', 'total_submissions', 'successful_submissions',
@@ -164,7 +166,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
             'current_streak', 'total_submissions', 'successful_submissions',
             'success_rate', 'total_earnings', 'tournament_wins',
             'is_verified', 'verification_level', 'created_at', 'last_login_date',
-            'followers_count', 'following_count',
+            'followers_count', 'following_count', 'profile_image_url',
         ]
 
     def get_followers_count(self, obj):
@@ -172,6 +174,27 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
     def get_following_count(self, obj):
         return obj.following.count()
+
+    def get_profile_image_url(self, obj):
+        """
+        Return the profile image URL only if the underlying file actually exists.
+        On Render (ephemeral filesystem) uploaded files are lost on restart —
+        returning a broken URL causes 404 log spam and broken avatar images.
+        Falls back to None so the frontend can show a generated avatar instead.
+        """
+        if not obj.profile_image:
+            return None
+        try:
+            import os
+            # Check the file exists on disk before returning the URL
+            if obj.profile_image.storage.exists(obj.profile_image.name):
+                request = self.context.get('request')
+                if request:
+                    return request.build_absolute_uri(obj.profile_image.url)
+                return obj.profile_image.url
+        except Exception:
+            pass
+        return None
 
 
 class UserActivitySerializer(serializers.ModelSerializer):

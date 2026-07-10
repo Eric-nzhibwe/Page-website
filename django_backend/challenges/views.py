@@ -9,11 +9,13 @@ from django.utils import timezone
 from django.db.models import Q, Count, Avg, Max, Min
 from django_filters.rest_framework import DjangoFilterBackend
 
-from .models import Challenge, ChallengeSubmission, ChallengeLeaderboard, ChallengeActivity
+from .models import Challenge, ChallengeSubmission, ChallengeLeaderboard, ChallengeActivity, ImageInterpretationSubmission
 from .serializers import (
     ChallengeSerializer, ChallengeSubmissionSerializer,
     ChallengeSubmissionCreateSerializer, ChallengeLeaderboardSerializer,
-    ChallengeActivitySerializer
+    ChallengeActivitySerializer,
+    ImageInterpretationSubmissionSerializer,
+    ImageInterpretationSubmissionCreateSerializer,
 )
 
 
@@ -246,3 +248,99 @@ class ChallengeActivityViewSet(viewsets.ReadOnlyModelViewSet):
         
         serializer = self.get_serializer(activities, many=True)
         return Response(serializer.data)
+
+
+class ImageInterpretationViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for Image Interpretation submissions.
+
+    POST   /api/challenges/image-submissions/         — submit an attempt
+    GET    /api/challenges/image-submissions/          — list own submissions
+    GET    /api/challenges/image-submissions/{id}/     — single submission detail
+    GET    /api/challenges/image-submissions/my/       — alias for own submissions
+    GET    /api/challenges/image-submissions/leaderboard/?challenge_id=<id>
+    """
+
+    permission_classes = [IsAuthenticated]
+    filter_backends    = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_fields   = ['challenge', 'status']
+    ordering_fields    = ['submitted_at', 'final_score']
+    ordering           = ['-submitted_at']
+
+    def get_queryset(self):
+        return ImageInterpretationSubmission.objects.filter(
+            user=self.request.user
+        ).select_related('challenge', 'user')
+
+    def get_serializer_class(self):
+        if self.action == 'create':
+            return ImageInterpretationSubmissionCreateSerializer
+        return ImageInterpretationSubmissionSerializer
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        output = ImageInterpretationSubmissionSerializer(
+            serializer.instance, context={'request': request}
+        )
+        return Response(output.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
+    def my(self, request):
+        """All image interpretation submissions for the current user."""
+        subs = self.get_queryset()
+        serializer = ImageInterpretationSubmissionSerializer(subs, many=True, context={'request': request})
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'], permission_classes=[AllowAny])
+    def leaderboard(self, request):
+        """
+        Top scorers for a specific image interpretation challenge.
+        Query param: challenge_id (required)
+        """
+        challenge_id = request.query_params.get('challenge_id')
+        if not challenge_id:
+            return Response({'error': 'challenge_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            challenge = Challenge.objects.get(pk=challenge_id, challenge_type='image_interpretation')
+        except Challenge.DoesNotExist:
+            return Response({'error': 'Challenge not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        top = (
+            ImageInterpretationSubmission.objects
+            .filter(challenge=challenge, status='scored')
+            .select_related('user')
+            .order_by('-final_score')[:20]
+        )
+
+        leaderboard_data = [
+            {
+                'rank':                idx + 1,
+                'user_id':             str(sub.user.id),
+                'username':            sub.user.username,
+                'final_score':         sub.final_score,
+                'observation_score':   sub.observation_score,
+                'interpretation_score': sub.interpretation_score,
+                'matched_count':       0,   # hidden from leaderboard
+                'submitted_at':        sub.submitted_at.isoformat(),
+            }
+            for idx, sub in enumerate(top)
+        ]
+
+        all_scored = ImageInterpretationSubmission.objects.filter(
+            challenge=challenge, status='scored'
+        )
+        avg = 0.0
+        if all_scored.exists():
+            scores = list(all_scored.values_list('final_score', flat=True))
+            avg = sum(scores) / len(scores)
+
+        return Response({
+            'challenge_id':       str(challenge.id),
+            'challenge_title':    challenge.title,
+            'total_participants': all_scored.count(),
+            'average_score':      round(avg, 1),
+            'top_submissions':    leaderboard_data,
+        })

@@ -1,0 +1,1004 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Image Interpretation Challenge — Styles
+   Covers: preview modal, game modal, step flow, result overlay, toast
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── CSS variables (inherit from :root if defined, else sensible defaults) ── */
+:root {
+    --ii-primary:   var(--artx-primary,  #556b2f);
+    --ii-accent:    var(--artx-accent,   #8bc34a);
+    --ii-danger:    #e74c3c;
+    --ii-warn:      #f39c12;
+    --ii-win-bg:    linear-gradient(160deg, #1a3a0a, #2d6015);
+    --ii-lose-bg:   linear-gradient(160deg, #2a0a0a, #6b1a1a);
+    --ii-radius:    14px;
+    --ii-shadow:    0 12px 48px rgba(0,0,0,0.35);
+}
+
+/* ── Backdrop ── */
+.ii-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.72);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9000;
+    padding: 16px;
+    overflow-y: auto;
+}
+
+/* ── Modal box ── */
+.ii-modal-box {
+    background: #fff;
+    border-radius: var(--ii-radius);
+    box-shadow: var(--ii-shadow);
+    width: 100%;
+    max-width: 480px;
+    overflow: hidden;
+    position: relative;
+    animation: iiSlideUp 0.28s ease;
+}
+
+@keyframes iiSlideUp {
+    from { opacity: 0; transform: translateY(28px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Modal header ── */
+.ii-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    background: linear-gradient(to right, #f4f7f0, #e8f0da);
+    border-bottom: 1px solid #d8e4c4;
+}
+
+.ii-modal-header h2 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 700;
+    color: #1a1a1a;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.ii-modal-header h2 i { color: var(--ii-primary); }
+
+.ii-close-btn {
+    background: none;
+    border: none;
+    font-size: 18px;
+    color: #666;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 6px;
+    transition: background 0.15s, color 0.15s;
+    line-height: 1;
+}
+
+.ii-close-btn:hover { background: #e8e8e8; color: #c0392b; }
+
+/* ── Blurred thumbnail ── */
+.ii-blur-wrap {
+    position: relative;
+    aspect-ratio: 16/7;
+    overflow: hidden;
+    background: #111;
+}
+
+.ii-blur-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    filter: blur(20px) brightness(0.45);
+    transform: scale(1.06);
+    display: block;
+}
+
+.ii-blur-label {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 700;
+    text-shadow: 0 2px 6px rgba(0,0,0,0.6);
+    letter-spacing: 0.4px;
+}
+
+.ii-blur-label i { font-size: 20px; color: #ffd700; }
+
+/* ── Modal body ── */
+.ii-modal-body {
+    padding: 18px 20px 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    max-height: calc(90vh - 120px);
+    overflow-y: auto;
+}
+
+.ii-preview-title {
+    font-size: 19px;
+    font-weight: 700;
+    color: #1a1a1a;
+    margin: 0;
+}
+
+.ii-preview-desc {
+    font-size: 14px;
+    color: #555;
+    line-height: 1.6;
+    margin: 0;
+}
+
+/* ── Meta pills ── */
+.ii-meta-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.ii-meta-pill {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ii-primary);
+    background: #f0f7e6;
+    border: 1px solid #d0e4b0;
+    padding: 4px 10px;
+    border-radius: 20px;
+}
+
+/* ── Rules box ── */
+.ii-rules-box {
+    background: #f8fbf3;
+    border-left: 4px solid var(--ii-primary);
+    border-radius: 10px;
+    padding: 14px 16px;
+}
+
+.ii-rules-box h4 {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--ii-primary);
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    margin: 0 0 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.ii-rules-box ul {
+    list-style: none;
+    margin: 0 0 10px;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+}
+
+.ii-rules-box li {
+    font-size: 13px;
+    color: #444;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    line-height: 1.5;
+}
+
+.ii-rules-box li i {
+    color: var(--ii-primary);
+    flex-shrink: 0;
+    margin-top: 1px;
+    width: 16px;
+    font-size: 11px;
+}
+
+.ii-rules-note {
+    font-size: 12px;
+    color: #777;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.ii-rules-note i { color: #8e44ad; }
+
+/* ── Entry fee / prize box ── */
+.ii-fee-box {
+    background: linear-gradient(to right, #f8fff0, #d6f0b0);
+    border: 1px solid #b8dda0;
+    border-radius: 12px;
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.ii-fee-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #666;
+    font-weight: 600;
+    margin-bottom: 2px;
+}
+
+.ii-fee-amount {
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--ii-primary);
+    line-height: 1;
+}
+
+.ii-fee-prize {
+    font-size: 13px;
+    color: #555;
+    text-align: right;
+}
+
+.ii-fee-prize strong { color: var(--ii-primary); }
+
+/* ── Play button ── */
+.ii-btn-play {
+    width: 100%;
+    background: linear-gradient(to right, var(--ii-primary), darkgreen);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    padding: 13px 20px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    box-shadow: 0 3px 12px rgba(85,107,47,0.45);
+    transition: filter 0.2s, transform 0.15s;
+    letter-spacing: 0.3px;
+}
+
+.ii-btn-play:hover  { filter: brightness(1.08); transform: translateY(-1px); }
+.ii-btn-play:active { filter: brightness(0.96); transform: translateY(0); }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   GAME MODAL
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.ii-game-modal-content {
+    max-width: 560px;
+    padding: 0;
+}
+
+/* ── Timer bar ── */
+.ii-timer-bar {
+    width: 100%;
+    height: 6px;
+    background: #e0e0e0;
+}
+
+.ii-timer-fill {
+    height: 100%;
+    width: 100%;
+    background: var(--ii-primary);
+    transition: width 1s linear, background 0.5s ease;
+    border-radius: 0 3px 3px 0;
+}
+
+/* ── Game header ── */
+.ii-game-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 18px 10px;
+    border-bottom: 1px solid #eee;
+    gap: 10px;
+}
+
+.ii-game-title {
+    flex: 1;
+    font-size: 15px;
+    font-weight: 700;
+    color: #1a1a1a;
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding-right: 10px;
+}
+
+.ii-countdown {
+    font-size: 16px;
+    font-weight: 800;
+    color: var(--ii-primary);
+    background: #f4f7f0;
+    border: 2px solid var(--ii-primary);
+    border-radius: 8px;
+    padding: 5px 12px;
+    min-width: 64px;
+    text-align: center;
+    transition: color 0.3s, border-color 0.3s, background 0.3s;
+    flex-shrink: 0;
+}
+
+.ii-countdown.ii-timer-danger {
+    color: var(--ii-danger);
+    border-color: var(--ii-danger);
+    background: #fff0f0;
+    animation: iiPulse 0.6s ease infinite;
+}
+
+@keyframes iiPulse {
+    0%, 100% { transform: scale(1); }
+    50%       { transform: scale(1.05); }
+}
+
+/* ── Image wrapper ── */
+.ii-image-wrap {
+    position: relative;
+    aspect-ratio: 16/9;
+    overflow: hidden;
+    background: #111;
+}
+
+.ii-game-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: filter 0.5s ease, transform 0.5s ease;
+}
+
+.ii-img-blurred {
+    filter: blur(22px) brightness(0.4);
+    transform: scale(1.06);
+}
+
+/* ── Get-ready overlay ── */
+.ii-go-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.75);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    z-index: 10;
+    transition: opacity 0.4s;
+}
+
+.ii-go-overlay.ii-fade-out { opacity: 0; }
+
+.ii-go-count {
+    font-size: 80px;
+    font-weight: 900;
+    color: #ffd700;
+    line-height: 1;
+    text-shadow: 0 4px 18px rgba(0,0,0,0.5);
+    animation: iiCountPop 0.35s ease;
+}
+
+@keyframes iiCountPop {
+    from { transform: scale(1.6); opacity: 0; }
+    to   { transform: scale(1);   opacity: 1; }
+}
+
+/* ── Answer section (disabled state while countdown runs) ── */
+.ii-answer-section {
+    padding: 16px 18px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-height: 52vh;
+    overflow-y: auto;
+}
+
+.ii-answer-section.ii-disabled {
+    opacity: 0.4;
+    pointer-events: none;
+    user-select: none;
+}
+
+/* ── Step progress dots ── */
+.ii-step-progress {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    margin-bottom: 4px;
+}
+
+.ii-step-dot {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: #e0e0e0;
+    border: 2px solid #ccc;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    color: #aaa;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.ii-step-dot.active {
+    background: var(--ii-primary);
+    border-color: var(--ii-primary);
+    color: #fff;
+    box-shadow: 0 0 0 3px rgba(85,107,47,0.2);
+}
+
+.ii-step-dot.done {
+    background: var(--ii-accent);
+    border-color: var(--ii-accent);
+    color: #fff;
+}
+
+.ii-step-connector {
+    flex: 1;
+    height: 2px;
+    background: #e0e0e0;
+    max-width: 60px;
+    transition: background 0.2s;
+}
+
+/* ── Step content ── */
+.ii-step { display: flex; flex-direction: column; gap: 10px; }
+
+.ii-step-hint {
+    font-size: 13px;
+    color: #555;
+    margin: 0;
+    line-height: 1.55;
+    display: flex;
+    align-items: flex-start;
+    gap: 7px;
+}
+
+.ii-step-hint i { color: var(--ii-primary); flex-shrink: 0; margin-top: 2px; }
+.ii-step-hint strong { color: #1a1a1a; }
+
+/* ── Points list (Step 1) ── */
+.ii-points-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    min-height: 40px;
+    padding: 10px;
+    background: #f8fbf3;
+    border: 1.5px dashed #c8dda8;
+    border-radius: 10px;
+}
+
+.ii-empty-hint {
+    width: 100%;
+    text-align: center;
+    font-size: 13px;
+    color: #999;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.ii-empty-hint i { color: #bbb; }
+
+.ii-point-tag {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: #fff;
+    border: 1.5px solid var(--ii-primary);
+    border-radius: 20px;
+    padding: 5px 10px 5px 12px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #1a1a1a;
+    animation: iiTagIn 0.15s ease;
+}
+
+@keyframes iiTagIn {
+    from { transform: scale(0.8); opacity: 0; }
+    to   { transform: scale(1);   opacity: 1; }
+}
+
+.ii-point-tag span { display: flex; align-items: center; gap: 5px; }
+.ii-point-tag span i { color: var(--ii-primary); font-size: 10px; }
+
+.ii-remove-point {
+    background: none;
+    border: none;
+    color: #aaa;
+    cursor: pointer;
+    font-size: 12px;
+    padding: 0 2px;
+    line-height: 1;
+    transition: color 0.15s;
+}
+
+.ii-remove-point:hover { color: var(--ii-danger); }
+
+/* ── Add point row ── */
+.ii-add-point-row {
+    display: flex;
+    gap: 8px;
+}
+
+.ii-point-input {
+    flex: 1;
+    border: 1.5px solid #ddd;
+    border-radius: 9px;
+    padding: 9px 13px;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+    background: #fafafa;
+    color: #1a1a1a;
+}
+
+.ii-point-input:focus { border-color: var(--ii-primary); background: #fff; }
+
+.ii-btn-add {
+    background: var(--ii-primary);
+    color: #fff;
+    border: none;
+    border-radius: 9px;
+    padding: 9px 16px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    white-space: nowrap;
+    transition: filter 0.2s;
+}
+
+.ii-btn-add:hover { filter: brightness(1.1); }
+
+/* ── Interpretation forms (Step 2) ── */
+.ii-interp-forms {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-height: 34vh;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+.ii-interp-block { display: flex; flex-direction: column; gap: 5px; }
+
+.ii-interp-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #1a1a1a;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.ii-interp-label i { color: var(--ii-primary); font-size: 10px; }
+
+.ii-interp-input {
+    width: 100%;
+    border: 1.5px solid #ddd;
+    border-radius: 9px;
+    padding: 9px 12px;
+    font-size: 13px;
+    resize: vertical;
+    outline: none;
+    transition: border-color 0.2s;
+    font-family: inherit;
+    color: #1a1a1a;
+    background: #fafafa;
+    box-sizing: border-box;
+}
+
+.ii-interp-input:focus { border-color: var(--ii-primary); background: #fff; }
+
+/* ── Overall message (Step 3) ── */
+.ii-overall-input {
+    width: 100%;
+    border: 1.5px solid #ddd;
+    border-radius: 10px;
+    padding: 11px 14px;
+    font-size: 14px;
+    resize: vertical;
+    min-height: 90px;
+    outline: none;
+    transition: border-color 0.2s;
+    font-family: inherit;
+    color: #1a1a1a;
+    background: #fafafa;
+    box-sizing: border-box;
+}
+
+.ii-overall-input:focus { border-color: var(--ii-primary); background: #fff; }
+
+/* ── Step navigation buttons ── */
+.ii-step-nav {
+    display: flex;
+    gap: 10px;
+    margin-top: 4px;
+}
+
+.ii-btn-next, .ii-btn-submit {
+    flex: 1;
+    background: linear-gradient(to right, var(--ii-primary), darkgreen);
+    color: #fff;
+    border: none;
+    border-radius: 9px;
+    padding: 11px 16px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    box-shadow: 0 2px 8px rgba(85,107,47,0.35);
+    transition: filter 0.2s, transform 0.15s;
+}
+
+.ii-btn-next:hover:not(:disabled),
+.ii-btn-submit:hover:not(:disabled) {
+    filter: brightness(1.1);
+    transform: translateY(-1px);
+}
+
+.ii-btn-next:active,
+.ii-btn-submit:active { transform: translateY(0); }
+
+.ii-btn-submit:disabled {
+    background: #aaa;
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+}
+
+/* Single "Next" button in Step 1 (not in a nav row) */
+.ii-step > .ii-btn-next {
+    margin-top: 4px;
+    align-self: flex-end;
+    flex: unset;
+    padding: 10px 20px;
+}
+
+.ii-btn-back {
+    background: #fff;
+    color: var(--ii-primary);
+    border: 1.5px solid var(--ii-primary);
+    border-radius: 9px;
+    padding: 10px 16px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: background 0.15s;
+    flex-shrink: 0;
+}
+
+.ii-btn-back:hover { background: #f0f7e6; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RESULT OVERLAY  (appended inside .ii-game-modal-content)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.ii-result-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    z-index: 20;
+    border-radius: var(--ii-radius);
+    animation: iiSlideUp 0.35s ease;
+    overflow-y: auto;
+}
+
+.ii-result-win  { background: var(--ii-win-bg);  }
+.ii-result-lose { background: var(--ii-lose-bg); }
+
+.ii-result-inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    text-align: center;
+    width: 100%;
+    max-width: 400px;
+    color: #fff;
+}
+
+.ii-result-icon { font-size: 58px; line-height: 1; }
+.ii-result-win  .ii-result-icon { color: #ffd700; }
+.ii-result-lose .ii-result-icon { color: var(--ii-danger); }
+
+.ii-result-inner h3 {
+    font-size: 22px;
+    font-weight: 800;
+    margin: 0;
+    color: #fff;
+}
+
+/* ── Score grid ── */
+.ii-score-grid {
+    display: flex;
+    gap: 12px;
+    width: 100%;
+    justify-content: center;
+}
+
+.ii-score-cell {
+    flex: 1;
+    background: rgba(255,255,255,0.12);
+    border-radius: 10px;
+    padding: 12px 8px;
+    min-width: 80px;
+}
+
+.ii-score-total {
+    background: rgba(255,215,0,0.18);
+    border: 1px solid rgba(255,215,0,0.4);
+}
+
+.ii-score-val {
+    font-size: 26px;
+    font-weight: 900;
+    color: #fff;
+    line-height: 1;
+    margin-bottom: 4px;
+}
+
+.ii-score-total .ii-score-val { color: #ffd700; }
+
+.ii-score-key {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: rgba(255,255,255,0.7);
+    font-weight: 600;
+}
+
+/* ── AI feedback ── */
+.ii-result-feedback {
+    font-size: 13px;
+    color: rgba(255,255,255,0.88);
+    margin: 0;
+    line-height: 1.6;
+    max-width: 340px;
+    text-align: center;
+}
+
+/* ── Prize badge ── */
+.ii-result-prize {
+    background: rgba(255,215,0,0.2);
+    border: 1.5px solid rgba(255,215,0,0.6);
+    border-radius: 8px;
+    padding: 8px 18px;
+    font-size: 14px;
+    font-weight: 700;
+    color: #ffd700;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+
+/* ── Point breakdown ── */
+.ii-result-points {
+    width: 100%;
+    text-align: left;
+    background: rgba(255,255,255,0.08);
+    border-radius: 10px;
+    padding: 12px 14px;
+    max-height: 180px;
+    overflow-y: auto;
+}
+
+.ii-result-points h4 {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: rgba(255,255,255,0.7);
+    margin: 0 0 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.ii-result-point {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 7px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    font-size: 13px;
+    color: rgba(255,255,255,0.85);
+}
+
+.ii-result-point:last-child { border-bottom: none; }
+
+.ii-result-point-icon { flex-shrink: 0; margin-top: 1px; }
+.ii-result-point.matched  .ii-result-point-icon { color: #4caf50; }
+.ii-result-point.missed   .ii-result-point-icon { color: var(--ii-danger); }
+
+.ii-result-point-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.ii-result-point-body strong { color: #fff; font-size: 13px; }
+.ii-result-point-body span   { font-size: 12px; color: rgba(255,255,255,0.65); }
+
+.ii-result-point-score {
+    font-size: 12px;
+    font-weight: 700;
+    color: #4caf50;
+    flex-shrink: 0;
+}
+
+/* ── Close button ── */
+.ii-btn-result-close {
+    background: rgba(255,255,255,0.18);
+    border: 1.5px solid rgba(255,255,255,0.45);
+    color: #fff;
+    border-radius: 10px;
+    padding: 11px 28px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    margin-top: 4px;
+    transition: background 0.2s;
+}
+
+.ii-btn-result-close:hover { background: rgba(255,255,255,0.3); }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CHALLENGE CARD — image_interpretation type
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.challenge-card[data-challenge-type="image_interpretation"] {
+    border-left: 4px solid var(--ii-primary);
+    cursor: pointer;
+}
+
+.challenge-card[data-challenge-type="image_interpretation"]:hover {
+    border-color: var(--ii-primary);
+}
+
+/* Blurred card thumbnail */
+.ii-card-img-wrap {
+    position: relative;
+    border-radius: 8px;
+    overflow: hidden;
+    aspect-ratio: 16/7;
+    background: #111;
+    margin: 8px 0 12px;
+}
+
+.ii-card-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    filter: blur(14px) brightness(0.6);
+    transform: scale(1.05);
+    transition: filter 0.3s;
+}
+
+.ii-card-img-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.6);
+    pointer-events: none;
+}
+
+.ii-card-img-overlay i {
+    font-size: 22px;
+    color: #ffd700;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));
+}
+
+/* Entry fee badge on card */
+.ii-entry-badge {
+    position: absolute;
+    top: 14px;
+    left: 14px;
+    background: linear-gradient(to right, var(--ii-primary), darkgreen);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 20px;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TOAST NOTIFICATION  (fallback when showNotification() isn't available)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.ii-toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 12px 22px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    z-index: 99999;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+    animation: iiSlideUp 0.2s ease;
+}
+
+.ii-toast--info  { background: #2c3e50; }
+.ii-toast--warn  { background: #d68910; }
+.ii-toast--error { background: #c0392b; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RESPONSIVE
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 520px) {
+    .ii-modal-box { max-width: 100%; border-radius: 12px 12px 0 0; }
+    .ii-modal-backdrop { align-items: flex-end; padding: 0; }
+    .ii-score-grid { gap: 8px; }
+    .ii-score-cell { padding: 10px 6px; min-width: 70px; }
+    .ii-score-val  { font-size: 22px; }
+    .ii-add-point-row { flex-direction: column; }
+    .ii-btn-add  { justify-content: center; }
+    .ii-step-nav { flex-direction: column-reverse; }
+    .ii-btn-back { justify-content: center; }
+}
+
+@media (max-width: 360px) {
+    .ii-preview-title { font-size: 16px; }
+    .ii-modal-header h2 { font-size: 14px; }
+    .ii-go-count { font-size: 64px; }
+}

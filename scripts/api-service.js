@@ -219,6 +219,58 @@ class APIService {
     getGlobalActivityFeed() {
         return this.get('/activities/global_activity/', { auth: false });
     }
+
+    // ==================== IMAGE INTERPRETATION ====================
+
+    /**
+     * Submit an image interpretation attempt
+     * @param {string} challengeId
+     * @param {Array}  discoveredPoints  [{label, interpretation}]
+     * @param {string} overallMessage
+     * @param {number} submissionTimeSeconds
+     */
+    submitImageInterpretation(challengeId, discoveredPoints, overallMessage, submissionTimeSeconds) {
+        return this.post('/challenges/image-submissions/', {
+            challenge:                challengeId,
+            discovered_points:        discoveredPoints,
+            overall_message:          overallMessage,
+            submission_time_seconds:  submissionTimeSeconds,
+        });
+    }
+
+    /**
+     * Get current user's image interpretation submissions
+     */
+    getMyImageSubmissions() {
+        return this.get('/challenges/image-submissions/my/');
+    }
+
+    /**
+     * Get leaderboard for an image interpretation challenge
+     */
+    getImageInterpLeaderboard(challengeId) {
+        return this.get(`/challenges/image-submissions/leaderboard/?challenge_id=${challengeId}`, { auth: false });
+    }
+
+    // ==================== WALLET ====================
+
+    /**
+     * Get wallet balance
+     */
+    getWallet() {
+        return this.get('/payments/wallet/');
+    }
+
+    /**
+     * Deduct entry fee from wallet
+     */
+    deductEntryFee(amount, challengeId, description) {
+        return this.post('/payments/wallet/deduct/', {
+            amount,
+            description: description || `Entry fee — challenge ${challengeId}`,
+            transaction_type: 'payment',
+        });
+    }
 }
 
 // Create global instance

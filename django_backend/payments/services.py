@@ -184,6 +184,36 @@ def initiate_paystack_deposit(payment: Payment, request):
     }, None
 
 
+def _pawapay_timestamp(dt) -> str:
+    """
+    Format a datetime as RFC 3339 / ISO 8601 with second precision and UTC 'Z'.
+    PawaPay rejects microseconds and timezone offsets like +00:00.
+    Correct: '2026-07-10T22:34:12Z'   Wrong: '2026-07-10T22:34:12.060123+00:00'
+    """
+    import datetime
+    if dt.tzinfo is not None:
+        dt = dt.astimezone(datetime.timezone.utc).replace(tzinfo=None)
+    return dt.strftime('%Y-%m-%dT%H:%M:%SZ')
+
+
+def _pawapay_amount(amount: Decimal) -> str:
+    """
+    Format a Decimal for PawaPay: always use fixed-point notation with 2 dp.
+    Python's str(Decimal('1E+3')) → '1E+3' which PawaPay rejects.
+    """
+    return f'{amount:.2f}'
+
+
+def _pawapay_description(amount: Decimal, currency: str) -> str:
+    """
+    Build a statementDescription that:
+    - Contains only alphanumeric chars and spaces (PawaPay requirement)
+    - Is at most 22 characters long
+    """
+    desc = f'ARTX {amount:.0f} {currency}'
+    return desc[:22]
+
+
 def initiate_pawapay_deposit(payment: Payment, phone_number: str,
                              correspondent: str, request=None):
     """
@@ -203,23 +233,26 @@ def initiate_pawapay_deposit(payment: Payment, phone_number: str,
     if payment.amount < MIN_DEPOSIT_AMOUNT:
         return None, f'Minimum deposit is {MIN_DEPOSIT_AMOUNT} {payment.currency}.'
 
-    deposit_id = f'artxd_{payment.id}_{uuid.uuid4().hex[:8]}'
+    deposit_id = f'artxd{payment.id}{uuid.uuid4().hex[:6]}'
+    # PawaPay depositId: alphanumeric only, max 36 chars
+    deposit_id = re.sub(r'[^a-zA-Z0-9]', '', deposit_id)[:36]
+
     payload = {
-        'depositId':           deposit_id,
-        'amount':              str(payment.amount),
-        'currency':            payment.currency,
-        'correspondent':       correspondent.upper(),
+        'depositId':            deposit_id,
+        # amount must be a plain decimal string — never scientific notation
+        'amount':               _pawapay_amount(payment.amount),
+        'currency':             payment.currency,
+        'correspondent':        correspondent.upper(),
         'payer': {
             'type':    'MSISDN',
             'address': {'value': cleaned_phone},
         },
-        'customerTimestamp':   payment.created_at.isoformat(),
-        'statementDescription': f'ARTX deposit {payment.amount} {payment.currency}'[:22],
-        'metadata': {
-            'payment_id': str(payment.id),
-            'user_id':    str(payment.user.id),
-            'username':   payment.user.username,
-        },
+        # RFC 3339 with second precision, UTC 'Z' suffix — no microseconds
+        'customerTimestamp':    _pawapay_timestamp(payment.created_at),
+        # alphanumeric + spaces only, max 22 chars
+        'statementDescription': _pawapay_description(payment.amount, payment.currency),
+        # NOTE: PawaPay does NOT accept a top-level 'metadata' field —
+        # store internal data in payment.metadata instead (done below)
     }
 
     try:
@@ -323,23 +356,21 @@ def initiate_pawapay_payout(withdrawal: Withdrawal):
     if err:
         raise ValueError(err)
 
-    payout_id = f'artxp_{withdrawal.id}_{uuid.uuid4().hex[:8]}'
+    payout_id = f'artxp{withdrawal.id}{uuid.uuid4().hex[:6]}'
+    payout_id = re.sub(r'[^a-zA-Z0-9]', '', payout_id)[:36]
+
     payload = {
-        'payoutId':    payout_id,
-        'amount':      str(withdrawal.amount),
-        'currency':    withdrawal.currency,
-        'correspondent': correspondent.upper(),
+        'payoutId':             payout_id,
+        'amount':               _pawapay_amount(withdrawal.amount),
+        'currency':             withdrawal.currency,
+        'correspondent':        correspondent.upper(),
         'recipient': {
             'type':    'MSISDN',
             'address': {'value': cleaned_phone},
         },
-        'customerTimestamp':   withdrawal.created_at.isoformat(),
-        'statementDescription': f'ARTX withdrawal {withdrawal.amount} {withdrawal.currency}'[:22],
-        'metadata': {
-            'withdrawal_id': str(withdrawal.id),
-            'user_id':       str(withdrawal.user.id),
-            'username':      withdrawal.user.username,
-        },
+        'customerTimestamp':    _pawapay_timestamp(withdrawal.created_at),
+        'statementDescription': _pawapay_description(withdrawal.amount, withdrawal.currency),
+        # No top-level 'metadata' field — PawaPay rejects it
     }
 
     try:
