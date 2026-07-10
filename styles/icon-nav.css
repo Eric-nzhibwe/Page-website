@@ -6,7 +6,7 @@
     justify-content: space-between;
     align-items: center;
     padding: 6px 8px;
-    background: linear-gradient(to right, whitesmoke, darkolivegreen);
+    background: linear-gradient(to right, whitesmoke, var(--artx-primary));
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     position: sticky;
     top: 0;
@@ -147,8 +147,8 @@
 }
 
 .icon-nav-btn.active {
-    color: darkolivegreen;
-    border-bottom: 3px solid darkolivegreen;
+    color: var(--artx-primary);
+    border-bottom: 3px solid var(--artx-primary);
     border-radius: 6px 6px 0 0;
 }
 
@@ -232,7 +232,7 @@
 .user-avatar-btn {
     width: 32px;
     height: 32px;
-    background: linear-gradient(135deg, darkolivegreen, lightgreen);
+    background: linear-gradient(135deg, var(--artx-primary), lightgreen);
     border-radius: 50%;
     cursor: pointer;
     display: flex;
@@ -327,7 +327,7 @@
 
 .quick-menu-item i {
     font-size: 28px;
-    color: darkolivegreen;
+    color: var(--artx-primary);
     margin-bottom: 8px;
 }
 
@@ -375,7 +375,7 @@
 .user-menu-avatar {
     width: 60px;
     height: 60px;
-    background: linear-gradient(135deg, darkolivegreen, lightgreen);
+    background: linear-gradient(135deg, var(--artx-primary), lightgreen);
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -412,7 +412,7 @@
 
 .user-menu-stat i {
     font-size: 20px;
-    color: darkolivegreen;
+    color: var(--artx-primary);
 }
 
 .user-menu-stat span {
@@ -456,3 +456,4 @@
         transform: translateY(0);
     }
 }
+

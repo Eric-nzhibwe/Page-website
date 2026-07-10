@@ -24,7 +24,7 @@
 }
 
 .marketplace-header h1 i {
-    color: darkolivegreen;
+    color: var(--artx-primary);
 }
 
 /* Marketplace Filters */
@@ -42,7 +42,7 @@
 }
 
 .marketplace-filters::-webkit-scrollbar-thumb {
-    background: darkolivegreen;
+    background: var(--artx-primary);
     border-radius: 3px;
 }
 
@@ -64,13 +64,13 @@
 
 .filter-btn:hover {
     background: #f0f2f5;
-    border-color: darkolivegreen;
+    border-color: var(--artx-primary);
 }
 
 .filter-btn.active {
-    background: linear-gradient(to right, lightgreen, darkolivegreen);
+    background: linear-gradient(to right, var(--artx-accent), var(--artx-primary));
     color: white;
-    border-color: darkolivegreen;
+    border-color: var(--artx-primary);
 }
 
 .filter-btn i {
@@ -122,7 +122,7 @@
     position: absolute;
     top: 12px;
     right: 12px;
-    background: linear-gradient(to right, lightgreen, darkolivegreen);
+    background: linear-gradient(to right, var(--artx-accent), var(--artx-primary));
     color: white;
     padding: 6px 12px;
     border-radius: 20px;
@@ -170,7 +170,7 @@
 
 .product-seller i {
     font-size: 18px;
-    color: darkolivegreen;
+    color: var(--artx-primary);
 }
 
 .product-footer {
@@ -184,7 +184,7 @@
 .product-price {
     font-size: 20px;
     font-weight: bold;
-    color: darkolivegreen;
+    color: var(--artx-primary);
 }
 
 .btn-contact {
@@ -192,7 +192,7 @@
     align-items: center;
     gap: 6px;
     padding: 8px 16px;
-    background: linear-gradient(to right, lightgreen, darkolivegreen);
+    background: linear-gradient(to right, var(--artx-accent), var(--artx-primary));
     color: white;
     border: none;
     border-radius: 8px;
@@ -232,7 +232,7 @@
 
 .modal-textarea:focus {
     outline: none;
-    border-color: darkolivegreen;
+    border-color: var(--artx-primary);
 }
 
 .image-upload-area {
@@ -246,13 +246,13 @@
 }
 
 .image-upload-area:hover {
-    border-color: darkolivegreen;
+    border-color: var(--artx-primary);
     background: #f0f2f5;
 }
 
 .image-upload-area i {
     font-size: 48px;
-    color: darkolivegreen;
+    color: var(--artx-primary);
     margin-bottom: 12px;
 }
 

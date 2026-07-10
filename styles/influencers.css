@@ -25,7 +25,7 @@ body {
     justify-content: space-between;
     align-items: center;
     padding: 20px;
-    background: linear-gradient(to right,white, darkolivegreen);
+    background: linear-gradient(to right,white, var(--artx-primary));
     backdrop-filter: blur(10px);
     border-radius: 10px;
     margin-bottom: 30px;
@@ -59,7 +59,7 @@ body {
 
 .nav-btn {
     background: transparent;
-    border: 1px solid darkolivegreen;
+    border: 1px solid var(--artx-primary);
     color: black;
     padding: 10px 20px;
     border-radius: 8px;
@@ -68,12 +68,12 @@ body {
 }
 
 .nav-btn:hover {
-    border-color: darkolivegreen;
+    border-color: var(--artx-primary);
     color: black;
 }
 
 .nav-btn.active {
-    background: darkolivegreen;
+    background: var(--artx-primary);
     color: black;
     border-color: transparent;
 }
@@ -96,7 +96,7 @@ body {
 }
 
 .prestige-badge {
-    background: lightgreen;
+    background: var(--artx-accent);
     padding: 8px 16px;
     border-radius: 20px;
     font-weight: bold;
@@ -118,14 +118,14 @@ body {
 
 .btn-logout:hover {
     background: rgba(255, 255, 255, 0.2);
-    border-color: darkolivegreen;
+    border-color: var(--artx-primary);
 }
 
 /* Hero Section */
 .hero {
     text-align: center;
     padding: 40px 20px;
-    background: linear-gradient(to right, white, darkolivegreen);
+    background: linear-gradient(to right, white, var(--artx-primary));
     border-radius: 12px;
     margin-bottom: 40px;
 }
@@ -191,7 +191,7 @@ body {
 
 .influencer-card {
     background: linear-gradient(to right, white, whitesmoke);
-    border: 1px solid darkolivegreen;
+    border: 1px solid var(--artx-primary);
     border-radius: 12px;
     overflow: hidden;
     cursor: pointer;
@@ -206,7 +206,7 @@ body {
 
 .influencer-banner {
     height: 150px;
-    background: linear-gradient(135deg, white, darkolivegreen);
+    background: linear-gradient(135deg, white, var(--artx-primary));
     position: relative;
 }
 
@@ -215,7 +215,7 @@ body {
     height: 100px;
     border-radius: 50%;
     background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
-    border: 5px solid darkolivegreen;
+    border: 5px solid var(--artx-primary);
     position: absolute;
     bottom: -50px;
     left: 50%;
@@ -299,7 +299,7 @@ body {
 
 .btn-follow {
     flex: 1;
-    background: linear-gradient(to right, white, darkolivegreen);
+    background: linear-gradient(to right, white, var(--artx-primary));
     border: none;
     color: black;
     padding: 12px;
@@ -321,7 +321,7 @@ body {
 .btn-view {
     flex: 1;
     background: rgba(255, 255, 255, 0.1);
-    border: 1px solid darkolivegreen;
+    border: 1px solid var(--artx-primary);
     color: black;
     padding: 12px;
     border-radius: 8px;
@@ -330,7 +330,7 @@ body {
 }
 
 .btn-view:hover {
-    border-color: darkolivegreen;
+    border-color: var(--artx-primary);
 }
 
 /* Events Grid */
@@ -341,7 +341,7 @@ body {
 
 .event-card {
     background: whitesmoke;
-    border: 1px solid darkolivegreen;
+    border: 1px solid var(--artx-primary);
     border-radius: 12px;
     padding: 30px;
     display: grid;
@@ -354,14 +354,14 @@ body {
 
 .event-card:hover {
     transform: translateX(5px);
-    border-color: darkolivegreen;
+    border-color: var(--artx-primary);
 }
 
 .event-icon {
     width: 80px;
     height: 80px;
     border-radius: 50%;
-    background: lightgreen;
+    background: var(--artx-accent);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -416,7 +416,7 @@ body {
 }
 
 .btn-join {
-    background: linear-gradient(to left, white, darkolivegreen);
+    background: linear-gradient(to left, white, var(--artx-primary));
     border: none;
     color: black;
     padding: 12px 24px;
@@ -439,7 +439,7 @@ body {
 
 .special-challenge-card {
     background: whitesmoke;
-    border: 1px solid darkolivegreen;
+    border: 1px solid var(--artx-primary);
     border-radius: 12px;
     overflow: hidden;
     cursor: pointer;
@@ -448,7 +448,7 @@ body {
 
 .special-challenge-card:hover {
     transform: translateY(-5px);
-    border-color: darkolivegreen;
+    border-color: var(--artx-primary);
     box-shadow: 0 10px 30px rgba(245, 87, 108, 0.3);
 }
 
@@ -530,7 +530,7 @@ body {
 }
 
 .btn-participate {
-    background: linear-gradient(to right, white, darkolivegreen);
+    background: linear-gradient(to right, white, var(--artx-primary));
     border: none;
     color: black;
     padding: 10px 20px;
@@ -558,10 +558,10 @@ body {
 }
 
 .modal-content {
-    background: linear-gradient(to right, white, darkolivegreen);
+    background: linear-gradient(to right, white, var(--artx-primary));
     margin: 50px auto;
     padding: 30px;
-    border: 1px solid darkolivegreen;
+    border: 1px solid var(--artx-primary);
     border-radius: 12px;
     width: 90%;
     max-width: 800px;
@@ -592,7 +592,7 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-    background: linear-gradient(to right, white, darkolivegreen);
+    background: linear-gradient(to right, white, var(--artx-primary));
     border-radius: 5px;
 }
 

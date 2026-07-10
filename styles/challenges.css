@@ -25,7 +25,7 @@ body {
     justify-content: space-between;
     align-items: center;
     padding: 20px;
-    background: linear-gradient(to right,whitesmoke, darkolivegreen);
+    background: linear-gradient(to right,whitesmoke, var(--artx-primary));
     margin-bottom: 40px;
     backdrop-filter: blur(10px);
     border-radius: 15px;
@@ -61,7 +61,7 @@ body {
 .nav-btn {
     background: transparent;
     color: black;
-    border: 2px solid darkolivegreen;
+    border: 2px solid var(--artx-primary);
     padding: 10px 20px;
     border-radius: 8px;
     cursor: pointer;
@@ -86,7 +86,7 @@ body {
 }
 
 .prestige-badge {
-    background: linear-gradient(135deg, darkolivegreen, lightgreen);
+    background: linear-gradient(135deg, var(--artx-primary), var(--artx-accent));
     padding: 8px 16px;
     border-radius: 20px;
     font-weight: bold;
@@ -139,12 +139,12 @@ body {
 }
 
 .filter-btn:hover {
-    border: 2px solid darkolivegreen;
+    border: 2px solid var(--artx-primary);
     color: #f5576c;
 }
 
 .filter-btn.active {
-    background: linear-gradient(to right, darkolivegreen, lightgreen);
+    background: linear-gradient(to right, var(--artx-primary), var(--artx-accent));
     color: #fff;
     border-color: transparent;
 }
@@ -159,7 +159,7 @@ body {
 
 .challenge-card {
     background: whitesmoke;
-    border: 1px solid darkolivegreen;
+    border: 1px solid var(--artx-primary);
     border-radius: 12px;
     overflow: hidden;
     cursor: pointer;
@@ -168,7 +168,7 @@ body {
 
 .challenge-card:hover {
     transform: translateY(-5px);
-    border-color: darkolivegreen;
+    border-color: var(--artx-primary);
     box-shadow: 0 10px 30px rgba(245, 87, 108, 0.3);
 }
 
@@ -239,14 +239,14 @@ body {
 }
 
 .reward-badge {
-    background: lightgreen;
+    background: var(--artx-accent);
     padding: 8px 16px;
     border-radius: 20px;
     font-weight: bold;
 }
 
 .btn-participate {
-    background: linear-gradient(135deg, white, darkolivegreen);
+    background: linear-gradient(135deg, white, var(--artx-primary));
     border: none;
     color: black;
     padding: 10px 20px;
@@ -276,7 +276,7 @@ body {
 
 .submission-item {
     background: whitesmoke;
-    border: 1px solid darkolivegreen;
+    border: 1px solid var(--artx-primary);
     border-radius: 12px;
     padding: 20px;
     display: grid;
@@ -320,7 +320,7 @@ body {
 .score-value {
     font-size: 32px;
     font-weight: bold;
-    background: lightgreen;
+    background: var(--artx-accent);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
 }
@@ -347,7 +347,7 @@ body {
     background: whitesmoke;
     margin: 50px auto;
     padding: 30px;
-    border: 1px solid darkolivegreen;
+    border: 1px solid var(--artx-primary);
     border-radius: 12px;
     width: 90%;
     max-width: 600px;
@@ -379,7 +379,7 @@ body {
     object-fit: contain;
     border-radius: 12px;
     margin: 20px 0;
-    border: 2px solid darkolivegreen;
+    border: 2px solid var(--artx-primary);
 }
 
 .challenge-rules {
@@ -432,7 +432,7 @@ body {
 .form-group textarea {
     width: 100%;
     background: rgba(255, 255, 255, 0.05);
-    border: 1px solid darkolivegreen;
+    border: 1px solid var(--artx-primary);
     color: black;
     padding: 15px;
     border-radius: 8px;
@@ -444,14 +444,14 @@ body {
 
 .form-group textarea:focus {
     outline: none;
-    border-color: darkolivegreen;
+    border-color: var(--artx-primary);
     background: rgba(245, 87, 108, 0.1);
 }
 
 .form-group input {
     width: 100%;
     background: rgba(255, 255, 255, 0.05);
-    border: 1px solid darkolivegreen;
+    border: 1px solid var(--artx-primary);
     color: black;
     padding: 12px;
     border-radius: 8px;
@@ -460,7 +460,7 @@ body {
 
 .form-group input:focus {
     outline: none;
-    border: 2px solid darkolivegreen;
+    border: 2px solid var(--artx-primary);
     background: rgba(245, 87, 108, 0.1);
 }
 
@@ -482,7 +482,7 @@ body {
 }
 
 .btn-primary {
-    background: linear-gradient(to right, white, darkolivegreen);
+    background: linear-gradient(to right, white, var(--artx-primary));
     border: none;
     color: #fff;
     padding: 12px 24px;

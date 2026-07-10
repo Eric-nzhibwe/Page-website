@@ -17,7 +17,7 @@
 }
 
 .back-btn {
-    background: linear-gradient(to right, whitesmoke, darkolivegreen);
+    background: linear-gradient(to right, whitesmoke, var(--artx-primary));
     color: white;
     border: none;
     padding: 10px 20px;
@@ -44,7 +44,7 @@
 }
 
 .balance-card {
-    background: linear-gradient(to right, whitesmoke, darkolivegreen);
+    background: linear-gradient(to right, whitesmoke, var(--artx-primary));
     color: black;
     padding: 30px;
     border-radius: 16px;
@@ -134,7 +134,7 @@
 }
 
 .withdraw-btn {
-    background: lightgreen;
+    background: var(--artx-accent);
     color: white;
 }
 
@@ -524,3 +524,4 @@
 .withdraw-btn:hover {
     box-shadow: 0 5px 20px rgba(214, 48, 49, 0.4);
 }
+

@@ -71,7 +71,7 @@
 
 .btn-dashboard-toggle:hover {
     background: rgba(255, 255, 255, 0.2);
-    border-color: darkolivegreen;
+    border-color: var(--artx-primary);
 }
 
 .dashboard-dropdown-content {
@@ -203,7 +203,7 @@
 .stat-value {
     font-size: 18px;
     font-weight: bold;
-    color: darkolivegreen;
+    color: var(--artx-primary);
 }
 
 /* Sidebar Menu */
@@ -233,7 +233,7 @@
 
 .menu-item.active {
     background: linear-gradient(to right, rgba(107, 142, 35, 0.1), rgba(144, 238, 144, 0.1));
-    color: darkolivegreen;
+    color: var(--artx-primary);
     font-weight: 600;
 }
 
@@ -421,7 +421,7 @@
     justify-content: center;
     font-size: 28px;
     color: white;
-    background: linear-gradient(135deg, darkolivegreen, lightgreen);
+    background: linear-gradient(135deg, var(--artx-primary), var(--artx-accent));
 }
 
 @media (min-width: 640px) {
@@ -438,7 +438,7 @@
 
 .create-story .story-image {
     background: #f0f0f0;
-    color: darkolivegreen;
+    color: var(--artx-primary);
 }
 
 .story-name {
@@ -516,7 +516,7 @@
     width: 40px;
     height: 40px;
     border-radius: 50%;
-    background: linear-gradient(135deg, darkolivegreen, lightgreen);
+    background: linear-gradient(135deg, var(--artx-primary), var(--artx-accent));
     display: flex;
     align-items: center;
     justify-content: center;
@@ -759,7 +759,7 @@
 }
 
 .achievement-badge-large {
-    background: linear-gradient(135deg, darkolivegreen, lightgreen);
+    background: linear-gradient(135deg, var(--artx-primary), var(--artx-accent));
     padding: 24px;
     text-align: center;
     color: white;
@@ -818,7 +818,7 @@
 }
 
 .post-stats i {
-    color: darkolivegreen;
+    color: var(--artx-primary);
 }
 
 .post-actions {
@@ -835,7 +835,7 @@
 }
 
 .post-actions .post-action-btn:hover {
-    color: darkolivegreen;
+    color: var(--artx-primary);
 }
 
 /* Right Sidebar */
@@ -862,7 +862,7 @@
 }
 
 .sidebar-title i {
-    color: darkolivegreen;
+    color: var(--artx-primary);
 }
 
 /* Live Feed */
@@ -881,7 +881,7 @@
 .live-dot {
     width: 8px;
     height: 8px;
-    background: darkolivegreen;
+    background: var(--artx-primary);
     border-radius: 50%;
     margin-top: 6px;
     animation: pulse 2s infinite;
@@ -895,7 +895,7 @@
 }
 
 .live-info strong {
-    color: darkolivegreen;
+    color: var(--artx-primary);
 }
 
 .live-time {
@@ -922,7 +922,7 @@
     width: 40px;
     height: 40px;
     border-radius: 50%;
-    background: linear-gradient(135deg, darkolivegreen, lightgreen);
+    background: linear-gradient(135deg, var(--artx-primary), var(--artx-accent));
     display: flex;
     align-items: center;
     justify-content: center;
@@ -949,7 +949,7 @@
 
 .btn-follow {
     padding: 6px 16px;
-    background: darkolivegreen;
+    background: var(--artx-primary);
     color: white;
     border: none;
     border-radius: 6px;
@@ -960,7 +960,7 @@
 }
 
 .btn-follow:hover {
-    background: #556b2f;
+    background: var(--artx-primary);
 }
 
 /* Rankings */
@@ -1182,8 +1182,8 @@
 
 .post-option-btn:hover {
     background: #f0f0f0;
-    border-color: darkolivegreen;
-    color: darkolivegreen;
+    border-color: var(--artx-primary);
+    color: var(--artx-primary);
 }
 
 .btn-post {
@@ -1372,7 +1372,7 @@
 
 /* Post reaction animation */
 .post-action-btn.reacted {
-    color: #90ee90 !important;
+    color: var(--artx-accent) !important;
     animation: bounce 0.5s ease;
 }
 
@@ -1413,7 +1413,7 @@
     width: 40px;
     height: 40px;
     border-radius: 50%;
-    background: linear-gradient(135deg, darkolivegreen, lightgreen);
+    background: linear-gradient(135deg, var(--artx-primary), var(--artx-accent));
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1476,14 +1476,14 @@
 }
 
 .comment-input:focus {
-    border-color: darkolivegreen;
+    border-color: var(--artx-primary);
 }
 
 .comment-submit-btn {
     width: 40px;
     height: 40px;
     border-radius: 50%;
-    background: darkolivegreen;
+    background: var(--artx-primary);
     color: white;
     border: none;
     cursor: pointer;
@@ -1494,7 +1494,7 @@
 }
 
 .comment-submit-btn:hover {
-    background: #556b2f;
+    background: var(--artx-primary);
     transform: scale(1.1);
 }
 
@@ -1576,12 +1576,12 @@
 }
 
 .share-platform-btn.copy {
-    border-color: darkolivegreen;
-    color: darkolivegreen;
+    border-color: var(--artx-primary);
+    color: var(--artx-primary);
 }
 
 .share-platform-btn.copy:hover {
-    background: darkolivegreen;
+    background: var(--artx-primary);
     color: white;
 }
 
@@ -1713,7 +1713,7 @@
 
 /* ── Create Challenge Banner ── */
 .create-challenge-banner {
-    background: linear-gradient(to right, whitesmoke, darkolivegreen);
+    background: linear-gradient(to right, whitesmoke, var(--artx-primary));
     border-radius: 12px;
     padding: 14px 18px;
     box-shadow: 0 4px 12px rgba(85, 107, 47, 0.3);
@@ -1761,7 +1761,7 @@
 
 .create-challenge-banner-btn {
     flex-shrink: 0;
-    background: linear-gradient(to left, darkolivegreen, darkgreen);
+    background: linear-gradient(to left, var(--artx-primary), darkgreen);
     color: #fff;
     border: none;
     border-radius: 8px;
@@ -1858,7 +1858,7 @@
 }
 
 .people-section-title i {
-    color: darkolivegreen;
+    color: var(--artx-primary);
 }
 
 /* Pulsing green dot for Online Now */
@@ -1903,7 +1903,7 @@
     width: 52px;
     height: 52px;
     border-radius: 50%;
-    background: linear-gradient(135deg, darkolivegreen, lightgreen);
+    background: linear-gradient(135deg, var(--artx-primary), var(--artx-accent));
     display: flex;
     align-items: center;
     justify-content: center;

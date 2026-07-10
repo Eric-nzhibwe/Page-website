@@ -37,7 +37,7 @@ body {
 
 .cover-art {
     height: 200px;
-    background: linear-gradient(135deg, #1a2e1a 0%, darkolivegreen 60%, #2d5a3d 100%);
+    background: linear-gradient(135deg, #1a2e1a 0%, var(--artx-primary) 60%, #2d5a3d 100%);
     position: relative;
     overflow: hidden;
     transition: background 0.6s ease;
@@ -86,7 +86,7 @@ body {
     position: absolute;
     inset: -3px;
     border-radius: 50%;
-    background: conic-gradient(#ffd700, darkolivegreen, #22c1c3, #ffd700);
+    background: conic-gradient(#ffd700, var(--artx-primary), #22c1c3, #ffd700);
     animation: avSpin 6s linear infinite;
     z-index: 0;
     transition: background 0.6s;
@@ -114,7 +114,7 @@ body {
     position: absolute;
     bottom: 6px; right: 4px;
     width: 28px; height: 28px;
-    background: darkolivegreen;
+    background: var(--artx-primary);
     border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
     color: white; font-size: 11px;
@@ -173,7 +173,7 @@ body {
     text-transform: uppercase;
 }
 .badge-tier { background: linear-gradient(135deg, #f9a825, #ffcc02); color: #4a2c00; }
-.badge-rank { background: linear-gradient(135deg, darkolivegreen, #5a8a20); color: white; }
+.badge-rank { background: linear-gradient(135deg, var(--artx-primary), #5a8a20); color: white; }
 
 .pid-bio {
     font-size: 13.5px;
@@ -191,7 +191,7 @@ body {
 .btn-act-primary {
     display: flex; align-items: center; gap: 8px;
     padding: 9px 20px;
-    background: linear-gradient(135deg, darkolivegreen, #5a8a20);
+    background: linear-gradient(135deg, var(--artx-primary), #5a8a20);
     color: white;
     border: none; border-radius: 24px;
     font-size: 13px; font-weight: 600;
@@ -214,7 +214,7 @@ body {
     transition: all 0.2s;
     box-shadow: 0 1px 4px rgba(0,0,0,0.06);
 }
-.btn-act-ghost:hover { border-color: darkolivegreen; color: darkolivegreen; background: #f0f4ec; }
+.btn-act-ghost:hover { border-color: var(--artx-primary); color: var(--artx-primary); background: #f0f4ec; }
 
 /* ═══════════════════════════════════════════════════════
    STATS ROW
@@ -290,7 +290,7 @@ body {
     align-items: center;
     gap: 8px;
 }
-.card-title i { color: darkolivegreen; font-size: 13px; }
+.card-title i { color: var(--artx-primary); font-size: 13px; }
 
 .card-header-row {
     display: flex;
@@ -322,7 +322,7 @@ body {
     color: #4b5563;
 }
 .detail-list li:last-child { border-bottom: none; }
-.detail-list li i { color: darkolivegreen; width: 14px; text-align: center; flex-shrink: 0; }
+.detail-list li i { color: var(--artx-primary); width: 14px; text-align: center; flex-shrink: 0; }
 .detail-list li b { color: #111; }
 
 /* ── Prestige ── */
@@ -335,7 +335,7 @@ body {
 .xp-current {
     font-size: 38px;
     font-weight: 800;
-    color: darkolivegreen;
+    color: var(--artx-primary);
     line-height: 1;
     letter-spacing: -1px;
 }
@@ -351,7 +351,7 @@ body {
 }
 .xp-fill {
     height: 100%;
-    background: linear-gradient(to right, darkolivegreen, #7cba3d, #22c1c3);
+    background: linear-gradient(to right, var(--artx-primary), #7cba3d, #22c1c3);
     border-radius: 20px;
     width: 0%;
     position: relative;
@@ -378,15 +378,15 @@ body {
 }
 .tnode.passed .tdot { background: rgba(85,107,47,0.45); border-color: rgba(85,107,47,0.4); }
 .tnode.active .tdot {
-    background: darkolivegreen;
-    border-color: darkolivegreen;
+    background: var(--artx-primary);
+    border-color: var(--artx-primary);
     box-shadow: 0 0 0 3px rgba(85,107,47,0.2);
     transform: scale(1.3);
 }
 .tdot-legend { background: linear-gradient(135deg, #f9a825, #f57f17) !important; border-color: #f9a825 !important; }
 .tnode.active.legendary .tdot { box-shadow: 0 0 0 3px rgba(249,168,37,0.3); }
 .tnode small { font-size: 8px; color: #9ca3af; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; }
-.tnode.active small { color: darkolivegreen; }
+.tnode.active small { color: var(--artx-primary); }
 .tnode.passed small { color: #6b7280; }
 
 .tline {
@@ -444,7 +444,7 @@ body {
     transition: all 0.2s;
     font-family: inherit;
 }
-.tpill.active { background: white; color: darkolivegreen; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+.tpill.active { background: white; color: var(--artx-primary); box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
 
 .tab-panel { display: none; }
 .tab-panel.active { display: block; animation: tabIn 0.22s ease; }
@@ -475,7 +475,7 @@ body {
     position: absolute;
     top: 0; left: 0; right: 0;
     height: 3px;
-    background: var(--c, darkolivegreen);
+    background: var(--c, var(--artx-primary));
     border-radius: 14px 14px 0 0;
 }
 
@@ -509,8 +509,8 @@ body {
     color: #4b5563;
     margin-bottom: 7px;
 }
-.acc-row i { color: darkolivegreen; margin-right: 5px; }
-.acc-pct { font-size: 16px; font-weight: 800; color: darkolivegreen; }
+.acc-row i { color: var(--artx-primary); margin-right: 5px; }
+.acc-pct { font-size: 16px; font-weight: 800; color: var(--artx-primary); }
 
 .acc-track {
     height: 9px;
@@ -521,7 +521,7 @@ body {
 }
 .acc-fill {
     height: 100%;
-    background: linear-gradient(to right, darkolivegreen, #7cba3d);
+    background: linear-gradient(to right, var(--artx-primary), #7cba3d);
     border-radius: 20px;
     width: 0%;
     position: relative;
@@ -565,7 +565,7 @@ body {
     align-items: center;
     justify-content: center;
 }
-.dl-pct { font-size: 28px; font-weight: 800; color: darkolivegreen; letter-spacing: -1px; }
+.dl-pct { font-size: 28px; font-weight: 800; color: var(--artx-primary); letter-spacing: -1px; }
 .dl-sub { font-size: 10px; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.8px; font-weight: 600; }
 
 .donut-legend { display: flex; flex-direction: column; gap: 12px; }
@@ -589,7 +589,7 @@ body {
 .act-count-badge {
     font-size: 11px;
     background: #f0f4ec;
-    color: darkolivegreen;
+    color: var(--artx-primary);
     border: 1px solid #c8d9b0;
     padding: 2px 9px;
     border-radius: 20px;
@@ -703,7 +703,7 @@ body {
     position: absolute;
     top: 0; left: 10%; right: 10%;
     height: 2px;
-    background: linear-gradient(to right, transparent, darkolivegreen 40%, #7cba3d 60%, transparent);
+    background: linear-gradient(to right, transparent, var(--artx-primary) 40%, #7cba3d 60%, transparent);
     border-radius: 2px;
 }
 
@@ -738,7 +738,7 @@ body {
 .modal-av {
     width: 52px; height: 52px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #3a5f1a, darkolivegreen);
+    background: linear-gradient(135deg, #3a5f1a, var(--artx-primary));
     display: flex; align-items: center; justify-content: center;
     color: white; font-size: 22px;
     flex-shrink: 0;
@@ -779,7 +779,7 @@ body {
     resize: vertical;
 }
 .mfield input:focus, .mfield textarea:focus {
-    border-color: darkolivegreen;
+    border-color: var(--artx-primary);
     background: white;
     box-shadow: 0 0 0 3px rgba(85,107,47,0.1);
 }
@@ -829,7 +829,7 @@ body {
 .mbtn.primary {
     flex: 1;
     justify-content: center;
-    background: linear-gradient(135deg, darkolivegreen, #5a8a20);
+    background: linear-gradient(135deg, var(--artx-primary), #5a8a20);
     color: white;
     box-shadow: 0 3px 12px rgba(85,107,47,0.3);
 }
@@ -896,8 +896,8 @@ body {
 /* ── Follow button — profile page ── */
 .btn-follow-profile.btn-following {
     background: #f0f6e8;
-    color: darkolivegreen;
-    border: 2px solid darkolivegreen;
+    color: var(--artx-primary);
+    border: 2px solid var(--artx-primary);
     box-shadow: none;
 }
 

@@ -1,13 +1,14 @@
 /* ── Accent color token layer ──────────────────────────────────
-   JS sets --artx-primary / --artx-accent on :root when the user
-   picks an accent color in Settings → Appearance.
-   The overrides below reroute the hardcoded darkolivegreen usages.
+   JS sets these on :root when the user picks an accent color.
+   Every CSS file uses var(--artx-*) so the whole UI repaints.
    ─────────────────────────────────────────────────────────────── */
 :root {
-    --artx-primary:    darkolivegreen;
+    --artx-primary:    #556b2f;       /* darkolivegreen default */
     --artx-primary-lt: #6b8a3a;
-    --artx-accent:     lightgreen;
+    --artx-primary-dk: #3d4f22;
+    --artx-accent:     #90ee90;       /* lightgreen default */
     --artx-glow:       rgba(85,107,47,0.18);
+    --artx-text-on-primary: #ffffff;
 }
 
 * {
@@ -47,7 +48,7 @@ body {
     justify-content: space-between;
     align-items: center;
     padding: 12px;
-    background: linear-gradient(to right,whitesmoke, darkolivegreen);
+    background: linear-gradient(to right,whitesmoke, var(--artx-primary));
     backdrop-filter: blur(10px);
     border-radius: 0;
     margin-bottom: 20px;
@@ -112,7 +113,7 @@ body {
 .nav-btn {
     padding: 10px 20px;
     background: transparent;
-    border: 2px solid darkolivegreen;
+    border: 2px solid var(--artx-primary);
     color: black;
     border-radius: 8px;
     cursor: pointer;
@@ -121,7 +122,7 @@ body {
 
 .nav-btn:hover, .nav-btn.active {
     background: rgba(255, 255, 255, 0.1);
-    border-color: darkolivegreen;
+    border-color: var(--artx-primary);
 }
 
 .user-info {
@@ -135,7 +136,7 @@ body {
     align-items: center;
     gap: 5px;
     padding: 8px 16px;
-    background: linear-gradient(45deg, darkolivegreen, lightgreen);
+    background: linear-gradient(45deg, var(--artx-primary), var(--artx-accent));
     border-radius: 20px;
     font-weight: bold;
     animation: pulse 2s infinite;
@@ -188,7 +189,7 @@ body {
 
 .btn-logout:hover {
     background: rgba(255, 87, 108, 0.2);
-    border-color: darkolivegreen;
+    border-color: var(--artx-primary);
 }
 
 /* User Menu Dropdown */
@@ -213,7 +214,7 @@ body {
 
 .btn-user-menu:hover {
     background: rgba(255, 255, 255, 0.2);
-    border-color: darkolivegreen;
+    border-color: var(--artx-primary);
 }
 
 .dropdown-content {
@@ -304,7 +305,7 @@ body {
     text-align: center;
     padding: 60px 20px;
     background: black;
-    border: 2px solid darkolivegreen;
+    border: 2px solid var(--artx-primary);
     border-radius: 15px;
     margin-bottom: 30px;
 }
@@ -316,7 +317,7 @@ body {
 
 .philosophy {
     font-size: 24px;
-    color: darkolivegreen;
+    color: var(--artx-primary);
     font-weight: 500;
 }
 
@@ -333,7 +334,7 @@ body {
     padding: 30px;
     border-radius: 15px;
     text-align: center;
-    border: 1px solid darkolivegreen;
+    border: 1px solid var(--artx-primary);
 }
 
 .stat-card h3 {
@@ -346,7 +347,7 @@ body {
 .stat-value {
     font-size: 36px;
     font-weight: bold;
-    background: linear-gradient(to left, darkolivegreen, darkgreen);
+    background: linear-gradient(to left, var(--artx-primary), darkgreen);
     background-clip: text;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
@@ -363,7 +364,7 @@ body {
 
 .progress-fill {
     height: 100%;
-    background: lightgreen;
+    background: var(--artx-accent);
     transition: width 0.3s;
 }
 
@@ -386,7 +387,7 @@ body {
 
 .challenge-card:hover {
     transform: translateY(-5px);
-    border-color: darkolivegreen;
+    border-color: var(--artx-primary);
 }
 
 .challenge-card h3 {
@@ -411,7 +412,7 @@ body {
 }
 
 .btn-primary {
-    background: linear-gradient(to left, white, darkolivegreen);
+    background: linear-gradient(to left, white, var(--artx-primary));
     color: #000;
     box-shadow: rgba(245, 87, 108, 0.6);
 }
@@ -499,7 +500,7 @@ body {
     top: 15px;
     right: 15px;
     padding: 5px 15px;
-    background: linear-gradient(to left, darkolivegreen,lightgreen);
+    background: linear-gradient(to left, var(--artx-primary),var(--artx-accent));
     border-radius: 20px;
     font-size: 12px;
     font-weight: bold;
@@ -511,7 +512,7 @@ body {
 
 .prize {
     font-size: 24px;
-    color: lightgreen;
+    color: var(--artx-accent);
     margin: 15px 0;
 }
 
@@ -536,7 +537,7 @@ body {
     background: rgba(255, 255, 255, 0.03);
     margin-bottom: 10px;
     border-radius: 8px;
-    border-left: 3px solid darkolivegreen;
+    border-left: 3px solid var(--artx-primary);
 }
 
 /* Personal Dashboard */
@@ -564,13 +565,13 @@ body {
     padding: 20px;
     background: rgba(255, 255, 255, 0.05);
     border-radius: 12px;
-    border: 2px solid darkolivegreen;
+    border: 2px solid var(--artx-primary);
     transition: all 0.3s;
 }
 
 .dashboard-card:hover {
     transform: translateY(-3px);
-    border-color: darkolivegreen;
+    border-color: var(--artx-primary);
 }
 
 .card-icon {
@@ -644,7 +645,7 @@ body {
 
 .filter-btn.active {
     background: rgba(245, 87, 108, 0.2);
-    border-color: darkolivegreen;
+    border-color: var(--artx-primary);
 }
 
 .history-list {
@@ -724,7 +725,7 @@ body {
 }
 
 .loop-step.active {
-    border-color: darkolivegreen;
+    border-color: var(--artx-primary);
     background: rgba(245, 87, 108, 0.1);
     transform: scale(1.1);
     box-shadow: 0 0 20px rgba(245, 87, 108, 0.3);
@@ -733,7 +734,7 @@ body {
 .loop-icon {
     font-size: 32px;
     margin-bottom: 10px;
-    color: darkolivegreen;
+    color: var(--artx-primary);
 }
 
 .loop-icon i {
@@ -748,7 +749,7 @@ body {
 
 .loop-arrow {
     font-size: 24px;
-    color: darkolivegreen;
+    color: var(--artx-primary);
     font-weight: bold;
 }
 
@@ -775,7 +776,7 @@ body {
     background: rgba(255, 255, 255, 0.03);
     margin-bottom: 10px;
     border-radius: 8px;
-    border-left: 3px solid darkolivegreen;
+    border-left: 3px solid var(--artx-primary);
     animation: slideIn 0.3s;
 }
 
@@ -785,7 +786,7 @@ body {
 }
 
 .feed-item strong {
-    color: darkolivegreen;
+    color: var(--artx-primary);
 }
 
 /* Action Center */
@@ -807,7 +808,7 @@ body {
 
 .action-card:hover {
     transform: translateY(-5px);
-    border-color: darkolivegreen;
+    border-color: var(--artx-primary);
 }
 
 .action-card.pulse {
@@ -841,7 +842,7 @@ body {
 
 .answer-input:focus {
     outline: none;
-    border-color: darkolivegreen;
+    border-color: var(--artx-primary);
 }
 
 .action-card.locked {
@@ -894,8 +895,8 @@ body {
     justify-content: space-between;
     align-items: center;
     padding: 20px;
-    background: linear-gradient(to left, lightgreen);
-    border: 2px solid darkolivegreen;
+    background: linear-gradient(to left, var(--artx-accent));
+    border: 2px solid var(--artx-primary);
     border-radius: 12px;
     margin-bottom: 20px;
     font-weight: bold;
@@ -903,7 +904,7 @@ body {
 
 .position-rank {
     font-size: 32px;
-    color: darkolivegreen;
+    color: var(--artx-primary);
 }
 
 .ladder-list {
@@ -925,7 +926,7 @@ body {
 
 .ladder-item:hover {
     background: rgba(76, 175, 80, 0.2);
-    border-left-color: darkolivegreen;
+    border-left-color: var(--artx-primary);
 }
 
 .ladder-item.top-3 {
@@ -944,7 +945,7 @@ body {
 }
 
 .ladder-prestige {
-    color: darkolivegreen;
+    color: var(--artx-primary);
     font-weight: bold;
 }
 
@@ -961,7 +962,7 @@ body {
 
 .rank-benefits, .tier-unlock {
     margin-top: 10px;
-    color: darkolivegreen;
+    color: var(--artx-primary);
     font-size: 14px;
 }
 
@@ -997,7 +998,7 @@ body {
     background: white;
     padding: 25px;
     border-radius: 15px;
-    border: 2px solid darkolivegreen;
+    border: 2px solid var(--artx-primary);
 }
 
 .alliance-benefits {
@@ -1037,7 +1038,7 @@ body {
 .power-value {
     font-size: 24px;
     font-weight: bold;
-    color: darkolivegreen;
+    color: var(--artx-primary);
 }
 
 .alliance-member {
@@ -1071,14 +1072,14 @@ body {
     background: rgba(255, 255, 255, 0.05);
     padding: 25px;
     border-radius: 12px;
-    border: 2px solid darkolivegreen;
+    border: 2px solid var(--artx-primary);
     position: relative;
     transition: all 0.3s;
 }
 
 .event-card:hover {
     transform: translateY(-5px);
-    border-color: darkolivegreen;
+    border-color: var(--artx-primary);
 }
 
 .event-badge {
@@ -1086,7 +1087,7 @@ body {
     top: 15px;
     right: 15px;
     padding: 5px 12px;
-    background: linear-gradient(to left, darkolivegreen, lightgreen);
+    background: linear-gradient(to left, var(--artx-primary), var(--artx-accent));
     border-radius: 20px;
     font-size: 11px;
     font-weight: bold;
@@ -1097,7 +1098,7 @@ body {
 }
 
 .event-countdown {
-    color: darkolivegreen;
+    color: var(--artx-primary);
     font-size: 18px;
     margin: 10px 0;
     font-weight: bold;
@@ -1134,7 +1135,7 @@ body {
     background: linear-gradient(to left, white, whitesmoke);
     margin: auto;
     padding: 25px;
-    border: 2px solid darkolivegreen;
+    border: 2px solid var(--artx-primary);
     border-radius: 15px;
     width: 90%;
     max-width: 500px;
@@ -1182,7 +1183,7 @@ body {
 
 .tab-btn.active {
     background: rgba(245, 87, 108, 0.2);
-    border-color: darkolivegreen;
+    border-color: var(--artx-primary);
 }
 
 .tab-content {
@@ -1206,7 +1207,7 @@ body {
 
 .modal-input:focus {
     outline: none;
-    border-color: darkolivegreen;
+    border-color: var(--artx-primary);
 }
 
 .available-alliance {
@@ -1258,7 +1259,7 @@ body {
 
 .modal-input:focus {
     outline: none;
-    border-color: darkolivegreen;
+    border-color: var(--artx-primary);
 }
 
 .amount-input-wrapper {
@@ -1274,7 +1275,7 @@ body {
 
 .btn-max {
     padding: 9px 12px;
-    background: darkolivegreen;
+    background: var(--artx-primary);
     color: white;
     border: none;
     border-radius: 6px;
@@ -1287,7 +1288,7 @@ body {
 }
 
 .btn-max:hover {
-    background: #556b2f;
+    background: var(--artx-primary);
     transform: translateY(-1px);
 }
 
@@ -1313,7 +1314,7 @@ body {
 .cashout-info {
     padding: 10px;
     background: rgba(245, 87, 108, 0.1);
-    border-left: 4px solid darkolivegreen;
+    border-left: 4px solid var(--artx-primary);
     border-radius: 6px;
     margin-bottom: 12px;
     font-size: 13px;
@@ -1708,7 +1709,7 @@ body {
     left: 0;
     right: 0;
     bottom: 0;
-    background: linear-gradient(135deg, darkolivegreen 0%, #2d5016 50%, darkolivegreen 100%);
+    background: linear-gradient(135deg, var(--artx-primary) 0%, #2d5016 50%, var(--artx-primary) 100%);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1835,7 +1836,7 @@ body {
     align-items: center;
     padding: 20px 25px;
     border-bottom: 2px solid #e0e0e0;
-    background: linear-gradient(to right, whitesmoke, darkolivegreen);
+    background: linear-gradient(to right, whitesmoke, var(--artx-primary));
 }
 
 .messenger-header h2 {
@@ -1876,12 +1877,12 @@ body {
 
 .search-input:focus {
     outline: none;
-    border-color: darkolivegreen;
+    border-color: var(--artx-primary);
 }
 
 .btn-new-chat {
     padding: 10px 15px;
-    background: darkolivegreen;
+    background: var(--artx-primary);
     color: white;
     border: none;
     border-radius: 8px;
@@ -1890,7 +1891,7 @@ body {
 }
 
 .btn-new-chat:hover {
-    background: #556b2f;
+    background: var(--artx-primary);
 }
 
 .conversations-list {
@@ -1915,14 +1916,14 @@ body {
 
 .conversation-item.active {
     background: #e8f5e9;
-    border-left: 4px solid darkolivegreen;
+    border-left: 4px solid var(--artx-primary);
 }
 
 .conversation-avatar {
     width: 45px;
     height: 45px;
     border-radius: 50%;
-    background: linear-gradient(135deg, darkolivegreen, lightgreen);
+    background: linear-gradient(135deg, var(--artx-primary), var(--artx-accent));
     display: flex;
     align-items: center;
     justify-content: center;
@@ -2012,7 +2013,7 @@ body {
     width: 45px;
     height: 45px;
     border-radius: 50%;
-    background: linear-gradient(135deg, darkolivegreen, lightgreen);
+    background: linear-gradient(135deg, var(--artx-primary), var(--artx-accent));
     display: flex;
     align-items: center;
     justify-content: center;
@@ -2079,7 +2080,7 @@ body {
 }
 
 .message.sent .message-bubble {
-    background: linear-gradient(135deg, darkolivegreen, lightgreen);
+    background: linear-gradient(135deg, var(--artx-primary), var(--artx-accent));
     color: white;
     border-bottom-right-radius: 4px;
 }
@@ -2116,7 +2117,7 @@ body {
 
 .message-input:focus {
     outline: none;
-    border-color: darkolivegreen;
+    border-color: var(--artx-primary);
     background: white;
 }
 
@@ -2124,7 +2125,7 @@ body {
     width: 45px;
     height: 45px;
     border-radius: 50%;
-    background: darkolivegreen;
+    background: var(--artx-primary);
     color: white;
     border: none;
     cursor: pointer;
@@ -2136,7 +2137,7 @@ body {
 }
 
 .btn-send:hover {
-    background: #556b2f;
+    background: var(--artx-primary);
     transform: scale(1.05);
 }
 
@@ -2166,14 +2167,14 @@ body {
 
 .user-item:hover {
     background: #f0f0f0;
-    border-color: darkolivegreen;
+    border-color: var(--artx-primary);
 }
 
 .user-avatar {
     width: 40px;
     height: 40px;
     border-radius: 50%;
-    background: linear-gradient(135deg, darkolivegreen, lightgreen);
+    background: linear-gradient(135deg, var(--artx-primary), var(--artx-accent));
     display: flex;
     align-items: center;
     justify-content: center;

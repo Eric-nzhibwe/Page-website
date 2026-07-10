@@ -4,7 +4,7 @@
    ============================================================ */
 
 :root {
-  --sm-green:   #556b2f;
+  --sm-green:   var(--artx-primary);
   --sm-green-l: #8fb83a;
   --sm-faint:   #f0f6e8;
   --sm-border:  #e2e8d8;
@@ -592,7 +592,7 @@ body.modal-open { overflow: hidden; }
 
 .story-author-avatar {
   width: 40px; height: 40px; border-radius: 50%;
-  background: linear-gradient(135deg, #556b2f, #8fb83a);
+  background: linear-gradient(135deg, var(--artx-primary), #8fb83a);
   display: flex; align-items: center; justify-content: center;
   color: white; font-size: 22px; overflow: hidden;
   border: 2px solid rgba(255,255,255,.5);
@@ -729,7 +729,7 @@ body.modal-open { overflow: hidden; }
 
 .viewer-avatar {
   width: 34px; height: 34px; border-radius: 50%;
-  background: linear-gradient(135deg, #556b2f, #8fb83a);
+  background: linear-gradient(135deg, var(--artx-primary), #8fb83a);
   display: flex; align-items: center; justify-content: center;
   color: white; font-size: 18px; flex-shrink: 0; overflow: hidden;
 }

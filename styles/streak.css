@@ -22,7 +22,7 @@
     top: 80px;
     right: -400px;
     background: linear-gradient(135deg, #1a1a1a, #2d2d2d);
-    border: 2px solid #90ee90;
+    border: 2px solid var(--artx-accent);
     border-radius: 12px;
     padding: 20px;
     min-width: 300px;
@@ -137,7 +137,7 @@
 .streak-stat-value {
     font-size: 32px;
     font-weight: bold;
-    color: #90ee90;
+    color: var(--artx-accent);
     display: block;
     margin-bottom: 5px;
 }
@@ -257,7 +257,7 @@
 }
 
 .streak-calendar-day.today {
-    border: 2px solid #90ee90;
+    border: 2px solid var(--artx-accent);
 }
 
 /* Responsive */

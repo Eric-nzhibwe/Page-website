@@ -24,7 +24,7 @@
 }
 
 .challenges-title h1 i {
-    color: darkolivegreen;
+    color: var(--artx-primary);
 }
 
 .challenges-title p {
@@ -60,7 +60,7 @@
 .stat-icon {
     width: 60px;
     height: 60px;
-    background: linear-gradient(135deg, lightgreen, darkolivegreen);
+    background: linear-gradient(135deg, var(--artx-accent), var(--artx-primary));
     border-radius: 12px;
     display: flex;
     align-items: center;
@@ -112,7 +112,7 @@
 .challenge-card:hover {
     transform: translateY(-5px);
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
-    border-color: darkolivegreen;
+    border-color: var(--artx-primary);
 }
 
 .challenge-badge {
@@ -141,7 +141,7 @@
 .challenge-icon {
     width: 50px;
     height: 50px;
-    background: linear-gradient(135deg, lightgreen, darkolivegreen);
+    background: linear-gradient(135deg, var(--artx-accent), var(--artx-primary));
     border-radius: 12px;
     display: flex;
     align-items: center;
@@ -208,7 +208,7 @@
 }
 
 .challenge-detail i {
-    color: darkolivegreen;
+    color: var(--artx-primary);
 }
 
 .challenge-footer {
@@ -229,8 +229,8 @@
 
 .challenge-footer .btn-secondary {
     background: white;
-    color: darkolivegreen;
-    border: 2px solid darkolivegreen;
+    color: var(--artx-primary);
+    border: 2px solid var(--artx-primary);
 }
 
 .challenge-footer .btn-secondary:hover {
@@ -293,13 +293,13 @@
 }
 
 .file-upload-area:hover {
-    border-color: darkolivegreen;
+    border-color: var(--artx-primary);
     background: #f0f2f5;
 }
 
 .file-upload-area i {
     font-size: 48px;
-    color: darkolivegreen;
+    color: var(--artx-primary);
     margin-bottom: 12px;
 }
 
@@ -343,7 +343,7 @@
 
 .file-preview-item i {
     font-size: 32px;
-    color: darkolivegreen;
+    color: var(--artx-primary);
 }
 
 .remove-file-btn {
@@ -483,7 +483,7 @@
 }
 
 .challenge-image-display h4 {
-    color: #556b2f;
+    color: var(--artx-primary);
     margin-bottom: 12px;
     font-size: 16px;
 }
@@ -501,7 +501,7 @@
 }
 
 .image-upload-area {
-    border: 2px dashed #90ee90;
+    border: 2px dashed var(--artx-accent);
     border-radius: 12px;
     padding: 30px;
     text-align: center;
@@ -511,13 +511,13 @@
 }
 
 .image-upload-area:hover {
-    border-color: #556b2f;
+    border-color: var(--artx-primary);
     background: #f0f8f0;
 }
 
 .image-upload-area i {
     font-size: 48px;
-    color: #90ee90;
+    color: var(--artx-accent);
     margin-bottom: 12px;
 }
 
@@ -605,7 +605,7 @@
     position: absolute;
     top: 16px;
     left: 16px;
-    background: linear-gradient(to right, darkolivegreen, darkgreen);
+    background: linear-gradient(to right, var(--artx-primary), darkgreen);
     color: #fff;
     padding: 6px 12px;
     border-radius: 20px;
@@ -736,7 +736,7 @@
 /* How-it-works box */
 .img-interp-rules-box {
     background: #f4f7f0;
-    border-left: 4px solid darkolivegreen;
+    border-left: 4px solid var(--artx-primary);
     border-radius: 10px;
     padding: 14px 16px;
 }
@@ -744,7 +744,7 @@
 .img-interp-rules-box h4 {
     font-size: 13px;
     font-weight: 700;
-    color: darkolivegreen;
+    color: var(--artx-primary);
     margin: 0 0 10px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -769,7 +769,7 @@
 }
 
 .img-interp-rules-box li i {
-    color: darkolivegreen;
+    color: var(--artx-primary);
     margin-top: 2px;
     flex-shrink: 0;
     width: 14px;
@@ -792,7 +792,7 @@
 }
 
 .img-interp-meta-item i {
-    color: darkolivegreen;
+    color: var(--artx-primary);
 }
 
 /* Entry fee box */
@@ -820,7 +820,7 @@
 .entry-fee-amount {
     font-size: 28px;
     font-weight: 800;
-    color: darkolivegreen;
+    color: var(--artx-primary);
     line-height: 1;
 }
 
@@ -831,13 +831,13 @@
 }
 
 .entry-fee-prize strong {
-    color: darkolivegreen;
+    color: var(--artx-primary);
 }
 
 /* Pay & Play button */
 .btn-play-now {
     width: 100%;
-    background: linear-gradient(to left, darkolivegreen, darkgreen);
+    background: linear-gradient(to left, var(--artx-primary), darkgreen);
     color: #fff;
     border: none;
     border-radius: 10px;
@@ -887,7 +887,7 @@
 .img-interp-timer-fill {
     height: 100%;
     width: 100%;
-    background: darkolivegreen;
+    background: var(--artx-primary);
     transition: width 1s linear, background 0.5s;
     border-radius: 0 3px 3px 0;
 }
@@ -919,9 +919,9 @@
     gap: 5px;
     font-size: 15px;
     font-weight: 800;
-    color: darkolivegreen;
+    color: var(--artx-primary);
     background: #f4f7f0;
-    border: 2px solid darkolivegreen;
+    border: 2px solid var(--artx-primary);
     border-radius: 8px;
     padding: 5px 12px;
     min-width: 68px;
@@ -1052,12 +1052,12 @@
 }
 
 .img-interp-answer-input:focus {
-    border-color: darkolivegreen;
+    border-color: var(--artx-primary);
     background: #fff;
 }
 
 .btn-submit-interp {
-    background: linear-gradient(to left, darkolivegreen, darkgreen);
+    background: linear-gradient(to left, var(--artx-primary), darkgreen);
     color: #fff;
     border: none;
     border-radius: 10px;
@@ -1117,7 +1117,7 @@
 }
 
 .result-win {
-    background: linear-gradient(160deg, #1a3a0a 0%, darkolivegreen 60%, #2d5016 100%);
+    background: linear-gradient(160deg, #1a3a0a 0%, var(--artx-primary) 60%, #2d5016 100%);
     color: #fff;
 }
 
@@ -1219,14 +1219,14 @@
 .modal-content.img-interp-game-modal {
     padding: 0;
     overflow: hidden;
-    border: 2px solid darkolivegreen;
+    border: 2px solid var(--artx-primary);
 }
 
 /* ── Details modal — give the modal-header a clean look ── */
 .modal-content.img-interp-details-modal {
     padding: 0;
     overflow: hidden;
-    border: 2px solid darkolivegreen;
+    border: 2px solid var(--artx-primary);
 }
 
 .img-interp-details-modal .modal-header {
@@ -1249,7 +1249,7 @@
 }
 
 .img-interp-details-modal .modal-header h2 i {
-    color: darkolivegreen;
+    color: var(--artx-primary);
 }
 
 .img-interp-details-modal .modal-header .close {
@@ -1274,9 +1274,9 @@
 
 /* ── Image-interpretation card left border accent ── */
 .challenge-card[data-category="image-interpretation"] {
-    border-left: 4px solid darkolivegreen;
+    border-left: 4px solid var(--artx-primary);
 }
 
 .challenge-card[data-category="image-interpretation"] .challenge-icon {
-    background: linear-gradient(135deg, lightgreen, darkolivegreen);
+    background: linear-gradient(135deg, var(--artx-accent), var(--artx-primary));
 }
