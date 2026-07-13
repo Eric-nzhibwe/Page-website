@@ -94,7 +94,7 @@
     width: 40px;
     height: 40px;
     border-radius: 50%;
-    background: linear-gradient(135deg, darkolivegreen, lightgreen);
+    background: linear-gradient(135deg, var(--artx-primary), var(--artx-accent));
     display: flex;
     align-items: center;
     justify-content: center;
@@ -117,7 +117,7 @@
 
 .comment-textarea:focus {
     outline: none;
-    border-color: darkolivegreen;
+    border-color: var(--artx-primary);
     box-shadow: 0 0 0 3px rgba(107, 142, 35, 0.1);
 }
 
@@ -145,12 +145,12 @@
 }
 
 .btn-primary {
-    background: darkolivegreen;
+    background: var(--artx-primary);
     color: white;
 }
 
 .btn-primary:hover {
-    background: #556b2f;
+    background: var(--artx-primary);
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(107, 142, 35, 0.3);
 }
@@ -206,7 +206,7 @@
 }
 
 .share-btn:hover {
-    border-color: darkolivegreen;
+    border-color: var(--artx-primary);
     background: #f9f9f9;
     transform: translateY(-2px);
 }
@@ -243,12 +243,12 @@
 }
 
 .copy-btn:hover {
-    color: darkolivegreen;
-    border-color: darkolivegreen;
+    color: var(--artx-primary);
+    border-color: var(--artx-primary);
 }
 
 .copy-btn:hover i {
-    color: darkolivegreen;
+    color: var(--artx-primary);
 }
 
 /* ============================================
@@ -319,7 +319,7 @@
 }
 
 .comment-action-btn:hover {
-    color: darkolivegreen;
+    color: var(--artx-primary);
     background: rgba(107, 142, 35, 0.1);
 }
 
@@ -406,7 +406,7 @@
 
 .post-action-btn:hover {
     background: #f0f0f0;
-    color: darkolivegreen;
+    color: var(--artx-primary);
 }
 
 .post-action-btn i {
