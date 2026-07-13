@@ -1,96 +1,136 @@
 /**
  * Real-time Service for ARTX Platform
- * Handles polling-based updates (WebSocket not configured)
- * 
- * NOTE: WebSocket support is not yet implemented. Using polling instead.
- * To enable WebSocket, install django-channels and configure routing.
+ *
+ * Connects via WebSocket (django-channels) when available,
+ * falls back to HTTP polling if the connection fails.
+ *
+ * Usage
+ * ─────
+ * realtimeService.connect()
+ * realtimeService.subscribeToChallengeUpdates(challengeId)
+ * realtimeService.on('new_submission',    handler)
+ * realtimeService.on('leaderboard_update', handler)
+ * realtimeService.on('activity',           handler)
+ * realtimeService.unsubscribeFromChallengeUpdates(challengeId)
  */
 
 class RealtimeService {
     constructor() {
-        this.ws = null;
-        // WebSocket URL removed - using polling instead
-        this.reconnectAttempts = 0;
+        this.ws              = null;
+        this.isConnected     = false;
+        this.reconnectAttempts    = 0;
         this.maxReconnectAttempts = 5;
-        this.reconnectDelay = 3000;
-        this.listeners = {};
-        this.isConnected = false;
-        this.pollInterval = null;
-        this.pollDelay = 5000; // Poll every 5 seconds
+        this.reconnectDelay  = 3000;   // ms between reconnect attempts
+        this.listeners       = {};
+
+        // Polling fallback
+        this.pollInterval    = null;
+        this.pollDelay       = 5000;   // ms between polls
+        this.usingPolling    = false;
+
+        // Track which challenge we're currently subscribed to
+        this.subscribedChallengeId = null;
     }
 
+    // ── WebSocket URL ────────────────────────────────────────────────────────
+
+    _wsBase() {
+        const proto = window.location.protocol === 'https:' ? 'wss' : 'ws';
+        return `${proto}://${window.location.host}`;
+    }
+
+    _challengeWsUrl(challengeId) {
+        return `${this._wsBase()}/ws/challenges/${challengeId}/`;
+    }
+
+    // ── Connection ───────────────────────────────────────────────────────────
+
     /**
-     * Connect using polling instead of WebSocket
+     * Connect to the challenge WebSocket.
+     * Falls back to polling if the connection cannot be established.
+     * @param {string} challengeId
+     * @returns {Promise<void>}
      */
-    connect() {
-        return new Promise((resolve, reject) => {
+    connect(challengeId) {
+        // If already connected to this challenge, do nothing
+        if (this.isConnected && this.subscribedChallengeId === challengeId) {
+            return Promise.resolve();
+        }
+
+        // Close any existing connection first
+        this._closeWs();
+
+        if (!challengeId) {
+            // No challenge yet — start generic polling
+            this._startPolling();
+            return Promise.resolve();
+        }
+
+        return new Promise((resolve) => {
             try {
-                console.warn('⚠️ WebSocket not configured. Using polling instead.');
-                console.log('💡 To enable WebSocket: pip install django-channels');
-                
-                this.isConnected = true;
-                this.reconnectAttempts = 0;
-                this.emit('connected');
-                
-                // Start polling
-                this.startPolling();
-                
+                const url = this._challengeWsUrl(challengeId);
+                this.ws = new WebSocket(url);
+
+                const connectTimeout = setTimeout(() => {
+                    // If WebSocket hasn't opened within 4 s, use polling
+                    if (!this.isConnected) {
+                        console.warn('⚠️ WebSocket timeout — falling back to polling');
+                        this._closeWs();
+                        this._startPolling();
+                        resolve();
+                    }
+                }, 4000);
+
+                this.ws.onopen = () => {
+                    clearTimeout(connectTimeout);
+                    this.isConnected   = true;
+                    this.usingPolling  = false;
+                    this.reconnectAttempts = 0;
+                    this.subscribedChallengeId = challengeId;
+                    console.log(`✅ WebSocket connected → challenge ${challengeId}`);
+                    this.emit('connected');
+                    resolve();
+                };
+
+                this.ws.onmessage = (event) => {
+                    try {
+                        this._handleMessage(JSON.parse(event.data));
+                    } catch (e) {
+                        console.warn('WS message parse error', e);
+                    }
+                };
+
+                this.ws.onerror = (err) => {
+                    clearTimeout(connectTimeout);
+                    console.warn('WebSocket error — using polling fallback', err);
+                    this._closeWs();
+                    this._startPolling();
+                    resolve();
+                };
+
+                this.ws.onclose = (ev) => {
+                    if (this.isConnected) {
+                        console.log('WebSocket closed, attempting reconnect…');
+                        this.isConnected = false;
+                        this._attemptReconnect(challengeId);
+                    }
+                };
+            } catch (err) {
+                console.warn('WebSocket not supported — using polling', err);
+                this._startPolling();
                 resolve();
-            } catch (error) {
-                reject(error);
             }
         });
     }
 
-    /**
-     * Start polling for updates
-     */
-    startPolling() {
-        if (this.pollInterval) return; // Already polling
-        
-        console.log('📡 Starting polling for challenge updates');
-        
-        this.pollInterval = setInterval(() => {
-            this.emit('poll_update');
-        }, this.pollDelay);
-    }
+    // ── Message handling ─────────────────────────────────────────────────────
 
-    /**
-     * Stop polling
-     */
-    stopPolling() {
-        if (this.pollInterval) {
-            clearInterval(this.pollInterval);
-            this.pollInterval = null;
-        }
-    }
-
-    /**
-     * Attempt to reconnect (polling-based)
-     */
-    attemptReconnect() {
-        if (this.reconnectAttempts < this.maxReconnectAttempts) {
-            this.reconnectAttempts++;
-            console.log(`Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts})...`);
-            setTimeout(() => this.connect().catch(console.error), this.reconnectDelay);
-        } else {
-            console.error('Max reconnection attempts reached');
-            this.emit('reconnect_failed');
-        }
-    }
-
-    /**
-     * Handle incoming WebSocket message
-     */
-    handleMessage(data) {
+    _handleMessage(data) {
         const { type, payload } = data;
-
         switch (type) {
+            case 'new_submission':
             case 'submission':
                 this.emit('new_submission', payload);
-                break;
-            case 'score_update':
-                this.emit('score_update', payload);
                 break;
             case 'leaderboard_update':
                 this.emit('leaderboard_update', payload);
@@ -98,84 +138,114 @@ class RealtimeService {
             case 'activity':
                 this.emit('activity', payload);
                 break;
-            case 'countdown':
-                this.emit('countdown', payload);
+            case 'challenge.update':
+                this.emit('challenge_update', payload);
+                break;
+            case 'score_update':
+                this.emit('score_update', payload);
+                break;
+            case 'pong':
                 break;
             default:
-                console.warn('Unknown message type:', type);
+                console.debug('Unknown WS message type:', type);
         }
     }
 
-    /**
-     * Subscribe to challenge updates
-     */
+    // ── Subscription helpers ─────────────────────────────────────────────────
+
     subscribeToChallengeUpdates(challengeId) {
-        if (this.isConnected && this.ws) {
-            this.ws.send(JSON.stringify({
-                action: 'subscribe',
-                challenge_id: challengeId,
-            }));
-        }
+        if (challengeId === this.subscribedChallengeId && this.isConnected) return;
+        this.connect(challengeId);
     }
 
-    /**
-     * Unsubscribe from challenge updates
-     */
     unsubscribeFromChallengeUpdates(challengeId) {
-        if (this.isConnected && this.ws) {
-            this.ws.send(JSON.stringify({
-                action: 'unsubscribe',
-                challenge_id: challengeId,
-            }));
+        if (this.subscribedChallengeId === challengeId) {
+            this._closeWs();
+            this._stopPolling();
+            this.subscribedChallengeId = null;
         }
     }
 
-    /**
-     * Register event listener
-     */
-    on(event, callback) {
-        if (!this.listeners[event]) {
-            this.listeners[event] = [];
+    // ── Polling fallback ─────────────────────────────────────────────────────
+
+    _startPolling() {
+        if (this.pollInterval) return;
+        this.usingPolling = true;
+        console.log('📡 Real-time polling active (5 s interval)');
+        this.pollInterval = setInterval(() => this.emit('poll_update'), this.pollDelay);
+    }
+
+    _stopPolling() {
+        if (this.pollInterval) {
+            clearInterval(this.pollInterval);
+            this.pollInterval = null;
         }
+        this.usingPolling = false;
+    }
+
+    // ── Reconnection ─────────────────────────────────────────────────────────
+
+    _attemptReconnect(challengeId) {
+        if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+            console.warn('Max WS reconnect attempts reached — switching to polling');
+            this._startPolling();
+            return;
+        }
+        this.reconnectAttempts++;
+        console.log(`Reconnecting… attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts}`);
+        setTimeout(() => this.connect(challengeId), this.reconnectDelay);
+    }
+
+    // ── Utilities ────────────────────────────────────────────────────────────
+
+    _closeWs() {
+        if (this.ws) {
+            this.ws.onclose = null; // prevent re-trigger
+            this.ws.close();
+            this.ws = null;
+        }
+        this.isConnected = false;
+    }
+
+    disconnect() {
+        this._closeWs();
+        this._stopPolling();
+        this.subscribedChallengeId = null;
+    }
+
+    /** Send a raw message (only when WS is live) */
+    send(data) {
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+            this.ws.send(JSON.stringify(data));
+        }
+    }
+
+    /** Keep-alive ping */
+    ping() { this.send({ action: 'ping' }); }
+
+    // ── Event emitter ─────────────────────────────────────────────────────────
+
+    on(event, callback) {
+        if (!this.listeners[event]) this.listeners[event] = [];
         this.listeners[event].push(callback);
     }
 
-    /**
-     * Unregister event listener
-     */
     off(event, callback) {
         if (this.listeners[event]) {
             this.listeners[event] = this.listeners[event].filter(cb => cb !== callback);
         }
     }
 
-    /**
-     * Emit event
-     */
     emit(event, data) {
-        if (this.listeners[event]) {
-            this.listeners[event].forEach(callback => {
-                try {
-                    callback(data);
-                } catch (error) {
-                    console.error(`Error in event listener for ${event}:`, error);
-                }
-            });
-        }
-    }
-
-    /**
-     * Disconnect (polling-based, no WebSocket to close)
-     */
-    disconnect() {
-        this.stopPolling();
+        (this.listeners[event] || []).forEach(cb => {
+            try { cb(data); } catch (e) { console.error(`Listener error [${event}]`, e); }
+        });
     }
 }
 
-// Create global instance
+// Global singleton
 const realtimeService = new RealtimeService();
 
-// Export for use in other scripts
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = RealtimeService;
 }

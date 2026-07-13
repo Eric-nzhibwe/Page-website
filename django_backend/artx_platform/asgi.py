@@ -7,6 +7,7 @@ from channels.routing import ProtocolTypeRouter, URLRouter
 from channels.auth import AuthMiddlewareStack
 import social.routing
 import notifications.routing
+import challenges.routing
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'artx_platform.settings')
 
@@ -15,7 +16,8 @@ application = ProtocolTypeRouter({
     "websocket": AuthMiddlewareStack(
         URLRouter(
             social.routing.websocket_urlpatterns +
-            notifications.routing.websocket_urlpatterns
+            notifications.routing.websocket_urlpatterns +
+            challenges.routing.websocket_urlpatterns
         )
     ),
 })

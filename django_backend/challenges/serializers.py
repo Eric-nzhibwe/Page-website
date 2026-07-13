@@ -15,6 +15,7 @@ class ChallengeSerializer(serializers.ModelSerializer):
     has_ended = serializers.SerializerMethodField()
     user_has_submitted = serializers.SerializerMethodField()
     user_has_img_submitted = serializers.SerializerMethodField()
+    created_by_username = serializers.SerializerMethodField()
     
     class Meta:
         model = Challenge
@@ -27,7 +28,7 @@ class ChallengeSerializer(serializers.ModelSerializer):
             'starts_at', 'ends_at', 'is_featured', 'view_count',
             'submission_count', 'is_active', 'time_remaining',
             'has_started', 'has_ended', 'user_has_submitted',
-            'user_has_img_submitted',
+            'user_has_img_submitted', 'created_by_username',
             'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at', 'view_count', 'submission_count']
@@ -55,6 +56,9 @@ class ChallengeSerializer(serializers.ModelSerializer):
         if request and request.user.is_authenticated:
             return obj.image_submissions.filter(user=request.user).exists()
         return False
+
+    def get_created_by_username(self, obj):
+        return obj.created_by.username if obj.created_by else None
 
 
 class ImageInterpretationSubmissionSerializer(serializers.ModelSerializer):

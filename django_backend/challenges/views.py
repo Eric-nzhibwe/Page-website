@@ -30,6 +30,30 @@ class ChallengeViewSet(viewsets.ModelViewSet):
     search_fields = ['title', 'description']
     ordering_fields = ['created_at', 'ends_at', 'submission_count']
     ordering = ['-created_at']
+
+    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
+    def following(self, request):
+        """
+        Return active challenges created by users that the current user follows.
+        Requires authentication.
+        """
+        from social.models import Follow
+        now = timezone.now()
+
+        # IDs of users the current user follows
+        followed_ids = Follow.objects.filter(
+            follower=request.user
+        ).values_list('following_id', flat=True)
+
+        challenges = Challenge.objects.filter(
+            created_by__in=followed_ids,
+            status='active',
+            starts_at__lte=now,
+            ends_at__gte=now,
+        ).select_related('created_by').prefetch_related('submissions').order_by('-created_at')
+
+        serializer = self.get_serializer(challenges, many=True)
+        return Response(serializer.data)
     
     def get_queryset(self):
         """Filter challenges based on status"""

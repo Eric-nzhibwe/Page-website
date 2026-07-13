@@ -119,6 +119,13 @@ class APIService {
     }
 
     /**
+     * Get active challenges created by users the current user follows
+     */
+    getFollowingChallenges() {
+        return this.get('/challenges/challenges/following/');
+    }
+
+    /**
      * Get all challenges with filters
      */
     getChallenges(filters = {}) {

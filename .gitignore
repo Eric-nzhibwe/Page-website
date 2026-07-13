@@ -25,9 +25,13 @@ wheels/
 local_settings.py
 db.sqlite3
 db.sqlite3-journal
-/media
 /staticfiles
 /static
+
+# Media uploads — ignore files but keep folder structure via .gitkeep
+/django_backend/media/*
+!/django_backend/media/profiles/
+!/django_backend/media/profiles/.gitkeep
 
 # Environment variables
 .env

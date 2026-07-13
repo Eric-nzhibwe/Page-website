@@ -126,6 +126,20 @@
         <section class="challenges-section">
             <div class="section-header">
                 <h1><i class="fas fa-trophy"></i> Active Challenges</h1>
+
+                <!-- Source tabs: All vs Following -->
+                <div class="source-tabs" id="sourceTabs">
+                    <button class="source-tab active" id="tabAll"
+                            onclick="switchSourceTab('all')">
+                        <i class="fas fa-globe"></i> All
+                    </button>
+                    <button class="source-tab" id="tabFollowing"
+                            onclick="switchSourceTab('following')">
+                        <i class="fas fa-user-friends"></i> Following
+                    </button>
+                </div>
+
+                <!-- Difficulty filters -->
                 <div class="filters">
                     <button class="filter-btn active" onclick="filterChallenges('all')">All</button>
                     <button class="filter-btn" onclick="filterChallenges('easy')">Easy</button>

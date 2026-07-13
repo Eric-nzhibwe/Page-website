@@ -631,3 +631,50 @@ body {
         font-size: 12px;
     }
 }
+
+/* ── Source tabs (All / Following) ────────────────────────────────────────── */
+.source-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.source-tab {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 18px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 20px;
+    background: transparent;
+    color: #aaa;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.source-tab:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+}
+
+.source-tab.active {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    border-color: transparent;
+    color: #fff;
+    box-shadow: 0 2px 12px rgba(102, 126, 234, 0.4);
+}
+
+.source-tab i {
+    font-size: 13px;
+}
+
+/* Real-time activity item flash animation */
+@keyframes rt-flash {
+    from { background: rgba(102, 126, 234, 0.25); }
+    to   { background: rgba(255, 255, 255, 0.05); }
+}
+.activity-item-rt {
+    animation: rt-flash 1.2s ease-out;
+}
