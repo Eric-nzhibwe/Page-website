@@ -175,6 +175,7 @@ async function toggleProfileFollow() {
 
 // ── Render ────────────────────────────────────────────────────
 function renderProfile(u, rank) {
+    window._lastProfileData = u; // shared with user-enhanced.js
 
     // Identity
     set('profileDisplayName', u.display_name || u.username);
@@ -320,6 +321,7 @@ async function loadActivities() {
         }
 
         set('activityCount', items.length >= 15 ? '15+' : items.length);
+        window._allActivitiesCache = (data.results || data); // share with enhancements
 
         list.innerHTML = items.map((a, i) => {
             const m = ACT_META[a.activity_type] || { icon:'fa-circle', bg:'linear-gradient(135deg,#6b7280,#9ca3af)' };
