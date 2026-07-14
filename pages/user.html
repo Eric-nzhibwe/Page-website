@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ARTX — Profile</title>
+    <title></title>Profile</title>
     <link rel="icon" type="image/jpeg" href="../images/ARTX.jpg">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -12,6 +12,7 @@
     <link rel="stylesheet" href="../styles/styles.css">
     <link rel="stylesheet" href="../styles/icon-nav.css">
     <link rel="stylesheet" href="../styles/user.css">
+    <link rel="stylesheet" href="../styles/user-enhanced.css">
     <link rel="stylesheet" href="../styles/settings.css">
     <link rel="stylesheet" href="../styles/responsive-pro.css">
 </head>
@@ -121,6 +122,10 @@
     <section class="cover-section">
         <div class="cover-art" id="coverArt">
             <div class="cover-grain"></div>
+            <label class="cover-upload-btn" for="coverInput" title="Change cover photo">
+                <i class="fas fa-camera"></i> Change Cover
+            </label>
+            <input type="file" id="coverInput" accept="image/*" style="display:none" onchange="uploadCover(this)">
         </div>
 
         <div class="profile-header">
@@ -174,10 +179,28 @@
         </div>
     </section>
 
+    <!-- ── PROFILE COMPLETION BAR ── -->
+    <div class="completion-bar-wrap" id="completionBarWrap">
+        <div class="completion-bar-inner">
+            <div class="completion-left">
+                <i class="fas fa-circle-check"></i>
+                <span id="completionText">Complete your profile</span>
+            </div>
+            <div class="completion-right">
+                <span class="completion-pct" id="completionPct">0%</span>
+                <div class="completion-track">
+                    <div class="completion-fill" id="completionFill"></div>
+                </div>
+                <button class="completion-dismiss" onclick="dismissCompletion()" title="Dismiss"><i class="fas fa-xmark"></i></button>
+            </div>
+        </div>
+        <div class="completion-steps" id="completionSteps"></div>
+    </div>
+
     <!-- ── STATS ROW ── -->
     <div class="stats-row">
-        <div class="scard"><div class="scard-val" id="statFollowers">0</div><div class="scard-key">Followers</div></div>
-        <div class="scard"><div class="scard-val" id="statFollowing">0</div><div class="scard-key">Following</div></div>
+        <div class="scard clickable" onclick="openFollowersModal('followers')"><div class="scard-val" id="statFollowers">0</div><div class="scard-key">Followers</div></div>
+        <div class="scard clickable" onclick="openFollowersModal('following')"><div class="scard-val" id="statFollowing">0</div><div class="scard-key">Following</div></div>
         <div class="scard"><div class="scard-val" id="statPrestige">0</div><div class="scard-key">Prestige</div></div>
         <div class="scard"><div class="scard-val" id="statLevel">1</div><div class="scard-key">Level</div></div>
         <div class="scard highlight"><div class="scard-val" id="statStreak">0<i class="fas fa-fire"></i></div><div class="scard-key">Day Streak</div></div>
@@ -195,11 +218,11 @@
             <!-- About -->
             <div class="card">
                 <h3 class="card-title"><i class="fas fa-id-card-clip"></i> About</h3>
-                <p class="bio-block" id="profileBio">No bio yet.</p>
+                <p class="bio-block sk-item" id="profileBio">No bio yet.</p>
                 <ul class="detail-list">
-                    <li><i class="fas fa-calendar-days"></i><span>Joined <b id="profileJoined">—</b></span></li>
-                    <li><i class="fas fa-envelope"></i><span id="profileEmail">—</span></li>
-                    <li><i class="fas fa-shield-halved"></i><span>Verification level <b id="profileVerLevel">0</b></span></li>
+                    <li><i class="fas fa-calendar-days"></i><span>Joined <b id="profileJoined" class="sk-item">—</b></span></li>
+                    <li><i class="fas fa-envelope"></i><span id="profileEmail" class="sk-item">—</span></li>
+                    <li><i class="fas fa-shield-halved"></i><span>Verification level <b id="profileVerLevel" class="sk-item">0</b></span></li>
                 </ul>
             </div>
 
@@ -248,6 +271,8 @@
                     <div class="tab-pills" id="perfTabBar">
                         <button class="tpill active" data-target="tabOverview">Overview</button>
                         <button class="tpill" data-target="tabDonut">Chart</button>
+                        <button class="tpill" data-target="tabWeekly">Weekly</button>
+                        <button class="tpill" data-target="tabRank">Rank</button>
                     </div>
                 </div>
 
@@ -303,6 +328,84 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Weekly SVG Bar Chart Tab -->
+                <div id="tabWeekly" class="tab-panel">
+                    <div class="weekly-bars-panel" id="weeklyBarsPanel">
+                        <div class="skeleton-list"><div class="sk-row"></div></div>
+                    </div>
+                </div>
+
+                <!-- Rank Percentile Tab -->
+                <div id="tabRank" class="tab-panel">
+                    <div class="rank-panel">
+                        <div class="rank-hero">
+                            <div class="rank-badge-big" id="rankBadgeBig">
+                                <i class="fas fa-crown"></i>
+                            </div>
+                            <div class="rank-hero-info">
+                                <div class="rank-title" id="rankTitle">—</div>
+                                <div class="rank-sub">Global Standing</div>
+                            </div>
+                        </div>
+                        <div class="rank-pct-row">
+                            <span class="rank-pct-label">You beat</span>
+                            <span class="rank-pct-val" id="rankPctVal">0%</span>
+                            <span class="rank-pct-label">of all players</span>
+                        </div>
+                        <div class="rank-pct-track">
+                            <div class="rank-pct-fill" id="rankPctFill"></div>
+                            <div class="rank-pct-you" id="rankPctYou"><i class="fas fa-caret-up"></i></div>
+                        </div>
+                        <div class="rank-stats-grid">
+                            <div class="rank-stat"><span id="rankGlobal">—</span><small>Global Rank</small></div>
+                            <div class="rank-stat"><span id="rankTierPos">—</span><small>Tier Position</small></div>
+                            <div class="rank-stat"><span id="rankWinRate">—</span><small>Win Rate</small></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Badges / Trophy Shelf -->
+            <div class="card">
+                <div class="card-header-row">
+                    <h3 class="card-title"><i class="fas fa-medal"></i> Achievements</h3>
+                    <span class="act-count-badge" id="badgeCount"></span>
+                </div>
+                <div class="badges-shelf" id="badgesShelf">
+                    <div class="skeleton-list"><div class="sk-row"></div></div>
+                </div>
+            </div>
+
+            <!-- Weekly Bar Chart -->
+            <div class="card">
+                <div class="card-header-row">
+                    <h3 class="card-title"><i class="fas fa-chart-simple"></i> Weekly Activity</h3>
+                    <span class="weekly-label" id="weeklyLabel">Last 7 days</span>
+                </div>
+                <div class="weekly-chart" id="weeklyChart">
+                    <div class="skeleton-list"><div class="sk-row"></div></div>
+                </div>
+            </div>
+
+            <!-- Streak Heatmap -->
+            <div class="card">
+                <div class="card-header-row">
+                    <h3 class="card-title"><i class="fas fa-fire-flame-curved"></i> Streak Calendar</h3>
+                    <span class="weekly-label" id="heatmapYear"></span>
+                </div>
+                <div class="heatmap-wrap" id="heatmapWrap">
+                    <div class="skeleton-list"><div class="sk-row"></div></div>
+                </div>
+                <div class="heatmap-legend">
+                    <span>Less</span>
+                    <div class="hm-swatch" style="--c:#e9eee4"></div>
+                    <div class="hm-swatch" style="--c:#c6d9a2"></div>
+                    <div class="hm-swatch" style="--c:#8fbf5a"></div>
+                    <div class="hm-swatch" style="--c:#5a8a20"></div>
+                    <div class="hm-swatch" style="--c:#3a5f1a"></div>
+                    <span>More</span>
+                </div>
             </div>
 
             <!-- Activity -->
@@ -310,6 +413,13 @@
                 <div class="card-header-row">
                     <h3 class="card-title"><i class="fas fa-bolt-lightning"></i> Recent Activity</h3>
                     <span class="act-count-badge" id="activityCount"></span>
+                </div>
+                <!-- Activity filter tabs -->
+                <div class="act-filter-bar" id="actFilterBar">
+                    <button class="act-filter active" data-filter="all">All</button>
+                    <button class="act-filter" data-filter="challenge">Challenges</button>
+                    <button class="act-filter" data-filter="win">Wins</button>
+                    <button class="act-filter" data-filter="social">Social</button>
                 </div>
                 <div id="activityList" class="activity-stream">
                     <div class="skeleton-list">
@@ -319,6 +429,9 @@
                         <div class="sk-row short"></div>
                     </div>
                 </div>
+                <button class="load-more-btn" id="loadMoreBtn" onclick="loadMoreActivity()" style="display:none">
+                    <i class="fas fa-chevron-down"></i> Load more
+                </button>
             </div>
 
         </main>
@@ -866,12 +979,30 @@
     </div>
 </div>
 
+<!-- Followers / Following Modal -->
+<div class="modal-veil" id="followModal">
+    <div class="modal-box follow-modal-box">
+        <button class="modal-close" onclick="closeFollowModal()"><i class="fas fa-xmark"></i></button>
+        <div class="follow-modal-tabs">
+            <button class="follow-tab active" id="followTabFollowers" onclick="switchFollowTab('followers')">Followers</button>
+            <button class="follow-tab" id="followTabFollowing" onclick="switchFollowTab('following')">Following</button>
+        </div>
+        <div class="follow-modal-list" id="followModalList">
+            <div class="skeleton-list"><div class="sk-row"></div><div class="sk-row short"></div><div class="sk-row"></div></div>
+        </div>
+    </div>
+</div>
+
+<!-- Badge Tooltip -->
+<div class="badge-tooltip" id="badgeTooltip" role="tooltip"></div>
+
 <!-- Toast -->
 <div class="toast" id="toast"></div>
 
 <script src="../scripts/app.js"></script>
 <script src="../scripts/settings.js"></script>
 <script src="../scripts/user.js"></script>
+<script src="../scripts/user-enhanced.js"></script>
 <script>
 /* ── Dropdown toggles — identical to index.html ─────────── */
 function toggleQuickMenu() {
