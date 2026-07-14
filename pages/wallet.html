@@ -4,300 +4,475 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Wallet — ARTX</title>
+    <link rel="icon" type="image/jpeg" href="../images/ARTX.jpg">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../styles/styles.css">
+    <link rel="stylesheet" href="../styles/icon-nav.css">
     <link rel="stylesheet" href="../styles/wallet.css">
     <link rel="stylesheet" href="../styles/responsive-pro.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Stripe.js — only loads when needed -->
     <script src="https://js.stripe.com/v3/" defer></script>
 </head>
 <body>
-    <div class="wallet-container">
 
-        <!-- Header -->
-        <div class="wallet-header">
-            <button class="back-btn" onclick="window.location.href='../index.html'">
-                <i class="fas fa-arrow-left"></i> Back
-            </button>
-            <h1><i class="fas fa-wallet"></i> My Wallet</h1>
+<!-- ═══════════════ NAVBAR ═══════════════ -->
+<header class="header w-100">
+    <div class="header-left d-flex align-items-center">
+        <div class="logo" onclick="window.location.href='../index.html'" style="cursor:pointer">
+            <i class="fas fa-fire"></i>ARTX
         </div>
-
-        <!-- Balance Cards -->
-        <div class="balance-section">
-            <div class="balance-card main-balance">
-                <div class="balance-label">Available Balance</div>
-                <div class="balance-amount" id="availableBalance">K0.00</div>
-                <div class="balance-currency" id="walletCurrency">ZMW</div>
-            </div>
-
-            <div class="balance-stats">
-                <div class="stat-card">
-                    <i class="fas fa-arrow-down"></i>
-                    <div class="stat-label">Total Deposited</div>
-                    <div class="stat-value" id="totalDeposited">K0.00</div>
-                </div>
-                <div class="stat-card">
-                    <i class="fas fa-trophy"></i>
-                    <div class="stat-label">Total Earned</div>
-                    <div class="stat-value" id="totalEarned">K0.00</div>
-                </div>
-                <div class="stat-card">
-                    <i class="fas fa-arrow-up"></i>
-                    <div class="stat-label">Total Withdrawn</div>
-                    <div class="stat-value" id="totalWithdrawn">K0.00</div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Action Buttons -->
-        <div class="action-buttons">
-            <button class="action-btn deposit-btn" onclick="showDepositModal()">
-                <i class="fas fa-plus-circle"></i> Deposit
-            </button>
-            <button class="action-btn withdraw-btn" onclick="showWithdrawModal()">
-                <i class="fas fa-minus-circle"></i> Withdraw
-            </button>
-        </div>
-
-        <!-- Pending deposit notice (shown while polling PawaPay) -->
-        <div id="pendingDepositNotice" class="pending-notice" style="display:none;">
-            <i class="fas fa-spinner fa-spin"></i>
-            <span id="pendingDepositMsg">Waiting for payment confirmation on your phone…</span>
-            <button onclick="cancelPolling()" class="cancel-poll-btn">Dismiss</button>
-        </div>
-
-        <!-- Transaction History -->
-        <div class="transaction-section">
-            <div class="section-header">
-                <h2><i class="fas fa-history"></i> Transaction History</h2>
-                <select id="transactionFilter" onchange="filterTransactions()">
-                    <option value="">All Transactions</option>
-                    <option value="deposit">Deposits</option>
-                    <option value="withdrawal">Withdrawals</option>
-                    <option value="earning">Earnings</option>
-                    <option value="payment">Payments</option>
-                </select>
-            </div>
-            <div id="transactionList" class="transaction-list"></div>
+        <div class="search-bar d-none d-md-flex align-items-center">
+            <i class="fas fa-search"></i>
+            <input type="text" placeholder="Search ARTX..." id="headerSearch">
         </div>
     </div>
+    <nav class="icon-nav d-flex justify-content-center flex-grow-1">
+        <button class="icon-nav-btn" title="Home" onclick="window.location.href='../index.html'">
+            <i class="fas fa-home" style="color:black;"></i>
+        </button>
+        <button class="icon-nav-btn" title="Challenges" onclick="window.location.href='challenges.html'">
+            <i class="fas fa-trophy" style="color:black;"></i>
+        </button>
+        <button class="icon-nav-btn" title="Marketplace" onclick="window.location.href='../index.html'">
+            <i class="fas fa-store" style="color:black;"></i>
+        </button>
+        <button class="icon-nav-btn active" title="Wallet">
+            <i class="fas fa-wallet" style="color:black;"></i>
+        </button>
+    </nav>
+    <div class="header-right d-flex align-items-center">
+        <button class="header-icon-btn" onclick="loadWalletData()" title="Refresh">
+            <i class="fas fa-rotate-right" style="color:black;"></i>
+        </button>
+        <div class="user-avatar-btn" onclick="window.location.href='user.html'">
+            <i class="fas fa-user-circle" style="color:black;"></i>
+        </div>
+    </div>
+</header>
 
-    <!-- ═══════════════════════════════════════════════════════════ -->
-    <!-- DEPOSIT MODAL                                               -->
-    <!-- ═══════════════════════════════════════════════════════════ -->
-    <div id="depositModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="depositTitle">
-        <div class="modal-content">
-            <button class="close" onclick="closeDepositModal()" aria-label="Close">&times;</button>
-            <h2 id="depositTitle"><i class="fas fa-plus-circle"></i> Deposit Funds</h2>
+<!-- ═══════════════ PAGE ═══════════════ -->
+<div class="wpage">
 
-            <form id="depositForm" onsubmit="handleDeposit(event)" novalidate>
-
-                <div class="form-group">
-                    <label for="depositAmount">Amount</label>
-                    <input type="number" id="depositAmount" step="0.01" min="1"
-                           required placeholder="Enter amount" autocomplete="off">
+    <!-- ── HERO BALANCE CARD ── -->
+    <section class="wbalance-hero">
+        <div class="wbalance-bg-glow"></div>
+        <div class="wbalance-content">
+            <div class="wbalance-left">
+                <p class="wbal-eyebrow"><i class="fas fa-wallet"></i> Available Balance</p>
+                <div class="wbal-amount" id="availableBalance">K0.00</div>
+                <div class="wbal-meta">
+                    <span class="wbal-currency" id="walletCurrency">ZMW</span>
+                    <span class="wbal-status" id="walletStatus"></span>
                 </div>
+            </div>
+            <div class="wbalance-right">
+                <div class="wbal-sparkline" id="balanceSparkline" aria-hidden="true"></div>
+            </div>
+        </div>
+        <div class="wbalance-stats">
+            <div class="wbal-stat">
+                <div class="wbal-stat-icon deposit"><i class="fas fa-arrow-down"></i></div>
+                <div class="wbal-stat-body">
+                    <span class="wbal-stat-val" id="totalDeposited">K0.00</span>
+                    <span class="wbal-stat-key">Deposited</span>
+                </div>
+            </div>
+            <div class="wbal-stat">
+                <div class="wbal-stat-icon earn"><i class="fas fa-trophy"></i></div>
+                <div class="wbal-stat-body">
+                    <span class="wbal-stat-val" id="totalEarned">K0.00</span>
+                    <span class="wbal-stat-key">Earned</span>
+                </div>
+            </div>
+            <div class="wbal-stat">
+                <div class="wbal-stat-icon withdraw"><i class="fas fa-arrow-up"></i></div>
+                <div class="wbal-stat-body">
+                    <span class="wbal-stat-val" id="totalWithdrawn">K0.00</span>
+                    <span class="wbal-stat-key">Withdrawn</span>
+                </div>
+            </div>
+            <div class="wbal-stat">
+                <div class="wbal-stat-icon spent"><i class="fas fa-shopping-cart"></i></div>
+                <div class="wbal-stat-body">
+                    <span class="wbal-stat-val" id="totalSpent">K0.00</span>
+                    <span class="wbal-stat-key">Spent</span>
+                </div>
+            </div>
+        </div>
+    </section>
 
-                <div class="form-group">
-                    <label for="depositProvider">Payment Method</label>
-                    <select id="depositProvider" onchange="handleDepositProviderChange()" required>
-                        <option value="">Select payment method</option>
-                        <option value="pawapay">📱 Mobile Money (MTN, Airtel, M-Pesa)</option>
-                        <option value="stripe">💳 Card Payment (Stripe)</option>
-                        <option value="paystack">🏦 Paystack (Card / Bank)</option>
-                    </select>
+    <!-- ── ACTION STRIP ── -->
+    <div class="waction-strip">
+        <button class="waction-btn waction-deposit" onclick="showDepositModal()">
+            <span class="waction-icon"><i class="fas fa-plus"></i></span>
+            <span class="waction-label">Deposit</span>
+        </button>
+        <button class="waction-btn waction-withdraw" onclick="showWithdrawModal()">
+            <span class="waction-icon"><i class="fas fa-minus"></i></span>
+            <span class="waction-label">Withdraw</span>
+        </button>
+        <button class="waction-btn waction-send" onclick="showNotice('Send Money coming soon','info')">
+            <span class="waction-icon"><i class="fas fa-paper-plane"></i></span>
+            <span class="waction-label">Send</span>
+        </button>
+        <button class="waction-btn waction-history" onclick="document.getElementById('txSection').scrollIntoView({behavior:'smooth'})">
+            <span class="waction-icon"><i class="fas fa-clock-rotate-left"></i></span>
+            <span class="waction-label">History</span>
+        </button>
+    </div>
+
+    <!-- ── PENDING NOTICE ── -->
+    <div id="pendingDepositNotice" class="wpending-notice" style="display:none;">
+        <div class="wpending-inner">
+            <span class="wpending-spinner"><i class="fas fa-spinner fa-spin"></i></span>
+            <div class="wpending-body">
+                <strong>Payment pending</strong>
+                <span id="pendingDepositMsg">Waiting for confirmation on your phone…</span>
+            </div>
+            <button onclick="cancelPolling()" class="wpending-dismiss" aria-label="Dismiss">
+                <i class="fas fa-xmark"></i>
+            </button>
+        </div>
+        <div class="wpending-progress"><div class="wpending-bar" id="pendingBar"></div></div>
+    </div>
+
+    <!-- ── MINI CHART ── -->
+    <div class="wchart-card">
+        <div class="wchart-header">
+            <h3 class="wchart-title"><i class="fas fa-chart-line"></i> Activity (Last 7 days)</h3>
+            <div class="wchart-legend">
+                <span class="wleg wleg-in"><i class="fas fa-circle"></i> In</span>
+                <span class="wleg wleg-out"><i class="fas fa-circle"></i> Out</span>
+            </div>
+        </div>
+        <div class="wchart-body" id="miniChart" aria-hidden="true"></div>
+    </div>
+
+    <!-- ── TRANSACTIONS ── -->
+    <div class="wtx-section" id="txSection">
+        <div class="wtx-header">
+            <h2 class="wtx-title"><i class="fas fa-list-ul"></i> Transactions</h2>
+            <div class="wtx-controls">
+                <div class="wtx-search-wrap">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="txSearch" placeholder="Search…" oninput="searchTransactions()">
+                </div>
+                <div class="wtx-filter-pills" id="txFilterPills">
+                    <button class="wtx-pill active" data-filter="">All</button>
+                    <button class="wtx-pill" data-filter="deposit">Deposits</button>
+                    <button class="wtx-pill" data-filter="withdrawal">Withdrawals</button>
+                    <button class="wtx-pill" data-filter="earning">Earnings</button>
+                    <button class="wtx-pill" data-filter="payment">Payments</button>
+                </div>
+            </div>
+        </div>
+        <div id="transactionList" class="wtx-list"></div>
+        <button class="wtx-load-more" id="txLoadMore" onclick="loadMoreTransactions()" style="display:none">
+            <i class="fas fa-chevron-down"></i> Load more
+        </button>
+    </div>
+
+</div><!-- /wpage -->
+
+<!-- ═══════════════ DEPOSIT MODAL ═══════════════ -->
+<div id="depositModal" class="wmodal" role="dialog" aria-modal="true" aria-labelledby="depositTitle">
+    <div class="wmodal-box">
+        <div class="wmodal-header">
+            <div class="wmodal-header-icon deposit"><i class="fas fa-arrow-down"></i></div>
+            <div>
+                <h2 id="depositTitle">Deposit Funds</h2>
+                <p>Add money to your ARTX wallet</p>
+            </div>
+            <button class="wmodal-close" onclick="closeDepositModal()" aria-label="Close"><i class="fas fa-xmark"></i></button>
+        </div>
+
+        <!-- Stepper -->
+        <div class="wstepper">
+            <div class="wstep active" id="dstep1"><span>1</span> Amount</div>
+            <div class="wstep-line"></div>
+            <div class="wstep" id="dstep2"><span>2</span> Method</div>
+            <div class="wstep-line"></div>
+            <div class="wstep" id="dstep3"><span>3</span> Confirm</div>
+        </div>
+
+        <form id="depositForm" onsubmit="handleDeposit(event)" novalidate>
+            <!-- Step 1: Amount -->
+            <div class="wstep-panel active" id="dpanel1">
+                <div class="wamount-display" id="dAmountDisplay">K0</div>
+                <div class="wamount-numpad">
+                    <div class="wnumpad-presets">
+                        <button type="button" class="wpreset" onclick="setDepositPreset(10)">K10</button>
+                        <button type="button" class="wpreset" onclick="setDepositPreset(50)">K50</button>
+                        <button type="button" class="wpreset" onclick="setDepositPreset(100)">K100</button>
+                        <button type="button" class="wpreset" onclick="setDepositPreset(500)">K500</button>
+                    </div>
+                    <div class="wform-group">
+                        <label for="depositAmount">Or enter amount</label>
+                        <div class="winput-wrap">
+                            <span class="winput-prefix">K</span>
+                            <input type="number" id="depositAmount" step="0.01" min="1" required
+                                   placeholder="0.00" autocomplete="off"
+                                   oninput="updateAmountDisplay('dAmountDisplay','depositAmount')">
+                        </div>
+                    </div>
+                </div>
+                <button type="button" class="wbtn-next" onclick="depositNextStep(1)">
+                    Continue <i class="fas fa-arrow-right"></i>
+                </button>
+            </div>
+
+            <!-- Step 2: Method -->
+            <div class="wstep-panel" id="dpanel2">
+                <div class="wpayment-methods">
+                    <label class="wpay-option">
+                        <input type="radio" name="depositProvider" value="pawapay" onchange="handleDepositProviderChange()">
+                        <div class="wpay-card">
+                            <div class="wpay-icon" style="background:#f9a825"><i class="fas fa-mobile-alt"></i></div>
+                            <div class="wpay-info"><strong>Mobile Money</strong><span>MTN, Airtel, M-Pesa</span></div>
+                            <i class="fas fa-check-circle wpay-check"></i>
+                        </div>
+                    </label>
+                    <label class="wpay-option">
+                        <input type="radio" name="depositProvider" value="stripe" onchange="handleDepositProviderChange()">
+                        <div class="wpay-card">
+                            <div class="wpay-icon" style="background:#635bff"><i class="fas fa-credit-card"></i></div>
+                            <div class="wpay-info"><strong>Card Payment</strong><span>Visa, Mastercard via Stripe</span></div>
+                            <i class="fas fa-check-circle wpay-check"></i>
+                        </div>
+                    </label>
+                    <label class="wpay-option">
+                        <input type="radio" name="depositProvider" value="paystack" onchange="handleDepositProviderChange()">
+                        <div class="wpay-card">
+                            <div class="wpay-icon" style="background:#00c3f7"><i class="fas fa-building-columns"></i></div>
+                            <div class="wpay-info"><strong>Paystack</strong><span>Card or Bank transfer</span></div>
+                            <i class="fas fa-check-circle wpay-check"></i>
+                        </div>
+                    </label>
                 </div>
 
                 <!-- PawaPay fields -->
-                <div id="depositPawapayFields" style="display:none;">
-                    <div class="form-group">
+                <div id="depositPawapayFields" style="display:none">
+                    <div class="wform-group">
                         <label for="depositPhone">Phone Number</label>
-                        <input type="tel" id="depositPhone"
-                               placeholder="+260977123456"
-                               autocomplete="tel">
-                        <small class="field-hint">Use international format, e.g. +260977123456</small>
+                        <div class="winput-wrap">
+                            <i class="fas fa-phone"></i>
+                            <input type="tel" id="depositPhone" placeholder="+260977123456" autocomplete="tel">
+                        </div>
+                        <small>International format e.g. +260977123456</small>
                     </div>
-                    <div class="form-group">
+                    <div class="wform-group">
                         <label for="depositCorrespondent">Mobile Network</label>
-                        <select id="depositCorrespondent">
+                        <select id="depositCorrespondent" class="wselect">
                             <option value="">Select network</option>
                             <option value="MTN_MOMO_ZMB">MTN Mobile Money</option>
                             <option value="AIRTEL_OAPI_ZMB">Airtel Money</option>
                         </select>
                     </div>
-                    <p class="provider-info">
-                        <i class="fas fa-info-circle"></i>
-                        You will receive a prompt on your phone to enter your PIN.
-                    </p>
+                    <div class="wprovider-info"><i class="fas fa-info-circle"></i> You will receive a prompt on your phone to enter your PIN.</div>
                 </div>
 
-                <!-- Stripe card element -->
-                <div id="depositStripeFields" style="display:none;">
-                    <div class="form-group">
+                <!-- Stripe fields -->
+                <div id="depositStripeFields" style="display:none">
+                    <div class="wform-group">
                         <label>Card Details</label>
-                        <div id="stripeCardElement" class="stripe-card-element">
-                            <!-- Stripe Elements mounts here -->
-                        </div>
-                        <div id="stripeCardErrors" class="field-error" role="alert"></div>
+                        <div id="stripeCardElement" class="wstripe-el"></div>
+                        <div id="stripeCardErrors" class="wfield-error" role="alert"></div>
                     </div>
-                    <p class="provider-info">
-                        <i class="fas fa-lock"></i>
-                        Secured by Stripe — your card details never touch our servers.
-                    </p>
+                    <div class="wprovider-info"><i class="fas fa-lock"></i> Secured by Stripe — your card details never touch our servers.</div>
                 </div>
 
                 <!-- Paystack info -->
-                <div id="depositPaystackFields" style="display:none;">
-                    <p class="provider-info">
-                        <i class="fas fa-info-circle"></i>
-                        You will be redirected to Paystack's secure checkout page to complete the payment.
-                    </p>
+                <div id="depositPaystackFields" style="display:none">
+                    <div class="wprovider-info"><i class="fas fa-info-circle"></i> You'll be redirected to Paystack's secure checkout to complete payment.</div>
                 </div>
 
-                <button type="submit" class="submit-btn" id="depositSubmitBtn">
-                    <i class="fas fa-check"></i>
-                    <span id="depositBtnText">Deposit Now</span>
-                </button>
-            </form>
-        </div>
+                <div class="wstep-btns">
+                    <button type="button" class="wbtn-back" onclick="depositGoBack(2)"><i class="fas fa-arrow-left"></i> Back</button>
+                    <button type="button" class="wbtn-next" onclick="depositNextStep(2)">Review <i class="fas fa-arrow-right"></i></button>
+                </div>
+            </div>
+
+            <!-- Step 3: Confirm -->
+            <div class="wstep-panel" id="dpanel3">
+                <div class="wreview-card">
+                    <div class="wreview-row"><span>Amount</span><strong id="dReviewAmount">—</strong></div>
+                    <div class="wreview-row"><span>Method</span><strong id="dReviewMethod">—</strong></div>
+                    <div class="wreview-row" id="dReviewPhoneRow" style="display:none"><span>Phone</span><strong id="dReviewPhone">—</strong></div>
+                    <div class="wreview-row"><span>Currency</span><strong id="dReviewCurrency">ZMW</strong></div>
+                </div>
+                <div class="wstep-btns">
+                    <button type="button" class="wbtn-back" onclick="depositGoBack(3)"><i class="fas fa-arrow-left"></i> Back</button>
+                    <button type="submit" class="wbtn-submit" id="depositSubmitBtn">
+                        <i class="fas fa-check"></i> <span id="depositBtnText">Deposit Now</span>
+                    </button>
+                </div>
+            </div>
+        </form>
     </div>
+</div>
 
-    <!-- ═══════════════════════════════════════════════════════════ -->
-    <!-- WITHDRAW MODAL                                              -->
-    <!-- ═══════════════════════════════════════════════════════════ -->
-    <div id="withdrawModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="withdrawTitle">
-        <div class="modal-content">
-            <button class="close" onclick="closeWithdrawModal()" aria-label="Close">&times;</button>
-            <h2 id="withdrawTitle"><i class="fas fa-minus-circle"></i> Withdraw Funds</h2>
+<!-- ═══════════════ WITHDRAW MODAL ═══════════════ -->
+<div id="withdrawModal" class="wmodal" role="dialog" aria-modal="true" aria-labelledby="withdrawTitle">
+    <div class="wmodal-box">
+        <div class="wmodal-header">
+            <div class="wmodal-header-icon withdraw"><i class="fas fa-arrow-up"></i></div>
+            <div>
+                <h2 id="withdrawTitle">Withdraw Funds</h2>
+                <p id="withdrawAvailLabel">Available: K0.00</p>
+            </div>
+            <button class="wmodal-close" onclick="closeWithdrawModal()" aria-label="Close"><i class="fas fa-xmark"></i></button>
+        </div>
 
-            <form id="withdrawForm" onsubmit="handleWithdraw(event)" novalidate>
+        <div class="wstepper">
+            <div class="wstep active" id="wstep1"><span>1</span> Amount</div>
+            <div class="wstep-line"></div>
+            <div class="wstep" id="wstep2"><span>2</span> Method</div>
+            <div class="wstep-line"></div>
+            <div class="wstep" id="wstep3"><span>3</span> Confirm</div>
+        </div>
 
-                <div class="form-group">
-                    <label for="withdrawAmount">Amount</label>
-                    <input type="number" id="withdrawAmount" step="0.01" min="1"
-                           required placeholder="Enter amount" autocomplete="off">
-                    <small id="withdrawMax" class="field-hint"></small>
+        <form id="withdrawForm" onsubmit="handleWithdraw(event)" novalidate>
+            <!-- Step 1 -->
+            <div class="wstep-panel active" id="wpanel1">
+                <div class="wamount-display" id="wAmountDisplay">K0</div>
+                <div class="wnumpad-presets">
+                    <button type="button" class="wpreset" onclick="setWithdrawPreset(10)">K10</button>
+                    <button type="button" class="wpreset" onclick="setWithdrawPreset(50)">K50</button>
+                    <button type="button" class="wpreset" onclick="setWithdrawPreset(100)">K100</button>
+                    <button type="button" class="wpreset" onclick="setWithdrawPreset(250)">K250</button>
                 </div>
-
-                <div class="form-group">
-                    <label for="withdrawProvider">Withdrawal Method</label>
-                    <select id="withdrawProvider" onchange="handleWithdrawProviderChange()" required>
-                        <option value="">Select withdrawal method</option>
-                        <option value="mtn">📱 MTN Mobile Money</option>
-                        <option value="airtel">📱 Airtel Money</option>
-                        <option value="mpesa">📱 M-Pesa</option>
-                        <option value="bank">🏦 Bank Transfer</option>
-                        <option value="paypal">💙 PayPal</option>
-                    </select>
-                </div>
-
-                <!-- Mobile money fields -->
-                <div id="withdrawMobileFields" style="display:none;">
-                    <div class="form-group">
-                        <label for="withdrawPhone">Phone Number</label>
-                        <input type="tel" id="withdrawPhone"
-                               placeholder="+260977123456"
-                               autocomplete="tel">
-                        <small class="field-hint">Use international format, e.g. +260977123456</small>
+                <div class="wform-group">
+                    <label for="withdrawAmount">Or enter amount</label>
+                    <div class="winput-wrap">
+                        <span class="winput-prefix">K</span>
+                        <input type="number" id="withdrawAmount" step="0.01" min="1" required
+                               placeholder="0.00" autocomplete="off"
+                               oninput="updateAmountDisplay('wAmountDisplay','withdrawAmount')">
                     </div>
-                    <div class="form-group">
-                        <label for="withdrawCorrespondent">Mobile Network</label>
-                        <select id="withdrawCorrespondent">
+                    <small id="withdrawMax" class="wfield-hint"></small>
+                </div>
+                <button type="button" class="wbtn-next" onclick="withdrawNextStep(1)">Continue <i class="fas fa-arrow-right"></i></button>
+            </div>
+
+            <!-- Step 2 -->
+            <div class="wstep-panel" id="wpanel2">
+                <div class="wpayment-methods">
+                    <label class="wpay-option">
+                        <input type="radio" name="withdrawProvider" value="mtn" onchange="handleWithdrawProviderChange()">
+                        <div class="wpay-card">
+                            <div class="wpay-icon" style="background:#f9a825"><i class="fas fa-mobile-alt"></i></div>
+                            <div class="wpay-info"><strong>MTN Mobile Money</strong><span>Instant transfer</span></div>
+                            <i class="fas fa-check-circle wpay-check"></i>
+                        </div>
+                    </label>
+                    <label class="wpay-option">
+                        <input type="radio" name="withdrawProvider" value="airtel" onchange="handleWithdrawProviderChange()">
+                        <div class="wpay-card">
+                            <div class="wpay-icon" style="background:#e53935"><i class="fas fa-mobile-alt"></i></div>
+                            <div class="wpay-info"><strong>Airtel Money</strong><span>Instant transfer</span></div>
+                            <i class="fas fa-check-circle wpay-check"></i>
+                        </div>
+                    </label>
+                    <label class="wpay-option">
+                        <input type="radio" name="withdrawProvider" value="mpesa" onchange="handleWithdrawProviderChange()">
+                        <div class="wpay-card">
+                            <div class="wpay-icon" style="background:#4caf50"><i class="fas fa-mobile-alt"></i></div>
+                            <div class="wpay-info"><strong>M-Pesa</strong><span>Kenya & Tanzania</span></div>
+                            <i class="fas fa-check-circle wpay-check"></i>
+                        </div>
+                    </label>
+                    <label class="wpay-option">
+                        <input type="radio" name="withdrawProvider" value="bank" onchange="handleWithdrawProviderChange()">
+                        <div class="wpay-card">
+                            <div class="wpay-icon" style="background:#1565c0"><i class="fas fa-building-columns"></i></div>
+                            <div class="wpay-info"><strong>Bank Transfer</strong><span>1-3 business days</span></div>
+                            <i class="fas fa-check-circle wpay-check"></i>
+                        </div>
+                    </label>
+                    <label class="wpay-option">
+                        <input type="radio" name="withdrawProvider" value="paypal" onchange="handleWithdrawProviderChange()">
+                        <div class="wpay-card">
+                            <div class="wpay-icon" style="background:#003087"><i class="fab fa-paypal"></i></div>
+                            <div class="wpay-info"><strong>PayPal</strong><span>Email transfer</span></div>
+                            <i class="fas fa-check-circle wpay-check"></i>
+                        </div>
+                    </label>
+                </div>
+
+                <div id="withdrawMobileFields" style="display:none">
+                    <div class="wform-group">
+                        <label for="withdrawPhone">Phone Number</label>
+                        <div class="winput-wrap"><i class="fas fa-phone"></i>
+                        <input type="tel" id="withdrawPhone" placeholder="+260977123456" autocomplete="tel"></div>
+                    </div>
+                    <div class="wform-group">
+                        <label for="withdrawCorrespondent">Network</label>
+                        <select id="withdrawCorrespondent" class="wselect">
                             <option value="">Select network</option>
                             <option value="MTN_MOMO_ZMB">MTN Mobile Money — Zambia</option>
                             <option value="AIRTEL_OAPI_ZMB">Airtel Money — Zambia</option>
                             <option value="VODACOM_MPESA_TZA">M-Pesa — Tanzania</option>
                             <option value="SAFARICOM_MPESA_KEN">M-Pesa — Kenya</option>
-                            <option value="MTN_MOMO_UGA">MTN Mobile Money — Uganda</option>
-                            <option value="MTN_MOMO_GHA">MTN Mobile Money — Ghana</option>
-                            <option value="MTN_MOMO_RWA">MTN Mobile Money — Rwanda</option>
+                            <option value="MTN_MOMO_UGA">MTN — Uganda</option>
+                            <option value="MTN_MOMO_GHA">MTN — Ghana</option>
                         </select>
                     </div>
-                    <p class="provider-info">
-                        <i class="fas fa-info-circle"></i>
-                        Funds will be sent directly to your mobile money account.
-                    </p>
                 </div>
-
-                <!-- Bank fields -->
-                <div id="withdrawBankFields" style="display:none;">
-                    <div class="form-group">
+                <div id="withdrawBankFields" style="display:none">
+                    <div class="wform-group">
                         <label for="withdrawBank">Bank Account Number</label>
-                        <input type="text" id="withdrawBank" placeholder="Account number">
+                        <div class="winput-wrap"><i class="fas fa-hashtag"></i>
+                        <input type="text" id="withdrawBank" placeholder="Account number"></div>
                     </div>
                 </div>
-
-                <!-- PayPal fields -->
-                <div id="withdrawPaypalFields" style="display:none;">
-                    <div class="form-group">
+                <div id="withdrawPaypalFields" style="display:none">
+                    <div class="wform-group">
                         <label for="withdrawPaypal">PayPal Email</label>
-                        <input type="email" id="withdrawPaypal" placeholder="your@email.com">
+                        <div class="winput-wrap"><i class="fas fa-envelope"></i>
+                        <input type="email" id="withdrawPaypal" placeholder="you@email.com"></div>
                     </div>
                 </div>
 
-                <button type="submit" class="submit-btn" id="withdrawSubmitBtn">
-                    <i class="fas fa-check"></i>
-                    <span id="withdrawBtnText">Withdraw Now</span>
-                </button>
-            </form>
-        </div>
+                <div class="wstep-btns">
+                    <button type="button" class="wbtn-back" onclick="withdrawGoBack(2)"><i class="fas fa-arrow-left"></i> Back</button>
+                    <button type="button" class="wbtn-next" onclick="withdrawNextStep(2)">Review <i class="fas fa-arrow-right"></i></button>
+                </div>
+            </div>
+
+            <!-- Step 3 -->
+            <div class="wstep-panel" id="wpanel3">
+                <div class="wreview-card">
+                    <div class="wreview-row"><span>Amount</span><strong id="wReviewAmount">—</strong></div>
+                    <div class="wreview-row"><span>Method</span><strong id="wReviewMethod">—</strong></div>
+                    <div class="wreview-row" id="wReviewPhoneRow" style="display:none"><span>Phone</span><strong id="wReviewPhone">—</strong></div>
+                    <div class="wreview-row"><span>Currency</span><strong id="wReviewCurrency">ZMW</strong></div>
+                </div>
+                <div class="wstep-btns">
+                    <button type="button" class="wbtn-back" onclick="withdrawGoBack(3)"><i class="fas fa-arrow-left"></i> Back</button>
+                    <button type="submit" class="wbtn-submit withdraw" id="withdrawSubmitBtn">
+                        <i class="fas fa-check"></i> <span id="withdrawBtnText">Withdraw Now</span>
+                    </button>
+                </div>
+            </div>
+        </form>
     </div>
+</div>
 
-    <script src="../scripts/wallet.js"></script>
+<!-- Toast -->
+<div class="wtoast" id="wtoast"></div>
 
-    <!-- Mobile Bottom Navigation Bar (hidden on desktop via CSS) -->
-    <nav class="mobile-bottom-nav" id="mobileBottomNav">
-        <button class="icon-nav-btn" title="Home" onclick="window.location.href='../index.html'">
-            <i class="fas fa-home"></i>
-        </button>
-        <button class="icon-nav-btn" title="Challenges" onclick="window.location.href='../index.html#challenges'">
-            <i class="fas fa-trophy"></i>
-        </button>
-        <button class="icon-nav-btn" title="Marketplace" onclick="window.location.href='../index.html#marketplace'">
-            <i class="fas fa-store"></i>
-        </button>
-        <button class="icon-nav-btn" title="People" onclick="window.location.href='community.html'">
-            <i class="fas fa-users"></i>
-        </button>
-        <button class="icon-nav-btn active" onclick="toggleMobileMoreMenu(this)" title="More">
-            <i class="fas fa-bars"></i>
-        </button>
-    </nav>
+<script src="../scripts/app.js"></script>
+<script src="../scripts/wallet.js"></script>
 
-    <script>
-    function toggleMobileMoreMenu(btn) {
-        const dropdown = document.getElementById('userMenuDropdown');
-        if (!dropdown) return;
-        const isOpen = dropdown.classList.contains('show');
-        if (isOpen) {
-            dropdown.classList.remove('show');
-            dropdown.style.removeProperty('top');
-            dropdown.style.removeProperty('bottom');
-            dropdown.style.removeProperty('right');
-            dropdown.style.removeProperty('position');
-        } else {
-            const navH = document.getElementById('mobileBottomNav').offsetHeight;
-            dropdown.style.position = 'fixed';
-            dropdown.style.bottom   = (navH + 8) + 'px';
-            dropdown.style.top      = 'auto';
-            dropdown.style.right    = '8px';
-            dropdown.classList.add('show');
-        }
-    }
-
-    document.addEventListener('click', function(e) {
-        const dropdown = document.getElementById('userMenuDropdown');
-        if (dropdown && dropdown.classList.contains('show') && dropdown.style.bottom) {
-            const moreBtn = document.querySelector('.mobile-bottom-nav .icon-nav-btn[title="More"]');
-            if (!dropdown.contains(e.target) && (!moreBtn || !moreBtn.contains(e.target))) {
-                dropdown.classList.remove('show');
-                dropdown.style.removeProperty('top');
-                dropdown.style.removeProperty('bottom');
-                dropdown.style.removeProperty('right');
-                dropdown.style.removeProperty('position');
-            }
-        }
-    });
-    </script>
+<!-- Mobile Bottom Nav -->
+<nav class="mobile-bottom-nav" id="mobileBottomNav">
+    <button class="icon-nav-btn" onclick="window.location.href='../index.html'"><i class="fas fa-home"></i></button>
+    <button class="icon-nav-btn" onclick="window.location.href='challenges.html'"><i class="fas fa-trophy"></i></button>
+    <button class="icon-nav-btn" onclick="window.location.href='../index.html'"><i class="fas fa-store"></i></button>
+    <button class="icon-nav-btn" onclick="window.location.href='community.html'"><i class="fas fa-users"></i></button>
+    <button class="icon-nav-btn active"><i class="fas fa-wallet"></i></button>
+</nav>
 </body>
 </html>
