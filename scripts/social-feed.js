@@ -438,6 +438,10 @@ function updateSocialSidebar() {
 // ─────────────────────────────────────────────────────────────────────────────
 function openCreateStoryModal() { createStory(); }
 
+const _STORY_API = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+    ? 'http://localhost:8000/api/social/stories/'
+    : `${window.location.origin}/api/social/stories/`;
+
 function createStory() {
     const input  = document.createElement('input');
     input.type   = 'file';
@@ -445,43 +449,135 @@ function createStory() {
     input.onchange = e => {
         const file = e.target.files[0];
         if (!file) return;
-        const reader = new FileReader();
-        reader.onload = ev => {
-            const isVideo = file.type.startsWith('video/');
-            const card    = document.createElement('div');
-            card.className = 'story-card';
-            card.style.animation = 'fadeInCard .4s ease';
 
-            const storyData = [{
-                id:          `local-story-${Date.now()}`,
-                author:      { username: _currentUsername(), display_name: _currentUsername(), profile_image: null },
-                media_url:   ev.target.result,
-                media_type:  isVideo ? 'video' : 'image',
-                content:     '',
-                view_count:  0,
-                created_at:  new Date().toISOString(),
-                expires_at:  new Date(Date.now() + 86400000).toISOString(),
-                time_until_expiry: 86400
-            }];
+        const isVideo   = file.type.startsWith('video/');
+        const mediaType = isVideo ? 'video' : 'image';
 
-            card.innerHTML = `
-                <div class="story-image" style="${!isVideo ? `background:url('${ev.target.result}') center/cover` : ''}">
-                    ${isVideo ? `<video src="${ev.target.result}" style="width:100%;height:100%;object-fit:cover"></video>` : ''}
-                </div>
-                <span class="story-name">Your Story</span>`;
+        // ── Immediate preview using object URL (no green overlay) ──────────
+        const previewUrl = URL.createObjectURL(file);
+        const tempId     = `local-story-${Date.now()}`;
 
-            card.onclick = () => storyViewer?.openStory(storyData[0].id, storyData);
+        _insertStoryCard({
+            id:         tempId,
+            author:     { username: _currentUsername(), display_name: _currentUsername(), profile_image: null },
+            media_url:  previewUrl,
+            media_type: mediaType,
+            content:    '',
+            view_count: 0,
+            created_at: new Date().toISOString(),
+        }, tempId);
 
-            const container  = document.querySelector('.stories-container');
-            const createCard = container?.querySelector('.create-story');
-            if (createCard?.nextSibling) container.insertBefore(card, createCard.nextSibling);
-            else container?.appendChild(card);
+        _feedToast('Story posted! 🎉', 'success');
 
-            _feedToast('Story posted! 🎉', 'success');
-        };
-        reader.readAsDataURL(file);
+        // ── Upload file to API as multipart/form-data ──────────────────────
+        const token = localStorage.getItem('djangoAuthToken');
+        if (!token) return;
+
+        const form = new FormData();
+        form.append('media_file', file);
+        form.append('media_type', mediaType);
+        form.append('content', '');
+
+        fetch(_STORY_API, {
+            method:  'POST',
+            headers: { 'Authorization': `Token ${token}` }, // NO Content-Type — browser sets multipart boundary
+            body:    form,
+        })
+        .then(r => r.ok ? r.json() : r.json().then(d => Promise.reject(d)))
+        .then(saved => {
+            // Swap the temp card to the real API id so viewer calls work
+            const tempCard = document.querySelector(`[data-story-id="${tempId}"]`);
+            if (tempCard) {
+                tempCard.dataset.storyId = saved.id;
+                // Update the stored story data for viewer
+                const realUrl = saved.resolved_media_url || saved.media_url || previewUrl;
+                tempCard._storyData = [{
+                    ...saved,
+                    resolved_media_url: realUrl,
+                }];
+            }
+        })
+        .catch(err => {
+            console.warn('Story API save failed:', err);
+            // Story stays visible for the session — no data loss for user
+        });
     };
     input.click();
+}
+
+/** Insert a rendered story card into the stories rail */
+function _insertStoryCard(story, tempId) {
+    const isVideo  = story.media_type === 'video';
+    // Use resolved_media_url (API) or fall back to media_url (local preview)
+    const mediaUrl = story.resolved_media_url || story.media_url || '';
+
+    const card = document.createElement('div');
+    card.className = 'story-card';
+    card.style.animation = 'fadeInCard .4s ease';
+    card.dataset.storyId = tempId || story.id;
+
+    // Set background-image via inline style — never use background shorthand
+    // so the CSS fallback background-color doesn't bleed through
+    if (!isVideo && mediaUrl) {
+        const imgEl = card;
+        // We set it on the .story-image div below via a ref trick
+    }
+
+    const imgDivStyle = (!isVideo && mediaUrl)
+        ? `background-image:url('${CSS.escape ? mediaUrl : mediaUrl}');`
+        : '';
+
+    card.innerHTML = `
+        <div class="story-image" style="${imgDivStyle}">
+            ${isVideo && mediaUrl
+                ? `<video src="${mediaUrl}" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;" muted playsinline></video>`
+                : ''}
+        </div>
+        <span class="story-name">${story.author?.display_name || story.author?.username || 'Story'}</span>`;
+
+    // Store story data for the viewer
+    const storyData = [story];
+    card._storyData  = storyData;
+
+    card.onclick = () => {
+        const data = card._storyData || storyData;
+        if (window.storyViewer?.openStory) {
+            window.storyViewer.openStory(data[0].id, data);
+        }
+    };
+
+    const container  = document.querySelector('.stories-container');
+    const createCard = container?.querySelector('.create-story');
+    if (createCard?.nextSibling) container.insertBefore(card, createCard.nextSibling);
+    else if (container) container.appendChild(card);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  LOAD REAL STORIES FROM API (called on page load)
+// ─────────────────────────────────────────────────────────────────────────────
+async function loadRealStories() {
+    const token = localStorage.getItem('djangoAuthToken');
+    if (!token) return;
+
+    try {
+        const res  = await fetch(`${_STORY_API}feed/`, {
+            headers: { 'Authorization': `Token ${token}` }
+        });
+        if (!res.ok) return;
+        const body   = await res.json();
+        const stories = Array.isArray(body) ? body : (body.results || []);
+
+        const container = document.querySelector('.stories-container');
+        if (!container) return;
+
+        stories.forEach(story => {
+            if (!container.querySelector(`[data-story-id="${story.id}"]`)) {
+                _insertStoryCard(story);
+            }
+        });
+    } catch (err) {
+        console.warn('Story feed load error:', err);
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -421,7 +421,11 @@
     justify-content: center;
     font-size: 28px;
     color: white;
-    background: linear-gradient(135deg, var(--artx-primary), var(--artx-accent));
+    /* Default fallback for stories without a real image — overridden by inline style */
+    background-color: var(--artx-primary);
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
 }
 
 @media (min-width: 640px) {

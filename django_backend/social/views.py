@@ -329,7 +329,12 @@ class StoryViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     authentication_classes = [TokenAuthentication, SessionAuthentication]
     pagination_class = StandardResultsSetPagination
-    
+
+    def get_parsers(self):
+        """Accept both JSON and multipart (file upload)."""
+        from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
+        return [MultiPartParser(), FormParser(), JSONParser()]
+
     def get_queryset(self):
         """Get non-expired stories from followed users"""
         from django.utils import timezone

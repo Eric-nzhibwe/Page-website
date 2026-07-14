@@ -255,7 +255,12 @@ class Story(models.Model):
     
     # Content
     content = models.TextField(max_length=500, blank=True)
-    media_url = models.URLField()
+    media_url = models.URLField(blank=True)          # external URL (optional)
+    media_file = models.FileField(                   # uploaded file (preferred)
+        upload_to='stories/',
+        blank=True,
+        null=True,
+    )
     media_type = models.CharField(max_length=20, choices=[('image', 'Image'), ('video', 'Video')])
     
     # Metadata

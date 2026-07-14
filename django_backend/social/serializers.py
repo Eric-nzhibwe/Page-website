@@ -139,22 +139,43 @@ class StorySerializer(serializers.ModelSerializer):
     views = StoryViewSerializer(many=True, read_only=True)
     user_has_viewed = serializers.SerializerMethodField()
     time_until_expiry = serializers.SerializerMethodField()
-    
+    media_file = serializers.FileField(write_only=True, required=False)
+    # resolved_media_url is what the frontend should use to display the story
+    resolved_media_url = serializers.SerializerMethodField()
+
     class Meta:
         model = Story
         fields = [
-            'id', 'author', 'content', 'media_url', 'media_type',
+            'id', 'author', 'content', 'media_url', 'media_file',
+            'resolved_media_url', 'media_type',
             'view_count', 'created_at', 'expires_at', 'views',
             'user_has_viewed', 'time_until_expiry'
         ]
-    
+
+    def get_resolved_media_url(self, obj):
+        """Return the best available media URL — file upload takes priority."""
+        request = self.context.get('request')
+        if obj.media_file and hasattr(obj.media_file, 'url'):
+            if request:
+                return request.build_absolute_uri(obj.media_file.url)
+            return obj.media_file.url
+        return obj.media_url or ''
+
+    def create(self, validated_data):
+        media_file = validated_data.pop('media_file', None)
+        story = super().create(validated_data)
+        if media_file:
+            story.media_file = media_file
+            story.save(update_fields=['media_file'])
+        return story
+
     def get_user_has_viewed(self, obj):
         """Check if current user has viewed this story"""
         request = self.context.get('request')
         if request and request.user.is_authenticated:
             return obj.views.filter(viewer=request.user).exists()
         return False
-    
+
     def get_time_until_expiry(self, obj):
         """Get time remaining until story expires"""
         from django.utils import timezone

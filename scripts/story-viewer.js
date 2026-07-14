@@ -74,10 +74,12 @@ class StoryViewer {
         const expiryTime = this.formatTimeRemaining(story.time_until_expiry);
         
         let mediaHTML = '';
+        // Prefer resolved_media_url (set by backend with full path) over media_url
+        const mediaSrc = story.resolved_media_url || story.media_url || '';
         if (story.media_type === 'image') {
-            mediaHTML = `<img src="${story.media_url}" alt="Story" class="story-media">`;
+            mediaHTML = `<img src="${mediaSrc}" alt="Story" class="story-media">`;
         } else if (story.media_type === 'video') {
-            mediaHTML = `<video controls class="story-media"><source src="${story.media_url}" type="video/mp4"></video>`;
+            mediaHTML = `<video controls class="story-media"><source src="${mediaSrc}" type="video/mp4"></video>`;
         }
         
         return `

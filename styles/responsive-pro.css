@@ -692,12 +692,23 @@ body {
   justify-content: center !important;
   font-size: 28px !important;
   color: white !important;
-  background: linear-gradient(135deg, var(--artx-green), var(--artx-green-light)) !important;
+  /* No background here — each card sets its own via inline style */
+  background-color: var(--artx-green) !important;
+  background-size: cover !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
 }
 
+/* Only the "Add Story" placeholder card gets the green gradient */
 .create-story .story-image {
-  background: #f4f6f1 !important;
+  background-image: none !important;
+  background-color: #f4f6f1 !important;
   color: var(--artx-green) !important;
+}
+
+/* Real story cards with an image — hide the icon inside */
+.story-card:not(.create-story) .story-image[style*="background-image"] i {
+  display: none !important;
 }
 
 .story-name {
