@@ -22,11 +22,11 @@ urlpatterns = [
     path('withdrawals/', views.WithdrawalHistoryView.as_view(), name='withdrawal_history'),
 
     # Status polling
-    path('status/<int:payment_id>/',               views.payment_status_view,    name='payment_status'),
-    path('withdrawals/<int:withdrawal_id>/status/', views.withdrawal_status_view, name='withdrawal_status'),
+    path('status/<uuid:payment_id>/',               views.payment_status_view,    name='payment_status'),
+    path('withdrawals/<uuid:withdrawal_id>/status/', views.withdrawal_status_view, name='withdrawal_status'),
 
     # Audit log
-    path('audit/<int:payment_id>/', views.payment_audit_log_view, name='payment_audit'),
+    path('audit/<uuid:payment_id>/', views.payment_audit_log_view, name='payment_audit'),
 
     # Legacy aliases
     path('initiate/', views.deposit_funds_view,        name='initiate_payment'),
