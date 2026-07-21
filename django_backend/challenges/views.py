@@ -5,13 +5,15 @@ from rest_framework import viewsets, status, filters
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from django.utils import timezone
 from django.db.models import Q, Count, Avg, Max, Min
 from django_filters.rest_framework import DjangoFilterBackend
 
 from .models import Challenge, ChallengeSubmission, ChallengeLeaderboard, ChallengeActivity, ImageInterpretationSubmission
 from .serializers import (
-    ChallengeSerializer, ChallengeSubmissionSerializer,
+    ChallengeSerializer, ChallengeCreateSerializer,
+    ChallengeSubmissionSerializer,
     ChallengeSubmissionCreateSerializer, ChallengeLeaderboardSerializer,
     ChallengeActivitySerializer,
     ImageInterpretationSubmissionSerializer,
@@ -25,11 +27,29 @@ class ChallengeViewSet(viewsets.ModelViewSet):
     queryset = Challenge.objects.all()
     serializer_class = ChallengeSerializer
     permission_classes = [AllowAny]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['difficulty', 'status']
     search_fields = ['title', 'description']
     ordering_fields = ['created_at', 'ends_at', 'submission_count']
     ordering = ['-created_at']
+
+    def get_permissions(self):
+        if self.action in ('create', 'update', 'partial_update', 'destroy'):
+            return [IsAuthenticated()]
+        return [AllowAny()]
+
+    def get_serializer_class(self):
+        if self.action == 'create':
+            return ChallengeCreateSerializer
+        return ChallengeSerializer
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        challenge = serializer.save()
+        output = ChallengeSerializer(challenge, context={'request': request})
+        return Response(output.data, status=status.HTTP_201_CREATED)
 
     @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
     def following(self, request):

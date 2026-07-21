@@ -1,28 +1,22 @@
 /**
- * Challenges Page Logic - Django Backend API
- * Features: All/Following tabs, real-time WebSocket updates, difficulty filters
+ * Challenges Page — ARTX Platform
  */
 
 // ── State ─────────────────────────────────────────────────────────────────────
-let currentUserId       = null;
-let player              = null;
-let challenges          = [];        // "All" tab data
-let followingChallenges = [];        // "Following" tab data
-let mySubmissions       = [];
-let currentChallenge    = null;
-let challengeTimer      = null;
-let challengeStartTime  = null;
-let activeSourceTab     = 'all';     // 'all' | 'following'
-let activeDiffFilter    = 'all';
+let currentUserId    = null;
+let player           = null;
+let challenges       = [];
+let mySubmissions    = [];
+let currentChallenge = null;
+let challengeTimer   = null;
+let challengeStartTime = null;
+let realtimeUpdateInterval = null;
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
-    if (!checkAuth()) {
-        window.location.href = 'auth.html';
-        return;
-    }
+    if (!checkAuth()) { window.location.href = 'auth.html'; return; }
     loadPlayerData();
-    initRealtimeListeners();
+    initializeRealtimeUpdates();
     await Promise.all([loadChallenges(), loadMySubmissions()]);
     renderChallenges();
     renderMySubmissions();
@@ -31,7 +25,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 // ── Auth ──────────────────────────────────────────────────────────────────────
 function checkAuth() {
     currentUserId = localStorage.getItem('artCurrentUser');
-    const token   = localStorage.getItem('authToken');
+    const token = localStorage.getItem('authToken');
     if (token) apiService.setToken(token);
     return currentUserId !== null && token !== null;
 }
@@ -39,21 +33,19 @@ function checkAuth() {
 function loadPlayerData() {
     if (!currentUserId) return;
     const saved = localStorage.getItem(`artPlayer_${currentUserId}`);
-    if (saved) { player = JSON.parse(saved); updateUI(); }
+    if (saved) { player = JSON.parse(saved); updateHeaderUI(); }
 }
 
-function updateUI() {
+function updateHeaderUI() {
     if (!player) return;
-    const safe = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
-    safe('username',     player.username);
-    safe('userPrestige', player.prestige_points || 0);
-    safe('streakCount',  player.current_streak  || 0);
+    setEl('username', player.username);
+    setEl('userPrestige', `${player.prestige_points || 0} pts`);
+    setEl('streakCount', player.current_streak || 0);
     if (player.wallet_balance !== undefined) {
-        safe('walletBalance', `K${player.wallet_balance.toFixed(2)}`);
-        const badge = document.getElementById('walletBalanceBadge');
-        if (badge) badge.style.display = 'flex';
+        setEl('walletBalance', `K${Number(player.wallet_balance).toFixed(2)}`);
+        show('walletBalanceBadge');
     }
-    if (player.access_tier) safe('tierBadge', player.access_tier);
+    if (player.access_tier) setEl('tierBadge', player.access_tier);
 }
 
 function logout() {
@@ -64,63 +56,16 @@ function logout() {
     }
 }
 
-// ── Real-time listeners ───────────────────────────────────────────────────────
-function initRealtimeListeners() {
-    // New submission → refresh the open modal's submission count
-    realtimeService.on('new_submission', (data) => {
-        if (currentChallenge && String(currentChallenge.id) === String(data?.challenge_id)) {
-            // Bump the displayed entry count optimistically
-            const countEls = document.querySelectorAll(
-                `[data-id="${currentChallenge.id}"] .meta-item`
-            );
-            // Re-fetch leaderboard so counts stay accurate
-            loadLeaderboard();
-        }
-        // Refresh the grid card entry-count after a short delay
-        _softRefreshGrid();
-    });
-
-    // Leaderboard update → refresh the open modal's leaderboard in real time
-    realtimeService.on('leaderboard_update', (data) => {
-        if (currentChallenge && String(currentChallenge.id) === String(data?.challenge_id)) {
-            _renderLeaderboardFromPayload(data);
-        }
-    });
-
-    // Activity → append to the live feed without a full reload
-    realtimeService.on('activity', (data) => {
-        if (currentChallenge && String(currentChallenge.id) === String(data?.challenge_id)) {
-            _prependActivityItem(data);
-        }
-    });
-
-    // Polling fallback: re-fetch stats while a challenge modal is open
-    realtimeService.on('poll_update', () => {
-        if (currentChallenge) {
-            loadLeaderboard();
-            loadActivityFeed();
-        }
-    });
+// ── Real-time ─────────────────────────────────────────────────────────────────
+function initializeRealtimeUpdates() {
+    realtimeService.connect().catch(() => startPollingUpdates());
+    realtimeService.on('new_submission', () => { if (currentChallenge) updateChallengeStats(); });
+    realtimeService.on('leaderboard_update', d => { if (currentChallenge && currentChallenge.id === d.challenge_id) loadLeaderboard(); });
+    realtimeService.on('activity', d => { if (currentChallenge && currentChallenge.id === d.challenge_id) loadActivityFeed(); });
 }
 
-// ── Source tab switching (All / Following) ────────────────────────────────────
-async function switchSourceTab(tab) {
-    activeSourceTab = tab;
-
-    document.querySelectorAll('.source-tab').forEach(b => b.classList.remove('active'));
-    const btn = document.getElementById(tab === 'all' ? 'tabAll' : 'tabFollowing');
-    if (btn) btn.classList.add('active');
-
-    // Reset difficulty filter buttons to "All"
-    activeDiffFilter = 'all';
-    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-    const firstFilter = document.querySelector('.filter-btn');
-    if (firstFilter) firstFilter.classList.add('active');
-
-    if (tab === 'following') {
-        await loadFollowingChallenges();
-    }
-    renderChallenges();
+function startPollingUpdates() {
+    realtimeUpdateInterval = setInterval(() => { if (currentChallenge) updateChallengeStats(); }, 5000);
 }
 
 // ── Data loading ──────────────────────────────────────────────────────────────
@@ -128,619 +73,541 @@ async function loadChallenges() {
     try {
         const data = await apiService.getActiveChallenges();
         challenges = Array.isArray(data) ? data : (data.results || []);
-    } catch (err) {
-        console.error('Error loading challenges:', err);
-        challenges = [];
-    }
-}
-
-async function loadFollowingChallenges() {
-    const grid = document.getElementById('challengesGrid');
-    if (grid) grid.innerHTML = '<p style="color:#888;text-align:center;padding:40px;grid-column:1/-1;"><i class="fas fa-spinner fa-spin"></i> Loading…</p>';
-    try {
-        const data = await apiService.getFollowingChallenges();
-        followingChallenges = Array.isArray(data) ? data : (data.results || []);
-    } catch (err) {
-        console.error('Error loading following challenges:', err);
-        followingChallenges = [];
-    }
+    } catch (e) { console.error('loadChallenges:', e); challenges = []; }
 }
 
 async function loadMySubmissions() {
     try {
         const data = await apiService.getMySubmissions();
         mySubmissions = Array.isArray(data) ? data : (data.results || []);
-    } catch (err) {
-        mySubmissions = [];
-    }
-    try {
-        const imgData = await apiService.getMyImageSubmissions();
-        const imgSubs = Array.isArray(imgData) ? imgData : (imgData.results || []);
-        imgSubs.forEach(sub => {
-            if (!mySubmissions.find(s => s.challenge === sub.challenge)) {
-                mySubmissions.push(sub);
-            }
-        });
-    } catch (_) { /* non-fatal */ }
+    } catch (e) { console.error('loadMySubmissions:', e); mySubmissions = []; }
 }
 
-/** Silently refresh grid data without clearing visible content */
-async function _softRefreshGrid() {
-    if (activeSourceTab === 'following') {
-        try {
-            const data = await apiService.getFollowingChallenges();
-            followingChallenges = Array.isArray(data) ? data : (data.results || []);
-        } catch (_) {}
-    } else {
-        try {
-            const data = await apiService.getActiveChallenges();
-            challenges = Array.isArray(data) ? data : (data.results || []);
-        } catch (_) {}
-    }
-    renderChallenges(activeDiffFilter);
-}
-
-// ── Filters ───────────────────────────────────────────────────────────────────
-function filterChallenges(difficulty) {
-    activeDiffFilter = difficulty;
+// ── Filter ────────────────────────────────────────────────────────────────────
+function filterChallenges(difficulty, event) {
     document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
     if (event && event.target) event.target.classList.add('active');
     renderChallenges(difficulty);
 }
 
-// ── Render helpers ────────────────────────────────────────────────────────────
-function getTimeRemaining(endDate) {
-    const diff = new Date(endDate) - new Date();
-    if (diff <= 0) return 'Ended';
-    const hours = Math.floor(diff / 3600000);
-    const days  = Math.floor(hours / 24);
-    if (days  > 0) return `${days}d ${hours % 24}h left`;
-    if (hours > 0) return `${hours}h left`;
-    return 'Ending soon';
-}
-
-function _buildChallengeCard(challenge) {
-    const timeRemaining = getTimeRemaining(challenge.ends_at);
-    const isImgInterp   = challenge.challenge_type === 'image_interpretation';
-    const hasSubmitted  = isImgInterp
-        ? (challenge.user_has_img_submitted || mySubmissions.some(s => s.challenge === challenge.id))
-        : mySubmissions.some(s => s.challenge === challenge.id);
-    const pointsRange = `${challenge.min_points}-${challenge.max_points} pts`;
-    const entryFee    = parseFloat(challenge.entry_fee   || 0);
-    const prize       = parseFloat(challenge.prize_amount || 0);
-
-    const imageHTML = isImgInterp ? `
-        <div class="ii-card-img-wrap">
-            <img src="${challenge.image_url}" alt="${challenge.title}" class="ii-card-img">
-            <div class="ii-card-img-overlay"><i class="fas fa-lock"></i><span>Pay to reveal</span></div>
-        </div>` : `
-        <img src="${challenge.image_url}" alt="${challenge.title}" class="challenge-image">`;
-
-    const prizeBadge = prize > 0
-        ? `<div class="challenge-badge prize"><i class="fas fa-trophy"></i> K${prize.toFixed(2)} Prize</div>` : '';
-    const entryBadge = isImgInterp && entryFee > 0
-        ? `<div class="ii-entry-badge"><i class="fas fa-coins"></i> K${entryFee.toFixed(2)} Entry</div>` : '';
-
-    // Created-by badge (shown in Following tab)
-    const createdBy = challenge.created_by_username
-        ? `<span class="meta-item"><i class="fas fa-user"></i> ${challenge.created_by_username}</span>` : '';
-
-    const footerHTML = isImgInterp ? `
-        <div class="challenge-footer">
-            <span class="reward-badge"><i class="fas fa-star"></i> ${pointsRange}</span>
-            <div class="challenge-buttons">
-                <button class="btn-secondary" onclick="openImgInterpPreview('${challenge.id}');event.stopPropagation();">
-                    <i class="fas fa-info-circle"></i> Details</button>
-                <button class="btn-participate" ${hasSubmitted ? 'disabled' : ''}
-                    onclick="openImgInterpPreview('${challenge.id}');event.stopPropagation();">
-                    ${hasSubmitted ? '<i class="fas fa-check"></i> Submitted' : '<i class="fas fa-gamepad"></i> Play'}
-                </button>
-            </div>
-        </div>` : `
-        <div class="challenge-footer">
-            <span class="reward-badge"><i class="fas fa-star"></i> ${pointsRange}</span>
-            <div class="challenge-buttons">
-                <button class="btn-secondary" onclick="viewChallengeDetails('${challenge.id}');event.stopPropagation();">
-                    <i class="fas fa-info-circle"></i> Details</button>
-                <button class="btn-participate" ${hasSubmitted ? 'disabled' : ''}
-                    onclick="openChallenge('${challenge.id}');event.stopPropagation();">
-                    ${hasSubmitted ? '<i class="fas fa-check"></i> Submitted' : 'Participate'}
-                </button>
-            </div>
-        </div>`;
-
-    return `
-        <div class="challenge-card" data-id="${challenge.id}"
-             data-challenge-type="${challenge.challenge_type || 'text_interpretation'}"
-             onclick="${isImgInterp ? `openImgInterpPreview('${challenge.id}')` : `openChallenge('${challenge.id}')`}">
-            ${prizeBadge}${entryBadge}${imageHTML}
-            <div class="challenge-body">
-                <div class="challenge-header">
-                    <div>
-                        <h3 class="challenge-title">${challenge.title}</h3>
-                        <span class="difficulty-badge difficulty-${challenge.difficulty}">${challenge.difficulty}</span>
-                        ${isImgInterp ? '<span class="difficulty-badge" style="background:#7b2fbe;color:#fff;margin-left:4px;"><i class="fas fa-image"></i> Image</span>' : ''}
-                    </div>
-                </div>
-                <p class="challenge-description">${challenge.description}</p>
-                <div class="challenge-meta">
-                    <span class="meta-item"><i class="fas fa-clock"></i> ${challenge.time_limit} min</span>
-                    <span class="meta-item"><i class="fas fa-calendar"></i> ${timeRemaining}</span>
-                    <span class="meta-item"><i class="fas fa-users"></i> ${challenge.submission_count} entries</span>
-                    ${createdBy}
-                </div>
-            </div>
-            ${footerHTML}
-        </div>`;
-}
-
-// ── Main render ───────────────────────────────────────────────────────────────
-function renderChallenges(filter) {
-    if (filter !== undefined) activeDiffFilter = filter;
+// ── Render grid ───────────────────────────────────────────────────────────────
+function renderChallenges(filter = 'all') {
     const container = document.getElementById('challengesGrid');
-    if (!container) return;
-
-    const pool = activeSourceTab === 'following' ? followingChallenges : challenges;
-    const filtered = activeDiffFilter === 'all'
-        ? pool
-        : pool.filter(c => c.difficulty === activeDiffFilter);
+    const filtered  = filter === 'all' ? challenges : challenges.filter(c => c.difficulty === filter);
 
     if (filtered.length === 0) {
-        const msg = activeSourceTab === 'following'
-            ? 'No challenges from people you follow yet. Follow more creators!'
-            : 'No challenges available.';
-        container.innerHTML = `<p style="color:#888;text-align:center;padding:40px;grid-column:1/-1;">${msg}</p>`;
+        container.innerHTML = `<div class="empty-state"><i class="fas fa-trophy"></i>
+            <p>${filter === 'all' ? 'No challenges available right now.' : `No ${filter} challenges right now.`}</p></div>`;
         return;
     }
 
-    container.innerHTML = filtered.map(_buildChallengeCard).join('');
-}
-
-// ── Submissions list ──────────────────────────────────────────────────────────
-function renderMySubmissions() {
-    const container = document.getElementById('mySubmissionsList');
-    if (!container) return;
-
-    if (mySubmissions.length === 0) {
-        container.innerHTML = '<p style="color:#888;text-align:center;padding:40px;">No submissions yet. Start participating in challenges!</p>';
-        return;
-    }
-
-    mySubmissions.sort((a, b) => new Date(b.submitted_at) - new Date(a.submitted_at));
-
-    container.innerHTML = mySubmissions.map(sub => {
-        const isImg       = sub.observation_score !== undefined;
-        const score       = sub.final_score || 0;
-        const statusClass = sub.status === 'scored' ? 'status-scored' : 'status-pending';
-        const statusIcon  = sub.status === 'scored' ? 'check' : 'clock';
-        const extraInfo   = isImg
-            ? `<p style="margin-top:4px;font-size:12px;color:#aaa;">
-                   <i class="fas fa-eye"></i> ${sub.observation_score || 0}% observation &nbsp;·&nbsp;
-                   <i class="fas fa-brain"></i> ${sub.interpretation_score || 0}% interpretation
-               </p>`
-            : `<p style="margin-top:5px;">${sub.word_count || 0} words</p>`;
+    container.innerHTML = filtered.map(c => {
+        const hasSubmitted = mySubmissions.some(s => s.challenge === c.id);
         return `
-            <div class="submission-item">
-                <div class="submission-status ${statusClass}"><i class="fas fa-${statusIcon}"></i></div>
-                <div class="submission-info">
-                    <h4>${sub.challenge_title || 'Challenge'}</h4>
-                    <p>Submitted ${new Date(sub.submitted_at).toLocaleString()}</p>
-                    ${extraInfo}
+        <article class="challenge-card" role="listitem" onclick="openChallenge('${c.id}')">
+            <div class="challenge-image-wrap">
+                <img src="${escHtml(c.image_url)}" alt="${escHtml(c.title)}" class="challenge-image" loading="lazy">
+                <div class="challenge-image-overlay"></div>
+                ${c.is_featured ? '<span class="challenge-featured-tag"><i class="fas fa-star"></i> Featured</span>' : ''}
+            </div>
+            <div class="challenge-body">
+                <div class="challenge-header">
+                    <h3 class="challenge-title">${escHtml(c.title)}</h3>
+                    <span class="difficulty-badge difficulty-${c.difficulty}">${c.difficulty}</span>
                 </div>
-                <div class="submission-score">
-                    <div class="score-value">${score}</div>
-                    <div class="score-label">POINTS</div>
+                <p class="challenge-description">${escHtml(c.description)}</p>
+                <div class="challenge-meta">
+                    <span class="meta-item"><i class="fas fa-clock"></i> ${c.time_limit} min</span>
+                    <span class="meta-item"><i class="fas fa-calendar-alt"></i> ${getTimeRemaining(c.ends_at)}</span>
+                    <span class="meta-item"><i class="fas fa-users"></i> ${c.submission_count} entries</span>
                 </div>
-            </div>`;
+            </div>
+            <div class="challenge-footer">
+                <span class="reward-badge"><i class="fas fa-star"></i> ${c.min_points}–${c.max_points} pts</span>
+                <div class="challenge-buttons">
+                    <button class="btn-secondary" onclick="viewChallengeDetails('${c.id}'); event.stopPropagation();">
+                        <i class="fas fa-info-circle"></i> Details
+                    </button>
+                    <button class="btn-participate" ${hasSubmitted ? 'disabled' : ''}
+                        onclick="openChallenge('${c.id}'); event.stopPropagation();">
+                        ${hasSubmitted ? '<i class="fas fa-check"></i> Submitted' : '<i class="fas fa-play"></i> Participate'}
+                    </button>
+                </div>
+            </div>
+        </article>`;
     }).join('');
 }
 
-// ── Open challenge modal ──────────────────────────────────────────────────────
+function getTimeRemaining(endDate) {
+    const diff = new Date(endDate) - Date.now();
+    if (diff <= 0) return 'Ended';
+    const days  = Math.floor(diff / 86400000);
+    const hours = Math.floor((diff % 86400000) / 3600000);
+    const mins  = Math.floor((diff % 3600000) / 60000);
+    if (days > 0)  return `${days}d ${hours}h left`;
+    if (hours > 0) return `${hours}h ${mins}m left`;
+    if (mins > 0)  return `${mins}m left`;
+    return 'Ending soon';
+}
+
+// ── Open challenge (participate) ──────────────────────────────────────────────
 async function openChallenge(challengeId) {
+    document.getElementById('challengeModal').style.display = 'block';
+    document.getElementById('challengeContent').innerHTML =
+        `<div class="loading-state" style="grid-column:unset;"><div class="spinner"></div><p>Loading challenge…</p></div>`;
     try {
         currentChallenge = await apiService.getChallenge(challengeId);
-        if (!currentChallenge) return;
-
-        // Connect WebSocket for this challenge
         realtimeService.subscribeToChallengeUpdates(challengeId);
-
         const hasSubmitted = mySubmissions.some(s => s.challenge === challengeId);
+        const rules = (currentChallenge.submission_rules || []).map(r => `<li>${escHtml(r)}</li>`).join('');
 
         document.getElementById('challengeContent').innerHTML = `
-            <h2>${currentChallenge.title}</h2>
-            <span class="difficulty-badge difficulty-${currentChallenge.difficulty}">${currentChallenge.difficulty}</span>
-            <img src="${currentChallenge.image_url}" alt="${currentChallenge.title}" class="challenge-detail-image">
-            <p style="color:#aaa;margin:20px 0;line-height:1.8;">${currentChallenge.description}</p>
+            <h2 style="font-size:22px;font-weight:700;margin-bottom:10px;">${escHtml(currentChallenge.title)}</h2>
+            <span class="difficulty-badge difficulty-${currentChallenge.difficulty}" style="margin-bottom:14px;display:inline-block;">${currentChallenge.difficulty}</span>
+            <img src="${escHtml(currentChallenge.image_url)}" alt="${escHtml(currentChallenge.title)}" class="challenge-detail-image">
+            <p style="color:var(--text-secondary);line-height:1.8;margin-bottom:16px;">${escHtml(currentChallenge.description)}</p>
             <div class="challenge-rules">
-                <h3><i class="fas fa-list"></i> Submission Rules</h3>
-                <ul>${currentChallenge.submission_rules.map(r => `<li>${r}</li>`).join('')}</ul>
-                <p style="margin-top:15px;color:#888;">
-                    <i class="fas fa-info-circle"></i>
-                    Word count: ${currentChallenge.min_word_count} – ${currentChallenge.max_word_count} words
+                <h3><i class="fas fa-list-check"></i> Submission Rules</h3>
+                <ul>${rules}</ul>
+                <p style="margin-top:12px;color:var(--text-muted);font-size:13px;">
+                    <i class="fas fa-info-circle"></i> Words: ${currentChallenge.min_word_count}–${currentChallenge.max_word_count}
                 </p>
             </div>
-            ${hasSubmitted ? `
-                <div style="background:rgba(76,175,80,0.2);border:1px solid #4caf50;padding:20px;border-radius:8px;text-align:center;">
-                    <i class="fas fa-check-circle" style="font-size:48px;color:#4caf50;margin-bottom:10px;"></i>
-                    <h3 style="color:#4caf50;">Already submitted!</h3>
-                    <p style="color:#aaa;margin-top:10px;">Check your submissions below to see your score.</p>
-                </div>` : `
-                <div class="timer-warning">
-                    <p><i class="fas fa-clock"></i> Time Limit: ${currentChallenge.time_limit} minutes</p>
-                    <div class="timer-display" id="timerDisplay">Ready to start</div>
-                </div>
-                <div class="submission-form">
-                    <form onsubmit="submitInterpretation(event)">
-                        <div class="form-group">
-                            <label>Your Interpretation</label>
-                            <textarea id="interpretationText" required
-                                placeholder="Share your interpretation of this image…"
-                                oninput="updateWordCount()"></textarea>
-                            <div class="word-count" id="wordCount">0 / ${currentChallenge.max_word_count} words</div>
-                        </div>
-                        <button type="submit" class="btn-primary btn-large" id="submitBtn">
-                            <i class="fas fa-paper-plane"></i> Submit Interpretation
-                        </button>
-                    </form>
-                </div>`}
-            <div id="leaderboardContainer" style="margin-top:40px;">
+            ${hasSubmitted ? buildAlreadySubmittedBox() : buildSubmissionForm(currentChallenge)}
+            <div class="modal-section" id="leaderboardContainer">
                 <h3><i class="fas fa-trophy"></i> Live Leaderboard</h3>
-                <div id="leaderboardContent"></div>
+                <div id="leaderboardContent"><div class="spinner" style="margin:20px auto;"></div></div>
             </div>
-            <div id="activityContainer" style="margin-top:40px;">
-                <h3><i class="fas fa-fire"></i> Live Activity</h3>
-                <div id="activityContent"></div>
+            <div class="modal-section" id="activityContainer">
+                <h3><i class="fas fa-bolt"></i> Live Activity</h3>
+                <div id="activityContent"><div class="spinner" style="margin:20px auto;"></div></div>
             </div>`;
 
-        document.getElementById('challengeModal').style.display = 'block';
         if (!hasSubmitted) { challengeStartTime = Date.now(); startChallengeTimer(); }
         loadLeaderboard();
         loadActivityFeed();
-    } catch (err) {
-        console.error('Error opening challenge:', err);
-        alert('Error loading challenge. Please try again.');
+    } catch (e) {
+        console.error('openChallenge:', e);
+        document.getElementById('challengeContent').innerHTML =
+            `<div class="empty-state"><i class="fas fa-exclamation-circle"></i><p>Failed to load challenge. Please try again.</p></div>`;
     }
 }
 
-// ── Challenge details view (read-only) ────────────────────────────────────────
-async function viewChallengeDetails(challengeId) {
-    try {
-        const [challenge, stats, leaderboard] = await Promise.all([
-            apiService.getChallenge(challengeId),
-            apiService.getChallengeStats(challengeId),
-            apiService.getChallengeLeaderboard(challengeId),
-        ]);
+function buildAlreadySubmittedBox() {
+    return `<div class="already-submitted-box">
+        <i class="fas fa-check-circle"></i>
+        <h3>Already Submitted!</h3>
+        <p>Check your submissions below to see your score.</p>
+    </div>`;
+}
 
-        document.getElementById('challengeContent').innerHTML = `
-            <div class="challenge-details-view">
-                <div class="details-header">
-                    <h2>${challenge.title}</h2>
-                    <span class="difficulty-badge difficulty-${challenge.difficulty}">${challenge.difficulty}</span>
+function buildSubmissionForm(c) {
+    return `
+        <div class="timer-warning">
+            <p><i class="fas fa-clock"></i> Time Limit: ${c.time_limit} minutes</p>
+            <div class="timer-display" id="timerDisplay">Ready to start</div>
+        </div>
+        <div class="submission-form">
+            <form onsubmit="submitInterpretation(event)" novalidate>
+                <div class="form-group">
+                    <label for="interpretationText">Your Interpretation</label>
+                    <textarea id="interpretationText" required rows="8"
+                        placeholder="Share your interpretation of this image…"
+                        oninput="updateWordCount()"></textarea>
+                    <p class="word-count" id="wordCount">0 / ${c.max_word_count} words</p>
                 </div>
-                <img src="${challenge.image_url}" alt="${challenge.title}"
-                     class="challenge-detail-image" style="max-width:100%;border-radius:8px;margin:20px 0;">
-                <div class="details-section">
-                    <h3><i class="fas fa-align-left"></i> Description</h3>
-                    <p style="color:#aaa;line-height:1.8;">${challenge.description}</p>
-                </div>
-                <div class="details-grid">
-                    <div class="detail-card"><i class="fas fa-clock"></i><h4>Time Limit</h4><p>${challenge.time_limit} min</p></div>
-                    <div class="detail-card"><i class="fas fa-star"></i><h4>Reward</h4><p>${challenge.min_points}–${challenge.max_points} pts</p></div>
-                    <div class="detail-card"><i class="fas fa-users"></i><h4>Participants</h4><p>${stats.unique_participants}</p></div>
-                    <div class="detail-card"><i class="fas fa-chart-bar"></i><h4>Avg Score</h4><p>${Number(stats.average_score).toFixed(1)}</p></div>
-                </div>
-                <div class="details-section">
-                    <h3><i class="fas fa-list"></i> Submission Rules</h3>
-                    <ul style="color:#aaa;line-height:2;">${challenge.submission_rules.map(r => `<li>✓ ${r}</li>`).join('')}</ul>
-                </div>
-                <div class="details-section">
-                    <h3><i class="fas fa-pencil"></i> Requirements</h3>
-                    <div style="background:rgba(255,255,255,0.05);padding:15px;border-radius:8px;color:#aaa;">
-                        <p><strong>Word Count:</strong> ${challenge.min_word_count}–${challenge.max_word_count}</p>
-                        <p><strong>Difficulty:</strong> ${challenge.difficulty.toUpperCase()}</p>
-                        <p><strong>Status:</strong> ${challenge.is_active ? '🟢 Active' : '🔴 Inactive'}</p>
-                        <p><strong>Time Remaining:</strong> ${getTimeRemaining(challenge.ends_at)}</p>
-                    </div>
-                </div>
-                <div class="details-section">
-                    <h3><i class="fas fa-trophy"></i> Top Submissions</h3>
-                    <div style="background:rgba(255,255,255,0.05);padding:15px;border-radius:8px;">
-                        ${leaderboard.top_submissions?.length ? `
-                            <div style="display:grid;gap:10px;">
-                                ${leaderboard.top_submissions.slice(0,5).map(e => `
-                                    <div style="display:flex;justify-content:space-between;align-items:center;padding:10px;background:rgba(255,255,255,0.02);border-radius:6px;">
-                                        <div>
-                                            <span style="color:#ffd700;font-weight:bold;">#${e.rank}</span>
-                                            <span style="color:#aaa;margin-left:10px;">${e.username}</span>
-                                        </div>
-                                        <span style="color:#4caf50;font-weight:bold;">${e.score} pts</span>
-                                    </div>`).join('')}
-                            </div>` : '<p style="color:#888;text-align:center;">No submissions yet</p>'}
-                    </div>
-                </div>
-                <button class="btn-primary btn-large" onclick="openChallenge('${challenge.id}')"
-                        style="width:100%;margin-top:20px;">
-                    <i class="fas fa-play"></i> Participate in Challenge
+                <button type="submit" class="btn-primary btn-large" id="submitBtn">
+                    <i class="fas fa-paper-plane"></i> Submit Interpretation
                 </button>
-            </div>`;
-        document.getElementById('challengeModal').style.display = 'block';
-    } catch (err) {
-        console.error('Error loading challenge details:', err);
-        alert('Error loading challenge details. Please try again.');
-    }
+            </form>
+        </div>`;
 }
 
 function closeChallengeModal() {
     document.getElementById('challengeModal').style.display = 'none';
     if (challengeTimer) { clearInterval(challengeTimer); challengeTimer = null; }
     if (currentChallenge) realtimeService.unsubscribeFromChallengeUpdates(currentChallenge.id);
-    currentChallenge = null;
+    currentChallenge  = null;
+    challengeStartTime = null;
 }
 
-// ── Challenge timer ───────────────────────────────────────────────────────────
+// ── Timer ─────────────────────────────────────────────────────────────────────
 function startChallengeTimer() {
+    if (!currentChallenge) return;
     let timeRemaining = currentChallenge.time_limit * 60;
     const display = document.getElementById('timerDisplay');
+    if (!display) return;
+    updateTimerDisplay(display, timeRemaining);
     challengeTimer = setInterval(() => {
         timeRemaining--;
-        const m = Math.floor(timeRemaining / 60);
-        const s = timeRemaining % 60;
-        if (display) display.textContent = `${m}:${s.toString().padStart(2,'0')}`;
+        updateTimerDisplay(display, timeRemaining);
+        if (timeRemaining <= 60) display.classList.add('urgent');
         if (timeRemaining <= 0) {
-            clearInterval(challengeTimer);
-            if (display) display.textContent = "Time's up!";
+            clearInterval(challengeTimer); challengeTimer = null;
+            display.textContent = "Time's up!";
             const btn = document.getElementById('submitBtn');
             if (btn) btn.disabled = true;
-            alert("Time's up! You can no longer submit to this challenge.");
+            showToast("Time is up! You can no longer submit.", 'error');
         }
     }, 1000);
 }
 
+function updateTimerDisplay(el, seconds) {
+    el.textContent = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+}
+
+// ── Word count ────────────────────────────────────────────────────────────────
 function updateWordCount() {
+    if (!currentChallenge) return;
     const text  = document.getElementById('interpretationText').value;
-    const words = text.trim().split(/\s+/).filter(w => w.length > 0).length;
+    const count = text.trim() === '' ? 0 : text.trim().split(/\s+/).length;
     const el    = document.getElementById('wordCount');
     if (!el) return;
-    el.textContent = `${words} / ${currentChallenge.max_word_count} words`;
-    el.style.color = (words < currentChallenge.min_word_count || words > currentChallenge.max_word_count)
-        ? '#f44336' : '#4caf50';
+    el.textContent = `${count} / ${currentChallenge.max_word_count} words`;
+    el.className   = 'word-count ' + (count < currentChallenge.min_word_count ? 'warn' : count > currentChallenge.max_word_count ? 'bad' : 'ok');
 }
 
 // ── Submit interpretation ─────────────────────────────────────────────────────
 async function submitInterpretation(event) {
     event.preventDefault();
+    if (!currentChallenge) return;
     const interpretation = document.getElementById('interpretationText').value.trim();
-    const words = interpretation.split(/\s+/).filter(w => w.length > 0).length;
-
-    if (words < currentChallenge.min_word_count) {
-        alert(`Too short. Minimum ${currentChallenge.min_word_count} words required.`); return;
+    const wordCount = interpretation === '' ? 0 : interpretation.split(/\s+/).length;
+    if (wordCount < currentChallenge.min_word_count) {
+        showToast(`Too short — need at least ${currentChallenge.min_word_count} words (you have ${wordCount}).`, 'error'); return;
     }
-    if (words > currentChallenge.max_word_count) {
-        alert(`Too long. Maximum ${currentChallenge.max_word_count} words allowed.`); return;
+    if (wordCount > currentChallenge.max_word_count) {
+        showToast(`Too long — max ${currentChallenge.max_word_count} words (you have ${wordCount}).`, 'error'); return;
     }
-
+    const btn = document.getElementById('submitBtn');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting…'; }
     try {
-        const seconds = Math.floor((Date.now() - challengeStartTime) / 1000);
-        await apiService.submitChallenge(currentChallenge.id, interpretation, seconds);
-        alert('Submission successful!');
+        await apiService.submitChallenge(currentChallenge.id, interpretation, Math.floor((Date.now() - challengeStartTime) / 1000));
         if (challengeTimer) { clearInterval(challengeTimer); challengeTimer = null; }
+        showToast('Interpretation submitted! Watch your submissions for your score.', 'success');
         closeChallengeModal();
-        await loadMySubmissions();
-        renderMySubmissions();
-        renderChallenges();
-    } catch (err) {
-        console.error('Error submitting:', err);
-        alert(`Error submitting: ${err.message}`);
+        await Promise.all([loadChallenges(), loadMySubmissions()]);
+        renderChallenges(); renderMySubmissions();
+    } catch (e) {
+        console.error('submitInterpretation:', e);
+        showToast(`Submission failed: ${e.message}`, 'error');
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-paper-plane"></i> Submit Interpretation'; }
     }
 }
 
-// ── Leaderboard ───────────────────────────────────────────────────────────────
+// ── View challenge details ─────────────────────────────────────────────────────
+async function viewChallengeDetails(challengeId) {
+    document.getElementById('challengeModal').style.display = 'block';
+    document.getElementById('challengeContent').innerHTML =
+        `<div class="loading-state" style="grid-column:unset;"><div class="spinner"></div><p>Loading details…</p></div>`;
+    try {
+        const [challenge, stats, leaderboard] = await Promise.all([
+            apiService.getChallenge(challengeId),
+            apiService.getChallengeStats(challengeId),
+            apiService.getChallengeLeaderboard(challengeId),
+        ]);
+        const hasSubmitted = mySubmissions.some(s => s.challenge === challengeId);
+        const rules = (challenge.submission_rules || []).map(r => `<li>${escHtml(r)}</li>`).join('');
+
+        document.getElementById('challengeContent').innerHTML = `
+            <h2 style="font-size:22px;font-weight:700;margin-bottom:10px;">${escHtml(challenge.title)}</h2>
+            <span class="difficulty-badge difficulty-${challenge.difficulty}" style="margin-bottom:16px;display:inline-block;">${challenge.difficulty}</span>
+            <img src="${escHtml(challenge.image_url)}" alt="${escHtml(challenge.title)}" class="challenge-detail-image">
+            <div class="details-section">
+                <h3><i class="fas fa-align-left"></i> Description</h3>
+                <p style="color:var(--text-secondary);line-height:1.8;font-size:14px;">${escHtml(challenge.description)}</p>
+            </div>
+            <div class="details-grid">
+                <div class="detail-card"><i class="fas fa-clock"></i><h4>Time Limit</h4><p>${challenge.time_limit} min</p></div>
+                <div class="detail-card"><i class="fas fa-star"></i><h4>Reward</h4><p>${challenge.min_points}–${challenge.max_points} pts</p></div>
+                <div class="detail-card"><i class="fas fa-users"></i><h4>Participants</h4><p>${stats.unique_participants || 0}</p></div>
+                <div class="detail-card"><i class="fas fa-chart-bar"></i><h4>Avg Score</h4><p>${Number(stats.average_score || 0).toFixed(1)}</p></div>
+            </div>
+            <div class="details-section">
+                <h3><i class="fas fa-list-check"></i> Rules</h3>
+                <div class="challenge-rules" style="margin:0;"><ul>${rules}</ul>
+                    <p style="margin-top:12px;color:var(--text-muted);font-size:13px;">
+                        Words: ${challenge.min_word_count}–${challenge.max_word_count} &nbsp;|&nbsp;
+                        ${challenge.is_active ? '🟢 Active' : '🔴 Inactive'} &nbsp;|&nbsp; ${getTimeRemaining(challenge.ends_at)}
+                    </p>
+                </div>
+            </div>
+            <div class="details-section">
+                <h3><i class="fas fa-sliders"></i> Scoring</h3>
+                <div style="background:var(--bg-elevated);padding:16px 18px;border-radius:var(--radius-md);border:1px solid var(--border);">
+                    ${buildScoringBar('Creativity', challenge.creativity_weight, '#667eea')}
+                    ${buildScoringBar('Relevance',  challenge.relevance_weight,  '#764ba2')}
+                    ${buildScoringBar('Detail',     challenge.detail_weight,     '#f093fb')}
+                </div>
+            </div>
+            <div class="details-section">
+                <h3><i class="fas fa-trophy"></i> Top Submissions</h3>
+                ${buildLeaderboardTable(leaderboard)}
+            </div>
+            ${hasSubmitted
+                ? buildAlreadySubmittedBox()
+                : `<button class="btn-primary btn-large" onclick="openChallenge('${challenge.id}')" style="margin-top:22px;">
+                       <i class="fas fa-play"></i> Participate
+                   </button>`}`;
+    } catch (e) {
+        console.error('viewChallengeDetails:', e);
+        document.getElementById('challengeContent').innerHTML =
+            `<div class="empty-state"><i class="fas fa-exclamation-circle"></i><p>Failed to load details.</p></div>`;
+    }
+}
+
+function buildScoringBar(label, weight, color) {
+    return `<div class="scoring-bar-wrap">
+        <div class="scoring-bar-label"><span>${label}</span><span>${weight}%</span></div>
+        <div class="scoring-bar-track"><div class="scoring-bar-fill" style="width:${weight}%;background:${color};"></div></div>
+    </div>`;
+}
+
+function buildLeaderboardTable(leaderboard) {
+    const entries = leaderboard.top_submissions || [];
+    if (!entries.length) return `<div class="leaderboard-table"><div style="padding:24px;text-align:center;color:var(--text-muted);"><i class="fas fa-trophy" style="font-size:28px;opacity:0.3;"></i><p style="margin-top:8px;">No submissions yet</p></div></div>`;
+    return `<div class="leaderboard-table">
+        <div class="leaderboard-header"><div>Rank</div><div>Player</div><div>Score</div></div>
+        ${entries.slice(0, 10).map(e => `
+        <div class="leaderboard-row rank-${e.rank}">
+            <div class="rank-num">#${e.rank}</div>
+            <div>${escHtml(e.username)}</div>
+            <div class="leaderboard-score">${e.score} pts</div>
+        </div>`).join('')}
+    </div>`;
+}
+
+// ── Leaderboard & activity (live, inside modal) ───────────────────────────────
 async function loadLeaderboard() {
     if (!currentChallenge) return;
-    try {
-        const lb = await apiService.getChallengeLeaderboard(currentChallenge.id);
-        _renderLeaderboardFromPayload(lb);
-    } catch (err) { console.error('Error loading leaderboard:', err); }
-}
-
-function _renderLeaderboardFromPayload(lb) {
     const container = document.getElementById('leaderboardContent');
     if (!container) return;
-    const subs = lb.top_submissions || [];
-    if (subs.length === 0) {
-        container.innerHTML = '<p style="color:#888;">No submissions yet</p>'; return;
-    }
-    container.innerHTML = `
-        <div style="background:rgba(255,255,255,0.05);padding:15px;border-radius:8px;">
-            <div style="display:grid;grid-template-columns:50px 1fr 100px;gap:15px;margin-bottom:15px;font-weight:bold;color:#aaa;">
-                <div>Rank</div><div>Player</div><div>Score</div>
-            </div>
-            ${subs.map(e => `
-                <div style="display:grid;grid-template-columns:50px 1fr 100px;gap:15px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.1);">
-                    <div style="font-weight:bold;color:#ffd700;">#${e.rank}</div>
-                    <div>${e.username}</div>
-                    <div style="color:#4caf50;font-weight:bold;">${e.score} pts</div>
-                </div>`).join('')}
-        </div>
-        <div style="margin-top:15px;color:#888;font-size:12px;">
-            <p>Total Participants: ${lb.total_participants || 0}</p>
-            <p>Average Score: ${Number(lb.average_score || 0).toFixed(1)}</p>
-            <p>Highest Score: ${lb.highest_score || 0}</p>
-        </div>`;
+    try {
+        const lb = await apiService.getChallengeLeaderboard(currentChallenge.id);
+        const entries = lb.top_submissions || [];
+        if (!entries.length) { container.innerHTML = `<p style="color:var(--text-muted);padding:12px 0;">No submissions yet — be the first!</p>`; return; }
+        container.innerHTML = buildLeaderboardTable(lb) + `
+            <div class="leaderboard-stats">
+                <div class="leaderboard-stat">Participants: <span>${lb.total_participants}</span></div>
+                <div class="leaderboard-stat">Avg: <span>${Number(lb.average_score).toFixed(1)}</span></div>
+                <div class="leaderboard-stat">Top: <span>${lb.highest_score}</span></div>
+            </div>`;
+    } catch (e) { if (container) container.innerHTML = `<p style="color:var(--text-muted);">Leaderboard unavailable.</p>`; }
 }
 
-// ── Activity feed ─────────────────────────────────────────────────────────────
 async function loadActivityFeed() {
     if (!currentChallenge) return;
-    try {
-        const activities = await apiService.getChallengeActivity(currentChallenge.id);
-        const container  = document.getElementById('activityContent');
-        if (!container) return;
-        if (!activities || activities.length === 0) {
-            container.innerHTML = '<p style="color:#888;">No activity yet</p>'; return;
-        }
-        container.innerHTML = activities.slice(0, 10).map(_activityItemHTML).join('');
-    } catch (err) { console.error('Error loading activity feed:', err); }
-}
-
-/** Prepend a single activity item pushed via WebSocket */
-function _prependActivityItem(data) {
     const container = document.getElementById('activityContent');
     if (!container) return;
-    // Remove "no activity" placeholder if present
-    if (container.querySelector('p')) container.innerHTML = '';
-    // Limit to 10 visible items
-    const existing = container.querySelectorAll('.activity-item-rt');
-    if (existing.length >= 10) existing[existing.length - 1].remove();
-    const div = document.createElement('div');
-    div.className = 'activity-item-rt';
-    div.innerHTML = _activityItemHTML({
-        user:        { username: data.username },
-        description: data.description || `${data.username} made a submission`,
-        created_at:  data.created_at || new Date().toISOString(),
-    });
-    container.insertAdjacentHTML('afterbegin', div.innerHTML);
-}
-
-function _activityItemHTML(activity) {
-    const username = activity.user?.username || activity.username || 'Someone';
-    return `
-        <div class="activity-item-rt"
-             style="background:rgba(255,255,255,0.05);padding:12px;border-radius:6px;margin-bottom:10px;">
-            <div style="display:flex;justify-content:space-between;align-items:center;">
-                <div>
-                    <strong>${username}</strong>
-                    <p style="color:#aaa;font-size:12px;margin:5px 0;">${activity.description}</p>
-                </div>
-                <span style="color:#888;font-size:12px;">
-                    ${new Date(activity.created_at).toLocaleTimeString()}
-                </span>
-            </div>
-        </div>`;
+    try {
+        const activities = await apiService.getChallengeActivity(currentChallenge.id);
+        if (!activities || !activities.length) { container.innerHTML = `<p style="color:var(--text-muted);padding:12px 0;">No activity yet.</p>`; return; }
+        container.innerHTML = `<div class="activity-feed">${activities.slice(0, 10).map(a => `
+            <div class="activity-item">
+                <div><strong>${escHtml(a.user?.username || 'Unknown')}</strong>
+                    <p>${escHtml(a.description)}</p></div>
+                <span class="activity-time">${formatTime(a.created_at)}</span>
+            </div>`).join('')}</div>`;
+    } catch (e) { if (container) container.innerHTML = `<p style="color:var(--text-muted);">Activity unavailable.</p>`; }
 }
 
 async function updateChallengeStats() {
     if (!currentChallenge) return;
     try {
         await apiService.getChallengeStats(currentChallenge.id);
-        loadLeaderboard();
-        loadActivityFeed();
-    } catch (err) { console.error('Error updating stats:', err); }
+        if (document.getElementById('leaderboardContent')) loadLeaderboard();
+        if (document.getElementById('activityContent'))   loadActivityFeed();
+    } catch (e) { /* silent */ }
 }
 
-// ── Upload / create challenge modal helpers ───────────────────────────────────
-function showUploadModal()  { document.getElementById('uploadModal').style.display = 'block'; }
-function closeUploadModal() { document.getElementById('uploadModal').style.display = 'none'; }
+// ── My submissions ─────────────────────────────────────────────────────────────
+function renderMySubmissions() {
+    const container = document.getElementById('mySubmissionsList');
+    if (!mySubmissions.length) {
+        container.innerHTML = `<div class="empty-state" style="grid-column:unset;"><i class="fas fa-scroll"></i><p>No submissions yet — start participating!</p></div>`;
+        return;
+    }
+    const sorted = [...mySubmissions].sort((a, b) => new Date(b.submitted_at) - new Date(a.submitted_at));
+    container.innerHTML = sorted.map(s => {
+        const cls  = s.status === 'scored' ? 'status-scored' : s.status === 'rejected' ? 'status-rejected' : 'status-pending';
+        const icon = s.status === 'scored' ? 'check' : s.status === 'rejected' ? 'times' : 'clock';
+        const col  = s.status === 'scored' ? 'var(--accent-green)' : s.status === 'rejected' ? 'var(--accent-pink)' : 'var(--accent-orange)';
+        return `<div class="submission-item">
+            <div class="submission-status ${cls}"><i class="fas fa-${icon}"></i></div>
+            <div class="submission-info">
+                <h4>${escHtml(s.challenge_title || 'Challenge')}</h4>
+                <p>${formatDate(s.submitted_at)}</p>
+                <p style="margin-top:3px;">${s.word_count} words &nbsp;·&nbsp;
+                    <span style="text-transform:capitalize;color:${col};">${s.status}</span></p>
+            </div>
+            <div class="submission-score">
+                <div class="score-value">${s.final_score || 0}</div>
+                <div class="score-label">POINTS</div>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+// ── Upload modal ──────────────────────────────────────────────────────────────
+function showUploadModal() { document.getElementById('uploadModal').style.display = 'block'; }
+
+function closeUploadModal() {
+    document.getElementById('uploadModal').style.display = 'none';
+    document.getElementById('uploadForm').reset();
+    document.getElementById('createChallengeForm').reset();
+    document.getElementById('uploadPreview').innerHTML = '<span><i class="fas fa-image"></i> Preview will appear here</span>';
+    document.getElementById('challengeImagePreview').innerHTML = '<span><i class="fas fa-image"></i> Preview will appear here</span>';
+    document.getElementById('weightTotal').textContent = 'Total: 100% ✓';
+    document.getElementById('weightTotal').style.color = 'var(--accent-green)';
+}
 
 function switchUploadTab(tab) {
-    ['contentTab','challengeTab'].forEach(id => document.getElementById(id)?.classList.remove('active'));
+    document.getElementById('contentTab').classList.remove('active');
+    document.getElementById('challengeTab').classList.remove('active');
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     if (tab === 'content') {
-        document.getElementById('contentTab')?.classList.add('active');
-        document.querySelectorAll('.tab-btn')[0]?.classList.add('active');
+        document.getElementById('contentTab').classList.add('active');
+        document.querySelectorAll('.tab-btn')[0].classList.add('active');
     } else {
-        document.getElementById('challengeTab')?.classList.add('active');
-        document.querySelectorAll('.tab-btn')[1]?.classList.add('active');
+        document.getElementById('challengeTab').classList.add('active');
+        document.querySelectorAll('.tab-btn')[1].classList.add('active');
+    }
+}
+
+function previewUploadImage(event)    { previewImageInto(event, 'uploadPreview'); }
+function previewChallengeImage(event) { previewImageInto(event, 'challengeImagePreview'); }
+function previewImageInto(event, id) {
+    const file = event.target.files[0];
+    const el   = document.getElementById(id);
+    if (!file || !el) return;
+    const reader = new FileReader();
+    reader.onload = e => { el.innerHTML = `<img src="${e.target.result}" alt="Preview">`; };
+    reader.readAsDataURL(file);
+}
+
+async function uploadContent(event) {
+    event.preventDefault();
+    const title = document.getElementById('uploadTitle').value.trim();
+    const desc  = document.getElementById('uploadDescription').value.trim();
+    const cat   = document.getElementById('uploadCategory').value;
+    const img   = document.getElementById('uploadImage').files[0];
+    if (!title || !desc || !img) { showToast('Please fill in all fields and select an image.', 'error'); return; }
+    const btn = event.target.querySelector('button[type="submit"]');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading…'; }
+    try {
+        const fd = new FormData();
+        fd.append('title', title); fd.append('description', desc); fd.append('category', cat); fd.append('image', img);
+        await apiService.uploadContent(fd);
+        showToast('Content submitted for review!', 'success');
+        closeUploadModal();
+    } catch (e) {
+        showToast(`Upload failed: ${e.message}`, 'error');
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-paper-plane"></i> Submit for Review'; }
     }
 }
 
 function validateWeights() {
-    const c = parseInt(document.getElementById('creativityWeight').value) || 0;
-    const r = parseInt(document.getElementById('relevanceWeight').value)  || 0;
-    const d = parseInt(document.getElementById('detailWeight').value)     || 0;
-    const total = c + r + d;
+    const t  = (parseInt(document.getElementById('creativityWeight').value) || 0)
+             + (parseInt(document.getElementById('relevanceWeight').value)  || 0)
+             + (parseInt(document.getElementById('detailWeight').value)     || 0);
     const el = document.getElementById('weightTotal');
-    if (!el) return;
-    el.style.color   = total === 100 ? '#4caf50' : '#f44336';
-    el.textContent   = total === 100 ? `Total: ${total}% ✓` : `Total: ${total}% (must be 100%)`;
-}
-
-function previewUploadImage(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = e => {
-        const el = document.getElementById('uploadPreview');
-        if (el) el.innerHTML = `<img src="${e.target.result}" alt="Preview" style="max-width:100%;border-radius:8px;">`;
-    };
-    reader.readAsDataURL(file);
-}
-
-function previewChallengeImage(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = e => {
-        const el = document.getElementById('challengeImagePreview');
-        if (el) el.innerHTML = `<img src="${e.target.result}" alt="Preview" style="max-width:100%;border-radius:8px;">`;
-    };
-    reader.readAsDataURL(file);
+    el.style.color = t === 100 ? 'var(--accent-green)' : 'var(--accent-pink)';
+    el.textContent = t === 100 ? `Total: ${t}% ✓` : `Total: ${t}% (must equal 100%)`;
 }
 
 async function createChallenge(event) {
     event.preventDefault();
-    const creativity = parseInt(document.getElementById('creativityWeight').value);
-    const relevance  = parseInt(document.getElementById('relevanceWeight').value);
-    const detail     = parseInt(document.getElementById('detailWeight').value);
-    if (creativity + relevance + detail !== 100) { alert('Scoring weights must sum to 100%'); return; }
-    const imageFile = document.getElementById('challengeImage').files[0];
-    if (!imageFile) { alert('Please select an image'); return; }
-
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-        try {
-            await apiService.post('/challenges/challenges/', {
-                title:            document.getElementById('challengeTitle').value,
-                description:      document.getElementById('challengeDescription').value,
-                difficulty:       document.getElementById('challengeDifficulty').value,
-                time_limit:       parseInt(document.getElementById('challengeTimeLimit').value),
-                min_word_count:   parseInt(document.getElementById('challengeMinWords').value),
-                max_word_count:   parseInt(document.getElementById('challengeMaxWords').value),
-                submission_rules: document.getElementById('challengeRules').value.split('\n').filter(r => r.trim()),
-                min_points:       parseInt(document.getElementById('challengeMinPoints').value),
-                max_points:       parseInt(document.getElementById('challengeMaxPoints').value),
-                creativity_weight: creativity,
-                relevance_weight:  relevance,
-                detail_weight:     detail,
-                image_url:         e.target.result,
-                status:            'active',
-                starts_at:         new Date().toISOString(),
-                ends_at:           new Date(Date.now() + 7 * 86400000).toISOString(),
-            });
-            alert('Challenge created successfully! 🎉');
-            closeUploadModal();
-            await loadChallenges();
-            renderChallenges();
-        } catch (err) {
-            alert('Error creating challenge: ' + err.message);
-        }
-    };
-    reader.readAsDataURL(imageFile);
+    const c = parseInt(document.getElementById('creativityWeight').value) || 0;
+    const r = parseInt(document.getElementById('relevanceWeight').value)  || 0;
+    const d = parseInt(document.getElementById('detailWeight').value)     || 0;
+    if (c + r + d !== 100) { showToast('Scoring weights must sum to 100%.', 'error'); return; }
+    const img = document.getElementById('challengeImage').files[0];
+    if (!img) { showToast('Please select a challenge image.', 'error'); return; }
+    const btn = event.target.querySelector('button[type="submit"]');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating…'; }
+    try {
+        const rules = document.getElementById('challengeRules').value.split('\n').map(x => x.trim()).filter(Boolean);
+        const fd = new FormData();
+        fd.append('title',             document.getElementById('challengeTitle').value.trim());
+        fd.append('description',       document.getElementById('challengeDescription').value.trim());
+        fd.append('difficulty',        document.getElementById('challengeDifficulty').value);
+        fd.append('time_limit',        document.getElementById('challengeTimeLimit').value);
+        fd.append('min_word_count',    document.getElementById('challengeMinWords').value);
+        fd.append('max_word_count',    document.getElementById('challengeMaxWords').value);
+        fd.append('min_points',        document.getElementById('challengeMinPoints').value);
+        fd.append('max_points',        document.getElementById('challengeMaxPoints').value);
+        fd.append('creativity_weight', c);
+        fd.append('relevance_weight',  r);
+        fd.append('detail_weight',     d);
+        fd.append('submission_rules',  JSON.stringify(rules));
+        fd.append('image',             img);
+        fd.append('starts_at',         new Date().toISOString());
+        fd.append('ends_at',           new Date(Date.now() + 7 * 86400000).toISOString());
+        fd.append('status',            'draft');
+        await apiService.createChallenge(fd);
+        showToast('Challenge submitted! An admin will review and activate it.', 'success');
+        closeUploadModal();
+        await loadChallenges(); renderChallenges();
+    } catch (e) {
+        showToast(`Failed to create: ${e.message}`, 'error');
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-bolt"></i> Create Challenge'; }
+    }
 }
 
-// ── Misc UI helpers ───────────────────────────────────────────────────────────
-function toggleMobileMenu()  {
-    const nav = document.getElementById('mainNav');
-    if (nav) nav.classList.toggle('active');
+// ── Nav helpers ───────────────────────────────────────────────────────────────
+function toggleMobileMenu() { document.getElementById('mainNav')?.classList.toggle('active'); }
+function toggleUserMenu()   { document.getElementById('userDropdown')?.classList.toggle('active'); }
+function openMessenger()    { showToast('Messenger coming soon!', 'info'); }
+
+document.addEventListener('click', e => {
+    if (!e.target.closest('.user-menu-dropdown')) document.getElementById('userDropdown')?.classList.remove('active');
+});
+document.getElementById('challengeModal')?.addEventListener('click', e => { if (e.target === e.currentTarget) closeChallengeModal(); });
+document.getElementById('uploadModal')?.addEventListener('click',    e => { if (e.target === e.currentTarget) closeUploadModal(); });
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+function showToast(message, type = 'info') {
+    const container = document.getElementById('toastContainer');
+    if (!container) return;
+    const icons = { success: 'check-circle', error: 'exclamation-circle', info: 'info-circle' };
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.innerHTML = `<i class="fas fa-${icons[type]}"></i> ${escHtml(message)}`;
+    container.appendChild(toast);
+    setTimeout(() => { toast.style.animation = 'fadeOut 0.35s ease forwards'; toast.addEventListener('animationend', () => toast.remove()); }, 3500);
 }
-function toggleUserMenu()    {
-    const d = document.getElementById('userDropdown');
-    if (d) d.classList.toggle('active');
+
+// ── Utilities ─────────────────────────────────────────────────────────────────
+function escHtml(str) {
+    if (str == null) return '';
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
-function toggleQuickMenu()   {
-    const d = document.getElementById('quickMenuDropdown');
-    if (d) d.classList.toggle('show');
+function setEl(id, v) { const el = document.getElementById(id); if (el) el.textContent = v; }
+function show(id)     { const el = document.getElementById(id); if (el) el.style.display = 'flex'; }
+function formatDate(iso) {
+    if (!iso) return '';
+    return new Date(iso).toLocaleString(undefined, { month:'short', day:'numeric', year:'numeric', hour:'2-digit', minute:'2-digit' });
 }
-function openMessenger()     { alert('Messenger coming soon!'); }
+function formatTime(iso) { return iso ? new Date(iso).toLocaleTimeString(undefined, { hour:'2-digit', minute:'2-digit' }) : ''; }
 
 // ── Global exports ────────────────────────────────────────────────────────────
-Object.assign(window, {
-    toggleMobileMenu, toggleUserMenu, toggleQuickMenu,
-    openMessenger, showUploadModal, closeUploadModal,
-    switchUploadTab, validateWeights,
-    previewUploadImage, previewChallengeImage, createChallenge,
-    logout, filterChallenges, switchSourceTab,
-    openChallenge, viewChallengeDetails, closeChallengeModal,
-    updateWordCount, submitInterpretation,
-    loadLeaderboard, loadActivityFeed, updateChallengeStats,
-});
+window.toggleMobileMenu      = toggleMobileMenu;
+window.toggleUserMenu        = toggleUserMenu;
+window.openMessenger         = openMessenger;
+window.showUploadModal       = showUploadModal;
+window.closeUploadModal      = closeUploadModal;
+window.switchUploadTab       = switchUploadTab;
+window.previewUploadImage    = previewUploadImage;
+window.previewChallengeImage = previewChallengeImage;
+window.validateWeights       = validateWeights;
+window.createChallenge       = createChallenge;
+window.uploadContent         = uploadContent;
+window.logout                = logout;
+window.filterChallenges      = filterChallenges;
+window.openChallenge         = openChallenge;
+window.viewChallengeDetails  = viewChallengeDetails;
+window.closeChallengeModal   = closeChallengeModal;
+window.updateWordCount       = updateWordCount;
+window.submitInterpretation  = submitInterpretation;

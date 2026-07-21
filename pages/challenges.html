@@ -3,538 +3,227 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Challenges</title>
+    <title>Challenges — ARTX</title>
     <link rel="icon" type="image/jpeg" href="../Images/ARTX.jpg">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="../styles/styles.css">
-    <link rel="stylesheet" href="../styles/icon-nav.css">
     <link rel="stylesheet" href="../styles/challenges.css">
-    <link rel="stylesheet" href="../styles/challenges-enhanced.css">
-    <link rel="stylesheet" href="../styles/image-interpretation.css">
-    <link rel="stylesheet" href="../styles/responsive-pro.css">
 </head>
 <body>
-    <!-- Header with Bootstrap (matches index.html) -->
-    <header class="header w-100">
-        <div class="header-left d-flex align-items-center">
-            <div class="logo" onclick="window.location.href='../index.html'" style="cursor:pointer">
-                <i class="fas fa-fire"></i>ARTX
-            </div>
-            <div class="search-bar d-none d-md-flex align-items-center">
-                <i class="fas fa-search"></i>
-                <input type="text" placeholder="Search ARTX..." id="headerSearch">
-            </div>
-        </div>
+<div class="container">
 
-        <nav class="icon-nav d-flex justify-content-center flex-grow-1">
-            <button class="icon-nav-btn" title="Home" onclick="window.location.href='../index.html'">
-                <i class="fas fa-home" style="color:black;"></i>
-            </button>
-            <button class="icon-nav-btn active" title="Challenges">
-                <i class="fas fa-trophy" style="color:black;"></i>
-            </button>
-            <button class="icon-nav-btn" title="Community" onclick="window.location.href='community.html'">
-                <i class="fas fa-users" style="color:black;"></i>
-            </button>
-            <button class="icon-nav-btn" title="Profile" onclick="window.location.href='user.html'">
-                <i class="fas fa-user-circle" style="color:black;"></i>
-            </button>
+    <!-- Header -->
+    <header class="header">
+        <div class="logo" onclick="window.location.href='../index.html'">
+            <i class="fas fa-fire"></i> ARTX
+        </div>
+        <button class="mobile-menu-toggle" onclick="toggleMobileMenu()" aria-label="Menu">
+            <i class="fas fa-bars"></i>
+        </button>
+        <nav class="nav" id="mainNav">
+            <button class="nav-btn" onclick="window.location.href='../index.html'">Dashboard</button>
+            <button class="nav-btn active">Challenges</button>
+            <button class="nav-btn" onclick="window.location.href='community.html'">Community</button>
+            <button class="nav-btn" onclick="window.location.href='influencers.html'">Influencers</button>
+            <button class="nav-btn" onclick="showUploadModal()"><i class="fas fa-plus"></i> Create</button>
         </nav>
-
-        <!-- Right Side Icons -->
-        <div class="header-right d-flex align-items-center">
-            <button class="header-icon-btn" onclick="window.location.href='../index.html'" title="Notifications">
-                <i class="fas fa-bell" style="color:black;"></i>
+        <div class="user-menu-dropdown">
+            <button class="btn-user-menu" onclick="toggleUserMenu()" aria-label="User menu">
+                <i class="fas fa-user-circle"></i>
+                <i class="fas fa-chevron-down" style="font-size:11px;"></i>
             </button>
-            <button class="header-icon-btn" onclick="toggleQuickMenu()" title="Menu">
-                <i class="fas fa-th" style="color:black;"></i>
-            </button>
-            <div class="user-avatar-btn" onclick="toggleUserMenu()">
-                <i class="fas fa-user-circle" style="color:black;"></i>
-            </div>
-        </div>
-
-        <!-- Quick Menu Dropdown -->
-        <div class="quick-menu-dropdown" id="quickMenuDropdown">
-            <div class="quick-menu-header"><h3>Quick Access</h3></div>
-            <div class="quick-menu-grid">
-                <a href="../index.html" class="quick-menu-item">
-                    <i class="fas fa-chart-line"></i><span>Dashboard</span>
+            <div class="dropdown-content" id="userDropdown">
+                <a href="wallet.html"><i class="fas fa-wallet"></i> My Wallet</a>
+                <a href="chatbot.html"><i class="fas fa-robot"></i> AI Assistant</a>
+                <a href="#" onclick="openMessenger(); return false;">
+                    <i class="fas fa-comments"></i> Messenger
+                    <span class="unread-badge" id="unreadBadge" style="display:none;">0</span>
                 </a>
-                <a href="challenges.html" class="quick-menu-item">
-                    <i class="fas fa-trophy"></i><span>Challenges</span>
-                </a>
-                <a href="community.html" class="quick-menu-item">
-                    <i class="fas fa-users"></i><span>Community</span>
-                </a>
-                <a href="wallet.html" class="quick-menu-item">
-                    <i class="fas fa-wallet"></i><span>Wallet</span>
-                </a>
-                <a href="chatbot.html" class="quick-menu-item">
-                    <i class="fas fa-robot"></i><span>AI Assistant</span>
-                </a>
-                <a href="influencers.html" class="quick-menu-item">
-                    <i class="fas fa-star"></i><span>Influencers</span>
-                </a>
-            </div>
-        </div>
-
-        <!-- User Menu Dropdown -->
-        <div class="user-menu-dropdown" id="userMenuDropdown">
-            <div class="user-menu-header">
-                <div class="user-menu-avatar"><i class="fas fa-user-circle"></i></div>
-                <div class="user-menu-info">
-                    <h4 id="menuUsername">Player</h4>
-                    <p id="menuTier">Bronze Tier</p>
+                <a href="user.html"><i class="fas fa-user"></i> User Profile</a>
+                <div class="user-info">
+                    <div class="wallet-balance-badge" id="walletBalanceBadge"
+                         onclick="window.location.href='wallet.html'" style="cursor:pointer;display:none;">
+                        <i class="fas fa-wallet"></i><span id="walletBalance">K0.00</span>
+                    </div>
+                    <div class="streak-badge" id="streakBadge">
+                        <i class="fas fa-fire"></i><span id="streakCount">0</span>
+                    </div>
+                    <span class="prestige-badge" id="userPrestige">0 pts</span>
+                    <div class="tier-badge" id="tierBadge">Bronze</div>
+                    <span class="username" id="username">Player</span>
                 </div>
-            </div>
-            <div class="user-menu-stats">
-                <div class="user-menu-stat">
-                    <i class="fas fa-fire"></i>
-                    <span id="menuStreak">0</span>
-                </div>
-                <div class="user-menu-stat">
-                    <i class="fas fa-star"></i>
-                    <span id="menuPrestige">0</span>
-                </div>
-                <div class="user-menu-stat">
-                    <i class="fas fa-wallet"></i>
-                    <span id="menuBalance">K0.00</span>
-                </div>
-            </div>
-            <div class="user-menu-links">
-                <a href="user.html">
-                    <i class="fas fa-user"></i> View Profile
-                </a>
-                <a href="wallet.html">
-                    <i class="fas fa-wallet"></i> My Wallet
-                </a>
-                <a href="#" onclick="window.location.href='../index.html'; return false;">
-                    <i class="fas fa-cog"></i> Settings
-                </a>
-                <a href="#" onclick="logout(); return false;">
+                <a href="#" onclick="logout(); return false;" style="color:#f44336;">
                     <i class="fas fa-sign-out-alt"></i> Logout
                 </a>
             </div>
         </div>
     </header>
 
-    <div class="container-fluid p-0 m-0">
-
-        <!-- Challenges Grid -->
-        <section class="challenges-section">
-            <div class="section-header">
-                <h1><i class="fas fa-trophy"></i> Active Challenges</h1>
-
-                <!-- Source tabs: All vs Following -->
-                <div class="source-tabs" id="sourceTabs">
-                    <button class="source-tab active" id="tabAll"
-                            onclick="switchSourceTab('all')">
-                        <i class="fas fa-globe"></i> All
-                    </button>
-                    <button class="source-tab" id="tabFollowing"
-                            onclick="switchSourceTab('following')">
-                        <i class="fas fa-user-friends"></i> Following
-                    </button>
-                </div>
-
-                <!-- Difficulty filters -->
-                <div class="filters">
-                    <button class="filter-btn active" onclick="filterChallenges('all')">All</button>
-                    <button class="filter-btn" onclick="filterChallenges('easy')">Easy</button>
-                    <button class="filter-btn" onclick="filterChallenges('medium')">Medium</button>
-                    <button class="filter-btn" onclick="filterChallenges('hard')">Hard</button>
-                    <button class="filter-btn" onclick="filterChallenges('expert')">Expert</button>
-                </div>
+    <!-- Challenges Grid -->
+    <section class="challenges-section">
+        <div class="section-header">
+            <h1><i class="fas fa-trophy"></i> Active Challenges</h1>
+            <div class="filters" role="group" aria-label="Filter by difficulty">
+                <button class="filter-btn active" onclick="filterChallenges('all', event)">All</button>
+                <button class="filter-btn" onclick="filterChallenges('easy', event)">Easy</button>
+                <button class="filter-btn" onclick="filterChallenges('medium', event)">Medium</button>
+                <button class="filter-btn" onclick="filterChallenges('hard', event)">Hard</button>
+                <button class="filter-btn" onclick="filterChallenges('expert', event)">Expert</button>
             </div>
-
-            <div class="challenges-grid" id="challengesGrid"></div>
-        </section>
-
-        <!-- My Submissions -->
-        <section class="my-submissions">
-            <h2><i class="fas fa-history"></i> My Submissions</h2>
-            <div class="submissions-list" id="mySubmissionsList"></div>
-        </section>
-    </div>
-
-    <!-- Challenge Modal -->
-    <div id="challengeModal" class="modal">
-        <div class="modal-content large">
-            <span class="close" onclick="closeChallengeModal()">&times;</span>
-            <div id="challengeContent"></div>
         </div>
+        <div class="challenges-grid" id="challengesGrid" role="list"></div>
+    </section>
+
+    <!-- My Submissions -->
+    <section class="my-submissions">
+        <h2><i class="fas fa-history"></i> My Submissions</h2>
+        <div class="submissions-list" id="mySubmissionsList"></div>
+    </section>
+
+</div>
+
+<!-- Challenge Modal -->
+<div id="challengeModal" class="modal" role="dialog" aria-modal="true">
+    <div class="modal-content large">
+        <button class="modal-close-btn" onclick="closeChallengeModal()" aria-label="Close">&times;</button>
+        <div id="challengeContent"></div>
     </div>
+</div>
 
-    <!-- Upload Content Modal -->
-    <div id="uploadModal" class="modal">
-        <div class="modal-content">
-            <span class="close" onclick="closeUploadModal()">&times;</span>
-            <h2><i class="fas fa-upload"></i> Create Challenge</h2>
-            
-            <div class="upload-tabs">
-                <button class="tab-btn active" onclick="switchUploadTab('content')">Upload Content</button>
-                <button class="tab-btn" onclick="switchUploadTab('challenge')">Create Challenge</button>
-            </div>
-            
-            <!-- Upload Content Tab -->
-            <div id="contentTab" class="tab-content active">
-                <form id="uploadForm" onsubmit="uploadContent(event)">
-                    <div class="form-group">
-                        <label>Title</label>
-                        <input type="text" id="uploadTitle" required placeholder="Give your content a title">
+<!-- Upload / Create Modal -->
+<div id="uploadModal" class="modal" role="dialog" aria-modal="true">
+    <div class="modal-content">
+        <button class="modal-close-btn" onclick="closeUploadModal()" aria-label="Close">&times;</button>
+        <h2 style="margin-bottom:20px;font-size:20px;">
+            <i class="fas fa-upload" style="color:var(--accent-green);margin-right:8px;"></i> Create
+        </h2>
+
+        <div class="upload-tabs">
+            <button class="tab-btn active" onclick="switchUploadTab('content')">Upload Content</button>
+            <button class="tab-btn" onclick="switchUploadTab('challenge')">Create Challenge</button>
+        </div>
+
+        <!-- Upload Content Tab -->
+        <div id="contentTab" class="tab-content active">
+            <form id="uploadForm" onsubmit="uploadContent(event)" novalidate>
+                <div class="form-group">
+                    <label for="uploadTitle">Title</label>
+                    <input type="text" id="uploadTitle" required placeholder="Give your content a title">
+                </div>
+                <div class="form-group">
+                    <label for="uploadDescription">Description</label>
+                    <textarea id="uploadDescription" required rows="3" placeholder="Describe your creation..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="uploadCategory">Category</label>
+                    <select id="uploadCategory" required>
+                        <option value="art">Art</option>
+                        <option value="photography">Photography</option>
+                        <option value="digital">Digital Art</option>
+                        <option value="abstract">Abstract</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="uploadImage">Image</label>
+                    <input type="file" id="uploadImage" accept="image/*" required onchange="previewUploadImage(event)">
+                    <div id="uploadPreview" class="image-preview">
+                        <span><i class="fas fa-image"></i> Preview will appear here</span>
                     </div>
+                </div>
+                <button type="submit" class="btn-primary btn-large">
+                    <i class="fas fa-paper-plane"></i> Submit for Review
+                </button>
+            </form>
+        </div>
 
+        <!-- Create Challenge Tab -->
+        <div id="challengeTab" class="tab-content">
+            <form id="createChallengeForm" onsubmit="createChallenge(event)" novalidate>
+                <div class="form-group">
+                    <label for="challengeTitle">Challenge Title</label>
+                    <input type="text" id="challengeTitle" required placeholder="e.g., The Forgotten Garden">
+                </div>
+                <div class="form-group">
+                    <label for="challengeDescription">Description</label>
+                    <textarea id="challengeDescription" required rows="3" placeholder="Describe what participants should interpret..."></textarea>
+                </div>
+                <div class="form-row">
                     <div class="form-group">
-                        <label>Description</label>
-                        <textarea id="uploadDescription" required rows="3" placeholder="Describe your creation..."></textarea>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Category</label>
-                        <select id="uploadCategory" required>
-                            <option value="art">Art</option>
-                            <option value="photography">Photography</option>
-                            <option value="digital">Digital Art</option>
-                            <option value="abstract">Abstract</option>
-                            <option value="other">Other</option>
+                        <label for="challengeDifficulty">Difficulty</label>
+                        <select id="challengeDifficulty" required>
+                            <option value="easy">Easy</option>
+                            <option value="medium" selected>Medium</option>
+                            <option value="hard">Hard</option>
+                            <option value="expert">Expert</option>
                         </select>
                     </div>
-
                     <div class="form-group">
-                        <label>Upload Image</label>
-                        <input type="file" id="uploadImage" accept="image/*" required onchange="previewUploadImage(event)">
-                        <div id="uploadPreview" class="image-preview"></div>
+                        <label for="challengeTimeLimit">Time Limit (minutes)</label>
+                        <input type="number" id="challengeTimeLimit" required min="5" max="120" value="20">
                     </div>
-
-                    <button type="submit" class="btn-primary btn-large">Submit for Review</button>
-                </form>
-            </div>
-            
-            <!-- Create Challenge Tab -->
-            <div id="challengeTab" class="tab-content">
-                <form id="createChallengeForm" onsubmit="createChallenge(event)">
+                </div>
+                <div class="form-row">
                     <div class="form-group">
-                        <label>Challenge Title</label>
-                        <input type="text" id="challengeTitle" required placeholder="e.g., The Forgotten Garden">
+                        <label for="challengeMinWords">Min Words</label>
+                        <input type="number" id="challengeMinWords" required min="10" value="50">
                     </div>
-
                     <div class="form-group">
-                        <label>Description</label>
-                        <textarea id="challengeDescription" required rows="3" placeholder="Describe what participants should interpret..."></textarea>
+                        <label for="challengeMaxWords">Max Words</label>
+                        <input type="number" id="challengeMaxWords" required min="50" value="200">
                     </div>
-
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Difficulty</label>
-                            <select id="challengeDifficulty" required>
-                                <option value="easy">Easy</option>
-                                <option value="medium">Medium</option>
-                                <option value="hard">Hard</option>
-                                <option value="expert">Expert</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>Time Limit (minutes)</label>
-                            <input type="number" id="challengeTimeLimit" required min="5" max="120" value="20">
-                        </div>
-                    </div>
-
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Min Word Count</label>
-                            <input type="number" id="challengeMinWords" required min="10" value="50">
-                        </div>
-                        <div class="form-group">
-                            <label>Max Word Count</label>
-                            <input type="number" id="challengeMaxWords" required min="50" value="200">
-                        </div>
-                    </div>
-
+                </div>
+                <div class="form-group">
+                    <label for="challengeRules">Submission Rules <small style="color:var(--text-muted);text-transform:none;">(one per line)</small></label>
+                    <textarea id="challengeRules" required rows="4" placeholder="Rule 1&#10;Rule 2&#10;Rule 3"></textarea>
+                </div>
+                <div class="form-row">
                     <div class="form-group">
-                        <label>Submission Rules (one per line)</label>
-                        <textarea id="challengeRules" required rows="4" placeholder="Rule 1&#10;Rule 2&#10;Rule 3"></textarea>
+                        <label for="challengeMinPoints">Min Points</label>
+                        <input type="number" id="challengeMinPoints" required min="5" value="10">
                     </div>
-
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Min Points</label>
-                            <input type="number" id="challengeMinPoints" required min="5" value="10">
-                        </div>
-                        <div class="form-group">
-                            <label>Max Points</label>
-                            <input type="number" id="challengeMaxPoints" required min="10" value="50">
-                        </div>
-                    </div>
-
                     <div class="form-group">
-                        <label>Scoring Weights (must sum to 100%)</label>
-                        <div class="scoring-weights">
-                            <div class="weight-input">
-                                <label>Creativity %</label>
-                                <input type="number" id="creativityWeight" required min="0" max="100" value="40" oninput="validateWeights()">
-                            </div>
-                            <div class="weight-input">
-                                <label>Relevance %</label>
-                                <input type="number" id="relevanceWeight" required min="0" max="100" value="35" oninput="validateWeights()">
-                            </div>
-                            <div class="weight-input">
-                                <label>Detail %</label>
-                                <input type="number" id="detailWeight" required min="0" max="100" value="25" oninput="validateWeights()">
-                            </div>
+                        <label for="challengeMaxPoints">Max Points</label>
+                        <input type="number" id="challengeMaxPoints" required min="10" value="50">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Scoring Weights <small style="color:var(--text-muted);text-transform:none;">(must sum to 100%)</small></label>
+                    <div class="scoring-weights">
+                        <div class="weight-input">
+                            <label for="creativityWeight">Creativity %</label>
+                            <input type="number" id="creativityWeight" required min="0" max="100" value="40" oninput="validateWeights()">
                         </div>
-                        <p id="weightTotal" style="color: #4caf50; font-size: 12px; margin-top: 5px;">Total: 100%</p>
+                        <div class="weight-input">
+                            <label for="relevanceWeight">Relevance %</label>
+                            <input type="number" id="relevanceWeight" required min="0" max="100" value="35" oninput="validateWeights()">
+                        </div>
+                        <div class="weight-input">
+                            <label for="detailWeight">Detail %</label>
+                            <input type="number" id="detailWeight" required min="0" max="100" value="25" oninput="validateWeights()">
+                        </div>
                     </div>
-
-                    <div class="form-group">
-                        <label>Challenge Image</label>
-                        <input type="file" id="challengeImage" accept="image/*" required onchange="previewChallengeImage(event)">
-                        <div id="challengeImagePreview" class="image-preview"></div>
+                    <p id="weightTotal" style="color:var(--accent-green);font-size:13px;margin-top:6px;font-weight:600;">Total: 100% ✓</p>
+                </div>
+                <div class="form-group">
+                    <label for="challengeImage">Challenge Image</label>
+                    <input type="file" id="challengeImage" accept="image/*" required onchange="previewChallengeImage(event)">
+                    <div id="challengeImagePreview" class="image-preview">
+                        <span><i class="fas fa-image"></i> Preview will appear here</span>
                     </div>
-
-                    <button type="submit" class="btn-primary btn-large">Create Challenge</button>
-                </form>
-            </div>
+                </div>
+                <button type="submit" class="btn-primary btn-large">
+                    <i class="fas fa-bolt"></i> Create Challenge
+                </button>
+            </form>
         </div>
     </div>
+</div>
 
-    <!-- Mobile Bottom Navigation Bar (hidden on desktop via CSS) -->
-    <nav class="mobile-bottom-nav" id="mobileBottomNav">
-        <button class="icon-nav-btn" title="Home" onclick="window.location.href='../index.html'">
-            <i class="fas fa-home"></i>
-        </button>
-        <button class="icon-nav-btn active" title="Challenges">
-            <i class="fas fa-trophy"></i>
-        </button>
-        <button class="icon-nav-btn" title="Marketplace" onclick="window.location.href='../index.html'">
-            <i class="fas fa-store"></i>
-        </button>
-        <button class="icon-nav-btn" title="People" onclick="window.location.href='community.html'">
-            <i class="fas fa-users"></i>
-        </button>
-        <button class="icon-nav-btn" onclick="toggleMobileMoreMenu(this)" title="More">
-            <i class="fas fa-bars"></i>
-        </button>
-    </nav>
+<!-- Toast container -->
+<div class="toast-container" id="toastContainer"></div>
 
-    <script>
-    // Mobile more menu toggle
-    function toggleMobileMoreMenu(btn) {
-        const dropdown = document.getElementById('userMenuDropdown');
-        if (!dropdown) return;
-
-        const isOpen = dropdown.classList.contains('show');
-
-        if (isOpen) {
-            dropdown.classList.remove('show');
-            dropdown.style.removeProperty('top');
-            dropdown.style.removeProperty('bottom');
-            dropdown.style.removeProperty('right');
-            dropdown.style.removeProperty('position');
-        } else {
-            // Position above the bottom nav
-            const navH = document.getElementById('mobileBottomNav').offsetHeight;
-            dropdown.style.position  = 'fixed';
-            dropdown.style.bottom    = (navH + 8) + 'px';
-            dropdown.style.top       = 'auto';
-            dropdown.style.right     = '8px';
-            dropdown.classList.add('show');
-        }
-    }
-
-    // Close mobile more menu when clicking outside
-    document.addEventListener('click', function(e) {
-        const dropdown = document.getElementById('userMenuDropdown');
-        if (dropdown && dropdown.classList.contains('show') && dropdown.style.bottom) {
-            const moreBtn = document.querySelector('.mobile-bottom-nav .icon-nav-btn[title="More"]');
-            if (!dropdown.contains(e.target) && (!moreBtn || !moreBtn.contains(e.target))) {
-                dropdown.classList.remove('show');
-                dropdown.style.removeProperty('top');
-                dropdown.style.removeProperty('bottom');
-                dropdown.style.removeProperty('right');
-                dropdown.style.removeProperty('position');
-            }
-        }
-    });
-    </script>
-
-    <!-- ═══════════════════════════════════════════════════════════════
-         IMAGE INTERPRETATION — PREVIEW MODAL
-         Shows blurred image, rules, entry fee, and Play button
-    ════════════════════════════════════════════════════════════════ -->
-    <div id="imgInterpPreviewModal" class="ii-modal-backdrop" style="display:none;">
-        <div class="ii-modal-box ii-preview-box">
-
-            <!-- Header -->
-            <div class="ii-modal-header">
-                <h2><i class="fas fa-image"></i> Image Interpretation</h2>
-                <button class="ii-close-btn" onclick="closeImgInterpPreview()" aria-label="Close">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-
-            <!-- Blurred thumbnail -->
-            <div class="ii-blur-wrap">
-                <img id="iiPreviewThumb" src="" alt="Challenge image" class="ii-blur-img">
-                <div class="ii-blur-label">
-                    <i class="fas fa-lock"></i>
-                    <span>Image revealed after joining</span>
-                </div>
-            </div>
-
-            <!-- Body -->
-            <div class="ii-modal-body">
-                <h3 id="iiPreviewTitle" class="ii-preview-title"></h3>
-                <p  id="iiPreviewDescription" class="ii-preview-desc"></p>
-
-                <!-- Meta pills -->
-                <div class="ii-meta-row">
-                    <span class="ii-meta-pill"><i class="fas fa-signal"></i> <span id="iiPreviewDifficulty">Medium</span></span>
-                    <span class="ii-meta-pill"><i class="fas fa-clock"></i> <span id="iiPreviewTimeLimit">2 min</span></span>
-                    <span class="ii-meta-pill"><i class="fas fa-eye"></i> <span id="iiPreviewPointCount">? hidden points</span></span>
-                </div>
-
-                <!-- How it works -->
-                <div class="ii-rules-box">
-                    <h4><i class="fas fa-list-check"></i> How it works</h4>
-                    <ul>
-                        <li><i class="fas fa-1"></i> The full image is revealed — a countdown begins.</li>
-                        <li><i class="fas fa-2"></i> Identify as many meaningful visual elements as you can.</li>
-                        <li><i class="fas fa-3"></i> Explain what each element represents or communicates.</li>
-                        <li><i class="fas fa-4"></i> Describe the image's overall story or message.</li>
-                        <li><i class="fas fa-5"></i> Submit before time runs out.</li>
-                    </ul>
-                    <p class="ii-rules-note"><i class="fas fa-robot"></i> Scored by AI: 60% observation accuracy + 40% interpretation quality.</p>
-                </div>
-
-                <!-- Entry fee / prize box (hidden when free) -->
-                <div id="iiPreviewFeeBox" class="ii-fee-box" style="display:none;">
-                    <div>
-                        <div class="ii-fee-label">Entry Fee</div>
-                        <div class="ii-fee-amount" id="iiPreviewEntryAmount">K0.00</div>
-                    </div>
-                    <div class="ii-fee-prize" id="iiPreviewPrizeText"></div>
-                </div>
-
-                <!-- Play button -->
-                <button id="iiPreviewPlayBtn" class="ii-btn-play" onclick="startImgInterpGame()">
-                    <i class="fas fa-play"></i> Join Free
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- ═══════════════════════════════════════════════════════════════
-         IMAGE INTERPRETATION — GAME MODAL
-         Full image + 3-step submission flow
-    ════════════════════════════════════════════════════════════════ -->
-    <div id="imgInterpGameModal" class="ii-modal-backdrop" style="display:none;">
-        <div class="ii-modal-box ii-game-modal-content">
-
-            <!-- Timer progress bar -->
-            <div class="ii-timer-bar">
-                <div id="iiTimerFill" class="ii-timer-fill"></div>
-            </div>
-
-            <!-- Game header -->
-            <div class="ii-game-header">
-                <h3 id="iiGameTitle" class="ii-game-title"></h3>
-                <div id="iiCountdownDisplay" class="ii-countdown">2:00</div>
-            </div>
-
-            <!-- Image -->
-            <div class="ii-image-wrap">
-                <img id="iiGameImage" src="" alt="Challenge image" class="ii-game-img ii-img-blurred">
-
-                <!-- 3-2-1 overlay -->
-                <div id="iiGoOverlay" class="ii-go-overlay" style="display:none;"></div>
-            </div>
-
-            <!-- Answer section (disabled until image is revealed) -->
-            <div id="iiAnswerSection" class="ii-answer-section ii-disabled">
-
-                <!-- Step progress indicators -->
-                <div class="ii-step-progress">
-                    <div class="ii-step-dot active" title="Step 1: Observe"></div>
-                    <div class="ii-step-connector"></div>
-                    <div class="ii-step-dot" title="Step 2: Interpret"></div>
-                    <div class="ii-step-connector"></div>
-                    <div class="ii-step-dot" title="Step 3: Overall"></div>
-                </div>
-
-                <!-- ── STEP 1: OBSERVATION ── -->
-                <div id="iiStepObserve" class="ii-step">
-                    <p class="ii-step-hint">
-                        <i class="fas fa-eye"></i>
-                        <strong>Step 1:</strong> What visual elements do you see? List each one — objects, symbols, colours, expressions, background details.
-                    </p>
-                    <div id="iiPointsList" class="ii-points-list">
-                        <p class="ii-empty-hint"><i class="fas fa-eye"></i> Study the image and add what you see below.</p>
-                    </div>
-                    <div class="ii-add-point-row">
-                        <input
-                            type="text"
-                            id="iiPointInput"
-                            class="ii-point-input"
-                            placeholder="e.g. Broken clock, Wilted tree, Child looking up…"
-                            onkeydown="iiPointInputKeydown(event)"
-                        >
-                        <button class="ii-btn-add" onclick="iiAddPoint()">
-                            <i class="fas fa-plus"></i> Add
-                        </button>
-                    </div>
-                    <button class="ii-btn-next" onclick="iiGoToInterpret()">
-                        Next: Interpret <i class="fas fa-arrow-right"></i>
-                    </button>
-                </div>
-
-                <!-- ── STEP 2: INTERPRETATION ── -->
-                <div id="iiStepInterpret" class="ii-step" style="display:none;">
-                    <p class="ii-step-hint">
-                        <i class="fas fa-brain"></i>
-                        <strong>Step 2:</strong> For each element you spotted, explain what it represents — what idea, emotion, or message does it carry?
-                    </p>
-                    <div id="iiInterpForms" class="ii-interp-forms"></div>
-                    <div class="ii-step-nav">
-                        <button class="ii-btn-back" onclick="iiBackToObserve()">
-                            <i class="fas fa-arrow-left"></i> Back
-                        </button>
-                        <button class="ii-btn-next" onclick="iiGoToOverall()">
-                            Next: Overall Message <i class="fas fa-arrow-right"></i>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- ── STEP 3: OVERALL MESSAGE ── -->
-                <div id="iiStepOverall" class="ii-step" style="display:none;">
-                    <p class="ii-step-hint">
-                        <i class="fas fa-scroll"></i>
-                        <strong>Step 3:</strong> What is the image's overall story or message? How do all the elements work together?
-                    </p>
-                    <textarea
-                        id="iiOverallMessage"
-                        class="ii-overall-input"
-                        rows="4"
-                        placeholder="Describe the overall message, theme, or story this image is communicating…"
-                    ></textarea>
-                    <div class="ii-step-nav">
-                        <button class="ii-btn-back" onclick="iiBackToInterpret()">
-                            <i class="fas fa-arrow-left"></i> Back
-                        </button>
-                        <button id="iiSubmitFinalBtn" class="ii-btn-submit" onclick="iiSubmitFinal()">
-                            <i class="fas fa-paper-plane"></i> Submit
-                        </button>
-                    </div>
-                </div>
-
-            </div><!-- /iiAnswerSection -->
-        </div><!-- /ii-game-modal-content -->
-    </div><!-- /imgInterpGameModal -->
-
-    <script src="../scripts/api-service.js"></script>
-    <script src="../scripts/realtime-service.js"></script>
-    <script src="../scripts/image-interpretation.js"></script>
-    <script src="../scripts/challenges.js"></script>
+<script src="../scripts/api-service.js"></script>
+<script src="../scripts/realtime-service.js"></script>
+<script src="../scripts/challenges.js"></script>
 </body>
 </html>

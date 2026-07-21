@@ -1,7 +1,11 @@
 """
 Serializers for Challenge models
 """
+import json
+import os
 from rest_framework import serializers
+from django.core.files.storage import default_storage
+from django.core.files.base import ContentFile
 from .models import Challenge, ChallengeSubmission, ChallengeLeaderboard, ChallengeActivity, ImageInterpretationSubmission
 from users.serializers import UserProfileSerializer
 
@@ -59,6 +63,56 @@ class ChallengeSerializer(serializers.ModelSerializer):
 
     def get_created_by_username(self, obj):
         return obj.created_by.username if obj.created_by else None
+
+
+class ChallengeCreateSerializer(serializers.ModelSerializer):
+    """
+    Accepts multipart/form-data for challenge creation.
+    Saves the uploaded image to media storage and stores the resulting URL.
+    submission_rules is sent as a JSON-encoded string from the frontend form.
+    """
+    image = serializers.ImageField(write_only=True, required=True)
+    submission_rules = serializers.CharField(required=True)
+
+    class Meta:
+        model = Challenge
+        fields = [
+            'title', 'description', 'image', 'difficulty', 'time_limit',
+            'min_word_count', 'max_word_count', 'submission_rules',
+            'creativity_weight', 'relevance_weight', 'detail_weight',
+            'min_points', 'max_points', 'starts_at', 'ends_at', 'status',
+        ]
+
+    def validate_submission_rules(self, value):
+        try:
+            rules = json.loads(value)
+            if not isinstance(rules, list):
+                raise serializers.ValidationError("submission_rules must be a JSON array.")
+            return rules
+        except (json.JSONDecodeError, TypeError):
+            raise serializers.ValidationError("submission_rules must be a valid JSON array string.")
+
+    def validate(self, data):
+        if data.get('creativity_weight', 0) + data.get('relevance_weight', 0) + data.get('detail_weight', 0) != 100:
+            raise serializers.ValidationError("Scoring weights must sum to 100.")
+        if data.get('min_word_count', 0) >= data.get('max_word_count', 1):
+            raise serializers.ValidationError("max_word_count must be greater than min_word_count.")
+        if data.get('min_points', 0) >= data.get('max_points', 1):
+            raise serializers.ValidationError("max_points must be greater than min_points.")
+        return data
+
+    def create(self, validated_data):
+        image_file = validated_data.pop('image')
+        request = self.context.get('request')
+        ext = os.path.splitext(image_file.name)[1].lower()
+        safe_name = f"challenges/{validated_data['title'][:40].replace(' ', '_')}{ext}"
+        path = default_storage.save(safe_name, ContentFile(image_file.read()))
+        image_url = request.build_absolute_uri(default_storage.url(path)) if request else default_storage.url(path)
+        return Challenge.objects.create(
+            image_url=image_url,
+            created_by=request.user if request and request.user.is_authenticated else None,
+            **validated_data
+        )
 
 
 class ImageInterpretationSubmissionSerializer(serializers.ModelSerializer):

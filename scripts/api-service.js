@@ -38,12 +38,17 @@ class APIService {
     }
 
     /**
-     * Make API request
+     * Make API request.
+     * When options.headers is provided explicitly (e.g. FormData uploads),
+     * those headers are used directly so the browser can set the correct
+     * multipart boundary automatically.
      */
     async request(endpoint, options = {}) {
         const url = `${this.baseURL}${endpoint}`;
         const config = {
-            headers: this.getHeaders(options.auth !== false),
+            headers: options.headers !== undefined
+                ? options.headers
+                : this.getHeaders(options.auth !== false),
             ...options,
         };
 
@@ -276,6 +281,32 @@ class APIService {
             amount,
             description: description || `Entry fee — challenge ${challengeId}`,
             transaction_type: 'payment',
+        });
+    }
+
+    // ==================== CHALLENGE CREATION ====================
+
+    /**
+     * Create a new challenge with image upload (multipart/form-data).
+     */
+    createChallenge(formData) {
+        return this.request('/challenges/challenges/', {
+            method: 'POST',
+            body: formData,
+            headers: this.token ? { 'Authorization': `Token ${this.token}` } : {},
+        });
+    }
+
+    // ==================== CONTENT UPLOAD ====================
+
+    /**
+     * Upload user content for community review (multipart/form-data).
+     */
+    uploadContent(formData) {
+        return this.request('/social/posts/', {
+            method: 'POST',
+            body: formData,
+            headers: this.token ? { 'Authorization': `Token ${this.token}` } : {},
         });
     }
 }
