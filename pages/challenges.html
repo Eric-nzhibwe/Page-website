@@ -5,58 +5,114 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Challenges — ARTX</title>
     <link rel="icon" type="image/jpeg" href="../images/ARTX.jpg">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="../styles/styles.css">
+    <link rel="stylesheet" href="../styles/icon-nav.css">
     <link rel="stylesheet" href="../styles/challenges.css?v=2">
+    <link rel="stylesheet" href="../styles/responsive-pro.css">
 </head>
 <body>
-<div class="container">
 
-    <!-- Header -->
-    <header class="header">
-        <div class="logo" onclick="window.location.href='../index.html'">
-            <i class="fas fa-fire"></i> ARTX
+<!-- ═══════════════════════ NAVBAR ═══════════════════════ -->
+<header class="header w-100">
+    <div class="header-left d-flex align-items-center">
+        <div class="logo" onclick="window.location.href='../index.html'" style="cursor:pointer">
+            <i class="fas fa-fire"></i>ARTX
         </div>
-        <button class="mobile-menu-toggle" onclick="toggleMobileMenu()" aria-label="Menu">
-            <i class="fas fa-bars"></i>
+        <div class="search-bar d-none d-md-flex align-items-center">
+            <i class="fas fa-search"></i>
+            <input type="text" placeholder="Search ARTX..." id="headerSearch">
+        </div>
+    </div>
+
+    <nav class="icon-nav d-flex justify-content-center flex-grow-1">
+        <button class="icon-nav-btn" title="Home" onclick="window.location.href='../index.html'">
+            <i class="fas fa-home" style="color:black;"></i>
         </button>
-        <nav class="nav" id="mainNav">
-            <button class="nav-btn" onclick="window.location.href='../index.html'">Dashboard</button>
-            <button class="nav-btn active">Challenges</button>
-            <button class="nav-btn" onclick="window.location.href='community.html'">Community</button>
-            <button class="nav-btn" onclick="window.location.href='influencers.html'">Influencers</button>
-            <button class="nav-btn" onclick="showUploadModal()"><i class="fas fa-plus"></i> Create</button>
-        </nav>
-        <div class="user-menu-dropdown">
-            <button class="btn-user-menu" onclick="toggleUserMenu()" aria-label="User menu">
-                <i class="fas fa-user-circle"></i>
-                <i class="fas fa-chevron-down" style="font-size:11px;"></i>
-            </button>
-            <div class="dropdown-content" id="userDropdown">
-                <a href="wallet.html"><i class="fas fa-wallet"></i> My Wallet</a>
-                <a href="chatbot.html"><i class="fas fa-robot"></i> AI Assistant</a>
-                <a href="#" onclick="openMessenger(); return false;">
-                    <i class="fas fa-comments"></i> Messenger
-                    <span class="unread-badge" id="unreadBadge" style="display:none;">0</span>
-                </a>
-                <a href="user.html"><i class="fas fa-user"></i> User Profile</a>
-                <div class="user-info">
-                    <div class="wallet-balance-badge" id="walletBalanceBadge"
-                         onclick="window.location.href='wallet.html'" style="cursor:pointer;display:none;">
-                        <i class="fas fa-wallet"></i><span id="walletBalance">K0.00</span>
-                    </div>
-                    <div class="streak-badge" id="streakBadge">
-                        <i class="fas fa-fire"></i><span id="streakCount">0</span>
-                    </div>
-                    <span class="prestige-badge" id="userPrestige">0 pts</span>
-                    <div class="tier-badge" id="tierBadge">Bronze</div>
-                    <span class="username" id="username">Player</span>
-                </div>
-                <a href="#" onclick="logout(); return false;" style="color:#f44336;">
-                    <i class="fas fa-sign-out-alt"></i> Logout
-                </a>
+        <button class="icon-nav-btn active" title="Challenges">
+            <i class="fas fa-trophy" style="color:black;"></i>
+        </button>
+        <button class="icon-nav-btn" title="Marketplace" onclick="window.location.href='../index.html'">
+            <i class="fas fa-store" style="color:black;"></i>
+        </button>
+        <button class="icon-nav-btn" title="Community" onclick="window.location.href='community.html'">
+            <i class="fas fa-users" style="color:black;"></i>
+        </button>
+    </nav>
+
+    <!-- Right Side Icons -->
+    <div class="header-right d-flex align-items-center">
+        <button class="header-icon-btn" onclick="showUploadModal()" title="Create Challenge">
+            <i class="fas fa-plus" style="color:black;"></i>
+        </button>
+        <button class="header-icon-btn" onclick="toggleQuickMenu()" title="Menu">
+            <i class="fas fa-th" style="color:black;"></i>
+        </button>
+        <div class="user-avatar-btn" onclick="toggleUserMenu()">
+            <i class="fas fa-user-circle" style="color:black;"></i>
+        </div>
+    </div>
+
+    <!-- Quick Menu Dropdown -->
+    <div class="quick-menu-dropdown" id="quickMenuDropdown">
+        <div class="quick-menu-header"><h3>Quick Access</h3></div>
+        <div class="quick-menu-grid">
+            <a href="../index.html" class="quick-menu-item">
+                <i class="fas fa-chart-line"></i><span>Dashboard</span>
+            </a>
+            <a href="challenges.html" class="quick-menu-item">
+                <i class="fas fa-trophy"></i><span>Challenges</span>
+            </a>
+            <a href="community.html" class="quick-menu-item">
+                <i class="fas fa-users"></i><span>Community</span>
+            </a>
+            <a href="wallet.html" class="quick-menu-item">
+                <i class="fas fa-wallet"></i><span>Wallet</span>
+            </a>
+            <a href="chatbot.html" class="quick-menu-item">
+                <i class="fas fa-robot"></i><span>AI Assistant</span>
+            </a>
+            <a href="influencers.html" class="quick-menu-item">
+                <i class="fas fa-star"></i><span>Influencers</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- User Menu Dropdown -->
+    <div class="user-menu-dropdown" id="userMenuDropdown">
+        <div class="user-menu-header">
+            <div class="user-menu-avatar"><i class="fas fa-user-circle"></i></div>
+            <div class="user-menu-info">
+                <h4 id="menuUsername">Player</h4>
+                <p id="menuTier">Bronze Tier</p>
             </div>
         </div>
-    </header>
+        <div class="user-menu-stats">
+            <div class="user-menu-stat">
+                <i class="fas fa-fire"></i>
+                <span id="menuStreak">0</span>
+            </div>
+            <div class="user-menu-stat">
+                <i class="fas fa-star"></i>
+                <span id="menuPrestige">0</span>
+            </div>
+            <div class="user-menu-stat">
+                <i class="fas fa-wallet"></i>
+                <span id="menuBalance">K0</span>
+            </div>
+        </div>
+        <div class="user-menu-links">
+            <a href="user.html"><i class="fas fa-user"></i> View Profile</a>
+            <a href="wallet.html"><i class="fas fa-wallet"></i> My Wallet</a>
+            <a href="chatbot.html"><i class="fas fa-robot"></i> AI Assistant</a>
+            <a href="#" onclick="logout(); return false;"><i class="fas fa-sign-out-alt"></i> Logout</a>
+        </div>
+    </div>
+</header>
+
+<!-- ═══════════════════════ PAGE CONTENT ═══════════════════════ -->
+<div class="container">
 
     <!-- Challenges Grid -->
     <section class="challenges-section">
@@ -80,6 +136,27 @@
     </section>
 
 </div>
+
+<!-- Mobile Bottom Navigation -->
+<nav class="mobile-bottom-nav" id="mobileBottomNav">
+    <button class="icon-nav-btn" title="Home" onclick="window.location.href='../index.html'">
+        <i class="fas fa-home"></i>
+    </button>
+    <button class="icon-nav-btn active" title="Challenges">
+        <i class="fas fa-trophy"></i>
+    </button>
+    <button class="icon-nav-btn" title="Community" onclick="window.location.href='community.html'">
+        <i class="fas fa-users"></i>
+    </button>
+    <button class="icon-nav-btn" title="Wallet" onclick="window.location.href='wallet.html'">
+        <i class="fas fa-wallet"></i>
+    </button>
+    <button class="icon-nav-btn" title="Profile" onclick="window.location.href='user.html'">
+        <i class="fas fa-user"></i>
+    </button>
+</nav>
+
+<!-- ═══════════════════════ MODALS ═══════════════════════ -->
 
 <!-- Challenge Modal -->
 <div id="challengeModal" class="modal" role="dialog" aria-modal="true">
@@ -225,5 +302,48 @@
 <script src="../scripts/api-service.js"></script>
 <script src="../scripts/realtime-service.js"></script>
 <script src="../scripts/challenges.js"></script>
+<script>
+    /* Navbar dropdown toggles — matches other pages */
+    function toggleQuickMenu() {
+        const qm = document.getElementById('quickMenuDropdown');
+        const um = document.getElementById('userMenuDropdown');
+        if (um) um.classList.remove('show');
+        if (qm) qm.classList.toggle('show');
+    }
+
+    function toggleUserMenu() {
+        const um = document.getElementById('userMenuDropdown');
+        const qm = document.getElementById('quickMenuDropdown');
+        if (qm) qm.classList.remove('show');
+        if (um) um.classList.toggle('show');
+    }
+
+    /* Close dropdowns on outside click */
+    document.addEventListener('click', e => {
+        if (!e.target.closest('.quick-menu-dropdown') && !e.target.closest('.header-icon-btn[title="Menu"]')) {
+            document.getElementById('quickMenuDropdown')?.classList.remove('show');
+        }
+        if (!e.target.closest('.user-menu-dropdown') && !e.target.closest('.user-avatar-btn')) {
+            document.getElementById('userMenuDropdown')?.classList.remove('show');
+        }
+    });
+
+    /* Populate user menu from player data already loaded by challenges.js */
+    document.addEventListener('DOMContentLoaded', () => {
+        setTimeout(() => {
+            const raw = localStorage.getItem('artxUser') || localStorage.getItem('artCurrentUser');
+            if (!raw) return;
+            try {
+                const u = typeof JSON.parse(raw) === 'object' ? JSON.parse(raw) : {};
+                const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+                set('menuUsername', u.username || 'Player');
+                set('menuTier',     (u.access_tier || 'Bronze') + ' Tier');
+                set('menuStreak',   u.current_streak ?? 0);
+                set('menuPrestige', u.prestige_points ?? 0);
+                set('menuBalance',  u.wallet_balance != null ? `K${Number(u.wallet_balance).toFixed(0)}` : 'K0');
+            } catch { /* silent */ }
+        }, 600);
+    });
+</script>
 </body>
 </html>

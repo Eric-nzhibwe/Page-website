@@ -1,126 +1,14 @@
 /* ===================================================
-   ARTX Challenges — Dark Theme UI
+   ARTX Challenges — Card & page styles
+   Navbar is provided by styles.css + icon-nav.css
    =================================================== */
 
-*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-
-:root {
-    --bg-base:        #0d0f1a;
-    --bg-card:        #131627;
-    --bg-elevated:    #1a1e32;
-    --bg-input:       #1e2338;
-    --border:         rgba(255,255,255,0.08);
-    --border-green:   #3a7d44;
-    --accent-green:   #4caf50;
-    --accent-lime:    #8bc34a;
-    --accent-pink:    #f5576c;
-    --accent-purple:  #667eea;
-    --accent-orange:  #ff9800;
-    --text-primary:   #e8eaf0;
-    --text-secondary: #9aa0b4;
-    --text-muted:     #5c6480;
-    --gradient-green: linear-gradient(135deg, #3a7d44, #8bc34a);
-    --gradient-brand: linear-gradient(135deg, #f5576c, #f093fb);
-    --gradient-blue:  linear-gradient(135deg, #667eea, #764ba2);
-    --radius-sm:  6px;
-    --radius-md:  10px;
-    --radius-lg:  14px;
-    --radius-xl:  20px;
-    --shadow-card:  0 4px 24px rgba(0,0,0,0.4);
-    --shadow-hover: 0 8px 32px rgba(76,175,80,0.2);
-    --transition:   all 0.25s ease;
+/* ── CONTAINER ── */
+.container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 100px 20px 40px; /* top clears the fixed shared navbar */
 }
-
-body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: var(--bg-base);
-    color: var(--text-primary);
-    min-height: 100vh;
-    line-height: 1.6;
-}
-
-.container { max-width: 1400px; margin: 0 auto; padding: 20px; }
-
-/* ── HEADER ── */
-.header {
-    display: flex; align-items: center; gap: 16px;
-    padding: 16px 24px;
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    margin-bottom: 28px;
-    position: relative;
-}
-.logo {
-    font-size: 26px; font-weight: 800;
-    background: var(--gradient-brand);
-    -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
-    cursor: pointer; flex-shrink: 0; letter-spacing: -0.5px;
-}
-.nav { display: flex; gap: 8px; flex: 1; justify-content: center; }
-.nav-btn {
-    background: transparent; color: var(--text-secondary);
-    border: 1px solid transparent; padding: 8px 18px;
-    border-radius: var(--radius-sm); cursor: pointer;
-    transition: var(--transition); font-size: 14px; font-weight: 500;
-}
-.nav-btn:hover { background: var(--bg-elevated); color: var(--text-primary); border-color: var(--border); }
-.nav-btn.active { background: var(--gradient-green); color: #fff; border-color: transparent; }
-.mobile-menu-toggle {
-    display: none; background: transparent; border: none;
-    color: var(--text-primary); font-size: 22px; cursor: pointer; padding: 8px;
-}
-.user-menu-dropdown { position: relative; flex-shrink: 0; }
-.btn-user-menu {
-    display: flex; align-items: center; gap: 8px;
-    background: var(--bg-elevated); border: 1px solid var(--border);
-    color: var(--text-primary); padding: 8px 14px;
-    border-radius: var(--radius-md); cursor: pointer;
-    transition: var(--transition); font-size: 18px;
-}
-.btn-user-menu:hover { border-color: var(--border-green); }
-.dropdown-content {
-    display: none; position: absolute; right: 0; top: calc(100% + 10px);
-    background: var(--bg-card); border: 1px solid var(--border);
-    border-radius: var(--radius-md); min-width: 220px;
-    z-index: 500; box-shadow: var(--shadow-card); overflow: hidden;
-}
-.dropdown-content.active { display: block; }
-.dropdown-content a {
-    display: flex; align-items: center; gap: 10px;
-    padding: 12px 18px; color: var(--text-secondary);
-    text-decoration: none; font-size: 14px; transition: var(--transition);
-}
-.dropdown-content a:hover { background: var(--bg-elevated); color: var(--text-primary); }
-.unread-badge {
-    background: var(--accent-pink); color: #fff;
-    border-radius: 10px; padding: 1px 7px; font-size: 11px;
-    font-weight: bold; margin-left: auto;
-}
-.user-info {
-    display: flex; flex-direction: column; gap: 8px;
-    padding: 12px 18px; border-top: 1px solid var(--border);
-}
-.wallet-balance-badge {
-    display: flex; align-items: center; gap: 6px;
-    background: var(--gradient-blue); padding: 5px 12px;
-    border-radius: 20px; font-size: 13px; font-weight: bold; color: #fff;
-}
-.streak-badge {
-    display: flex; align-items: center; gap: 6px;
-    background: rgba(255,152,0,0.15); border: 1px solid var(--accent-orange);
-    padding: 4px 12px; border-radius: 20px; font-size: 13px; color: var(--accent-orange);
-}
-.prestige-badge {
-    background: var(--gradient-green); padding: 4px 12px;
-    border-radius: 20px; font-size: 12px; font-weight: bold; color: #fff;
-}
-.tier-badge {
-    background: rgba(102,126,234,0.2); border: 1px solid var(--accent-purple);
-    padding: 4px 12px; border-radius: 20px; font-size: 12px;
-    color: var(--accent-purple); font-weight: bold;
-}
-.username { color: var(--text-secondary); font-size: 13px; padding-left: 2px; }
 
 /* ── SECTION HEADER & FILTERS ── */
 .section-header {
@@ -677,12 +565,7 @@ body {
     .details-grid { grid-template-columns: 1fr 1fr; }
 }
 @media (max-width: 768px) {
-    .header { flex-wrap: wrap; padding: 14px 16px; gap: 12px; }
-    .mobile-menu-toggle { display: block; margin-left: auto; }
-    .nav { display: none; flex-direction: column; width: 100%; order: 3; background: var(--bg-elevated); border-radius: var(--radius-md); padding: 10px; gap: 6px; }
-    .nav.active { display: flex; }
-    .nav-btn { width: 100%; text-align: left; }
-    .user-menu-dropdown { margin-left: auto; }
+    .container { padding: 80px 14px 80px; } /* leave room for fixed header + mobile bottom nav */
     .section-header { flex-direction: column; align-items: flex-start; }
     .challenges-grid { grid-template-columns: 1fr; }
     .scoring-weights { grid-template-columns: 1fr; }
@@ -691,8 +574,7 @@ body {
     .submission-item { grid-template-columns: 46px 1fr auto; gap: 12px; padding: 14px 16px; }
 }
 @media (max-width: 480px) {
-    .container { padding: 12px; }
-    .logo { font-size: 22px; }
+    .container { padding: 72px 12px 76px; }
     .filter-btn { padding: 6px 12px; font-size: 12px; }
     .challenge-footer { flex-direction: column; gap: 8px; }
     .btn-card-details, .btn-card-participate { width: 100%; flex: unset; }

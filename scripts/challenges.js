@@ -612,13 +612,8 @@ async function createChallenge(event) {
 }
 
 // ── Nav helpers ───────────────────────────────────────────────────────────────
-function toggleMobileMenu() { document.getElementById('mainNav')?.classList.toggle('active'); }
-function toggleUserMenu()   { document.getElementById('userDropdown')?.classList.toggle('active'); }
-function openMessenger()    { showToast('Messenger coming soon!', 'info'); }
+function openMessenger() { showToast('Messenger coming soon!', 'info'); }
 
-document.addEventListener('click', e => {
-    if (!e.target.closest('.user-menu-dropdown')) document.getElementById('userDropdown')?.classList.remove('active');
-});
 document.getElementById('challengeModal')?.addEventListener('click', e => { if (e.target === e.currentTarget) closeChallengeModal(); });
 document.getElementById('uploadModal')?.addEventListener('click',    e => { if (e.target === e.currentTarget) closeUploadModal(); });
 
@@ -648,8 +643,6 @@ function formatDate(iso) {
 function formatTime(iso) { return iso ? new Date(iso).toLocaleTimeString(undefined, { hour:'2-digit', minute:'2-digit' }) : ''; }
 
 // ── Global exports ────────────────────────────────────────────────────────────
-window.toggleMobileMenu      = toggleMobileMenu;
-window.toggleUserMenu        = toggleUserMenu;
 window.openMessenger         = openMessenger;
 window.showUploadModal       = showUploadModal;
 window.closeUploadModal      = closeUploadModal;
