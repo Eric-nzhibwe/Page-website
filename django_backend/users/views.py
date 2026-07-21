@@ -568,3 +568,30 @@ def delete_account_view(request):
 
     request.user.delete()
     return Response({'message': 'Account permanently deleted.'})
+
+
+@api_view(['POST'])
+@permission_classes([permissions.IsAuthenticated])
+def spend_prestige_view(request):
+    """Deduct prestige points for a reward purchase."""
+    amount = request.data.get('amount')
+    reason = request.data.get('reason', 'Reward redemption')
+
+    try:
+        amount = int(amount)
+        if amount <= 0:
+            raise ValueError
+    except (TypeError, ValueError):
+        return Response({'error': 'Invalid amount.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    success = request.user.spend_prestige(amount, reason)
+    if not success:
+        return Response(
+            {'error': f'Insufficient prestige. You have {request.user.prestige_points} pts.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    return Response({
+        'message': f'Successfully redeemed "{reason}".',
+        'prestige_points': request.user.prestige_points,
+    })

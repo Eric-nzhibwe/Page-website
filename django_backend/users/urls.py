@@ -37,4 +37,5 @@ urlpatterns = [
     path('preferences/', views.update_preferences_view, name='update-preferences'),
     path('deactivate/', views.deactivate_account_view, name='deactivate-account'),
     path('delete-account/', views.delete_account_view, name='delete-account'),
+    path('spend-prestige/', views.spend_prestige_view, name='spend-prestige'),
 ]

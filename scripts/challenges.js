@@ -24,8 +24,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
 function checkAuth() {
-    currentUserId = localStorage.getItem('artCurrentUser');
-    const token = localStorage.getItem('authToken');
+    const token = localStorage.getItem('djangoAuthToken') || localStorage.getItem('authToken');
+    // Support both old artCurrentUser key and the current artxUser object
+    const userRaw = localStorage.getItem('artxUser') || localStorage.getItem('artCurrentUser');
+    currentUserId = userRaw ? (JSON.parse(userRaw)?.id || userRaw) : null;
     if (token) apiService.setToken(token);
     return currentUserId !== null && token !== null;
 }
@@ -50,8 +52,10 @@ function updateHeaderUI() {
 
 function logout() {
     if (confirm('Logout?')) {
-        localStorage.removeItem('artCurrentUser');
+        localStorage.removeItem('djangoAuthToken');
         localStorage.removeItem('authToken');
+        localStorage.removeItem('artxUser');
+        localStorage.removeItem('artCurrentUser');
         window.location.href = 'auth.html';
     }
 }

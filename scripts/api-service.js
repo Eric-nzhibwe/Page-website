@@ -10,7 +10,8 @@ const API_BASE_URL = (
 
 class APIService {
     constructor() {
-        this.token = localStorage.getItem('authToken');
+        // Use djangoAuthToken (written by auth.js/otp.js) with authToken as fallback for legacy sessions
+        this.token = localStorage.getItem('djangoAuthToken') || localStorage.getItem('authToken') || null;
         this.baseURL = API_BASE_URL;
     }
 
@@ -19,7 +20,7 @@ class APIService {
      */
     setToken(token) {
         this.token = token;
-        localStorage.setItem('authToken', token);
+        localStorage.setItem('djangoAuthToken', token);
     }
 
     /**

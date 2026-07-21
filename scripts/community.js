@@ -423,18 +423,35 @@ async function loadTopMembers(sortBy, btn) {
 // ══════════════════════════════════════════════════════════════
 //  REWARDS
 // ══════════════════════════════════════════════════════════════
-function buyReward(name, cost) {
+async function buyReward(name, cost) {
     if (!currentUser) return;
     if (currentUser.prestige_points < cost) {
         showToast(`You need ${cost} pts — you have ${currentUser.prestige_points}`);
         return;
     }
-    // Show a non-blocking toast confirmation (no alert/confirm)
-    showToast(`✓ ${name} redeemed! (Coming soon via backend)`);
-    // Optimistically deduct in UI
-    currentUser.prestige_points -= cost;
-    setText('shopBalance', currentUser.prestige_points.toLocaleString());
-    setText('menuPrestige', currentUser.prestige_points.toLocaleString());
+
+    try {
+        const res = await fetch(`${API}/auth/spend-prestige/`, {
+            method: 'POST',
+            headers: { ...authHeader(), 'Content-Type': 'application/json' },
+            body: JSON.stringify({ amount: cost, reason: name }),
+        });
+
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            showToast(err.error || 'Redemption failed. Try again.');
+            return;
+        }
+
+        const data = await res.json();
+        // Sync local balance with server response
+        currentUser.prestige_points = data.prestige_points;
+        setText('shopBalance', currentUser.prestige_points.toLocaleString());
+        setText('menuPrestige', currentUser.prestige_points.toLocaleString());
+        showToast(`✓ ${name} redeemed!`);
+    } catch {
+        showToast('Could not reach the server. Please try again.');
+    }
 }
 
 // ══════════════════════════════════════════════════════════════

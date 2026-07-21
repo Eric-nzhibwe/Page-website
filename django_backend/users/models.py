@@ -90,6 +90,21 @@ class User(AbstractUser):
             description=f"Gained {amount} prestige from {source}",
             points_change=amount
         )
+
+    def spend_prestige(self, amount, reason="Reward redemption"):
+        """Deduct prestige points for a reward purchase. Returns False if insufficient balance."""
+        if self.prestige_points < amount:
+            return False
+        self.prestige_points -= amount
+        self.update_access_tier()
+        self.save(update_fields=['prestige_points', 'access_tier'])
+        UserActivity.objects.create(
+            user=self,
+            activity_type='prestige_spent',
+            description=f"Spent {amount} prestige on: {reason}",
+            points_change=-amount,
+        )
+        return True
     
     def update_level(self):
         """Update user level based on prestige points"""

@@ -553,34 +553,6 @@ function _insertStoryCard(story, tempId) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  LOAD REAL STORIES FROM API (called on page load)
-// ─────────────────────────────────────────────────────────────────────────────
-async function loadRealStories() {
-    const token = localStorage.getItem('djangoAuthToken');
-    if (!token) return;
-
-    try {
-        const res  = await fetch(`${_STORY_API}feed/`, {
-            headers: { 'Authorization': `Token ${token}` }
-        });
-        if (!res.ok) return;
-        const body   = await res.json();
-        const stories = Array.isArray(body) ? body : (body.results || []);
-
-        const container = document.querySelector('.stories-container');
-        if (!container) return;
-
-        stories.forEach(story => {
-            if (!container.querySelector(`[data-story-id="${story.id}"]`)) {
-                _insertStoryCard(story);
-            }
-        });
-    } catch (err) {
-        console.warn('Story feed load error:', err);
-    }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 //  LIVE COMPETITION FEED (sidebar animation)
 // ─────────────────────────────────────────────────────────────────────────────
 function _startLiveFeedTicker() {
