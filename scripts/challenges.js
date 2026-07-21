@@ -120,24 +120,29 @@ function renderChallenges(filter = 'all') {
                 <img src="${escHtml(c.image_url)}" alt="${escHtml(c.title)}" class="challenge-image" loading="lazy">
                 <div class="challenge-image-overlay"></div>
 
-                <!-- Badges overlaid on image -->
+                <!-- Badges overlaid on image (top-left) -->
                 <div class="card-overlay-badges">
                     <span class="difficulty-badge difficulty-${c.difficulty}">${c.difficulty}</span>
                     ${c.is_featured ? '<span class="card-featured-tag"><i class="fas fa-star"></i> Featured</span>' : ''}
                 </div>
 
-                <!-- Points pill overlaid bottom-right -->
+                <!-- Submission count pill (bottom-left) -->
+                <span class="card-count-pill">
+                    <i class="fas fa-users"></i> ${c.submission_count}
+                </span>
+
+                <!-- Points pill (bottom-right) -->
                 <span class="card-points-pill">
                     <i class="fas fa-bolt"></i> ${c.min_points}–${c.max_points} pts
                 </span>
             </div>
 
             <!-- Body -->
-            <div class="challenge-body" onclick="openChallenge('${c.id}')" style="cursor:pointer;">
+            <div class="challenge-body" onclick="openChallenge('${c.id}')">
                 <h3 class="challenge-title">${escHtml(c.title)}</h3>
                 <p class="challenge-description">${escHtml(c.description)}</p>
 
-                <!-- Meta row -->
+                <!-- Meta row — three equal columns -->
                 <div class="challenge-meta">
                     <span class="${timeClass}">
                         <i class="fas fa-clock"></i> ${timeLeft}
@@ -146,7 +151,7 @@ function renderChallenges(filter = 'all') {
                         <i class="fas fa-pen-nib"></i> ${c.time_limit} min
                     </span>
                     <span class="meta-item">
-                        <i class="fas fa-users"></i> ${c.submission_count}
+                        <i class="fas fa-align-left"></i> ${c.min_word_count}–${c.max_word_count}w
                     </span>
                 </div>
 
