@@ -103,40 +103,76 @@ function renderChallenges(filter = 'all') {
 
     container.innerHTML = filtered.map(c => {
         const hasSubmitted = mySubmissions.some(s => s.challenge === c.id);
+
+        // Time remaining with urgency class
+        const timeLeft     = getTimeRemaining(c.ends_at);
+        const timeUrgent   = timeLeft.includes('h left') && !timeLeft.includes('d');
+        const timeClass    = timeUrgent ? 'meta-item time-urgent' : 'meta-item';
+
+        // Progress bar — submissions as % of a soft cap (100 feels "full")
+        const progressPct  = Math.min(100, Math.round((c.submission_count / 100) * 100));
+
         return `
-        <article class="challenge-card" role="listitem" data-id="${c.id}">
+        <article class="challenge-card ${hasSubmitted ? 'card-submitted' : ''}" role="listitem" data-id="${c.id}">
+
+            <!-- Image banner -->
             <div class="challenge-image-wrap" onclick="openChallenge('${c.id}')">
                 <img src="${escHtml(c.image_url)}" alt="${escHtml(c.title)}" class="challenge-image" loading="lazy">
                 <div class="challenge-image-overlay"></div>
-                ${c.is_featured ? '<span class="challenge-featured-tag"><i class="fas fa-star"></i> Featured</span>' : ''}
-            </div>
-            <div class="challenge-body" onclick="openChallenge('${c.id}')" style="cursor:pointer;">
-                <div class="challenge-header">
-                    <h3 class="challenge-title">${escHtml(c.title)}</h3>
+
+                <!-- Badges overlaid on image -->
+                <div class="card-overlay-badges">
                     <span class="difficulty-badge difficulty-${c.difficulty}">${c.difficulty}</span>
+                    ${c.is_featured ? '<span class="card-featured-tag"><i class="fas fa-star"></i> Featured</span>' : ''}
                 </div>
+
+                <!-- Points pill overlaid bottom-right -->
+                <span class="card-points-pill">
+                    <i class="fas fa-bolt"></i> ${c.min_points}–${c.max_points} pts
+                </span>
+            </div>
+
+            <!-- Body -->
+            <div class="challenge-body" onclick="openChallenge('${c.id}')" style="cursor:pointer;">
+                <h3 class="challenge-title">${escHtml(c.title)}</h3>
                 <p class="challenge-description">${escHtml(c.description)}</p>
+
+                <!-- Meta row -->
                 <div class="challenge-meta">
-                    <span class="meta-item"><i class="fas fa-clock"></i> ${c.time_limit} min</span>
-                    <span class="meta-item"><i class="fas fa-calendar-alt"></i> ${getTimeRemaining(c.ends_at)}</span>
-                    <span class="meta-item"><i class="fas fa-users"></i> ${c.submission_count} entries</span>
+                    <span class="${timeClass}">
+                        <i class="fas fa-clock"></i> ${timeLeft}
+                    </span>
+                    <span class="meta-item">
+                        <i class="fas fa-pen-nib"></i> ${c.time_limit} min
+                    </span>
+                    <span class="meta-item">
+                        <i class="fas fa-users"></i> ${c.submission_count}
+                    </span>
+                </div>
+
+                <!-- Participation progress bar -->
+                <div class="card-progress-wrap">
+                    <div class="card-progress-bar" style="width:${progressPct}%"></div>
                 </div>
             </div>
+
+            <!-- Footer actions -->
             <div class="challenge-footer">
-                <span class="reward-badge"><i class="fas fa-star"></i> ${c.min_points}–${c.max_points} pts</span>
-                <div class="challenge-buttons">
-                    <button class="btn-secondary" data-action="details" data-id="${c.id}">
-                        <i class="fas fa-info-circle"></i> Details
-                    </button>
-                    <button class="btn-participate" data-action="participate" data-id="${c.id}" ${hasSubmitted ? 'disabled' : ''}>
-                        ${hasSubmitted ? '<i class="fas fa-check"></i> Submitted' : '<i class="fas fa-play"></i> Participate'}
-                    </button>
-                </div>
+                <button class="btn-card-details" data-action="details" data-id="${c.id}">
+                    <i class="fas fa-info-circle"></i> Details
+                </button>
+                <button class="btn-card-participate ${hasSubmitted ? 'btn-submitted' : ''}"
+                        data-action="participate" data-id="${c.id}"
+                        ${hasSubmitted ? 'disabled' : ''}>
+                    ${hasSubmitted
+                        ? '<i class="fas fa-check-circle"></i> Submitted'
+                        : '<i class="fas fa-play"></i> Participate'}
+                </button>
             </div>
         </article>`;
     }).join('');
 
-    // Attach button listeners after render — avoids inline handler + stopPropagation issues
+    // Attach button listeners after render
     container.querySelectorAll('[data-action="details"]').forEach(btn => {
         btn.addEventListener('click', e => { e.stopPropagation(); viewChallengeDetails(btn.dataset.id); });
     });
