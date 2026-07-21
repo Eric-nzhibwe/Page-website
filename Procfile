@@ -1,1 +1,1 @@
-web: cd django_backend && daphne artx_platform.asgi:application --port $PORT --bind 0.0.0.0
+web: cd django_backend && daphne -p $PORT -b 0.0.0.0 --proxy-headers artx_platform.asgi:application
