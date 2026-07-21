@@ -88,20 +88,43 @@ async function loadMySubmissions() {
 }
 
 // ── Filter ────────────────────────────────────────────────────────────────────
+let _activeFilter = 'all';
+let _searchQuery  = '';
+
 function filterChallenges(difficulty, event) {
     document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
     if (event && event.target) event.target.classList.add('active');
-    renderChallenges(difficulty);
+    _activeFilter = difficulty;
+    renderChallenges();
+}
+
+function searchChallenges(query) {
+    _searchQuery = query.toLowerCase().trim();
+    renderChallenges();
 }
 
 // ── Render grid ───────────────────────────────────────────────────────────────
-function renderChallenges(filter = 'all') {
+function renderChallenges() {
     const container = document.getElementById('challengesGrid');
-    const filtered  = filter === 'all' ? challenges : challenges.filter(c => c.difficulty === filter);
+    let filtered = _activeFilter === 'all' ? challenges : challenges.filter(c => c.difficulty === _activeFilter);
+    if (_searchQuery) {
+        filtered = filtered.filter(c =>
+            c.title.toLowerCase().includes(_searchQuery) ||
+            (c.description || '').toLowerCase().includes(_searchQuery)
+        );
+    }
+
+    // Populate hero stats
+    const setHero = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+    setHero('statActiveChallenges', challenges.length);
+    setHero('statTotalPlayers', challenges.reduce((s, c) => s + (c.submission_count || 0), 0).toLocaleString());
+    setHero('statMySubmissions', mySubmissions.length);
+    const raw = localStorage.getItem('artxUser') || localStorage.getItem('artCurrentUser');
+    try { const u = JSON.parse(raw || '{}'); setHero('statMyPrestige', (u.prestige_points ?? 0).toLocaleString()); } catch { /* silent */ }
 
     if (filtered.length === 0) {
         container.innerHTML = `<div class="empty-state"><i class="fas fa-trophy"></i>
-            <p>${filter === 'all' ? 'No challenges available right now.' : `No ${filter} challenges right now.`}</p></div>`;
+            <p>${_searchQuery ? `No challenges matching "${escHtml(_searchQuery)}".` : _activeFilter === 'all' ? 'No challenges available right now.' : `No ${_activeFilter} challenges right now.`}</p></div>`;
         return;
     }
 
@@ -645,6 +668,7 @@ function formatTime(iso) { return iso ? new Date(iso).toLocaleTimeString(undefin
 // ── Global exports ────────────────────────────────────────────────────────────
 window.openMessenger         = openMessenger;
 window.showUploadModal       = showUploadModal;
+window.searchChallenges      = searchChallenges;
 window.closeUploadModal      = closeUploadModal;
 window.switchUploadTab       = switchUploadTab;
 window.previewUploadImage    = previewUploadImage;

@@ -114,16 +114,72 @@
 <!-- ═══════════════════════ PAGE CONTENT ═══════════════════════ -->
 <div class="container">
 
+    <!-- ── HERO BANNER ── -->
+    <div class="ch-hero">
+        <div class="ch-hero-glow" aria-hidden="true"></div>
+        <div class="ch-hero-body">
+            <div class="ch-hero-text">
+                <span class="ch-hero-eyebrow"><i class="fas fa-bolt"></i> Live Now</span>
+                <h1 class="ch-hero-title">Compete. Create. <span class="ch-hero-highlight">Win.</span></h1>
+                <p class="ch-hero-sub">Interpret images, beat the clock, and climb the leaderboard. Every challenge is a chance to earn prestige and cash rewards.</p>
+                <div class="ch-hero-actions">
+                    <button class="ch-btn-primary" onclick="document.getElementById('challengesGrid').scrollIntoView({behavior:'smooth'})">
+                        <i class="fas fa-play"></i> Browse Challenges
+                    </button>
+                    <button class="ch-btn-secondary" onclick="showUploadModal(); switchUploadTab('challenge');">
+                        <i class="fas fa-plus"></i> Create One
+                    </button>
+                </div>
+            </div>
+            <div class="ch-hero-stats">
+                <div class="ch-stat-card">
+                    <i class="fas fa-fire"></i>
+                    <div class="ch-stat-body">
+                        <span class="ch-stat-val" id="statActiveChallenges">—</span>
+                        <span class="ch-stat-key">Active</span>
+                    </div>
+                </div>
+                <div class="ch-stat-card">
+                    <i class="fas fa-users"></i>
+                    <div class="ch-stat-body">
+                        <span class="ch-stat-val" id="statTotalPlayers">—</span>
+                        <span class="ch-stat-key">Players</span>
+                    </div>
+                </div>
+                <div class="ch-stat-card">
+                    <i class="fas fa-trophy"></i>
+                    <div class="ch-stat-body">
+                        <span class="ch-stat-val" id="statMySubmissions">—</span>
+                        <span class="ch-stat-key">My Submissions</span>
+                    </div>
+                </div>
+                <div class="ch-stat-card">
+                    <i class="fas fa-star"></i>
+                    <div class="ch-stat-body">
+                        <span class="ch-stat-val" id="statMyPrestige">—</span>
+                        <span class="ch-stat-key">My Prestige</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Challenges Grid -->
     <section class="challenges-section">
         <div class="section-header">
             <h1><i class="fas fa-trophy"></i> Active Challenges</h1>
-            <div class="filters" role="group" aria-label="Filter by difficulty">
-                <button class="filter-btn active" onclick="filterChallenges('all', event)">All</button>
-                <button class="filter-btn" onclick="filterChallenges('easy', event)">Easy</button>
-                <button class="filter-btn" onclick="filterChallenges('medium', event)">Medium</button>
-                <button class="filter-btn" onclick="filterChallenges('hard', event)">Hard</button>
-                <button class="filter-btn" onclick="filterChallenges('expert', event)">Expert</button>
+            <div class="ch-filter-row">
+                <div class="ch-search-wrap">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="challengeSearch" placeholder="Search challenges…" oninput="searchChallenges(this.value)">
+                </div>
+                <div class="filters" role="group" aria-label="Filter by difficulty">
+                    <button class="filter-btn active" onclick="filterChallenges('all', event)">All</button>
+                    <button class="filter-btn" onclick="filterChallenges('easy', event)">Easy</button>
+                    <button class="filter-btn" onclick="filterChallenges('medium', event)">Medium</button>
+                    <button class="filter-btn" onclick="filterChallenges('hard', event)">Hard</button>
+                    <button class="filter-btn" onclick="filterChallenges('expert', event)">Expert</button>
+                </div>
             </div>
         </div>
         <div class="challenges-grid" id="challengesGrid" role="list"></div>
