@@ -10,7 +10,7 @@ from .views import (
 )
 
 router = DefaultRouter()
-router.register(r'challenges', ChallengeViewSet, basename='challenge')
+router.register(r'', ChallengeViewSet, basename='challenge')
 router.register(r'submissions', ChallengeSubmissionViewSet, basename='submission')
 router.register(r'leaderboards', ChallengeLeaderboardViewSet, basename='leaderboard')
 router.register(r'activities', ChallengeActivityViewSet, basename='activity')

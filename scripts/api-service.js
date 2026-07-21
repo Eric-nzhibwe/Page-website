@@ -127,7 +127,7 @@ class APIService {
      * Get active challenges created by users the current user follows
      */
     getFollowingChallenges() {
-        return this.get('/challenges/challenges/following/');
+        return this.get('/challenges/following/');
     }
 
     /**
@@ -290,7 +290,7 @@ class APIService {
      * Create a new challenge with image upload (multipart/form-data).
      */
     createChallenge(formData) {
-        return this.request('/challenges/challenges/', {
+        return this.request('/challenges/', {
             method: 'POST',
             body: formData,
             headers: this.token ? { 'Authorization': `Token ${this.token}` } : {},
