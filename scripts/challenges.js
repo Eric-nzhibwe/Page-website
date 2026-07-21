@@ -104,13 +104,13 @@ function renderChallenges(filter = 'all') {
     container.innerHTML = filtered.map(c => {
         const hasSubmitted = mySubmissions.some(s => s.challenge === c.id);
         return `
-        <article class="challenge-card" role="listitem" onclick="openChallenge('${c.id}')">
-            <div class="challenge-image-wrap">
+        <article class="challenge-card" role="listitem" data-id="${c.id}">
+            <div class="challenge-image-wrap" onclick="openChallenge('${c.id}')">
                 <img src="${escHtml(c.image_url)}" alt="${escHtml(c.title)}" class="challenge-image" loading="lazy">
                 <div class="challenge-image-overlay"></div>
                 ${c.is_featured ? '<span class="challenge-featured-tag"><i class="fas fa-star"></i> Featured</span>' : ''}
             </div>
-            <div class="challenge-body">
+            <div class="challenge-body" onclick="openChallenge('${c.id}')" style="cursor:pointer;">
                 <div class="challenge-header">
                     <h3 class="challenge-title">${escHtml(c.title)}</h3>
                     <span class="difficulty-badge difficulty-${c.difficulty}">${c.difficulty}</span>
@@ -125,17 +125,24 @@ function renderChallenges(filter = 'all') {
             <div class="challenge-footer">
                 <span class="reward-badge"><i class="fas fa-star"></i> ${c.min_points}–${c.max_points} pts</span>
                 <div class="challenge-buttons">
-                    <button class="btn-secondary" onclick="viewChallengeDetails('${c.id}'); event.stopPropagation();">
+                    <button class="btn-secondary" data-action="details" data-id="${c.id}">
                         <i class="fas fa-info-circle"></i> Details
                     </button>
-                    <button class="btn-participate" ${hasSubmitted ? 'disabled' : ''}
-                        onclick="openChallenge('${c.id}'); event.stopPropagation();">
+                    <button class="btn-participate" data-action="participate" data-id="${c.id}" ${hasSubmitted ? 'disabled' : ''}>
                         ${hasSubmitted ? '<i class="fas fa-check"></i> Submitted' : '<i class="fas fa-play"></i> Participate'}
                     </button>
                 </div>
             </div>
         </article>`;
     }).join('');
+
+    // Attach button listeners after render — avoids inline handler + stopPropagation issues
+    container.querySelectorAll('[data-action="details"]').forEach(btn => {
+        btn.addEventListener('click', e => { e.stopPropagation(); viewChallengeDetails(btn.dataset.id); });
+    });
+    container.querySelectorAll('[data-action="participate"]:not([disabled])').forEach(btn => {
+        btn.addEventListener('click', e => { e.stopPropagation(); openChallenge(btn.dataset.id); });
+    });
 }
 
 function getTimeRemaining(endDate) {
@@ -301,11 +308,14 @@ async function viewChallengeDetails(challengeId) {
     document.getElementById('challengeContent').innerHTML =
         `<div class="loading-state" style="grid-column:unset;"><div class="spinner"></div><p>Loading details…</p></div>`;
     try {
-        const [challenge, stats, leaderboard] = await Promise.all([
+        const [challenge, leaderboard] = await Promise.all([
             apiService.getChallenge(challengeId),
-            apiService.getChallengeStats(challengeId),
             apiService.getChallengeLeaderboard(challengeId),
         ]);
+        // Stats may not exist yet for brand-new challenges — fetch separately and default gracefully
+        let stats = { unique_participants: 0, average_score: 0 };
+        try { stats = await apiService.getChallengeStats(challengeId); } catch (_) { /* new challenge, no stats yet */ }
+
         const hasSubmitted = mySubmissions.some(s => s.challenge === challengeId);
         const rules = (challenge.submission_rules || []).map(r => `<li>${escHtml(r)}</li>`).join('');
 
