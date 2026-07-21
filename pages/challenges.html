@@ -123,7 +123,7 @@
                 <h1 class="ch-hero-title">Compete. Create. <span class="ch-hero-highlight">Win.</span></h1>
                 <p class="ch-hero-sub">Interpret images, beat the clock, and climb the leaderboard. Every challenge is a chance to earn prestige and cash rewards.</p>
                 <div class="ch-hero-actions">
-                    <button class="ch-btn-primary" style="border: 1px soliddarkolivegreen;" onclick="document.getElementById('challengesGrid').scrollIntoView({behavior:'smooth'})">
+                    <button class="ch-btn-primary" style="border-color: 1px soliddarkolivegreen;" onclick="document.getElementById('challengesGrid').scrollIntoView({behavior:'smooth'})">
                         <i class="fas fa-play"></i> Browse Challenges
                     </button>
                     <button class="ch-btn-secondary" onclick="showUploadModal(); switchUploadTab('challenge');">
@@ -271,82 +271,259 @@
 
         <!-- Create Challenge Tab -->
         <div id="challengeTab" class="tab-content">
+
+            <!-- Step Indicator -->
+            <div class="cc-steps">
+                <div class="cc-step active" id="ccStep1">
+                    <div class="cc-step-dot">1</div>
+                    <span>Basics</span>
+                </div>
+                <div class="cc-step-line"></div>
+                <div class="cc-step" id="ccStep2">
+                    <div class="cc-step-dot">2</div>
+                    <span>Rules & Scoring</span>
+                </div>
+                <div class="cc-step-line"></div>
+                <div class="cc-step" id="ccStep3">
+                    <div class="cc-step-dot">3</div>
+                    <span>Media & Review</span>
+                </div>
+            </div>
+
             <form id="createChallengeForm" onsubmit="createChallenge(event)" novalidate>
-                <div class="form-group">
-                    <label for="challengeTitle">Challenge Title</label>
-                    <input type="text" id="challengeTitle" required placeholder="e.g., The Forgotten Garden">
-                </div>
-                <div class="form-group">
-                    <label for="challengeDescription">Description</label>
-                    <textarea id="challengeDescription" required rows="3" placeholder="Describe what participants should interpret..."></textarea>
-                </div>
-                <div class="form-row">
+
+                <!-- ── STEP 1: BASICS ── -->
+                <div class="cc-page active" id="ccPage1">
                     <div class="form-group">
-                        <label for="challengeDifficulty">Difficulty</label>
-                        <select id="challengeDifficulty" required>
-                            <option value="easy">Easy</option>
-                            <option value="medium" selected>Medium</option>
-                            <option value="hard">Hard</option>
-                            <option value="expert">Expert</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="challengeTimeLimit">Time Limit (minutes)</label>
-                        <input type="number" id="challengeTimeLimit" required min="5" max="120" value="20">
-                    </div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="challengeMinWords">Min Words</label>
-                        <input type="number" id="challengeMinWords" required min="10" value="50">
-                    </div>
-                    <div class="form-group">
-                        <label for="challengeMaxWords">Max Words</label>
-                        <input type="number" id="challengeMaxWords" required min="50" value="200">
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label for="challengeRules">Submission Rules <small style="color:var(--text-muted);text-transform:none;">(one per line)</small></label>
-                    <textarea id="challengeRules" required rows="4" placeholder="Rule 1&#10;Rule 2&#10;Rule 3"></textarea>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="challengeMinPoints">Min Points</label>
-                        <input type="number" id="challengeMinPoints" required min="5" value="10">
-                    </div>
-                    <div class="form-group">
-                        <label for="challengeMaxPoints">Max Points</label>
-                        <input type="number" id="challengeMaxPoints" required min="10" value="50">
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label>Scoring Weights <small style="color:var(--text-muted);text-transform:none;">(must sum to 100%)</small></label>
-                    <div class="scoring-weights">
-                        <div class="weight-input">
-                            <label for="creativityWeight">Creativity %</label>
-                            <input type="number" id="creativityWeight" required min="0" max="100" value="40" oninput="validateWeights()">
-                        </div>
-                        <div class="weight-input">
-                            <label for="relevanceWeight">Relevance %</label>
-                            <input type="number" id="relevanceWeight" required min="0" max="100" value="35" oninput="validateWeights()">
-                        </div>
-                        <div class="weight-input">
-                            <label for="detailWeight">Detail %</label>
-                            <input type="number" id="detailWeight" required min="0" max="100" value="25" oninput="validateWeights()">
+                        <label for="challengeTitle">Challenge Title <span class="cc-required">*</span></label>
+                        <input type="text" id="challengeTitle" required maxlength="80"
+                            placeholder="e.g., The Forgotten Garden"
+                            oninput="ccCharCount(this,'challengeTitleCount',80); ccClearError('challengeTitle')">
+                        <div class="cc-field-meta">
+                            <span class="cc-error" id="challengeTitleErr"></span>
+                            <span class="cc-count" id="challengeTitleCount">0 / 80</span>
                         </div>
                     </div>
-                    <p id="weightTotal" style="color:var(--accent-green);font-size:13px;margin-top:6px;font-weight:600;">Total: 100% ✓</p>
-                </div>
-                <div class="form-group">
-                    <label for="challengeImage">Challenge Image</label>
-                    <input type="file" id="challengeImage" accept="image/*" required onchange="previewChallengeImage(event)">
-                    <div id="challengeImagePreview" class="image-preview">
-                        <span><i class="fas fa-image"></i> Preview will appear here</span>
+
+                    <div class="form-group">
+                        <label for="challengeDescription">Description <span class="cc-required">*</span></label>
+                        <textarea id="challengeDescription" required rows="4" maxlength="500"
+                            placeholder="Describe what participants should interpret or create…"
+                            oninput="ccCharCount(this,'challengeDescCount',500); ccClearError('challengeDescription')"></textarea>
+                        <div class="cc-field-meta">
+                            <span class="cc-error" id="challengeDescErr"></span>
+                            <span class="cc-count" id="challengeDescCount">0 / 500</span>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="challengeDifficulty">Difficulty <span class="cc-required">*</span></label>
+                            <select id="challengeDifficulty" required>
+                                <option value="easy">🟢 Easy</option>
+                                <option value="medium" selected>🟡 Medium</option>
+                                <option value="hard">🔴 Hard</option>
+                                <option value="expert">🟣 Expert</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="challengeTimeLimit">Time Limit (minutes) <span class="cc-required">*</span></label>
+                            <input type="number" id="challengeTimeLimit" required min="5" max="120" value="20"
+                                oninput="ccClearError('challengeTimeLimit')">
+                            <span class="cc-error" id="challengeTimeLimitErr"></span>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Challenge Duration <span class="cc-required">*</span></label>
+                        <div class="cc-duration-btns" id="ccDurationBtns">
+                            <button type="button" class="cc-dur-btn" data-days="1" onclick="ccSetDuration(1)">1 Day</button>
+                            <button type="button" class="cc-dur-btn" data-days="3" onclick="ccSetDuration(3)">3 Days</button>
+                            <button type="button" class="cc-dur-btn active" data-days="7" onclick="ccSetDuration(7)">7 Days</button>
+                            <button type="button" class="cc-dur-btn" data-days="14" onclick="ccSetDuration(14)">14 Days</button>
+                            <button type="button" class="cc-dur-btn" data-days="0" onclick="ccSetDuration(0)">Custom</button>
+                        </div>
+                        <input type="datetime-local" id="challengeEndsAt" class="cc-custom-date" style="display:none"
+                            oninput="ccClearError('challengeEndsAt')">
+                        <span class="cc-error" id="challengeEndsAtErr"></span>
+                        <p class="cc-hint" id="ccDurationHint">Ends <strong id="ccDurationLabel">in 7 days</strong></p>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="challengeMinPoints">Min Points <span class="cc-required">*</span></label>
+                            <input type="number" id="challengeMinPoints" required min="5" value="10"
+                                oninput="ccClearError('challengeMinPoints')">
+                            <span class="cc-error" id="challengeMinPointsErr"></span>
+                        </div>
+                        <div class="form-group">
+                            <label for="challengeMaxPoints">Max Points <span class="cc-required">*</span></label>
+                            <input type="number" id="challengeMaxPoints" required min="10" value="50"
+                                oninput="ccClearError('challengeMaxPoints')">
+                            <span class="cc-error" id="challengeMaxPointsErr"></span>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="challengePrize">
+                            Cash Prize (ZMW) <span class="cc-optional">optional</span>
+                        </label>
+                        <div class="cc-prize-input">
+                            <span class="cc-prize-prefix">K</span>
+                            <input type="number" id="challengePrize" min="0" step="0.01" value="0"
+                                placeholder="0.00">
+                        </div>
+                        <p class="cc-hint">Leave at 0 for prestige-only rewards.</p>
+                    </div>
+
+                    <div class="cc-step-nav">
+                        <span></span>
+                        <button type="button" class="cc-btn-next" onclick="ccGoStep(2)">
+                            Next: Rules & Scoring <i class="fas fa-arrow-right"></i>
+                        </button>
                     </div>
                 </div>
-                <button type="submit" class="btn-primary btn-large">
-                    <i class="fas fa-bolt"></i> Create Challenge
-                </button>
+
+                <!-- ── STEP 2: RULES & SCORING ── -->
+                <div class="cc-page" id="ccPage2">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="challengeMinWords">Min Words <span class="cc-required">*</span></label>
+                            <input type="number" id="challengeMinWords" required min="10" value="50"
+                                oninput="ccClearError('challengeMinWords')">
+                            <span class="cc-error" id="challengeMinWordsErr"></span>
+                        </div>
+                        <div class="form-group">
+                            <label for="challengeMaxWords">Max Words <span class="cc-required">*</span></label>
+                            <input type="number" id="challengeMaxWords" required min="50" value="200"
+                                oninput="ccClearError('challengeMaxWords')">
+                            <span class="cc-error" id="challengeMaxWordsErr"></span>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="challengeRules">
+                            Submission Rules <span class="cc-required">*</span>
+                            <small style="color:var(--text-muted);text-transform:none;font-weight:400;">(one per line)</small>
+                        </label>
+                        <textarea id="challengeRules" required rows="5"
+                            placeholder="Rule 1&#10;Rule 2&#10;Rule 3"
+                            oninput="ccRuleCount(); ccClearError('challengeRules')"></textarea>
+                        <div class="cc-field-meta">
+                            <span class="cc-error" id="challengeRulesErr"></span>
+                            <span class="cc-count" id="ccRuleCountEl">0 rules</span>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <div class="cc-weights-header">
+                            <label>Scoring Weights <span class="cc-required">*</span>
+                                <small style="color:var(--text-muted);text-transform:none;font-weight:400;">(must sum to 100%)</small>
+                            </label>
+                            <button type="button" class="cc-auto-balance" onclick="ccAutoBalance()">
+                                <i class="fas fa-sliders-h"></i> Auto-balance
+                            </button>
+                        </div>
+                        <div class="scoring-weights">
+                            <div class="weight-input">
+                                <label for="creativityWeight">Creativity %</label>
+                                <input type="number" id="creativityWeight" required min="0" max="100" value="40"
+                                    oninput="validateWeights()">
+                            </div>
+                            <div class="weight-input">
+                                <label for="relevanceWeight">Relevance %</label>
+                                <input type="number" id="relevanceWeight" required min="0" max="100" value="35"
+                                    oninput="validateWeights()">
+                            </div>
+                            <div class="weight-input">
+                                <label for="detailWeight">Detail %</label>
+                                <input type="number" id="detailWeight" required min="0" max="100" value="25"
+                                    oninput="validateWeights()">
+                            </div>
+                        </div>
+
+                        <!-- Visual weight bars -->
+                        <div class="cc-weight-bars">
+                            <div class="cc-weight-bar-row">
+                                <span>Creativity</span>
+                                <div class="cc-weight-track"><div class="cc-weight-fill" id="barCreativity" style="width:40%;background:#667eea;"></div></div>
+                            </div>
+                            <div class="cc-weight-bar-row">
+                                <span>Relevance</span>
+                                <div class="cc-weight-track"><div class="cc-weight-fill" id="barRelevance" style="width:35%;background:#764ba2;"></div></div>
+                            </div>
+                            <div class="cc-weight-bar-row">
+                                <span>Detail</span>
+                                <div class="cc-weight-track"><div class="cc-weight-fill" id="barDetail" style="width:25%;background:#f093fb;"></div></div>
+                            </div>
+                        </div>
+                        <p id="weightTotal" style="color:var(--accent-green);font-size:13px;margin-top:8px;font-weight:600;">Total: 100% ✓</p>
+                    </div>
+
+                    <div class="cc-step-nav">
+                        <button type="button" class="cc-btn-back" onclick="ccGoStep(1)">
+                            <i class="fas fa-arrow-left"></i> Back
+                        </button>
+                        <button type="button" class="cc-btn-next" onclick="ccGoStep(3)">
+                            Next: Media & Review <i class="fas fa-arrow-right"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ── STEP 3: MEDIA & REVIEW ── -->
+                <div class="cc-page" id="ccPage3">
+                    <div class="form-group">
+                        <label for="challengeImage">Challenge Image <span class="cc-required">*</span></label>
+                        <div class="cc-image-drop" id="ccImageDrop"
+                            onclick="document.getElementById('challengeImage').click()"
+                            ondragover="ccDragOver(event)" ondragleave="ccDragLeave(event)" ondrop="ccDrop(event)">
+                            <div id="ccDropPlaceholder">
+                                <i class="fas fa-cloud-upload-alt"></i>
+                                <p>Click or drag & drop an image</p>
+                                <span>JPG, PNG, WEBP — max 5 MB</span>
+                            </div>
+                            <div id="challengeImagePreview" class="cc-img-preview-inner"></div>
+                        </div>
+                        <input type="file" id="challengeImage" accept="image/*" style="display:none"
+                            onchange="previewChallengeImage(event)">
+                        <span class="cc-error" id="challengeImageErr"></span>
+                    </div>
+
+                    <!-- Review summary card -->
+                    <div class="cc-review">
+                        <h4 class="cc-review-title"><i class="fas fa-eye"></i> Preview</h4>
+                        <div class="cc-review-card">
+                            <div class="cc-preview-img-wrap" id="ccPreviewImgWrap">
+                                <div class="cc-preview-img-placeholder"><i class="fas fa-image"></i></div>
+                            </div>
+                            <div class="cc-preview-body">
+                                <div class="cc-preview-badges">
+                                    <span class="difficulty-badge difficulty-medium" id="ccPreviewDiff">medium</span>
+                                    <span class="card-points-pill" id="ccPreviewPts" style="position:static;backdrop-filter:none;">
+                                        <i class="fas fa-bolt"></i> 10–50 pts
+                                    </span>
+                                </div>
+                                <h3 class="cc-preview-name" id="ccPreviewTitle">Challenge Title</h3>
+                                <p class="cc-preview-desc" id="ccPreviewDesc">Your description will appear here.</p>
+                                <div class="cc-preview-meta">
+                                    <span><i class="fas fa-clock"></i> <span id="ccPreviewTime">20</span> min</span>
+                                    <span><i class="fas fa-align-left"></i> <span id="ccPreviewWords">50–200</span>w</span>
+                                    <span id="ccPreviewPrize" style="display:none"><i class="fas fa-coins"></i> K<span id="ccPreviewPrizeVal">0</span></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="cc-step-nav">
+                        <button type="button" class="cc-btn-back" onclick="ccGoStep(2)">
+                            <i class="fas fa-arrow-left"></i> Back
+                        </button>
+                        <button type="submit" class="btn-primary btn-large cc-submit-btn" id="ccSubmitBtn">
+                            <i class="fas fa-bolt"></i> Create Challenge
+                        </button>
+                    </div>
+                </div>
+
             </form>
         </div>
     </div>
