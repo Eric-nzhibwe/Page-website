@@ -7,6 +7,7 @@ let currentUserId    = null;
 let player           = null;
 let challenges       = [];
 let mySubmissions    = [];
+let myChallenges     = [];
 let currentChallenge = null;
 let challengeTimer   = null;
 let challengeStartTime = null;
@@ -17,9 +18,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!checkAuth()) { window.location.href = 'auth.html'; return; }
     loadPlayerData();
     initializeRealtimeUpdates();
-    await Promise.all([loadChallenges(), loadMySubmissions()]);
+    await Promise.all([loadChallenges(), loadMySubmissions(), loadMyChallenges()]);
     renderChallenges();
     renderMySubmissions();
+    renderMyChallenges();
 });
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
@@ -85,6 +87,13 @@ async function loadMySubmissions() {
         const data = await apiService.getMySubmissions();
         mySubmissions = Array.isArray(data) ? data : (data.results || []);
     } catch (e) { console.error('loadMySubmissions:', e); mySubmissions = []; }
+}
+
+async function loadMyChallenges() {
+    try {
+        const data = await apiService.getMyChallenges();
+        myChallenges = Array.isArray(data) ? data : (data.results || []);
+    } catch (e) { console.error('loadMyChallenges:', e); myChallenges = []; }
 }
 
 // ── Filter ────────────────────────────────────────────────────────────────────
@@ -885,14 +894,106 @@ async function createChallenge(event) {
         fd.append('ends_at',           endsAt);
         fd.append('status',            'draft');
 
-        await apiService.createChallenge(fd);
-        showToast('Challenge submitted! An admin will review and activate it.', 'success');
+        const createdChallenge = await apiService.createChallenge(fd);
+        showToast('Challenge created! Publishing it now…', 'info');
+
+        // Immediately publish — the creator owns it, no admin needed
+        try {
+            await apiService.publishChallenge(createdChallenge.id);
+            showToast('Challenge is now live! 🎉', 'success');
+        } catch (pubErr) {
+            showToast('Challenge saved. Go to My Challenges to publish it.', 'info');
+        }
+
         closeUploadModal();
-        await loadChallenges(); renderChallenges();
+        await Promise.all([loadChallenges(), loadMyChallenges()]);
+        renderChallenges();
+        renderMyChallenges();
     } catch (e) {
         showToast(`Failed to create: ${e.message}`, 'error');
     } finally {
         if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-bolt"></i> Create Challenge'; }
+    }
+}
+
+// ── My Challenges (creator view) ───────────────────────────────────────────────
+function renderMyChallenges() {
+    const container = document.getElementById('myChallengesList');
+    if (!container) return;
+
+    if (!myChallenges.length) {
+        container.innerHTML = `<div class="empty-state" style="grid-column:unset;">
+            <i class="fas fa-trophy"></i>
+            <p>You haven't created any challenges yet.</p>
+        </div>`;
+        return;
+    }
+
+    const statusMeta = {
+        active:  { label: 'Live',   cls: 'mc-status-active',  icon: 'circle' },
+        draft:   { label: 'Draft',  cls: 'mc-status-draft',   icon: 'pen' },
+        paused:  { label: 'Paused', cls: 'mc-status-paused',  icon: 'pause-circle' },
+        ended:   { label: 'Ended',  cls: 'mc-status-ended',   icon: 'stop-circle' },
+    };
+
+    container.innerHTML = myChallenges.map(c => {
+        const sm = statusMeta[c.status] || statusMeta.draft;
+        const canPublish   = c.status === 'draft'  || c.status === 'paused';
+        const canUnpublish = c.status === 'active';
+
+        return `<div class="mc-item" data-id="${c.id}">
+            <div class="mc-img-wrap">
+                <img src="${escHtml(c.image_url)}" alt="${escHtml(c.title)}" loading="lazy">
+                <span class="difficulty-badge difficulty-${c.difficulty}" style="position:absolute;top:8px;left:8px;">${c.difficulty}</span>
+            </div>
+            <div class="mc-body">
+                <div class="mc-top">
+                    <h4 class="mc-title">${escHtml(c.title)}</h4>
+                    <span class="mc-status ${sm.cls}">
+                        <i class="fas fa-${sm.icon}"></i> ${sm.label}
+                    </span>
+                </div>
+                <p class="mc-desc">${escHtml(c.description).slice(0, 100)}${c.description.length > 100 ? '…' : ''}</p>
+                <div class="mc-meta">
+                    <span><i class="fas fa-users"></i> ${c.submission_count} submissions</span>
+                    <span><i class="fas fa-bolt"></i> ${c.min_points}–${c.max_points} pts</span>
+                    <span><i class="fas fa-clock"></i> ${getTimeRemaining(c.ends_at)}</span>
+                </div>
+            </div>
+            <div class="mc-actions">
+                ${canPublish ? `
+                <button class="mc-btn mc-btn-publish" onclick="toggleChallengePublish('${c.id}', 'publish')">
+                    <i class="fas fa-rocket"></i> Publish
+                </button>` : ''}
+                ${canUnpublish ? `
+                <button class="mc-btn mc-btn-pause" onclick="toggleChallengePublish('${c.id}', 'unpublish')">
+                    <i class="fas fa-pause"></i> Pause
+                </button>` : ''}
+                ${c.status === 'ended' ? `
+                <span class="mc-ended-label"><i class="fas fa-check-circle"></i> Ended</span>` : ''}
+            </div>
+        </div>`;
+    }).join('');
+}
+
+async function toggleChallengePublish(challengeId, action) {
+    const btn = document.querySelector(`.mc-item[data-id="${challengeId}"] .mc-btn`);
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; }
+
+    try {
+        if (action === 'publish') {
+            await apiService.publishChallenge(challengeId);
+            showToast('Challenge is now live! 🚀', 'success');
+        } else {
+            await apiService.unpublishChallenge(challengeId);
+            showToast('Challenge paused.', 'info');
+        }
+        await Promise.all([loadChallenges(), loadMyChallenges()]);
+        renderChallenges();
+        renderMyChallenges();
+    } catch (e) {
+        showToast(e.message || 'Action failed. Try again.', 'error');
+        if (btn) { btn.disabled = false; btn.innerHTML = action === 'publish' ? '<i class="fas fa-rocket"></i> Publish' : '<i class="fas fa-pause"></i> Pause'; }
     }
 }
 
@@ -945,6 +1046,7 @@ window.viewChallengeDetails  = viewChallengeDetails;
 window.closeChallengeModal   = closeChallengeModal;
 window.updateWordCount       = updateWordCount;
 window.submitInterpretation  = submitInterpretation;
+window.toggleChallengePublish = toggleChallengePublish;
 // Wizard helpers
 window.ccGoStep              = ccGoStep;
 window.ccSetDuration         = ccSetDuration;

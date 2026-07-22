@@ -298,6 +298,33 @@ class APIService {
         });
     }
 
+    /**
+     * Publish (activate) a draft challenge. Only the creator can do this.
+     */
+    publishChallenge(challengeId) {
+        return this.request(`/challenges/${challengeId}/publish/`, {
+            method: 'POST',
+            headers: this.token ? { 'Authorization': `Token ${this.token}`, 'Content-Type': 'application/json' } : {},
+        });
+    }
+
+    /**
+     * Unpublish (pause) an active challenge. Only the creator can do this.
+     */
+    unpublishChallenge(challengeId) {
+        return this.request(`/challenges/${challengeId}/unpublish/`, {
+            method: 'POST',
+            headers: this.token ? { 'Authorization': `Token ${this.token}`, 'Content-Type': 'application/json' } : {},
+        });
+    }
+
+    /**
+     * Get all challenges created by the current user (drafts + active + paused).
+     */
+    getMyChallenges() {
+        return this.get('/challenges/my_challenges/');
+    }
+
     // ==================== CONTENT UPLOAD ====================
 
     /**

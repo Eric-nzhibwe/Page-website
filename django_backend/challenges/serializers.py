@@ -70,6 +70,7 @@ class ChallengeCreateSerializer(serializers.ModelSerializer):
     Accepts multipart/form-data for challenge creation.
     Saves the uploaded image to media storage and stores the resulting URL.
     submission_rules is sent as a JSON-encoded string from the frontend form.
+    Challenges are always created as 'draft'; the creator publishes separately.
     """
     image = serializers.ImageField(write_only=True, required=True)
     submission_rules = serializers.CharField(required=True)
@@ -80,8 +81,10 @@ class ChallengeCreateSerializer(serializers.ModelSerializer):
             'title', 'description', 'image', 'difficulty', 'time_limit',
             'min_word_count', 'max_word_count', 'submission_rules',
             'creativity_weight', 'relevance_weight', 'detail_weight',
-            'min_points', 'max_points', 'starts_at', 'ends_at', 'status',
+            'min_points', 'max_points', 'prize_amount', 'starts_at', 'ends_at',
         ]
+        # 'status' is intentionally excluded — creators cannot set it on creation.
+        # Use the /publish/ and /unpublish/ actions instead.
 
     def validate_submission_rules(self, value):
         try:
@@ -110,6 +113,7 @@ class ChallengeCreateSerializer(serializers.ModelSerializer):
         image_url = request.build_absolute_uri(default_storage.url(path)) if request else default_storage.url(path)
         return Challenge.objects.create(
             image_url=image_url,
+            status='draft',   # always draft on creation
             created_by=request.user if request and request.user.is_authenticated else None,
             **validated_data
         )

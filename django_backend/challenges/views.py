@@ -144,6 +144,68 @@ class ChallengeViewSet(viewsets.ModelViewSet):
         serializer = ChallengeActivitySerializer(activities, many=True)
         return Response(serializer.data)
     
+    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
+    def my_challenges(self, request):
+        """Return all challenges created by the current user (any status)."""
+        challenges = Challenge.objects.filter(
+            created_by=request.user
+        ).order_by('-created_at')
+        serializer = self.get_serializer(challenges, many=True)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    def publish(self, request, pk=None):
+        """
+        Activate a draft/paused challenge.
+        Only the challenge creator can call this.
+        """
+        challenge = self.get_object()
+        if challenge.created_by != request.user:
+            return Response(
+                {'error': 'Only the creator of this challenge can publish it.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        if challenge.status == 'ended':
+            return Response(
+                {'error': 'An ended challenge cannot be re-published.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if challenge.status == 'active':
+            return Response(
+                {'message': 'Challenge is already active.'},
+                status=status.HTTP_200_OK,
+            )
+        # Ensure starts_at is set to now if it's in the past
+        now = timezone.now()
+        if challenge.starts_at < now:
+            challenge.starts_at = now
+        challenge.status = 'active'
+        challenge.save(update_fields=['status', 'starts_at'])
+        serializer = self.get_serializer(challenge)
+        return Response({'message': 'Challenge is now live!', 'challenge': serializer.data})
+
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    def unpublish(self, request, pk=None):
+        """
+        Pause or end a live challenge.
+        Only the challenge creator can call this.
+        """
+        challenge = self.get_object()
+        if challenge.created_by != request.user:
+            return Response(
+                {'error': 'Only the creator of this challenge can unpublish it.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        if challenge.status not in ('active', 'paused'):
+            return Response(
+                {'error': f'Cannot unpublish a challenge with status "{challenge.status}".'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        challenge.status = 'paused'
+        challenge.save(update_fields=['status'])
+        serializer = self.get_serializer(challenge)
+        return Response({'message': 'Challenge paused.', 'challenge': serializer.data})
+
     @action(detail=True, methods=['get'], permission_classes=[AllowAny])
     def stats(self, request, pk=None):
         """Get challenge statistics"""
