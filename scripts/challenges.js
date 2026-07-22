@@ -531,12 +531,30 @@ function showUploadModal() { document.getElementById('uploadModal').style.displa
 
 function closeUploadModal() {
     document.getElementById('uploadModal').style.display = 'none';
-    document.getElementById('uploadForm').reset();
-    document.getElementById('createChallengeForm').reset();
+    document.getElementById('uploadForm')?.reset();
+    document.getElementById('createChallengeForm')?.reset();
+    // Reset image previews
+    const ph = document.getElementById('ccDropPlaceholder');
+    if (ph) ph.style.display = 'flex';
+    const prev = document.getElementById('challengeImagePreview');
+    if (prev) prev.innerHTML = '';
     document.getElementById('uploadPreview').innerHTML = '<span><i class="fas fa-image"></i> Preview will appear here</span>';
-    document.getElementById('challengeImagePreview').innerHTML = '<span><i class="fas fa-image"></i> Preview will appear here</span>';
-    document.getElementById('weightTotal').textContent = 'Total: 100% ✓';
-    document.getElementById('weightTotal').style.color = 'var(--accent-green)';
+    // Reset weight indicator
+    const wt = document.getElementById('weightTotal');
+    if (wt) { wt.textContent = 'Total: 100% ✓'; wt.style.color = 'var(--accent-green)'; }
+    // Reset wizard to step 1
+    ccGoStepReset();
+    // Reset duration
+    _ccDurationDays = 7;
+    ccSetDuration(7);
+}
+
+function ccGoStepReset() {
+    document.querySelectorAll('.cc-page').forEach((p, i) => { p.classList.toggle('active', i === 0); });
+    document.querySelectorAll('.cc-step').forEach((s, i) => {
+        s.classList.remove('active', 'done');
+        if (i === 0) s.classList.add('active');
+    });
 }
 
 function switchUploadTab(tab) {
@@ -553,7 +571,29 @@ function switchUploadTab(tab) {
 }
 
 function previewUploadImage(event)    { previewImageInto(event, 'uploadPreview'); }
-function previewChallengeImage(event) { previewImageInto(event, 'challengeImagePreview'); }
+function previewChallengeImage(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+        ccShowError('challengeImage', 'Image must be under 5 MB.');
+        return;
+    }
+    ccClearError('challengeImage');
+    const reader = new FileReader();
+    reader.onload = e => {
+        const src = e.target.result;
+        // Drop zone preview
+        const drop = document.getElementById('ccImageDrop');
+        const ph   = document.getElementById('ccDropPlaceholder');
+        const prev = document.getElementById('challengeImagePreview');
+        if (ph) ph.style.display = 'none';
+        if (prev) { prev.innerHTML = `<img src="${src}" alt="Preview" style="max-height:220px;border-radius:8px;object-fit:cover;">`; }
+        // Mini card preview
+        const wrap = document.getElementById('ccPreviewImgWrap');
+        if (wrap) wrap.innerHTML = `<img src="${src}" alt="Preview">`;
+    };
+    reader.readAsDataURL(file);
+}
 function previewImageInto(event, id) {
     const file = event.target.files[0];
     const el   = document.getElementById(id);
@@ -586,26 +626,246 @@ async function uploadContent(event) {
 }
 
 function validateWeights() {
-    const t  = (parseInt(document.getElementById('creativityWeight').value) || 0)
-             + (parseInt(document.getElementById('relevanceWeight').value)  || 0)
-             + (parseInt(document.getElementById('detailWeight').value)     || 0);
+    const c  = parseInt(document.getElementById('creativityWeight').value) || 0;
+    const r  = parseInt(document.getElementById('relevanceWeight').value)  || 0;
+    const d  = parseInt(document.getElementById('detailWeight').value)     || 0;
+    const t  = c + r + d;
     const el = document.getElementById('weightTotal');
     el.style.color = t === 100 ? 'var(--accent-green)' : 'var(--accent-pink)';
     el.textContent = t === 100 ? `Total: ${t}% ✓` : `Total: ${t}% (must equal 100%)`;
+    // Update visual bars
+    const setBar = (id, val) => { const b = document.getElementById(id); if (b) b.style.width = val + '%'; };
+    setBar('barCreativity', c);
+    setBar('barRelevance',  r);
+    setBar('barDetail',     d);
+}
+
+// ── Create Challenge wizard helpers ───────────────────────────────────────────
+let _ccDurationDays = 7;
+
+function ccCharCount(el, countId, max) {
+    const el2 = document.getElementById(countId);
+    if (!el2) return;
+    const n = el.value.length;
+    el2.textContent = `${n} / ${max}`;
+    el2.style.color = n >= max * 0.9 ? 'var(--accent-orange)' : 'var(--text-muted)';
+    // keep live preview in sync
+    ccUpdatePreview();
+}
+
+function ccRuleCount() {
+    const rules = (document.getElementById('challengeRules')?.value || '')
+        .split('\n').map(r => r.trim()).filter(Boolean);
+    const el = document.getElementById('ccRuleCountEl');
+    if (el) el.textContent = `${rules.length} rule${rules.length !== 1 ? 's' : ''}`;
+}
+
+function ccClearError(fieldId) {
+    const errEl = document.getElementById(fieldId + 'Err');
+    if (errEl) { errEl.textContent = ''; }
+    const field = document.getElementById(fieldId);
+    if (field) field.style.borderColor = '';
+    ccUpdatePreview();
+}
+
+function ccShowError(fieldId, msg) {
+    const errEl = document.getElementById(fieldId + 'Err');
+    if (errEl) errEl.textContent = msg;
+    const field = document.getElementById(fieldId);
+    if (field) { field.style.borderColor = 'var(--accent-pink)'; field.focus(); }
+}
+
+function ccSetDuration(days) {
+    _ccDurationDays = days;
+    document.querySelectorAll('.cc-dur-btn').forEach(b => {
+        b.classList.toggle('active', parseInt(b.dataset.days) === days);
+    });
+    const customInput = document.getElementById('challengeEndsAt');
+    const hint = document.getElementById('ccDurationHint');
+    const label = document.getElementById('ccDurationLabel');
+    if (days === 0) {
+        customInput.style.display = 'block';
+        if (hint) hint.style.display = 'none';
+    } else {
+        customInput.style.display = 'none';
+        if (hint) hint.style.display = 'block';
+        if (label) {
+            const end = new Date(Date.now() + days * 86400000);
+            label.textContent = `in ${days} day${days > 1 ? 's' : ''} — ${end.toLocaleDateString(undefined, { month:'short', day:'numeric' })}`;
+        }
+    }
+}
+
+function ccAutoBalance() {
+    const vals = [33, 33, 34]; // creativity, relevance, detail
+    document.getElementById('creativityWeight').value = vals[0];
+    document.getElementById('relevanceWeight').value  = vals[1];
+    document.getElementById('detailWeight').value     = vals[2];
+    validateWeights();
+}
+
+function ccGoStep(step) {
+    // Validate current step before advancing
+    if (step > 1) {
+        const page1ok = ccValidatePage1();
+        if (!page1ok && step >= 2) { ccShowPageError(1); return; }
+    }
+    if (step > 2) {
+        const page2ok = ccValidatePage2();
+        if (!page2ok) { ccShowPageError(2); return; }
+    }
+
+    // Hide all pages, deactivate all steps
+    document.querySelectorAll('.cc-page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.cc-step').forEach(s => s.classList.remove('active', 'done'));
+    document.getElementById(`ccPage${step}`)?.classList.add('active');
+
+    // Mark steps done/active
+    for (let i = 1; i <= 3; i++) {
+        const s = document.getElementById(`ccStep${i}`);
+        if (!s) continue;
+        if (i < step)  s.classList.add('done');
+        if (i === step) s.classList.add('active');
+    }
+
+    if (step === 3) ccUpdatePreview();
+
+    // Scroll modal to top
+    document.querySelector('.modal-content')?.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function ccShowPageError(page) {
+    // Scroll to first visible error on the page
+    const errEl = document.querySelector(`#ccPage${page} .cc-error:not(:empty)`);
+    if (errEl) errEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function ccValidatePage1() {
+    let ok = true;
+    const title = document.getElementById('challengeTitle')?.value.trim() || '';
+    const desc  = document.getElementById('challengeDescription')?.value.trim() || '';
+    const time  = parseInt(document.getElementById('challengeTimeLimit')?.value || '0');
+    const minPt = parseInt(document.getElementById('challengeMinPoints')?.value || '0');
+    const maxPt = parseInt(document.getElementById('challengeMaxPoints')?.value || '0');
+
+    if (!title) { ccShowError('challengeTitle', 'Title is required.'); ok = false; }
+    else if (title.length < 5) { ccShowError('challengeTitle', 'Title must be at least 5 characters.'); ok = false; }
+
+    if (!desc) { ccShowError('challengeDescription', 'Description is required.'); ok = false; }
+    else if (desc.length < 20) { ccShowError('challengeDescription', 'Description must be at least 20 characters.'); ok = false; }
+
+    if (!time || time < 5 || time > 120) { ccShowError('challengeTimeLimit', 'Enter a time between 5 and 120 minutes.'); ok = false; }
+    if (!minPt || minPt < 1) { ccShowError('challengeMinPoints', 'Minimum points must be at least 1.'); ok = false; }
+    if (!maxPt || maxPt <= minPt) { ccShowError('challengeMaxPoints', 'Max points must be greater than min points.'); ok = false; }
+
+    if (_ccDurationDays === 0) {
+        const custom = document.getElementById('challengeEndsAt')?.value;
+        if (!custom || new Date(custom) <= new Date()) {
+            ccShowError('challengeEndsAt', 'Please set a valid future end date/time.');
+            ok = false;
+        }
+    }
+    return ok;
+}
+
+function ccValidatePage2() {
+    let ok = true;
+    const minW = parseInt(document.getElementById('challengeMinWords')?.value || '0');
+    const maxW = parseInt(document.getElementById('challengeMaxWords')?.value || '0');
+    const rules = (document.getElementById('challengeRules')?.value || '').split('\n').map(r => r.trim()).filter(Boolean);
+    const c = parseInt(document.getElementById('creativityWeight')?.value) || 0;
+    const r = parseInt(document.getElementById('relevanceWeight')?.value)  || 0;
+    const d = parseInt(document.getElementById('detailWeight')?.value)     || 0;
+
+    if (!minW || minW < 10) { ccShowError('challengeMinWords', 'Min words must be at least 10.'); ok = false; }
+    if (!maxW || maxW <= minW) { ccShowError('challengeMaxWords', 'Max words must be greater than min words.'); ok = false; }
+    if (rules.length === 0) { ccShowError('challengeRules', 'Add at least one submission rule.'); ok = false; }
+    if (c + r + d !== 100) {
+        showToast('Scoring weights must sum to 100%.', 'error');
+        ok = false;
+    }
+    return ok;
+}
+
+function ccUpdatePreview() {
+    const get = id => document.getElementById(id);
+    const setText = (id, val) => { const el = get(id); if (el) el.textContent = val || ''; };
+
+    const title  = get('challengeTitle')?.value.trim()       || 'Challenge Title';
+    const desc   = get('challengeDescription')?.value.trim() || 'Your description will appear here.';
+    const diff   = get('challengeDifficulty')?.value         || 'medium';
+    const time   = get('challengeTimeLimit')?.value          || '20';
+    const minW   = get('challengeMinWords')?.value           || '50';
+    const maxW   = get('challengeMaxWords')?.value           || '200';
+    const minPt  = get('challengeMinPoints')?.value          || '10';
+    const maxPt  = get('challengeMaxPoints')?.value          || '50';
+    const prize  = parseFloat(get('challengePrize')?.value   || '0');
+
+    setText('ccPreviewTitle', title);
+    setText('ccPreviewDesc',  desc.length > 120 ? desc.slice(0,117) + '…' : desc);
+    setText('ccPreviewTime',  time);
+    setText('ccPreviewWords', `${minW}–${maxW}`);
+
+    const diffEl = get('ccPreviewDiff');
+    if (diffEl) { diffEl.textContent = diff; diffEl.className = `difficulty-badge difficulty-${diff}`; }
+
+    const ptsEl = get('ccPreviewPts');
+    if (ptsEl) ptsEl.innerHTML = `<i class="fas fa-bolt"></i> ${minPt}–${maxPt} pts`;
+
+    const prizeRow = get('ccPreviewPrize');
+    const prizeVal = get('ccPreviewPrizeVal');
+    if (prizeRow) prizeRow.style.display = prize > 0 ? 'flex' : 'none';
+    if (prizeVal) prizeVal.textContent = prize.toFixed(2);
+}
+
+// Drag & drop for challenge image
+function ccDragOver(e) {
+    e.preventDefault();
+    document.getElementById('ccImageDrop')?.classList.add('cc-drag-over');
+}
+function ccDragLeave() {
+    document.getElementById('ccImageDrop')?.classList.remove('cc-drag-over');
+}
+function ccDrop(e) {
+    e.preventDefault();
+    ccDragLeave();
+    const file = e.dataTransfer?.files?.[0];
+    if (file && file.type.startsWith('image/')) {
+        const dt = new DataTransfer();
+        dt.items.add(file);
+        document.getElementById('challengeImage').files = dt.files;
+        previewChallengeImage({ target: { files: dt.files } });
+    }
 }
 
 async function createChallenge(event) {
     event.preventDefault();
-    const c = parseInt(document.getElementById('creativityWeight').value) || 0;
-    const r = parseInt(document.getElementById('relevanceWeight').value)  || 0;
-    const d = parseInt(document.getElementById('detailWeight').value)     || 0;
-    if (c + r + d !== 100) { showToast('Scoring weights must sum to 100%.', 'error'); return; }
+    // Full validation before submit
+    if (!ccValidatePage1()) { ccGoStep(1); return; }
+    if (!ccValidatePage2()) { ccGoStep(2); return; }
+
     const img = document.getElementById('challengeImage').files[0];
-    if (!img) { showToast('Please select a challenge image.', 'error'); return; }
-    const btn = event.target.querySelector('button[type="submit"]');
+    if (!img) { ccShowError('challengeImage', 'Please select a challenge image.'); return; }
+
+    const btn = document.getElementById('ccSubmitBtn');
     if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating…'; }
+
     try {
         const rules = document.getElementById('challengeRules').value.split('\n').map(x => x.trim()).filter(Boolean);
+
+        // Calculate ends_at
+        let endsAt;
+        if (_ccDurationDays === 0) {
+            endsAt = new Date(document.getElementById('challengeEndsAt').value).toISOString();
+        } else {
+            endsAt = new Date(Date.now() + _ccDurationDays * 86400000).toISOString();
+        }
+
+        const c = parseInt(document.getElementById('creativityWeight').value) || 0;
+        const r = parseInt(document.getElementById('relevanceWeight').value)  || 0;
+        const d = parseInt(document.getElementById('detailWeight').value)     || 0;
+        const prize = parseFloat(document.getElementById('challengePrize')?.value || '0') || 0;
+
         const fd = new FormData();
         fd.append('title',             document.getElementById('challengeTitle').value.trim());
         fd.append('description',       document.getElementById('challengeDescription').value.trim());
@@ -618,11 +878,13 @@ async function createChallenge(event) {
         fd.append('creativity_weight', c);
         fd.append('relevance_weight',  r);
         fd.append('detail_weight',     d);
+        fd.append('prize_amount',      prize.toFixed(2));
         fd.append('submission_rules',  JSON.stringify(rules));
         fd.append('image',             img);
         fd.append('starts_at',         new Date().toISOString());
-        fd.append('ends_at',           new Date(Date.now() + 7 * 86400000).toISOString());
+        fd.append('ends_at',           endsAt);
         fd.append('status',            'draft');
+
         await apiService.createChallenge(fd);
         showToast('Challenge submitted! An admin will review and activate it.', 'success');
         closeUploadModal();
@@ -683,3 +945,13 @@ window.viewChallengeDetails  = viewChallengeDetails;
 window.closeChallengeModal   = closeChallengeModal;
 window.updateWordCount       = updateWordCount;
 window.submitInterpretation  = submitInterpretation;
+// Wizard helpers
+window.ccGoStep              = ccGoStep;
+window.ccSetDuration         = ccSetDuration;
+window.ccAutoBalance         = ccAutoBalance;
+window.ccCharCount           = ccCharCount;
+window.ccClearError          = ccClearError;
+window.ccRuleCount           = ccRuleCount;
+window.ccDragOver            = ccDragOver;
+window.ccDragLeave           = ccDragLeave;
+window.ccDrop                = ccDrop;
