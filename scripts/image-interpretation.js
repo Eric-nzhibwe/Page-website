@@ -39,6 +39,7 @@ const _ii = {
     totalSeconds:      IMG_INTERP_TIMER_DEFAULT,
     submitted:         false,
     submitting:        false,
+    entryFeePaid:      false,
     startTime:         null,   // Date.now() when image was revealed
 };
 
@@ -47,17 +48,40 @@ const _ii = {
 // ─────────────────────────────────────────────────────────────────────────────
 function _iiWalletBalance() {
     const el = document.getElementById('walletBalance');
-    return el ? parseFloat(el.textContent.replace(/[^0-9.]/g, '')) || 0 : 0;
+    if (el) {
+        return parseFloat(el.textContent.replace(/[^0-9.]/g, '')) || 0;
+    }
+
+    try {
+        const raw = localStorage.getItem('artxUser') || localStorage.getItem('artCurrentUser');
+        const user = raw ? JSON.parse(raw) : {};
+        return parseFloat(user.wallet_balance || 0) || 0;
+    } catch (_) {
+        return 0;
+    }
 }
 
 function _iiSetWalletBalance(val) {
+    const balance = Number(val) || 0;
     const el = document.getElementById('walletBalance');
-    if (el) el.textContent = `K${val.toFixed(2)}`;
+    if (el) el.textContent = `K${balance.toFixed(2)}`;
     const badge = document.getElementById('walletBalanceBadge');
     if (badge) badge.style.display = 'flex';
     const menuBal = document.getElementById('menuBalance');
-    if (menuBal) menuBal.textContent = `K${val.toFixed(2)}`;
-    localStorage.setItem('walletBalance', val.toFixed(2));
+    if (menuBal) menuBal.textContent = `K${balance.toFixed(2)}`;
+    localStorage.setItem('walletBalance', balance.toFixed(2));
+
+    try {
+        const key = localStorage.getItem('artxUser') ? 'artxUser' :
+                    localStorage.getItem('artCurrentUser') ? 'artCurrentUser' : null;
+        if (key) {
+            const user = JSON.parse(localStorage.getItem(key) || '{}');
+            user.wallet_balance = balance.toFixed(2);
+            localStorage.setItem(key, JSON.stringify(user));
+        }
+    } catch (_) {
+        // ignore sync failures
+    }
 }
 
 function _iiCapitalize(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
@@ -66,7 +90,7 @@ function _iiCapitalize(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : 
 //  1.  OPEN PREVIEW MODAL
 //  Called when user clicks a challenge card with challenge_type = image_interpretation
 // ─────────────────────────────────────────────────────────────────────────────
-async function openImgInterpPreview(challengeId) {
+async function openImgInterpPreview(challengeId, entryFeePaid = false) {
     // Load challenge data from API (or use cached if cards pre-loaded it)
     try {
         _ii.challenge = await apiService.getChallenge(challengeId);
@@ -77,6 +101,7 @@ async function openImgInterpPreview(challengeId) {
 
     const c = _ii.challenge;
     const entryFee   = parseFloat(c.entry_fee || 0);
+    _ii.entryFeePaid = entryFeePaid || entryFee <= 0;
     const prize      = parseFloat(c.prize_amount || 0);
     const timeLimitS = (c.time_limit || 2) * 60; // minutes → seconds
     const pointCount = Array.isArray(c.hidden_points) ? c.hidden_points.length : '?';
@@ -125,21 +150,23 @@ async function startImgInterpGame() {
     const c        = _ii.challenge;
     const entryFee = parseFloat(c.entry_fee || 0);
 
-    if (entryFee > 0) {
+    if (entryFee > 0 && !_ii.entryFeePaid) {
         const balance = _iiWalletBalance();
         if (balance < entryFee) {
             _iiShowToast('Insufficient wallet balance. Please top up first.', 'error');
             return;
         }
 
-        // Try backend deduction first, fall back to local
+        const newBalance = balance - entryFee;
+        _iiSetWalletBalance(newBalance);
+
         try {
             await apiService.deductEntryFee(entryFee, c.id, `Entry fee — ${c.title}`);
         } catch (_) {
-            // Backend unavailable — deduct locally
-            _iiSetWalletBalance(balance - entryFee);
+            // Backend unavailable — local balance already updated
         }
-        _iiSetWalletBalance(_iiWalletBalance() - entryFee);
+
+        _ii.entryFeePaid = true;
     }
 
     closeImgInterpPreview();

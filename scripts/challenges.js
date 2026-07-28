@@ -354,7 +354,7 @@ async function confirmFeeAndEnter() {
         closeFeeGateModal();
 
         if (type === 'image_interpretation') {
-            openImgInterpPreview(id);
+            openImgInterpPreview(id, true);
         } else {
             openChallenge(id);
         }
