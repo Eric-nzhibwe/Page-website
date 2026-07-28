@@ -40,6 +40,10 @@ document.addEventListener('DOMContentLoaded', () => {
         _txShown  = 15;
         renderFilteredTx();
     });
+
+    document.getElementById('openDepositBtn')?.addEventListener('click', showDepositModal);
+    document.getElementById('openWithdrawBtn')?.addEventListener('click', showWithdrawModal);
+    document.getElementById('openHistoryBtn')?.addEventListener('click', () => document.getElementById('txSection')?.scrollIntoView({behavior:'smooth'}));
 });
 
 // ─────────────────────────────────────────────────────

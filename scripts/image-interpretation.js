@@ -101,10 +101,27 @@ async function openImgInterpPreview(challengeId, entryFeePaid = false) {
 
     const c = _ii.challenge;
     const entryFee   = parseFloat(c.entry_fee || 0);
+    const balance    = _iiWalletBalance();
     _ii.entryFeePaid = entryFeePaid || entryFee <= 0;
     const prize      = parseFloat(c.prize_amount || 0);
     const timeLimitS = (c.time_limit || 2) * 60; // minutes → seconds
     const pointCount = Array.isArray(c.hidden_points) ? c.hidden_points.length : '?';
+
+    const isBalanceSufficient = entryFee > 0 ? balance >= entryFee : balance > 0;
+    const playBtn = _iiEl('iiPreviewPlayBtn');
+    const depositNotice = _iiEl('iiPreviewDepositNotice');
+    if (depositNotice) {
+        if (!isBalanceSufficient) {
+            if (entryFee > 0) {
+                depositNotice.textContent = 'Your wallet balance is too low to join. Please deposit before playing.';
+            } else {
+                depositNotice.textContent = 'Deposit any amount to your wallet before you can play this image interpretation challenge.';
+            }
+            depositNotice.style.display = 'block';
+        } else {
+            depositNotice.style.display = 'none';
+        }
+    }
 
     // ── Populate preview modal ──────────────────────────────────────────────
     _iiEl('iiPreviewTitle').textContent       = c.title;
@@ -131,15 +148,38 @@ async function openImgInterpPreview(challengeId, entryFeePaid = false) {
     }
 
     // Play button label
-    const playBtn = _iiEl('iiPreviewPlayBtn');
     if (playBtn) {
-        playBtn.innerHTML = entryFee > 0
-            ? `<i class="fas fa-coins"></i> Pay K${entryFee.toFixed(2)} &amp; Join`
-            : `<i class="fas fa-play"></i> Join Free`;
+        if (!isBalanceSufficient) {
+            playBtn.innerHTML = entryFee > 0
+                ? `<i class="fas fa-wallet"></i> Deposit to Pay`
+                : `<i class="fas fa-wallet"></i> Deposit to Play`;
+            playBtn.onclick = () => _iiPromptDeposit(c.id);
+        } else {
+            playBtn.innerHTML = entryFee > 0
+                ? `<i class="fas fa-coins"></i> Pay K${entryFee.toFixed(2)} &amp; Join`
+                : `<i class="fas fa-play"></i> Join Free`;
+            playBtn.onclick = () => startImgInterpGame();
+        }
     }
 
     _iiShowModal('imgInterpPreviewModal');
 }
+
+function _iiPromptDeposit(challengeId) {
+    closeImgInterpPreview();
+    try {
+        sessionStorage.setItem('pendingChallengeId', challengeId);
+        sessionStorage.setItem('pendingChallengeType', 'image_interpretation');
+    } catch (_) {
+        // ignore storage failures
+    }
+    if (typeof goTopUpWallet === 'function') {
+        goTopUpWallet();
+    } else {
+        window.location.href = 'wallet.html';
+    }
+}
+
 
 function closeImgInterpPreview() { _iiHideModal('imgInterpPreviewModal'); }
 
@@ -149,11 +189,11 @@ function closeImgInterpPreview() { _iiHideModal('imgInterpPreviewModal'); }
 async function startImgInterpGame() {
     const c        = _ii.challenge;
     const entryFee = parseFloat(c.entry_fee || 0);
+    const balance  = _iiWalletBalance();
 
     if (entryFee > 0 && !_ii.entryFeePaid) {
-        const balance = _iiWalletBalance();
         if (balance < entryFee) {
-            _iiShowToast('Insufficient wallet balance. Please top up first.', 'error');
+            _iiShowToast('Insufficient wallet balance. Please deposit first.', 'error');
             return;
         }
 
@@ -167,6 +207,11 @@ async function startImgInterpGame() {
         }
 
         _ii.entryFeePaid = true;
+    }
+
+    if (entryFee <= 0 && balance <= 0) {
+        _iiShowToast('Deposit funds to your wallet before playing.', 'error');
+        return;
     }
 
     closeImgInterpPreview();

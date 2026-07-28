@@ -105,19 +105,19 @@
 
     <!-- ── ACTION STRIP ── -->
     <div class="waction-strip">
-        <button class="waction-btn waction-deposit" onclick="showDepositModal()">
+        <button id="openDepositBtn" type="button" class="waction-btn waction-deposit" onclick="showDepositModal()">
             <span class="waction-icon"><i class="fas fa-plus"></i></span>
             <span class="waction-label">Deposit</span>
         </button>
-        <button class="waction-btn waction-withdraw" onclick="showWithdrawModal()">
+        <button id="openWithdrawBtn" type="button" class="waction-btn waction-withdraw" onclick="showWithdrawModal()">
             <span class="waction-icon"><i class="fas fa-minus"></i></span>
             <span class="waction-label">Withdraw</span>
         </button>
-        <button class="waction-btn waction-send" onclick="showNotice('Send Money coming soon','info')">
+        <button id="openSendBtn" type="button" class="waction-btn waction-send" onclick="showNotice('Send Money coming soon','info')">
             <span class="waction-icon"><i class="fas fa-paper-plane"></i></span>
             <span class="waction-label">Send</span>
         </button>
-        <button class="waction-btn waction-history" onclick="document.getElementById('txSection').scrollIntoView({behavior:'smooth'})">
+        <button id="openHistoryBtn" type="button" class="waction-btn waction-history" onclick="document.getElementById('txSection').scrollIntoView({behavior:'smooth'})">
             <span class="waction-icon"><i class="fas fa-clock-rotate-left"></i></span>
             <span class="waction-label">History</span>
         </button>
