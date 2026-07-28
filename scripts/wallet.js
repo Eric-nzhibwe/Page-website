@@ -23,7 +23,7 @@ let _txSearch    = '';
 // ─────────────────────────────────────────────────────
 // BOOT
 // ─────────────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', () => {
+function initWalletPage() {
     const token = localStorage.getItem('djangoAuthToken');
     if (!token) { window.location.href = 'auth.html'; return; }
     loadWalletData();
@@ -44,7 +44,13 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('openDepositBtn')?.addEventListener('click', showDepositModal);
     document.getElementById('openWithdrawBtn')?.addEventListener('click', showWithdrawModal);
     document.getElementById('openHistoryBtn')?.addEventListener('click', () => document.getElementById('txSection')?.scrollIntoView({behavior:'smooth'}));
-});
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initWalletPage);
+} else {
+    initWalletPage();
+}
 
 // ─────────────────────────────────────────────────────
 // RETURN-TO-CHALLENGE BANNER
