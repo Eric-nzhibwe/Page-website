@@ -138,7 +138,10 @@ function renderChallenges() {
     }
 
     container.innerHTML = filtered.map(c => {
-        const hasSubmitted = mySubmissions.some(s => s.challenge === c.id);
+        const isImgInterp  = c.challenge_type === 'image_interpretation';
+        const hasSubmitted = isImgInterp
+            ? mySubmissions.some(s => s.challenge === c.id) || c.user_has_img_submitted
+            : mySubmissions.some(s => s.challenge === c.id) || c.user_has_submitted;
 
         // Time remaining with urgency class
         const timeLeft     = getTimeRemaining(c.ends_at);
@@ -149,16 +152,17 @@ function renderChallenges() {
         const progressPct  = Math.min(100, Math.round((c.submission_count / 100) * 100));
 
         return `
-        <article class="challenge-card ${hasSubmitted ? 'card-submitted' : ''}" role="listitem" data-id="${c.id}">
+        <article class="challenge-card ${hasSubmitted ? 'card-submitted' : ''}" role="listitem" data-id="${c.id}" data-challenge-type="${c.challenge_type || 'text_interpretation'}">
 
             <!-- Image banner -->
-            <div class="challenge-image-wrap" onclick="openChallenge('${c.id}')">
+            <div class="challenge-image-wrap" onclick="${isImgInterp ? `openImgInterpPreview('${c.id}')` : `openChallenge('${c.id}')`}">
                 <img src="${escHtml(c.image_url)}" alt="${escHtml(c.title)}" class="challenge-image" loading="lazy">
                 <div class="challenge-image-overlay"></div>
 
                 <!-- Badges overlaid on image (top-left) -->
                 <div class="card-overlay-badges">
                     <span class="difficulty-badge difficulty-${c.difficulty}">${c.difficulty}</span>
+                    ${isImgInterp ? '<span class="card-featured-tag"><i class="fas fa-image"></i> Image</span>' : ''}
                     ${c.is_featured ? '<span class="card-featured-tag"><i class="fas fa-star"></i> Featured</span>' : ''}
                 </div>
 
@@ -174,7 +178,7 @@ function renderChallenges() {
             </div>
 
             <!-- Body -->
-            <div class="challenge-body" onclick="openChallenge('${c.id}')">
+            <div class="challenge-body" onclick="${isImgInterp ? `openImgInterpPreview('${c.id}')` : `openChallenge('${c.id}')`}">
                 <h3 class="challenge-title">${escHtml(c.title)}</h3>
                 <p class="challenge-description">${escHtml(c.description)}</p>
 
@@ -187,7 +191,9 @@ function renderChallenges() {
                         <i class="fas fa-pen-nib"></i> ${c.time_limit} min
                     </span>
                     <span class="meta-item">
-                        <i class="fas fa-align-left"></i> ${c.min_word_count}–${c.max_word_count}w
+                        ${isImgInterp
+                            ? `<i class="fas fa-eye"></i> Image`
+                            : `<i class="fas fa-align-left"></i> ${c.min_word_count}–${c.max_word_count}w`}
                     </span>
                 </div>
 
@@ -203,11 +209,13 @@ function renderChallenges() {
                     <i class="fas fa-info-circle"></i> Details
                 </button>
                 <button class="btn-card-participate ${hasSubmitted ? 'btn-submitted' : ''}"
-                        data-action="participate" data-id="${c.id}"
+                        data-action="participate" data-id="${c.id}" data-type="${c.challenge_type || 'text_interpretation'}"
                         ${hasSubmitted ? 'disabled' : ''}>
                     ${hasSubmitted
                         ? '<i class="fas fa-check-circle"></i> Submitted'
-                        : '<i class="fas fa-play"></i> Participate'}
+                        : isImgInterp
+                            ? '<i class="fas fa-gamepad"></i> Play'
+                            : '<i class="fas fa-play"></i> Participate'}
                 </button>
             </div>
         </article>`;
@@ -218,7 +226,15 @@ function renderChallenges() {
         btn.addEventListener('click', e => { e.stopPropagation(); viewChallengeDetails(btn.dataset.id); });
     });
     container.querySelectorAll('[data-action="participate"]:not([disabled])').forEach(btn => {
-        btn.addEventListener('click', e => { e.stopPropagation(); openChallenge(btn.dataset.id); });
+        btn.addEventListener('click', e => {
+            e.stopPropagation();
+            const type = btn.dataset.type || 'text_interpretation';
+            if (type === 'image_interpretation') {
+                openImgInterpPreview(btn.dataset.id);
+            } else {
+                openChallenge(btn.dataset.id);
+            }
+        });
     });
 }
 

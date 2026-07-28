@@ -543,9 +543,185 @@
 <!-- Toast container -->
 <div class="toast-container" id="toastContainer"></div>
 
+<!-- ═══════════════════════════════════════════════════════════
+     IMAGE INTERPRETATION — PREVIEW MODAL
+     Shown when user clicks a card with challenge_type=image_interpretation
+════════════════════════════════════════════════════════════ -->
+<div id="imgInterpPreviewModal" class="ii-backdrop" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="iiPreviewTitle">
+    <div class="ii-preview-box">
+        <button class="ii-modal-close" onclick="closeImgInterpPreview()" aria-label="Close">
+            <i class="fas fa-times"></i>
+        </button>
+
+        <!-- Blurred thumbnail -->
+        <div class="ii-preview-thumb-wrap">
+            <img id="iiPreviewThumb" src="" alt="" class="ii-preview-thumb ii-img-blurred">
+            <div class="ii-preview-thumb-overlay">
+                <i class="fas fa-eye-slash"></i>
+                <span>Image hidden until you start</span>
+            </div>
+        </div>
+
+        <div class="ii-preview-body">
+            <div class="ii-preview-badges">
+                <span class="ii-badge ii-badge-type"><i class="fas fa-image"></i> Image Challenge</span>
+                <span class="ii-badge ii-badge-diff" id="iiPreviewDifficulty">medium</span>
+            </div>
+
+            <h2 id="iiPreviewTitle" class="ii-preview-title">Challenge Title</h2>
+            <p id="iiPreviewDescription" class="ii-preview-desc"></p>
+
+            <div class="ii-preview-meta-row">
+                <span><i class="fas fa-clock"></i> <span id="iiPreviewTimeLimit">2 min</span></span>
+                <span><i class="fas fa-eye"></i> <span id="iiPreviewPointCount">? hidden points</span></span>
+                <span><i class="fas fa-brain"></i> AI-scored</span>
+            </div>
+
+            <!-- Entry fee box (hidden when free) -->
+            <div id="iiPreviewFeeBox" class="ii-fee-box" style="display:none;">
+                <div class="ii-fee-left">
+                    <i class="fas fa-coins"></i>
+                    <div>
+                        <strong>Entry Fee: <span id="iiPreviewEntryAmount">K0</span></strong>
+                        <span id="iiPreviewPrizeText">Prestige points awarded</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="ii-preview-rules">
+                <h4><i class="fas fa-list-check"></i> How it works</h4>
+                <ol>
+                    <li>The image is hidden — click Play to start your timer.</li>
+                    <li>Study the image and list every visual point you notice.</li>
+                    <li>Explain what each point means or represents.</li>
+                    <li>Write the overall message you think the image conveys.</li>
+                    <li>Submit before time runs out. Groq AI scores you instantly.</li>
+                </ol>
+            </div>
+
+            <div class="ii-preview-actions">
+                <button class="ii-btn-secondary" onclick="closeImgInterpPreview()">
+                    <i class="fas fa-arrow-left"></i> Back
+                </button>
+                <button id="iiPreviewPlayBtn" class="ii-btn-primary" onclick="startImgInterpGame()">
+                    <i class="fas fa-play"></i> Join Free
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     IMAGE INTERPRETATION — GAME MODAL
+     Full experience: countdown → observe → interpret → overall → submit
+════════════════════════════════════════════════════════════ -->
+<div id="imgInterpGameModal" class="ii-backdrop ii-game-backdrop" style="display:none;" role="dialog" aria-modal="true">
+    <div class="ii-game-modal-content">
+
+        <!-- Header bar -->
+        <div class="ii-game-header">
+            <h3 id="iiGameTitle" class="ii-game-title">Challenge</h3>
+            <div class="ii-timer-wrap">
+                <div class="ii-timer-track">
+                    <div id="iiTimerFill" class="ii-timer-fill"></div>
+                </div>
+                <span id="iiCountdownDisplay" class="ii-countdown">2:00</span>
+            </div>
+        </div>
+
+        <!-- Image -->
+        <div class="ii-game-image-wrap">
+            <img id="iiGameImage" src="" alt="Challenge image" class="ii-game-image ii-img-blurred">
+            <!-- 3-2-1 overlay -->
+            <div id="iiGoOverlay" class="ii-go-overlay" style="display:none;">
+                <div class="ii-go-count">3</div>
+                <p>Get ready to observe…</p>
+            </div>
+        </div>
+
+        <!-- Step progress dots -->
+        <div class="ii-step-progress">
+            <div class="ii-step-dot active" title="Observe"></div>
+            <div class="ii-step-line"></div>
+            <div class="ii-step-dot" title="Interpret"></div>
+            <div class="ii-step-line"></div>
+            <div class="ii-step-dot" title="Overall"></div>
+        </div>
+
+        <!-- Answer section (disabled until image revealed) -->
+        <div id="iiAnswerSection" class="ii-answer-section ii-disabled">
+
+            <!-- ── STEP 1: OBSERVE ── -->
+            <div id="iiStepObserve" class="ii-step-panel">
+                <h4 class="ii-step-heading"><i class="fas fa-eye"></i> Step 1 — What do you see?</h4>
+                <p class="ii-step-hint">List every visual element, symbol, or detail you notice. Add one point at a time.</p>
+
+                <div class="ii-point-input-row">
+                    <input type="text" id="iiPointInput" class="ii-point-input"
+                           placeholder="e.g. Broken clock, wilting flower…"
+                           onkeydown="iiPointInputKeydown(event)"
+                           maxlength="80">
+                    <button class="ii-btn-add" onclick="iiAddPoint()">
+                        <i class="fas fa-plus"></i> Add
+                    </button>
+                </div>
+
+                <div id="iiPointsList" class="ii-points-list">
+                    <p class="ii-empty-hint"><i class="fas fa-eye"></i> Study the image and add what you see below.</p>
+                </div>
+
+                <div class="ii-step-nav">
+                    <span></span>
+                    <button class="ii-btn-next" onclick="iiGoToInterpret()">
+                        Next: Interpret <i class="fas fa-arrow-right"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- ── STEP 2: INTERPRET ── -->
+            <div id="iiStepInterpret" class="ii-step-panel" style="display:none;">
+                <h4 class="ii-step-heading"><i class="fas fa-brain"></i> Step 2 — What does each point mean?</h4>
+                <p class="ii-step-hint">For each visual point you found, explain what it represents or symbolises.</p>
+
+                <div id="iiInterpForms" class="ii-interp-forms"></div>
+
+                <div class="ii-step-nav">
+                    <button class="ii-btn-back" onclick="iiBackToObserve()">
+                        <i class="fas fa-arrow-left"></i> Back
+                    </button>
+                    <button class="ii-btn-next" onclick="iiGoToOverall()">
+                        Next: Overall message <i class="fas fa-arrow-right"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- ── STEP 3: OVERALL MESSAGE ── -->
+            <div id="iiStepOverall" class="ii-step-panel" style="display:none;">
+                <h4 class="ii-step-heading"><i class="fas fa-comment-dots"></i> Step 3 — What is the image saying?</h4>
+                <p class="ii-step-hint">In your own words, describe the overall story, theme, or message this image conveys.</p>
+
+                <textarea id="iiOverallMessage" class="ii-overall-textarea"
+                          rows="5"
+                          placeholder="The image as a whole represents…"></textarea>
+
+                <div class="ii-step-nav">
+                    <button class="ii-btn-back" onclick="iiBackToInterpret()">
+                        <i class="fas fa-arrow-left"></i> Back
+                    </button>
+                    <button id="iiSubmitFinalBtn" class="ii-btn-submit" onclick="iiSubmitFinal()">
+                        <i class="fas fa-paper-plane"></i> Submit
+                    </button>
+                </div>
+            </div>
+
+        </div><!-- /ii-answer-section -->
+    </div><!-- /ii-game-modal-content -->
+</div>
+
 <script src="../scripts/api-service.js"></script>
 <script src="../scripts/realtime-service.js"></script>
 <script src="../scripts/challenges.js"></script>
+<script src="../scripts/image-interpretation.js"></script>
 <script>
     /* Navbar dropdown toggles — matches other pages */
     function toggleQuickMenu() {

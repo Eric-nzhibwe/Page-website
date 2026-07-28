@@ -333,25 +333,68 @@ class ChallengeSubmissionCreateSerializer(serializers.ModelSerializer):
         return data
     
     def create(self, validated_data):
-        """Create submission and record activity"""
+        """Create submission, score it with AI, and record activity."""
+        import logging
+        from django.utils import timezone
+        from .text_scoring_service import score_text_interpretation
+
+        log  = logging.getLogger(__name__)
         user = self.context['request'].user
+
         submission = ChallengeSubmission.objects.create(
             user=user,
-            **validated_data
+            status='submitted',
+            **validated_data,
         )
-        
-        # Create activity record
+
+        challenge = submission.challenge
+
+        # ── AI scoring (synchronous; switch to Celery for high traffic) ──────
+        try:
+            result = score_text_interpretation(
+                challenge_title=challenge.title,
+                challenge_description=challenge.description,
+                difficulty=challenge.difficulty,
+                submission_rules=challenge.submission_rules or [],
+                creativity_weight=challenge.creativity_weight,
+                relevance_weight=challenge.relevance_weight,
+                detail_weight=challenge.detail_weight,
+                min_points=challenge.min_points,
+                max_points=challenge.max_points,
+                interpretation=submission.interpretation,
+                word_count=submission.word_count,
+            )
+
+            submission.creativity_score = result['creativity_score']
+            submission.relevance_score  = result['relevance_score']
+            submission.detail_score     = result['detail_score']
+            submission.final_score      = result['final_score']
+            submission.status           = 'scored'
+            submission.scored_at        = timezone.now()
+            submission.save()
+
+            # Award prestige points
+            user.add_prestige(
+                submission.final_score,
+                f"{challenge.difficulty} challenge: {challenge.title}",
+            )
+
+        except Exception as exc:
+            log.error(f"Text scoring failed for submission {submission.id}: {exc}")
+            # Leave status as 'submitted' — admin can re-score manually
+
+        # ── Activity record ───────────────────────────────────────────────────
         ChallengeActivity.objects.create(
-            challenge=submission.challenge,
+            challenge=challenge,
             user=user,
             activity_type='submission',
-            description=f"{user.username} submitted to {submission.challenge.title}",
+            description=f"{user.username} submitted to {challenge.title}",
             metadata={
                 'submission_id': str(submission.id),
-                'word_count': submission.word_count
-            }
+                'word_count':    submission.word_count,
+            },
         )
-        
+
         return submission
 
 
