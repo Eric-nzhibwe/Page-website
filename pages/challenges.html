@@ -225,6 +225,51 @@
 
 <!-- ═══════════════════════ MODALS ═══════════════════════ -->
 
+<!-- Entry Fee Gate Modal -->
+<div id="feeGateModal" class="modal" role="dialog" aria-modal="true" style="display:none; align-items:center; justify-content:center;">
+    <div class="modal-content" style="max-width:420px;">
+        <button class="modal-close-btn" onclick="closeFeeGateModal()" aria-label="Close">&times;</button>
+
+        <div class="fee-gate-header">
+            <div class="fee-gate-icon"><i class="fas fa-coins"></i></div>
+            <h2 class="fee-gate-title">Entry Fee Required</h2>
+            <p class="fee-gate-subtitle" id="feeGateTitle">Challenge</p>
+        </div>
+
+        <div class="fee-gate-body">
+            <div class="fee-gate-amount-row">
+                <span class="fee-gate-label">Entry Fee</span>
+                <span class="fee-gate-amount" id="feeGateAmount">K0.00</span>
+            </div>
+            <div class="fee-gate-amount-row">
+                <span class="fee-gate-label">Prize Pool</span>
+                <span id="feeGatePrize" style="font-weight:700;font-size:14px;">—</span>
+            </div>
+            <div class="fee-gate-divider"></div>
+            <p class="fee-gate-balance" id="feeGateBalance">Your balance: K0.00</p>
+
+            <p class="fee-gate-note">
+                <i class="fas fa-info-circle"></i>
+                The entry fee is deducted from your ARTX wallet. Earnings from winning go straight back in.
+            </p>
+        </div>
+
+        <div class="fee-gate-actions">
+            <!-- Shown when user HAS enough balance -->
+            <button id="feeGatePayBtn" class="fee-gate-btn-pay" onclick="confirmFeeAndEnter()">
+                <i class="fas fa-coins"></i> Pay &amp; Enter
+            </button>
+            <!-- Shown when user DOESN'T have enough balance -->
+            <button id="feeGateTopUpBtn" class="fee-gate-btn-topup" onclick="goTopUpWallet()" style="display:none;">
+                <i class="fas fa-wallet"></i> Top Up Wallet
+            </button>
+            <button class="fee-gate-btn-cancel" onclick="closeFeeGateModal()">
+                Cancel
+            </button>
+        </div>
+    </div>
+</div>
+
 <!-- Challenge Modal -->
 <div id="challengeModal" class="modal" role="dialog" aria-modal="true">
     <div class="modal-content large">

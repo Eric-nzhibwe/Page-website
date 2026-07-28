@@ -28,6 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!token) { window.location.href = 'auth.html'; return; }
     loadWalletData();
     loadTransactions();
+    checkReturnToChallengeIntent();
 
     // Filter pill clicks
     document.getElementById('txFilterPills')?.addEventListener('click', e => {
@@ -40,6 +41,49 @@ document.addEventListener('DOMContentLoaded', () => {
         renderFilteredTx();
     });
 });
+
+// ─────────────────────────────────────────────────────
+// RETURN-TO-CHALLENGE BANNER
+// Shown when the user landed here from challenges.html
+// because their balance was too low to pay an entry fee.
+// ─────────────────────────────────────────────────────
+function checkReturnToChallengeIntent() {
+    const pendingId = sessionStorage.getItem('pendingChallengeId');
+    if (!pendingId) return;
+
+    const banner = document.createElement('div');
+    banner.id        = 'returnChallengeBanner';
+    banner.className = 'wreturn-banner';
+    banner.innerHTML = `
+        <div class="wreturn-inner">
+            <i class="fas fa-trophy"></i>
+            <div class="wreturn-body">
+                <strong>You were trying to enter a challenge</strong>
+                <span>Top up your wallet, then go back to continue.</span>
+            </div>
+            <button class="wreturn-btn" onclick="returnToChallenge()">
+                <i class="fas fa-arrow-left"></i> Back to Challenge
+            </button>
+            <button class="wreturn-dismiss" onclick="dismissReturnBanner()" aria-label="Dismiss">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    `;
+
+    // Insert at the top of wpage
+    const wpage = document.querySelector('.wpage');
+    if (wpage) wpage.insertBefore(banner, wpage.firstChild);
+}
+
+window.returnToChallenge = function() {
+    window.location.href = 'challenges.html';
+};
+
+window.dismissReturnBanner = function() {
+    sessionStorage.removeItem('pendingChallengeId');
+    sessionStorage.removeItem('pendingChallengeType');
+    document.getElementById('returnChallengeBanner')?.remove();
+};
 
 // ─────────────────────────────────────────────────────
 // API HELPERS

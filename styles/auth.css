@@ -38,7 +38,8 @@ body {
     background-clip: text;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
-    text-shadow: 0 0 30px rgba(255, 255, 255, 0.3);
+    /* text-shadow doesn't work with gradient text — it blurs the transparent fill.
+       drop-shadow on the filter chain handles the glow correctly instead. */
     animation: scaleIn 0.8s ease-out, pulse 2s ease-in-out infinite;
 }
 
@@ -56,11 +57,11 @@ body {
 @keyframes pulse {
     0%, 100% {
         transform: scale(1);
-        filter: drop-shadow(0 0 20px rgba(144, 238, 144, 0.5));
+        filter: drop-shadow(0 0 12px rgba(144, 238, 144, 0.5));
     }
     50% {
         transform: scale(1.05);
-        filter: drop-shadow(0 0 40px rgba(144, 238, 144, 0.8));
+        filter: drop-shadow(0 0 22px rgba(144, 238, 144, 0.75));
     }
 }
 

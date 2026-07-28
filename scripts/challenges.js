@@ -155,7 +155,7 @@ function renderChallenges() {
         <article class="challenge-card ${hasSubmitted ? 'card-submitted' : ''}" role="listitem" data-id="${c.id}" data-challenge-type="${c.challenge_type || 'text_interpretation'}">
 
             <!-- Image banner -->
-            <div class="challenge-image-wrap" onclick="${isImgInterp ? `openImgInterpPreview('${c.id}')` : `openChallenge('${c.id}')`}">
+            <div class="challenge-image-wrap" onclick="openChallengeWithFeeCheck('${c.id}','${c.challenge_type||"text_interpretation"}')">
                 <img src="${escHtml(c.image_url)}" alt="${escHtml(c.title)}" class="challenge-image" loading="lazy">
                 <div class="challenge-image-overlay"></div>
 
@@ -178,7 +178,7 @@ function renderChallenges() {
             </div>
 
             <!-- Body -->
-            <div class="challenge-body" onclick="${isImgInterp ? `openImgInterpPreview('${c.id}')` : `openChallenge('${c.id}')`}">
+            <div class="challenge-body" onclick="openChallengeWithFeeCheck('${c.id}','${c.challenge_type||"text_interpretation"}')">
                 <h3 class="challenge-title">${escHtml(c.title)}</h3>
                 <p class="challenge-description">${escHtml(c.description)}</p>
 
@@ -229,11 +229,7 @@ function renderChallenges() {
         btn.addEventListener('click', e => {
             e.stopPropagation();
             const type = btn.dataset.type || 'text_interpretation';
-            if (type === 'image_interpretation') {
-                openImgInterpPreview(btn.dataset.id);
-            } else {
-                openChallenge(btn.dataset.id);
-            }
+            openChallengeWithFeeCheck(btn.dataset.id, type);
         });
     });
 }
@@ -249,6 +245,145 @@ function getTimeRemaining(endDate) {
     if (mins > 0)  return `${mins}m left`;
     return 'Ending soon';
 }
+
+// ── Entry fee gate ────────────────────────────────────────────────────────────
+// Shows a confirmation modal when the challenge has an entry fee.
+// If balance is sufficient → deduct then open game.
+// If balance is insufficient → offer to top up (link to wallet).
+let _pendingChallengeId   = null;
+let _pendingChallengeType = null;
+
+async function openChallengeWithFeeCheck(challengeId, type) {
+    type = type || 'text_interpretation';
+    let challenge;
+    try {
+        challenge = await apiService.getChallenge(challengeId);
+    } catch (e) {
+        showToast('Could not load challenge. Please try again.', 'error');
+        return;
+    }
+
+    const entryFee = parseFloat(challenge.entry_fee || 0);
+
+    if (entryFee <= 0) {
+        // Free challenge — go straight in
+        if (type === 'image_interpretation') {
+            openImgInterpPreview(challengeId);
+        } else {
+            openChallenge(challengeId);
+        }
+        return;
+    }
+
+    // Paid challenge — show fee gate modal
+    _pendingChallengeId   = challengeId;
+    _pendingChallengeType = type;
+
+    // Populate modal
+    const feeEl = document.getElementById('feeGateAmount');
+    const titleEl = document.getElementById('feeGateTitle');
+    const prizeEl = document.getElementById('feeGatePrize');
+    const balEl   = document.getElementById('feeGateBalance');
+
+    if (titleEl) titleEl.textContent = challenge.title;
+    if (feeEl)   feeEl.textContent   = `K${entryFee.toFixed(2)}`;
+
+    const prize = parseFloat(challenge.prize_amount || 0);
+    if (prizeEl) {
+        prizeEl.textContent = prize > 0 ? `K${prize.toFixed(2)} prize pool` : 'Prestige points only';
+        prizeEl.style.color = prize > 0 ? 'var(--accent-green)' : 'var(--text-muted)';
+    }
+
+    // Try to get live wallet balance
+    let balance = 0;
+    try {
+        const raw = localStorage.getItem('artxUser') || localStorage.getItem('artCurrentUser');
+        const u   = raw ? JSON.parse(raw) : {};
+        balance   = parseFloat(u.wallet_balance || 0);
+    } catch { /* fallback to 0 */ }
+
+    const hasFunds = balance >= entryFee;
+    if (balEl) {
+        balEl.textContent = `Your balance: K${balance.toFixed(2)}`;
+        balEl.style.color = hasFunds ? 'var(--accent-green)' : 'var(--accent-pink)';
+    }
+
+    const payBtn     = document.getElementById('feeGatePayBtn');
+    const topUpBtn   = document.getElementById('feeGateTopUpBtn');
+    if (payBtn)   { payBtn.style.display   = hasFunds ? 'flex'   : 'none'; }
+    if (topUpBtn) { topUpBtn.style.display = hasFunds ? 'none'   : 'flex'; }
+
+    document.getElementById('feeGateModal').style.display = 'flex';
+}
+
+function closeFeeGateModal() {
+    document.getElementById('feeGateModal').style.display = 'none';
+    _pendingChallengeId   = null;
+    _pendingChallengeType = null;
+}
+
+async function confirmFeeAndEnter() {
+    if (!_pendingChallengeId) return;
+    const btn = document.getElementById('feeGatePayBtn');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing…'; }
+
+    try {
+        const challenge = await apiService.getChallenge(_pendingChallengeId);
+        const entryFee  = parseFloat(challenge.entry_fee || 0);
+
+        if (entryFee > 0) {
+            await apiService.deductEntryFee(entryFee, _pendingChallengeId,
+                `Entry fee — ${challenge.title}`);
+        }
+
+        // Update local wallet balance
+        try {
+            const raw = localStorage.getItem('artxUser') || localStorage.getItem('artCurrentUser');
+            const u   = raw ? JSON.parse(raw) : {};
+            u.wallet_balance = Math.max(0, (parseFloat(u.wallet_balance || 0) - entryFee));
+            const key = localStorage.getItem('artxUser') ? 'artxUser' : 'artCurrentUser';
+            localStorage.setItem(key, JSON.stringify(u));
+            const balEl = document.getElementById('walletBalance');
+            if (balEl) balEl.textContent = `K${u.wallet_balance.toFixed(2)}`;
+            const menuBal = document.getElementById('menuBalance');
+            if (menuBal) menuBal.textContent = `K${Math.floor(u.wallet_balance)}`;
+        } catch { /* non-critical */ }
+
+        const id   = _pendingChallengeId;
+        const type = _pendingChallengeType;
+        closeFeeGateModal();
+
+        if (type === 'image_interpretation') {
+            openImgInterpPreview(id);
+        } else {
+            openChallenge(id);
+        }
+    } catch (err) {
+        showToast(err.message || 'Payment failed. Please try again.', 'error');
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-coins"></i> Pay & Enter'; }
+    }
+}
+
+function goTopUpWallet() {
+    // Store pending challenge so user can come back after topping up
+    if (_pendingChallengeId) {
+        sessionStorage.setItem('pendingChallengeId',   _pendingChallengeId);
+        sessionStorage.setItem('pendingChallengeType', _pendingChallengeType || 'text_interpretation');
+    }
+    window.location.href = 'wallet.html';
+}
+
+// On page load, check if user is returning from wallet top-up
+document.addEventListener('DOMContentLoaded', () => {
+    const pendingId   = sessionStorage.getItem('pendingChallengeId');
+    const pendingType = sessionStorage.getItem('pendingChallengeType');
+    if (pendingId) {
+        sessionStorage.removeItem('pendingChallengeId');
+        sessionStorage.removeItem('pendingChallengeType');
+        // Wait for challenges to load, then re-trigger
+        setTimeout(() => openChallengeWithFeeCheck(pendingId, pendingType), 1200);
+    }
+});
 
 // ── Open challenge (participate) ──────────────────────────────────────────────
 async function openChallenge(challengeId) {
@@ -1045,7 +1180,11 @@ function formatDate(iso) {
 function formatTime(iso) { return iso ? new Date(iso).toLocaleTimeString(undefined, { hour:'2-digit', minute:'2-digit' }) : ''; }
 
 // ── Global exports ────────────────────────────────────────────────────────────
-window.openMessenger         = openMessenger;
+window.openChallengeWithFeeCheck = openChallengeWithFeeCheck;
+window.closeFeeGateModal         = closeFeeGateModal;
+window.confirmFeeAndEnter        = confirmFeeAndEnter;
+window.goTopUpWallet             = goTopUpWallet;
+window.openMessenger             = openMessenger;
 window.showUploadModal       = showUploadModal;
 window.searchChallenges      = searchChallenges;
 window.closeUploadModal      = closeUploadModal;

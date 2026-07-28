@@ -1392,3 +1392,100 @@
     .ii-point-input-row { flex-direction: column; }
     .ii-btn-add { width: 100%; justify-content: center; }
 }
+
+
+/* ══════════════════════════════════════════════════════════════
+   ENTRY FEE GATE MODAL
+══════════════════════════════════════════════════════════════ */
+#feeGateModal {
+    /* override .modal defaults to center the box */
+    align-items: center;
+    justify-content: center;
+}
+
+.fee-gate-header {
+    text-align: center;
+    padding: 28px 28px 0;
+}
+.fee-gate-icon {
+    width: 60px; height: 60px;
+    background: linear-gradient(135deg, rgba(255,193,7,0.2), rgba(255,152,0,0.2));
+    border: 1px solid rgba(255,193,7,0.4);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px; color: #ffc107;
+    margin: 0 auto 14px;
+}
+.fee-gate-title {
+    font-size: 20px; font-weight: 800;
+    color: var(--text-primary); margin-bottom: 6px;
+}
+.fee-gate-subtitle {
+    font-size: 13px; color: var(--text-muted);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    max-width: 100%;
+}
+
+.fee-gate-body {
+    padding: 20px 28px;
+}
+.fee-gate-amount-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 11px 0; border-bottom: 1px solid var(--border); font-size: 14px;
+}
+.fee-gate-amount-row:last-of-type { border-bottom: none; }
+.fee-gate-label { color: var(--text-secondary); }
+.fee-gate-amount {
+    font-size: 22px; font-weight: 900;
+    background: linear-gradient(135deg, #ffc107, #ff9800);
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+.fee-gate-divider {
+    height: 1px; background: var(--border); margin: 12px 0;
+}
+.fee-gate-balance {
+    font-size: 13px; font-weight: 600;
+    text-align: center; margin-bottom: 12px;
+}
+.fee-gate-note {
+    background: var(--bg-elevated); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 11px 14px;
+    font-size: 12px; color: var(--text-muted); line-height: 1.6;
+    display: flex; gap: 8px;
+}
+.fee-gate-note i { color: var(--accent-green); flex-shrink: 0; margin-top: 2px; }
+
+.fee-gate-actions {
+    display: flex; flex-direction: column; gap: 8px;
+    padding: 0 28px 28px;
+}
+.fee-gate-btn-pay {
+    background: linear-gradient(135deg, #ffc107, #ff9800);
+    border: none; color: #1a1200;
+    padding: 13px 20px; border-radius: var(--radius-md);
+    font-size: 14px; font-weight: 800; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    transition: var(--transition);
+    box-shadow: 0 4px 16px rgba(255,193,7,0.35);
+}
+.fee-gate-btn-pay:hover { transform: translateY(-2px); box-shadow: 0 6px 22px rgba(255,193,7,0.5); }
+.fee-gate-btn-pay:disabled { opacity: 0.55; cursor: not-allowed; transform: none; box-shadow: none; }
+
+.fee-gate-btn-topup {
+    background: var(--gradient-green); border: none; color: #fff;
+    padding: 13px 20px; border-radius: var(--radius-md);
+    font-size: 14px; font-weight: 800; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    transition: var(--transition);
+    box-shadow: 0 4px 16px rgba(76,175,80,0.3);
+}
+.fee-gate-btn-topup:hover { transform: translateY(-2px); box-shadow: 0 6px 22px rgba(76,175,80,0.4); }
+
+.fee-gate-btn-cancel {
+    background: transparent; border: 1px solid var(--border);
+    color: var(--text-muted); padding: 11px 20px;
+    border-radius: var(--radius-md); font-size: 14px; font-weight: 600;
+    cursor: pointer; transition: var(--transition); text-align: center;
+}
+.fee-gate-btn-cancel:hover { border-color: var(--text-secondary); color: var(--text-primary); }
