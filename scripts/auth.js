@@ -11,12 +11,40 @@ const API_BASE_URL = (
 // ── Boot ──────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
     checkAuthStatus();
-
-    setTimeout(() => {
-        const splash = document.getElementById('splashScreen');
-        if (splash) splash.remove();
-    }, 2200);
+    runSplash();
 });
+
+// ── Splash sequence ───────────────────────────────────────────
+// 1. Splash visible immediately (CSS handles the scaleIn + pulse)
+// 2. After 2.2s  — fade splash out over 0.5s
+// 3. After 2.7s  — splash removed from DOM, landing page fades in
+function runSplash() {
+    const splash  = document.getElementById('splashScreen');
+    const landing = document.getElementById('landingPage');
+    const auth    = document.querySelector('.auth-container');
+
+    if (!splash) return;
+
+    // Make sure landing & auth are invisible while splash shows
+    if (landing) { landing.style.opacity = '0'; landing.style.display = 'flex'; }
+    if (auth)    { auth.style.opacity = '0'; auth.style.display = 'none'; }
+
+    // Step 1 — let splash be fully visible for 2.2s
+    setTimeout(() => {
+        // Step 2 — fade out splash
+        splash.style.transition = 'opacity 0.5s ease';
+        splash.style.opacity    = '0';
+
+        setTimeout(() => {
+            // Step 3 — remove splash, fade in landing
+            splash.remove();
+            if (landing) {
+                landing.style.transition = 'opacity 0.55s ease';
+                requestAnimationFrame(() => { landing.style.opacity = '1'; });
+            }
+        }, 500);
+    }, 2200);
+}
 
 // ── Already logged in? Skip the auth page ────────────────────
 async function checkAuthStatus() {
@@ -43,20 +71,27 @@ function showAuthPage() {
     const auth    = document.querySelector('.auth-container');
     if (!landing || !auth) return;
 
-    landing.style.transition = 'opacity .45s ease';
+    // Fade out landing
+    landing.style.transition = 'opacity 0.4s ease';
     landing.style.opacity    = '0';
+
     setTimeout(() => {
         landing.style.display = 'none';
-        auth.style.display    = 'grid';
-        // Animate in
-        auth.style.opacity    = '0';
-        auth.style.transition = 'opacity .4s ease';
-        requestAnimationFrame(() => { auth.style.opacity = '1'; });
-    }, 450);
-}
 
-function showAbout()   { showToast('About page — coming soon!', 'info'); }
-function showContact() { showToast('Contact page — coming soon!', 'info'); }
+        // Reveal auth container
+        auth.style.display    = 'grid';
+        auth.style.opacity    = '0';
+        auth.style.transition = 'opacity 0.45s ease, transform 0.45s ease';
+        auth.style.transform  = 'translateY(14px)';
+
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                auth.style.opacity   = '1';
+                auth.style.transform = 'translateY(0)';
+            });
+        });
+    }, 400);
+}
 
 // ── Switch between Login / Sign Up ───────────────────────────
 function switchToSignup() {
