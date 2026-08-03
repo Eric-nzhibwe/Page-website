@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payments — ARTX</title>
+    <link rel="icon" type="image/jpeg" href="../images/ARTX.jpg">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../styles/styles.css">
+    <link rel="stylesheet" href="../styles/icon-nav.css">
+    <link rel="stylesheet" href="../styles/payment.css">
+    <script src="../scripts/theme.js"></script>
+    <script src="https://js.stripe.com/v3/" defer></script>
+</head>
+<body>
+
+<!-- ═══ NAVBAR ═══ -->
+<header class="header w-100">
+    <div class="header-left d-flex align-items-center">
+        <div class="logo" onclick="window.location.href='../index.html'" style="cursor:pointer">
+            <i class="fas fa-fire"></i>ARTX
+        </div>
+        <div class="search-bar d-none d-md-flex align-items-center">
+            <i class="fas fa-search"></i>
+            <input type="text" placeholder="Search ARTX..." id="headerSearch">
+        </div>
+    </div>
+    <nav class="icon-nav d-flex justify-content-center flex-grow-1">
+        <button class="icon-nav-btn" title="Home" onclick="window.location.href='../index.html'">
+            <i class="fas fa-home"></i>
+        </button>
+        <button class="icon-nav-btn" title="Challenges" onclick="window.location.href='challenges.html'">
+            <i class="fas fa-trophy"></i>
+        </button>
+        <button class="icon-nav-btn" title="Marketplace" onclick="window.location.href='../index.html'">
+            <i class="fas fa-store"></i>
+        </button>
+        <button class="icon-nav-btn active" title="Payments">
+            <i class="fas fa-wallet"></i>
+        </button>
+    </nav>
+    <div class="header-right d-flex align-items-center">
+        <button class="header-icon-btn" onclick="loadPaymentData()" title="Refresh">
+            <i class="fas fa-rotate-right"></i>
+        </button>
+        <div class="user-avatar-btn" onclick="window.location.href='user.html'">
+            <i class="fas fa-user-circle"></i>
+        </div>
+    </div>
+</header>
+
+<!-- ═══ PAGE ═══ -->
+<div class="ppage">
+
+    <!-- HERO -->
+    <section class="p-hero">
+        <div class="p-hero-glow"></div>
+        <div class="p-hero-top">
+            <div>
+                <p class="p-bal-label"><i class="fas fa-wallet"></i> Available Balance</p>
+                <div class="p-bal-amount" id="pBalance">K0.00</div>
+                <div class="p-bal-meta">
+                    <span class="p-bal-currency" id="pCurrency">ZMW</span>
+                    <span class="p-bal-status" id="pStatus"></span>
+                </div>
+            </div>
+        </div>
+        <div class="p-hero-stats">
+            <div class="p-stat">
+                <div class="p-stat-icon dep"><i class="fas fa-arrow-down"></i></div>
+                <div class="p-stat-body">
+                    <span class="p-stat-val" id="pDeposited">K0.00</span>
+                    <span class="p-stat-key">Deposited</span>
+                </div>
+            </div>
+            <div class="p-stat">
+                <div class="p-stat-icon earn"><i class="fas fa-trophy"></i></div>
+                <div class="p-stat-body">
+                    <span class="p-stat-val" id="pEarned">K0.00</span>
+                    <span class="p-stat-key">Earned</span>
+                </div>
+            </div>
+            <div class="p-stat">
+                <div class="p-stat-icon wit"><i class="fas fa-arrow-up"></i></div>
+                <div class="p-stat-body">
+                    <span class="p-stat-val" id="pWithdrawn">K0.00</span>
+                    <span class="p-stat-key">Withdrawn</span>
+                </div>
+            </div>
+            <div class="p-stat">
+                <div class="p-stat-icon spt"><i class="fas fa-shopping-cart"></i></div>
+                <div class="p-stat-body">
+                    <span class="p-stat-val" id="pSpent">K0.00</span>
+                    <span class="p-stat-key">Spent</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ACTION BUTTONS -->
+    <div class="p-actions">
+        <button class="p-action-btn dep" onclick="openDeposit()">
+            <div class="p-action-ico"><i class="fas fa-plus"></i></div>
+            <span class="p-action-lbl">Deposit</span>
+        </button>
+        <button class="p-action-btn wit" onclick="openWithdraw()">
+            <div class="p-action-ico"><i class="fas fa-minus"></i></div>
+            <span class="p-action-lbl">Withdraw</span>
+        </button>
+        <button class="p-action-btn send" onclick="pToast('Send Money coming soon','info')">
+            <div class="p-action-ico"><i class="fas fa-paper-plane"></i></div>
+            <span class="p-action-lbl">Send</span>
+        </button>
+        <button class="p-action-btn hist" onclick="document.getElementById('pTxSection').scrollIntoView({behavior:'smooth'})">
+            <div class="p-action-ico"><i class="fas fa-clock-rotate-left"></i></div>
+            <span class="p-action-lbl">History</span>
+        </button>
+    </div>
+
+    <!-- PENDING NOTICE -->
+    <div class="p-pending" id="pPending">
+        <div class="p-pending-inner">
+            <span class="p-pending-spinner"><i class="fas fa-spinner fa-spin"></i></span>
+            <div class="p-pending-body">
+                <strong>Payment pending</strong>
+                <span id="pPendingMsg">Waiting for confirmation on your phone…</span>
+            </div>
+            <button class="p-pending-close" onclick="cancelPoll()" aria-label="Dismiss"><i class="fas fa-xmark"></i></button>
+        </div>
+        <div class="p-pending-bar-wrap"><div class="p-pending-bar" id="pPendingBar"></div></div>
+    </div>
+
+    <!-- MINI CHART -->
+    <div class="p-chart-card">
+        <div class="p-chart-head">
+            <h3 class="p-chart-title"><i class="fas fa-chart-line"></i> Activity — Last 7 days</h3>
+            <div class="p-chart-legend">
+                <span class="p-leg in"><i class="fas fa-circle"></i> In</span>
+                <span class="p-leg out"><i class="fas fa-circle"></i> Out</span>
+            </div>
+        </div>
+        <div class="p-chart-body" id="pChart" aria-hidden="true"></div>
+    </div>
+
+    <!-- TRANSACTIONS -->
+    <div class="p-tx-section" id="pTxSection">
+        <div class="p-tx-head">
+            <h2 class="p-tx-title"><i class="fas fa-list-ul"></i> Transactions</h2>
+            <div class="p-tx-controls">
+                <div class="p-tx-search">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="pTxSearch" placeholder="Search transactions…" oninput="searchTx()">
+                </div>
+                <div class="p-tx-pills" id="pTxPills">
+                    <button class="p-pill active" data-filter="">All</button>
+                    <button class="p-pill" data-filter="deposit">Deposits</button>
+                    <button class="p-pill" data-filter="withdrawal">Withdrawals</button>
+                    <button class="p-pill" data-filter="earning">Earnings</button>
+                    <button class="p-pill" data-filter="payment">Payments</button>
+                </div>
+            </div>
+        </div>
+        <div class="p-tx-list" id="pTxList">
+            <div class="p-tx-skeleton-wrap">
+                <div class="p-tx-skeleton">
+                    <div class="p-sk"></div><div class="p-sk s"></div>
+                    <div class="p-sk"></div><div class="p-sk s"></div>
+                </div>
+            </div>
+        </div>
+        <button class="p-load-more" id="pLoadMore" onclick="loadMoreTx()" style="display:none">
+            <i class="fas fa-chevron-down"></i> Load more
+        </button>
+    </div>
+
+</div><!-- /ppage -->
+
+<!-- ═══════════════════════════════════════════
+     DEPOSIT MODAL
+═══════════════════════════════════════════ -->
+<div id="depositModal" class="p-modal" role="dialog" aria-modal="true" aria-labelledby="dTitle">
+    <div class="p-modal-box">
+
+        <div class="p-modal-hdr">
+            <div class="p-modal-hdr-ico dep"><i class="fas fa-arrow-down"></i></div>
+            <div class="p-modal-hdr-info">
+                <h2 id="dTitle">Deposit Funds</h2>
+                <p>Add money to your ARTX wallet</p>
+            </div>
+            <button class="p-modal-close" onclick="closeDeposit()" aria-label="Close"><i class="fas fa-xmark"></i></button>
+        </div>
+
+        <div class="p-stepper">
+            <div class="p-step active" id="ds1"><span>1</span> Amount</div>
+            <div class="p-step-line"></div>
+            <div class="p-step" id="ds2"><span>2</span> Method</div>
+            <div class="p-step-line"></div>
+            <div class="p-step" id="ds3"><span>3</span> Confirm</div>
+        </div>
+
+        <form id="depositForm" onsubmit="submitDeposit(event)" novalidate>
+
+            <!-- STEP 1 — Amount -->
+            <div class="p-panel active" id="dp1">
+                <div class="p-amt-display" id="dAmtDisplay">K0</div>
+                <div class="p-presets">
+                    <button type="button" class="p-preset" onclick="dPreset(10)">K10</button>
+                    <button type="button" class="p-preset" onclick="dPreset(25)">K25</button>
+                    <button type="button" class="p-preset" onclick="dPreset(50)">K50</button>
+                    <button type="button" class="p-preset" onclick="dPreset(100)">K100</button>
+                    <button type="button" class="p-preset" onclick="dPreset(200)">K200</button>
+                    <button type="button" class="p-preset" onclick="dPreset(500)">K500</button>
+                    <button type="button" class="p-preset" onclick="dPreset(1000)">K1000</button>
+                    <button type="button" class="p-preset" onclick="dPreset(2000)">K2000</button>
+                </div>
+                <div class="p-field">
+                    <label for="dAmt">Or enter custom amount</label>
+                    <div class="p-input-wrap">
+                        <span class="p-prefix">K</span>
+                        <input type="number" id="dAmt" step="0.01" min="1" placeholder="0.00"
+                               autocomplete="off" oninput="syncAmt('dAmtDisplay','dAmt')">
+                    </div>
+                </div>
+                <div class="p-btn-row">
+                    <button type="button" class="p-btn-next" onclick="dNext(1)">
+                        Continue <i class="fas fa-arrow-right"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- STEP 2 — Method -->
+            <div class="p-panel" id="dp2">
+                <div class="p-methods">
+                    <label class="p-method">
+                        <input type="radio" name="dProvider" value="pawapay" onchange="dMethodChange()">
+                        <div class="p-method-card">
+                            <div class="p-method-ico" style="background:#f59e0b"><i class="fas fa-mobile-alt"></i></div>
+                            <div class="p-method-info"><strong>Mobile Money</strong><span>MTN · Airtel · M-Pesa</span></div>
+                            <i class="fas fa-check-circle p-method-check"></i>
+                        </div>
+                    </label>
+                    <label class="p-method">
+                        <input type="radio" name="dProvider" value="stripe" onchange="dMethodChange()">
+                        <div class="p-method-card">
+                            <div class="p-method-ico" style="background:#635bff"><i class="fas fa-credit-card"></i></div>
+                            <div class="p-method-info"><strong>Card Payment</strong><span>Visa · Mastercard via Stripe</span></div>
+                            <i class="fas fa-check-circle p-method-check"></i>
+                        </div>
+                    </label>
+                    <label class="p-method">
+                        <input type="radio" name="dProvider" value="paystack" onchange="dMethodChange()">
+                        <div class="p-method-card">
+                            <div class="p-method-ico" style="background:#00c3f7"><i class="fas fa-building-columns"></i></div>
+                            <div class="p-method-info"><strong>Paystack</strong><span>Card or Bank transfer</span></div>
+                            <i class="fas fa-check-circle p-method-check"></i>
+                        </div>
+                    </label>
+                </div>
+
+                <!-- PawaPay fields -->
+                <div id="dPawapayFields" class="p-extra" style="display:none">
+                    <div class="p-field">
+                        <label for="dPhone">Phone Number</label>
+                        <div class="p-input-wrap">
+                            <i class="fas fa-phone"></i>
+                            <input type="tel" id="dPhone" placeholder="+260977123456" autocomplete="tel">
+                        </div>
+                        <small>International format e.g. +260977123456</small>
+                    </div>
+                    <div class="p-field">
+                        <label for="dNetwork">Mobile Network</label>
+                        <div class="p-input-wrap">
+                            <i class="fas fa-signal"></i>
+                            <select id="dNetwork" class="p-select">
+                                <option value="">Select network…</option>
+                                <option value="MTN_MOMO_ZMB">MTN Mobile Money</option>
+                                <option value="AIRTEL_OAPI_ZMB">Airtel Money</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="p-info-box"><i class="fas fa-info-circle"></i> You will receive a USSD prompt on your phone. Enter your PIN to confirm.</div>
+                </div>
+
+                <!-- Stripe fields -->
+                <div id="dStripeFields" class="p-extra" style="display:none">
+                    <div class="p-field">
+                        <label>Card Details</label>
+                        <div id="dStripeEl" class="p-stripe-el"></div>
+                        <div id="dStripeErr" class="p-field-err"></div>
+                    </div>
+                    <div class="p-info-box"><i class="fas fa-lock"></i> Secured by Stripe — your card details never touch our servers.</div>
+                </div>
+
+                <!-- Paystack fields -->
+                <div id="dPaystackFields" class="p-extra" style="display:none">
+                    <div class="p-info-box"><i class="fas fa-info-circle"></i> You'll be redirected to Paystack's secure checkout to complete payment.</div>
+                </div>
+
+                <div class="p-btn-row">
+                    <button type="button" class="p-btn-back" onclick="dBack(2)"><i class="fas fa-arrow-left"></i> Back</button>
+                    <button type="button" class="p-btn-next" onclick="dNext(2)">Review <i class="fas fa-arrow-right"></i></button>
+                </div>
+            </div>
+
+            <!-- STEP 3 — Confirm -->
+            <div class="p-panel" id="dp3">
+                <div class="p-review">
+                    <div class="p-review-row"><span>Amount</span><strong id="dRevAmt">—</strong></div>
+                    <div class="p-review-row"><span>Method</span><strong id="dRevMethod">—</strong></div>
+                    <div class="p-review-row" id="dRevPhoneRow" style="display:none"><span>Phone</span><strong id="dRevPhone">—</strong></div>
+                    <div class="p-review-row"><span>Currency</span><strong id="dRevCur">ZMW</strong></div>
+                </div>
+                <div class="p-btn-row">
+                    <button type="button" class="p-btn-back" onclick="dBack(3)"><i class="fas fa-arrow-left"></i> Back</button>
+                    <button type="submit" class="p-btn-submit" id="dSubmitBtn">
+                        <i class="fas fa-check"></i> <span id="dSubmitTxt">Deposit Now</span>
+                    </button>
+                </div>
+            </div>
+
+        </form>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     WITHDRAW MODAL
+═══════════════════════════════════════════ -->
+<div id="withdrawModal" class="p-modal" role="dialog" aria-modal="true" aria-labelledby="wTitle">
+    <div class="p-modal-box">
+
+        <div class="p-modal-hdr">
+            <div class="p-modal-hdr-ico wit"><i class="fas fa-arrow-up"></i></div>
+            <div class="p-modal-hdr-info">
+                <h2 id="wTitle">Withdraw Funds</h2>
+                <p id="wAvailLabel">Available: K0.00</p>
+            </div>
+            <button class="p-modal-close" onclick="closeWithdraw()" aria-label="Close"><i class="fas fa-xmark"></i></button>
+        </div>
+
+        <div class="p-stepper">
+            <div class="p-step active" id="ws1"><span>1</span> Amount</div>
+            <div class="p-step-line"></div>
+            <div class="p-step" id="ws2"><span>2</span> Method</div>
+            <div class="p-step-line"></div>
+            <div class="p-step" id="ws3"><span>3</span> Confirm</div>
+        </div>
+
+        <form id="withdrawForm" onsubmit="submitWithdraw(event)" novalidate>
+
+            <!-- STEP 1 — Amount -->
+            <div class="p-panel active" id="wp1">
+                <div class="p-amt-display" id="wAmtDisplay">K0</div>
+                <div class="p-presets">
+                    <button type="button" class="p-preset" onclick="wPreset(10)">K10</button>
+                    <button type="button" class="p-preset" onclick="wPreset(50)">K50</button>
+                    <button type="button" class="p-preset" onclick="wPreset(100)">K100</button>
+                    <button type="button" class="p-preset" onclick="wPreset(250)">K250</button>
+                </div>
+                <div class="p-field">
+                    <label for="wAmt">Or enter amount</label>
+                    <div class="p-input-wrap">
+                        <span class="p-prefix">K</span>
+                        <input type="number" id="wAmt" step="0.01" min="1" placeholder="0.00"
+                               autocomplete="off" oninput="syncAmt('wAmtDisplay','wAmt')">
+                    </div>
+                    <small id="wAvailHint" class="p-field-hint"></small>
+                </div>
+                <div class="p-btn-row">
+                    <button type="button" class="p-btn-next" onclick="wNext(1)">
+                        Continue <i class="fas fa-arrow-right"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- STEP 2 — Method -->
+            <div class="p-panel" id="wp2">
+                <div class="p-methods">
+                    <label class="p-method">
+                        <input type="radio" name="wProvider" value="mtn" onchange="wMethodChange()">
+                        <div class="p-method-card">
+                            <div class="p-method-ico" style="background:#f59e0b"><i class="fas fa-mobile-alt"></i></div>
+                            <div class="p-method-info"><strong>MTN Mobile Money</strong><span>Instant transfer</span></div>
+                            <i class="fas fa-check-circle p-method-check"></i>
+                        </div>
+                    </label>
+                    <label class="p-method">
+                        <input type="radio" name="wProvider" value="airtel" onchange="wMethodChange()">
+                        <div class="p-method-card">
+                            <div class="p-method-ico" style="background:#e53935"><i class="fas fa-mobile-alt"></i></div>
+                            <div class="p-method-info"><strong>Airtel Money</strong><span>Instant transfer</span></div>
+                            <i class="fas fa-check-circle p-method-check"></i>
+                        </div>
+                    </label>
+                    <label class="p-method">
+                        <input type="radio" name="wProvider" value="mpesa" onchange="wMethodChange()">
+                        <div class="p-method-card">
+                            <div class="p-method-ico" style="background:#4caf50"><i class="fas fa-mobile-alt"></i></div>
+                            <div class="p-method-info"><strong>M-Pesa</strong><span>Kenya & Tanzania</span></div>
+                            <i class="fas fa-check-circle p-method-check"></i>
+                        </div>
+                    </label>
+                    <label class="p-method">
+                        <input type="radio" name="wProvider" value="bank" onchange="wMethodChange()">
+                        <div class="p-method-card">
+                            <div class="p-method-ico" style="background:#1565c0"><i class="fas fa-building-columns"></i></div>
+                            <div class="p-method-info"><strong>Bank Transfer</strong><span>1–3 business days</span></div>
+                            <i class="fas fa-check-circle p-method-check"></i>
+                        </div>
+                    </label>
+                    <label class="p-method">
+                        <input type="radio" name="wProvider" value="paypal" onchange="wMethodChange()">
+                        <div class="p-method-card">
+                            <div class="p-method-ico" style="background:#003087"><i class="fab fa-paypal"></i></div>
+                            <div class="p-method-info"><strong>PayPal</strong><span>Email transfer</span></div>
+                            <i class="fas fa-check-circle p-method-check"></i>
+                        </div>
+                    </label>
+                </div>
+
+                <div id="wMobileFields" class="p-extra" style="display:none">
+                    <div class="p-field">
+                        <label for="wPhone">Phone Number</label>
+                        <div class="p-input-wrap">
+                            <i class="fas fa-phone"></i>
+                            <input type="tel" id="wPhone" placeholder="+260977123456" autocomplete="tel">
+                        </div>
+                    </div>
+                    <div class="p-field">
+                        <label for="wNetwork">Network</label>
+                        <div class="p-input-wrap">
+                            <i class="fas fa-signal"></i>
+                            <select id="wNetwork" class="p-select">
+                                <option value="">Select network…</option>
+                                <option value="MTN_MOMO_ZMB">MTN — Zambia</option>
+                                <option value="AIRTEL_OAPI_ZMB">Airtel — Zambia</option>
+                                <option value="VODACOM_MPESA_TZA">M-Pesa — Tanzania</option>
+                                <option value="SAFARICOM_MPESA_KEN">M-Pesa — Kenya</option>
+                                <option value="MTN_MOMO_UGA">MTN — Uganda</option>
+                                <option value="MTN_MOMO_GHA">MTN — Ghana</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div id="wBankFields" class="p-extra" style="display:none">
+                    <div class="p-field">
+                        <label for="wBankAcc">Bank Account Number</label>
+                        <div class="p-input-wrap">
+                            <i class="fas fa-hashtag"></i>
+                            <input type="text" id="wBankAcc" placeholder="Account number">
+                        </div>
+                    </div>
+                </div>
+                <div id="wPaypalFields" class="p-extra" style="display:none">
+                    <div class="p-field">
+                        <label for="wPaypalEmail">PayPal Email</label>
+                        <div class="p-input-wrap">
+                            <i class="fas fa-envelope"></i>
+                            <input type="email" id="wPaypalEmail" placeholder="you@email.com">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="p-btn-row">
+                    <button type="button" class="p-btn-back" onclick="wBack(2)"><i class="fas fa-arrow-left"></i> Back</button>
+                    <button type="button" class="p-btn-next" onclick="wNext(2)">Review <i class="fas fa-arrow-right"></i></button>
+                </div>
+            </div>
+
+            <!-- STEP 3 — Confirm -->
+            <div class="p-panel" id="wp3">
+                <div class="p-review">
+                    <div class="p-review-row"><span>Amount</span><strong id="wRevAmt">—</strong></div>
+                    <div class="p-review-row"><span>Method</span><strong id="wRevMethod">—</strong></div>
+                    <div class="p-review-row" id="wRevPhoneRow" style="display:none"><span>Phone</span><strong id="wRevPhone">—</strong></div>
+                    <div class="p-review-row"><span>Currency</span><strong id="wRevCur">ZMW</strong></div>
+                </div>
+                <div class="p-btn-row">
+                    <button type="button" class="p-btn-back" onclick="wBack(3)"><i class="fas fa-arrow-left"></i> Back</button>
+                    <button type="submit" class="p-btn-submit wit" id="wSubmitBtn">
+                        <i class="fas fa-check"></i> <span id="wSubmitTxt">Withdraw Now</span>
+                    </button>
+                </div>
+            </div>
+
+        </form>
+    </div>
+</div>
+
+<!-- Toast -->
+<div class="p-toast" id="pToastEl"></div>
+
+<!-- Mobile Bottom Nav -->
+<nav class="mobile-bottom-nav" id="mobileBottomNav">
+    <button class="icon-nav-btn" onclick="window.location.href='../index.html'"><i class="fas fa-home"></i></button>
+    <button class="icon-nav-btn" onclick="window.location.href='challenges.html'"><i class="fas fa-trophy"></i></button>
+    <button class="icon-nav-btn" onclick="window.location.href='../index.html'"><i class="fas fa-store"></i></button>
+    <button class="icon-nav-btn" onclick="window.location.href='community.html'"><i class="fas fa-users"></i></button>
+    <button class="icon-nav-btn active"><i class="fas fa-wallet"></i></button>
+</nav>
+
+<script src="../scripts/app.js"></script>
+<script src="../scripts/payment.js"></script>
+</body>
+</html>

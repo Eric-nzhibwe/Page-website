@@ -388,66 +388,49 @@ function changeFontSize() {
 }
 
 // ── Accent color palette ──────────────────────────────────────────────────────
-// Each entry: { hex, name, primary (darker), primaryLt, glow }
-const ACCENT_PALETTES = {
-    '#90ee90': { name: 'Green',  primary: '#556b2f', primaryLt: '#6b8a3a', primaryDk: '#3d4f22', glow: 'rgba(85,107,47,0.18)' },
-    '#4facfe': { name: 'Blue',   primary: '#1565c0', primaryLt: '#1e88e5', primaryDk: '#0d47a1', glow: 'rgba(21,101,192,0.18)' },
-    '#f093fb': { name: 'Pink',   primary: '#8e24aa', primaryLt: '#ab47bc', primaryDk: '#6a1b9a', glow: 'rgba(142,36,170,0.18)' },
-    '#ffd700': { name: 'Gold',   primary: '#b8860b', primaryLt: '#d4a017', primaryDk: '#8b6508', glow: 'rgba(184,134,11,0.18)'  },
-    '#ff6b6b': { name: 'Red',    primary: '#c62828', primaryLt: '#e53935', primaryDk: '#8e0000', glow: 'rgba(198,40,40,0.18)'   },
-    '#a78bfa': { name: 'Purple', primary: '#4527a0', primaryLt: '#5e35b1', primaryDk: '#311b92', glow: 'rgba(69,39,160,0.18)'   },
-};
+// Palette data now lives in theme.js (ARTX_THEME.palettes).
+// settings.js delegates everything to that shared engine so that:
+//   • the palette is defined in exactly one place
+//   • adding a new color only requires editing theme.js
+//   • every page (not just this one) benefits automatically
 
 function selectAccentColor(color) {
-    // Update active swatch
+    // 1. Apply the color immediately via the shared theme engine
+    if (window.ARTX_THEME) {
+        ARTX_THEME.selectAccent(color);
+    }
+
+    // 2. Also keep legacy .color-swatch[data-color] selectors in sync
     document.querySelectorAll('.color-swatch').forEach(s => {
         s.classList.toggle('active', s.dataset.color === color);
     });
 
-    _applyAccentVars(color);
-    _spawnColorRipple(color);
+    // 3. Immediately persist to localStorage so reload never loses it,
+    //    even if the user navigates away before hitting Save.
+    try {
+        const prefs = JSON.parse(localStorage.getItem('userPreferences') || '{}');
+        prefs.accentColor = color;
+        localStorage.setItem('userPreferences', JSON.stringify(prefs));
+    } catch (e) { /* ignore */ }
 
-    // Show a subtle label under the swatches
-    const palette = ACCENT_PALETTES[color];
-    const labelEl = document.getElementById('smAccentLabel');
-    if (labelEl && palette) {
-        labelEl.textContent = palette.name;
-        labelEl.style.color = palette.primary;
-        labelEl.style.opacity = '1';
-        clearTimeout(labelEl._t);
-        labelEl._t = setTimeout(() => { labelEl.style.opacity = '0'; }, 1800);
+    // 4. Silently sync to backend (best-effort, no loading state)
+    const token = _smToken();
+    if (token) {
+        fetch(`${_SM_API}/auth/preferences/`, {
+            method:  'PATCH',
+            headers: _smHeaders(),
+            body:    JSON.stringify({ accentColor: color }),
+        }).catch(() => { /* silent — Save button is still the reliable path */ });
     }
 }
 
+// Keep internal references working for any code that calls these directly
 function _applyAccentVars(color) {
-    const palette = ACCENT_PALETTES[color] || ACCENT_PALETTES['#90ee90'];
-    const root = document.documentElement;
-
-    // Settings modal variables (--sg-* mirror --artx-* via CSS var() fallback)
-    root.style.setProperty('--artx-primary',    palette.primary);
-    root.style.setProperty('--artx-primary-lt', palette.primaryLt);
-    root.style.setProperty('--artx-primary-dk', palette.primaryDk);
-    root.style.setProperty('--artx-accent',     color);
-    // --artx-glow as raw rgba (used by chatbot.css, wallet shadows etc)
-    root.style.setProperty('--artx-glow',       palette.glow);
-    // --sg-glow needs box-shadow format for settings modal
-    root.style.setProperty('--sg-glow',         `0 0 0 3px ${palette.glow}`);
+    if (window.ARTX_THEME) ARTX_THEME.applyAccent(color);
 }
 
 function _spawnColorRipple(color) {
-    // Find the active swatch to spawn ripple from
-    const swatch = document.querySelector(`.color-swatch[data-color="${color}"]`);
-    if (!swatch) return;
-
-    const ripple = document.createElement('span');
-    ripple.className = 'sm-color-ripple';
-    ripple.style.cssText = `background:${color};`;
-    swatch.appendChild(ripple);
-
-    // Force reflow
-    ripple.offsetWidth;
-    ripple.classList.add('expanding');
-    setTimeout(() => ripple.remove(), 600);
+    // Handled inside ARTX_THEME.selectAccent — no-op here to avoid double ripple
 }
 
 function _applyAppearance(prefs) {
@@ -458,9 +441,12 @@ function _applyAppearance(prefs) {
     }
     if (prefs.accentColor) {
         _applyAccentVars(prefs.accentColor);
-        // Sync active swatch on load
+        // Sync both old (data-color) and new (data-accent-swatch) selectors
         document.querySelectorAll('.color-swatch').forEach(s => {
             s.classList.toggle('active', s.dataset.color === prefs.accentColor);
+        });
+        document.querySelectorAll('[data-accent-swatch]').forEach(s => {
+            s.classList.toggle('active', s.dataset.accentSwatch === prefs.accentColor);
         });
     }
     document.documentElement.classList.toggle('no-animations', !prefs.enableAnimations);
@@ -787,8 +773,12 @@ async function deleteAccount() {
 
 // ── Boot: apply saved appearance on page load ─────────────────────────────────
 
+// theme.js already ran the boot at script-load time (before DOM paint).
+// This IIFE is kept only for pages where settings.js loads without theme.js,
+// but on normal pages theme.js fires first so this is effectively a no-op.
 (function _smBoot() {
     try {
+        if (window.ARTX_THEME) return; // theme.js already handled it
         const prefs = JSON.parse(localStorage.getItem('userPreferences') || '{}');
         _applyAppearance(prefs);
     } catch { /* silent */ }

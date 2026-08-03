@@ -324,7 +324,7 @@ LOGGING = {
                 record.levelname == 'WARNING'
                 and hasattr(record, 'status_code')
                 and record.status_code == 404
-                and '/media/' in getattr(record, 'request', type('', (), {'path': ''})()).path
+                and '/media/' in getattr(getattr(record, 'request', None), 'path', '')
             ),
         },
     },

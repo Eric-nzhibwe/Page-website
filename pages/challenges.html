@@ -11,6 +11,7 @@
     <link rel="stylesheet" href="../styles/icon-nav.css">
     <link rel="stylesheet" href="../styles/challenges.css?v=2">
     <link rel="stylesheet" href="../styles/responsive-pro.css">
+    <script src="../scripts/theme.js"></script>
 </head>
 <body>
 
@@ -67,7 +68,7 @@
             <a href="community.html" class="quick-menu-item">
                 <i class="fas fa-users"></i><span>Community</span>
             </a>
-            <a href="wallet.html" class="quick-menu-item">
+            <a href="payment.html" class="quick-menu-item">
                 <i class="fas fa-wallet"></i><span>Wallet</span>
             </a>
             <a href="chatbot.html" class="quick-menu-item">
@@ -104,7 +105,7 @@
         </div>
         <div class="user-menu-links">
             <a href="user.html"><i class="fas fa-user"></i> View Profile</a>
-            <a href="wallet.html"><i class="fas fa-wallet"></i> My Wallet</a>
+            <a href="payment.html"><i class="fas fa-wallet"></i> My Wallet</a>
             <a href="chatbot.html"><i class="fas fa-robot"></i> AI Assistant</a>
             <a href="#" onclick="logout(); return false;"><i class="fas fa-sign-out-alt"></i> Logout</a>
         </div>
@@ -115,7 +116,7 @@
 <div class="container">
 
     <!-- ── HERO BANNER ── -->
-    <div class="ch-hero">
+    <div class="ch-hero" style="background-color: lightgreen; border: 1px solid lightgreen; border-radius: 15px;" >
         <div class="ch-hero-glow" aria-hidden="true"></div>
         <div class="ch-hero-body">
             <div class="ch-hero-text">
@@ -123,7 +124,7 @@
                 <h1 class="ch-hero-title">Compete. Create. <span class="ch-hero-highlight">Win.</span></h1>
                 <p class="ch-hero-sub">Interpret images, beat the clock, and climb the leaderboard. Every challenge is a chance to earn prestige and cash rewards.</p>
                 <div class="ch-hero-actions">
-                    <button class="ch-btn-primary" style="border-color: 1px soliddarkolivegreen;" onclick="document.getElementById('challengesGrid').scrollIntoView({behavior:'smooth'})">
+                    <button class="ch-btn-primary" style="border-color: 1px soliddarkolivegreen; color: black;" onclick="document.getElementById('challengesGrid').scrollIntoView({behavior:'smooth'})">
                         <i class="fas fa-play" style="color: black;"></i> Browse Challenges
                     </button>
                     <button class="ch-btn-secondary" onclick="showUploadModal(); switchUploadTab('challenge');">
@@ -215,7 +216,7 @@
     <button class="icon-nav-btn" title="Community" onclick="window.location.href='community.html'">
         <i class="fas fa-users"></i>
     </button>
-    <button class="icon-nav-btn" title="Wallet" onclick="window.location.href='wallet.html'">
+    <button class="icon-nav-btn" title="Wallet" onclick="window.location.href='payment.html'">
         <i class="fas fa-wallet"></i>
     </button>
     <button class="icon-nav-btn" title="Profile" onclick="window.location.href='user.html'">
@@ -296,11 +297,11 @@
             <form id="uploadForm" onsubmit="uploadContent(event)" novalidate>
                 <div class="form-group">
                     <label for="uploadTitle">Title</label>
-                    <input type="text" id="uploadTitle" required placeholder="Give your content a title">
+                    <input type="text" style="border-radius: 15px; border: 1px solid lightgreen;" id="uploadTitle" required placeholder="Give your content a title">
                 </div>
                 <div class="form-group">
                     <label for="uploadDescription">Description</label>
-                    <textarea id="uploadDescription" required rows="3" placeholder="Describe your creation..."></textarea>
+                    <textarea id="uploadDescription" style="border-radius: 15px; border: 1px solid lightgreen;" required rows="3" placeholder="Describe your creation..."></textarea>
                 </div>
                 <div class="form-group">
                     <label for="uploadCategory">Category</label>
@@ -314,12 +315,12 @@
                 </div>
                 <div class="form-group">
                     <label for="uploadImage">Image</label>
-                    <input type="file" id="uploadImage" accept="image/*" required onchange="previewUploadImage(event)">
+                    <input type="file" style="border-radius: 15px; border: 1px solid lightgreen;" id="uploadImage" accept="image/*" required onchange="previewUploadImage(event)">
                     <div id="uploadPreview" class="image-preview">
                         <span><i class="fas fa-image"></i> Preview will appear here</span>
                     </div>
                 </div>
-                <button type="submit" class="btn-primary btn-large">
+                <button type="submit" style="color: black;" class="btn-primary btn-large">
                     <i class="fas fa-paper-plane"></i> Submit for Review
                 </button>
             </form>
@@ -330,7 +331,7 @@
 
             <!-- Step Indicator -->
             <div class="cc-steps">
-                <div class="cc-step active" id="ccStep1">
+                <div class="cc-step active"  id="ccStep1">
                     <div class="cc-step-dot">1</div>
                     <span>Basics</span>
                 </div>
@@ -352,7 +353,7 @@
                 <div class="cc-page active" id="ccPage1">
                     <div class="form-group">
                         <label for="challengeTitle">Challenge Title <span class="cc-required">*</span></label>
-                        <input type="text" id="challengeTitle" required maxlength="80"
+                        <input type="text" style="border-radius: 15px; border: 1px solid lightgreen;" id="challengeTitle" required maxlength="80"
                             placeholder="e.g., The Forgotten Garden"
                             oninput="ccCharCount(this,'challengeTitleCount',80); ccClearError('challengeTitle')">
                         <div class="cc-field-meta">
@@ -363,7 +364,7 @@
 
                     <div class="form-group">
                         <label for="challengeDescription">Description <span class="cc-required">*</span></label>
-                        <textarea id="challengeDescription" required rows="4" maxlength="500"
+                        <textarea id="challengeDescription" style="border-radius: 15px; border: 1px solid lightgreen;" required rows="4" maxlength="500"
                             placeholder="Describe what participants should interpret or create…"
                             oninput="ccCharCount(this,'challengeDescCount',500); ccClearError('challengeDescription')"></textarea>
                         <div class="cc-field-meta">
@@ -375,16 +376,19 @@
                     <div class="form-row">
                         <div class="form-group">
                             <label for="challengeDifficulty">Difficulty <span class="cc-required">*</span></label>
-                            <select id="challengeDifficulty" required>
-                                <option value="easy">🟢 Easy</option>
-                                <option value="medium" selected>🟡 Medium</option>
-                                <option value="hard">🔴 Hard</option>
-                                <option value="expert">🟣 Expert</option>
+                            <select id="challengeDifficulty" style="border-radius: 15px; border: 1px solid lightgreen;" required
+                                onchange="ccClearError('challengeDifficulty')">
+                                <option value="select">Please select difficulty</option>
+                                <option value="easy" style="border-radius: 15px; border: 1px solid lightgreen;">🟢 Easy</option>
+                                <option value="medium" style="border-radius: 15px; border: 1px solid lightgreen;" selected>🟡 Medium</option>
+                                <option value="hard" style="border-radius: 15px; border: 1px solid lightgreen;">🔴 Hard</option>
+                                <option value="expert" style="border-radius: 15px; border: 1px solid lightgreen;">🟣 Expert</option>
                             </select>
+                            <span class="cc-error" id="challengeDifficultyErr"></span>
                         </div>
                         <div class="form-group">
                             <label for="challengeTimeLimit">Time Limit (minutes) <span class="cc-required">*</span></label>
-                            <input type="number" id="challengeTimeLimit" required min="5" max="120" value="20"
+                            <input type="number" style="border-radius: 15px; border: 1px solid lightgreen;" id="challengeTimeLimit" required min="5" max="120" value="20"
                                 oninput="ccClearError('challengeTimeLimit')">
                             <span class="cc-error" id="challengeTimeLimitErr"></span>
                         </div>
@@ -393,13 +397,13 @@
                     <div class="form-group">
                         <label>Challenge Duration <span class="cc-required">*</span></label>
                         <div class="cc-duration-btns" id="ccDurationBtns">
-                            <button type="button" class="cc-dur-btn" data-days="1" onclick="ccSetDuration(1)">1 Day</button>
-                            <button type="button" class="cc-dur-btn" data-days="3" onclick="ccSetDuration(3)">3 Days</button>
-                            <button type="button" class="cc-dur-btn active" data-days="7" onclick="ccSetDuration(7)">7 Days</button>
-                            <button type="button" class="cc-dur-btn" data-days="14" onclick="ccSetDuration(14)">14 Days</button>
-                            <button type="button" class="cc-dur-btn" data-days="0" onclick="ccSetDuration(0)">Custom</button>
+                            <button type="button" class="cc-dur-btn" style="border-radius: 15px; border: 1px solid lightgreen;" data-days="1" onclick="ccSetDuration(1)">1 Day</button>
+                            <button type="button" class="cc-dur-btn" style="border-radius: 15px; border: 1px solid lightgreen;" data-days="3" onclick="ccSetDuration(3)">3 Days</button>
+                            <button type="button" class="cc-dur-btn active" style="border-radius: 15px; border: 1px solid lightgreen;" data-days="7" onclick="ccSetDuration(7)">7 Days</button>
+                            <button type="button" class="cc-dur-btn" style="border-radius: 15px; border: 1px solid lightgreen;" data-days="14" onclick="ccSetDuration(14)">14 Days</button>
+                            <button type="button" class="cc-dur-btn" style="border-radius: 15px; border: 1px solid lightgreen;" data-days="0" onclick="ccSetDuration(0)">Custom</button>
                         </div>
-                        <input type="datetime-local" id="challengeEndsAt" class="cc-custom-date" style="display:none"
+                        <input type="datetime-local" style="border-radius: 15px; border: 1px solid lightgreen;" id="challengeEndsAt" class="cc-custom-date" style="display:none"
                             oninput="ccClearError('challengeEndsAt')">
                         <span class="cc-error" id="challengeEndsAtErr"></span>
                         <p class="cc-hint" id="ccDurationHint">Ends <strong id="ccDurationLabel">in 7 days</strong></p>
@@ -408,13 +412,13 @@
                     <div class="form-row">
                         <div class="form-group">
                             <label for="challengeMinPoints">Min Points <span class="cc-required">*</span></label>
-                            <input type="number" id="challengeMinPoints" required min="5" value="10"
+                            <input type="number" style="border-radius: 15px; border: 1px solid lightgreen;" id="challengeMinPoints" required min="5" value="10"
                                 oninput="ccClearError('challengeMinPoints')">
                             <span class="cc-error" id="challengeMinPointsErr"></span>
                         </div>
                         <div class="form-group">
                             <label for="challengeMaxPoints">Max Points <span class="cc-required">*</span></label>
-                            <input type="number" id="challengeMaxPoints" required min="10" value="50"
+                            <input type="number" style="border-radius: 15px; border: 1px solid lightgreen;" id="challengeMaxPoints" required min="10" value="50"
                                 oninput="ccClearError('challengeMaxPoints')">
                             <span class="cc-error" id="challengeMaxPointsErr"></span>
                         </div>
@@ -426,7 +430,7 @@
                         </label>
                         <div class="cc-prize-input">
                             <span class="cc-prize-prefix">K</span>
-                            <input type="number" id="challengePrize" min="0" step="0.01" value="0"
+                            <input type="number" style="border-radius: 15px; border: 1px solid lightgreen;" id="challengePrize" min="0" step="0.01" value="0"
                                 placeholder="0.00">
                         </div>
                         <p class="cc-hint">Leave at 0 for prestige-only rewards.</p>
@@ -434,7 +438,7 @@
 
                     <div class="cc-step-nav">
                         <span></span>
-                        <button type="button" class="cc-btn-next" onclick="ccGoStep(2)">
+                        <button type="button" style="color: black; border-radius: 15px; border: 1px solid rgba(255, 255, 255, 255);" class="cc-btn-next" onclick="ccGoStep(2)">
                             Next: Rules & Scoring <i class="fas fa-arrow-right"></i>
                         </button>
                     </div>
@@ -445,13 +449,13 @@
                     <div class="form-row">
                         <div class="form-group">
                             <label for="challengeMinWords">Min Words <span class="cc-required">*</span></label>
-                            <input type="number" id="challengeMinWords" required min="10" value="50"
+                            <input type="number" style="border-radius: 15px; border: 1px solid lightgreen;" id="challengeMinWords" required min="10" value="50"
                                 oninput="ccClearError('challengeMinWords')">
                             <span class="cc-error" id="challengeMinWordsErr"></span>
                         </div>
                         <div class="form-group">
                             <label for="challengeMaxWords">Max Words <span class="cc-required">*</span></label>
-                            <input type="number" id="challengeMaxWords" required min="50" value="200"
+                            <input type="number" style="border-radius: 15px; border: 1px solid lightgreen;" id="challengeMaxWords" required min="50" value="200"
                                 oninput="ccClearError('challengeMaxWords')">
                             <span class="cc-error" id="challengeMaxWordsErr"></span>
                         </div>
@@ -459,10 +463,10 @@
 
                     <div class="form-group">
                         <label for="challengeRules">
-                            Submission Rules <span class="cc-required">*</span>
+                            Submission Rules <span class="cc-required" style="border-radius: 15px; border: 1px solid lightgreen;">*</span>
                             <small style="color:var(--text-muted);text-transform:none;font-weight:400;">(one per line)</small>
                         </label>
-                        <textarea id="challengeRules" required rows="5"
+                        <textarea id="challengeRules" style="border-radius: 15px; border: 1px solid lightgreen;" required rows="5"
                             placeholder="Rule 1&#10;Rule 2&#10;Rule 3"
                             oninput="ccRuleCount(); ccClearError('challengeRules')"></textarea>
                         <div class="cc-field-meta">
@@ -476,24 +480,24 @@
                             <label>Scoring Weights <span class="cc-required">*</span>
                                 <small style="color:var(--text-muted);text-transform:none;font-weight:400;">(must sum to 100%)</small>
                             </label>
-                            <button type="button" class="cc-auto-balance" onclick="ccAutoBalance()">
+                            <button type="button" style="border-radius: 15px; color: black; border: 1px solid lightgreen;" class="cc-auto-balance" onclick="ccAutoBalance()">
                                 <i class="fas fa-sliders-h"></i> Auto-balance
                             </button>
                         </div>
                         <div class="scoring-weights">
                             <div class="weight-input">
                                 <label for="creativityWeight">Creativity %</label>
-                                <input type="number" id="creativityWeight" required min="0" max="100" value="40"
+                                <input type="number" style="border-radius: 15px; border: 1px solid lightgreen;" id="creativityWeight" required min="0" max="100" value="40"
                                     oninput="validateWeights()">
                             </div>
                             <div class="weight-input">
                                 <label for="relevanceWeight">Relevance %</label>
-                                <input type="number" id="relevanceWeight" required min="0" max="100" value="35"
+                                <input type="number" style="border-radius: 15px; border: 1px solid lightgreen;" id="relevanceWeight" required min="0" max="100" value="35"
                                     oninput="validateWeights()">
                             </div>
                             <div class="weight-input">
                                 <label for="detailWeight">Detail %</label>
-                                <input type="number" id="detailWeight" required min="0" max="100" value="25"
+                                <input type="number" style="border-radius: 15px; border: 1px solid lightgreen;" id="detailWeight" required min="0" max="100" value="25"
                                     oninput="validateWeights()">
                             </div>
                         </div>
@@ -517,10 +521,10 @@
                     </div>
 
                     <div class="cc-step-nav">
-                        <button type="button" class="cc-btn-back" onclick="ccGoStep(1)">
+                        <button type="button" style="border-radius: 15px; color: black; border: 1px solid rgba(255, 255, 255, 0.1);" class="cc-btn-back" onclick="ccGoStep(1)">
                             <i class="fas fa-arrow-left"></i> Back
                         </button>
-                        <button type="button" class="cc-btn-next" onclick="ccGoStep(3)">
+                        <button type="button" style="border-radius: 15px; color: black; border: 1px solid rgba(255, 255, 255, 0.1);" class="cc-btn-next" onclick="ccGoStep(3)">
                             Next: Media & Review <i class="fas fa-arrow-right"></i>
                         </button>
                     </div>
@@ -530,7 +534,7 @@
                 <div class="cc-page" id="ccPage3">
                     <div class="form-group">
                         <label for="challengeImage">Challenge Image <span class="cc-required">*</span></label>
-                        <div class="cc-image-drop" id="ccImageDrop"
+                        <div class="cc-image-drop" style="border-radius: 15px; border: 1px solid lightgreen;" id="ccImageDrop"
                             onclick="document.getElementById('challengeImage').click()"
                             ondragover="ccDragOver(event)" ondragleave="ccDragLeave(event)" ondrop="ccDrop(event)">
                             <div id="ccDropPlaceholder">
@@ -540,7 +544,7 @@
                             </div>
                             <div id="challengeImagePreview" class="cc-img-preview-inner"></div>
                         </div>
-                        <input type="file" id="challengeImage" accept="image/*" style="display:none"
+                        <input type="file" style="border-radius: 15px; border: 1px solid lightgreen;" id="challengeImage" accept="image/*" style="display:none"
                             onchange="previewChallengeImage(event)">
                         <span class="cc-error" id="challengeImageErr"></span>
                     </div>
@@ -574,7 +578,7 @@
                         <button type="button" class="cc-btn-back" onclick="ccGoStep(2)">
                             <i class="fas fa-arrow-left"></i> Back
                         </button>
-                        <button type="submit" class="btn-primary btn-large cc-submit-btn" id="ccSubmitBtn">
+                        <button type="submit" style="border-radius: 15px; color: black; border: 1px solid rgba(255, 255, 255, 0.1);" class="btn-primary btn-large cc-submit-btn" id="ccSubmitBtn">
                             <i class="fas fa-bolt"></i> Create Challenge
                         </button>
                     </div>
@@ -707,7 +711,7 @@
                            placeholder="e.g. Broken clock, wilting flower…"
                            onkeydown="iiPointInputKeydown(event)"
                            maxlength="80">
-                    <button class="ii-btn-add" onclick="iiAddPoint()">
+                    <button class="ii-btn-add" style="border-radius: 15px; color: black; border: 1px solid rgba(255, 255, 255, 0.1);" onclick="iiAddPoint()">
                         <i class="fas fa-plus"></i> Add
                     </button>
                 </div>
@@ -718,7 +722,7 @@
 
                 <div class="ii-step-nav">
                     <span></span>
-                    <button class="ii-btn-next" onclick="iiGoToInterpret()">
+                    <button class="ii-btn-next" style="border-radius: 15px; color: black; border: 1px solid rgba(255, 255, 255, 0.1);" onclick="iiGoToInterpret()">
                         Next: Interpret <i class="fas fa-arrow-right"></i>
                     </button>
                 </div>
@@ -732,10 +736,10 @@
                 <div id="iiInterpForms" class="ii-interp-forms"></div>
 
                 <div class="ii-step-nav">
-                    <button class="ii-btn-back" onclick="iiBackToObserve()">
+                    <button class="ii-btn-back" style="border-radius: 15px; color: black; border: 1px solid rgba(255, 255, 255, 0.1);" onclick="iiBackToObserve()">
                         <i class="fas fa-arrow-left"></i> Back
                     </button>
-                    <button class="ii-btn-next" onclick="iiGoToOverall()">
+                    <button class="ii-btn-next" style="border-radius: 15px; border: 1px solid rgba(255, 255, 255, 0.1);" onclick="iiGoToOverall()">
                         Next: Overall message <i class="fas fa-arrow-right"></i>
                     </button>
                 </div>
@@ -746,15 +750,15 @@
                 <h4 class="ii-step-heading"><i class="fas fa-comment-dots"></i> Step 3 — What is the image saying?</h4>
                 <p class="ii-step-hint">In your own words, describe the overall story, theme, or message this image conveys.</p>
 
-                <textarea id="iiOverallMessage" class="ii-overall-textarea"
+                <textarea id="iiOverallMessage" style="border-radius: 15px; border: 1px solid lightgreen;" class="ii-overall-textarea"
                           rows="5"
                           placeholder="The image as a whole represents…"></textarea>
 
                 <div class="ii-step-nav">
-                    <button class="ii-btn-back" onclick="iiBackToInterpret()">
+                    <button class="ii-btn-back" style="border-radius: 15px; border: 1px solid rgba(255, 255, 255, 0.1);" onclick="iiBackToInterpret()">
                         <i class="fas fa-arrow-left"></i> Back
                     </button>
-                    <button id="iiSubmitFinalBtn" class="ii-btn-submit" onclick="iiSubmitFinal()">
+                    <button id="iiSubmitFinalBtn" style="border-radius: 15px; border: 1px solid rgba(255, 255,255, 0.1);" class="ii-btn-submit" onclick="iiSubmitFinal()">
                         <i class="fas fa-paper-plane"></i> Submit
                     </button>
                 </div>

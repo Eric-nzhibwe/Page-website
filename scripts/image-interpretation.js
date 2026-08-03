@@ -176,7 +176,7 @@ function _iiPromptDeposit(challengeId) {
     if (typeof goTopUpWallet === 'function') {
         goTopUpWallet();
     } else {
-        window.location.href = 'wallet.html';
+        window.location.href = 'payment.html';
     }
 }
 

@@ -370,7 +370,7 @@ function goTopUpWallet() {
         sessionStorage.setItem('pendingChallengeId',   _pendingChallengeId);
         sessionStorage.setItem('pendingChallengeType', _pendingChallengeType || 'text_interpretation');
     }
-    window.location.href = 'wallet.html';
+    window.location.href = 'payment.html';
 }
 
 // On page load, check if user is returning from wallet top-up
@@ -904,6 +904,7 @@ function ccValidatePage1() {
     let ok = true;
     const title = document.getElementById('challengeTitle')?.value.trim() || '';
     const desc  = document.getElementById('challengeDescription')?.value.trim() || '';
+    const diff  = document.getElementById('challengeDifficulty')?.value || '';
     const time  = parseInt(document.getElementById('challengeTimeLimit')?.value || '0');
     const minPt = parseInt(document.getElementById('challengeMinPoints')?.value || '0');
     const maxPt = parseInt(document.getElementById('challengeMaxPoints')?.value || '0');
@@ -913,6 +914,8 @@ function ccValidatePage1() {
 
     if (!desc) { ccShowError('challengeDescription', 'Description is required.'); ok = false; }
     else if (desc.length < 20) { ccShowError('challengeDescription', 'Description must be at least 20 characters.'); ok = false; }
+
+    if (!diff || diff === 'select') { ccShowError('challengeDifficulty', 'Please select a difficulty.'); ok = false; }
 
     if (!time || time < 5 || time > 120) { ccShowError('challengeTimeLimit', 'Enter a time between 5 and 120 minutes.'); ok = false; }
     if (!minPt || minPt < 1) { ccShowError('challengeMinPoints', 'Minimum points must be at least 1.'); ok = false; }

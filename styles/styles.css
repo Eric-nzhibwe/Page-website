@@ -1,14 +1,17 @@
 /* ── Accent color token layer ──────────────────────────────────
-   JS sets these on :root when the user picks an accent color.
+   theme.js sets these on :root before first paint.
    Every CSS file uses var(--artx-*) so the whole UI repaints.
    ─────────────────────────────────────────────────────────────── */
 :root {
-    --artx-primary:    #556b2f;       /* darkolivegreen default */
-    --artx-primary-lt: #6b8a3a;
-    --artx-primary-dk: #3d4f22;
-    --artx-accent:     #90ee90;       /* lightgreen default */
-    --artx-glow:       rgba(85,107,47,0.18);
+    --artx-primary:     #556b2f;
+    --artx-primary-lt:  #6b8a3a;
+    --artx-primary-dk:  #3d4f22;
+    --artx-accent:      #90ee90;
+    --artx-glow:        rgba(85,107,47,0.18);
     --artx-text-on-primary: #ffffff;
+    /* These two are set by theme.js per palette; fallback to olive green */
+    --artx-bg-grad:     linear-gradient(to left, #ffffff, #f4f7f0);
+    --artx-header-grad: linear-gradient(to right, #f5f5f5, #556b2f);
 }
 
 * {
@@ -19,9 +22,10 @@
 
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: linear-gradient(to left, white, whitesmoke);
+    background: var(--artx-bg-grad);
     color: black;
     min-height: 100vh;
+    transition: background .4s ease;
 }
 
 .container {
@@ -48,7 +52,7 @@ body {
     justify-content: space-between;
     align-items: center;
     padding: 12px;
-    background: linear-gradient(to right,whitesmoke, var(--artx-primary));
+    background: var(--artx-header-grad);
     backdrop-filter: blur(10px);
     border-radius: 0;
     margin-bottom: 20px;
@@ -56,6 +60,7 @@ body {
     flex-wrap: wrap;
     gap: 8px;
     width: 100%;
+    transition: background .4s ease;
 }
 
 @media (min-width: 640px) {
