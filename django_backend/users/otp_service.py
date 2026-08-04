@@ -5,7 +5,6 @@ import random
 import string
 from datetime import datetime, timedelta
 from django.core.cache import cache
-from django.core.mail import send_mail
 from django.conf import settings
 import logging
 
@@ -114,115 +113,14 @@ class OTPService:
     
     @staticmethod
     def send_otp_email(user, otp):
-        """Send OTP via email"""
-        try:
-            subject = 'ARTX - Your Verification Code'
-            message = f"""
-Hello {user.username},
-
-Your ARTX verification code is:
-
-{otp}
-
-This code will expire in {OTPService.OTP_EXPIRY_MINUTES} minutes.
-
-If you didn't request this code, please ignore this email.
-
-Best regards,
-ARTX Team
-            """
-            
-            html_message = f"""
-<!DOCTYPE html>
-<html>
-<head>
-    <style>
-        body {{
-            font-family: Arial, sans-serif;
-            line-height: 1.6;
-            color: #333;
-        }}
-        .container {{
-            max-width: 600px;
-            margin: 0 auto;
-            padding: 20px;
-        }}
-        .header {{
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 30px;
-            text-align: center;
-            border-radius: 10px 10px 0 0;
-        }}
-        .content {{
-            background: #f8f9fa;
-            padding: 30px;
-            border-radius: 0 0 10px 10px;
-        }}
-        .otp-box {{
-            background: white;
-            border: 2px solid #667eea;
-            border-radius: 10px;
-            padding: 20px;
-            text-align: center;
-            margin: 20px 0;
-        }}
-        .otp-code {{
-            font-size: 32px;
-            font-weight: bold;
-            color: #667eea;
-            letter-spacing: 8px;
-            font-family: monospace;
-        }}
-        .footer {{
-            text-align: center;
-            color: #666;
-            font-size: 12px;
-            margin-top: 20px;
-        }}
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>🔐 ARTX Verification</h1>
-        </div>
-        <div class="content">
-            <p>Hello <strong>{user.username}</strong>,</p>
-            <p>Your ARTX verification code is:</p>
-            
-            <div class="otp-box">
-                <div class="otp-code">{otp}</div>
-            </div>
-            
-            <p>This code will expire in <strong>{OTPService.OTP_EXPIRY_MINUTES} minutes</strong>.</p>
-            <p>If you didn't request this code, please ignore this email.</p>
-            
-            <div class="footer">
-                <p>Best regards,<br>ARTX Team</p>
-                <p>🔒 This is an automated message. Please do not reply.</p>
-            </div>
-        </div>
-    </div>
-</body>
-</html>
-            """
-            
-            send_mail(
-                subject=subject,
-                message=message,
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[user.email],
-                html_message=html_message,
-                fail_silently=False
-            )
-            
+        """Send OTP via email using the central email service."""
+        from users.email_service import email_service
+        result = email_service.send_otp(user, otp, OTPService.OTP_EXPIRY_MINUTES)
+        if result:
             logger.info(f"OTP email sent to {user.email}")
-            return True
-            
-        except Exception as e:
-            logger.error(f"Failed to send OTP email: {e}")
-            return False
+        else:
+            logger.error(f"Failed to send OTP email to {user.email}")
+        return result
     
     @staticmethod
     def send_otp_sms(user, otp):

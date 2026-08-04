@@ -109,14 +109,11 @@ def login_view(request):
 
     # Send login notification email (non-blocking)
     try:
-        from notifications.tasks import send_login_notification_email
-        login_data = {
-            'device_info': request.META.get('HTTP_USER_AGENT', 'Unknown device')[:120],
-            'location_info': 'Secure connection',
-            'active_tournaments_count': 'Several',
-            'unread_notifications_count': 'Check',
-        }
-        send_login_notification_email(user.id, login_data)
+        from users.email_service import email_service
+        ip      = (request.META.get('HTTP_X_FORWARDED_FOR') or
+                   request.META.get('REMOTE_ADDR', 'Unknown')).split(',')[0].strip()
+        device  = request.META.get('HTTP_USER_AGENT', 'Unknown browser')[:120]
+        email_service.send_login_notification(user, ip_address=ip, device=device)
     except Exception:
         pass  # Never block login if email fails
 
@@ -595,3 +592,121 @@ def spend_prestige_view(request):
         'message': f'Successfully redeemed "{reason}".',
         'prestige_points': request.user.prestige_points,
     })
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Password Reset
+# ─────────────────────────────────────────────────────────────────────────────
+
+@csrf_exempt
+@api_view(['POST'])
+@authentication_classes([])
+@permission_classes([permissions.AllowAny])
+def password_reset_request_view(request):
+    """
+    Step 1 — User submits their email.
+    Generates a secure token, stores it in cache, and emails a reset link.
+    Always returns 200 so we never reveal whether an email is registered.
+    """
+    import secrets
+    from django.core.cache import cache
+    from django.conf import settings
+
+    email = (request.data.get('email') or '').strip().lower()
+    if not email:
+        return Response(
+            {'error': 'Please enter your email address.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    # Always respond with success — don't reveal account existence
+    generic_ok = Response({
+        'message': (
+            "If that email is registered, you'll receive a reset link shortly. "
+            "Check your spam folder if it doesn't arrive within a few minutes."
+        )
+    })
+
+    try:
+        user = User.objects.get(email__iexact=email)
+    except User.DoesNotExist:
+        return generic_ok  # silent — don't expose whether email exists
+
+    # Rate-limit: one request per 2 minutes per user
+    rate_key = f'pwd_reset_rate_{user.id}'
+    if cache.get(rate_key):
+        return Response(
+            {'error': 'A reset link was already sent recently. Please wait a moment.'},
+            status=status.HTTP_429_TOO_MANY_REQUESTS,
+        )
+
+    # Generate a secure token and store uid+token in cache (1 hour TTL)
+    token    = secrets.token_urlsafe(48)
+    cache_key = f'pwd_reset_{token}'
+    cache.set(cache_key, {'user_id': user.id}, timeout=3600)
+    cache.set(rate_key, True, timeout=120)
+
+    # Build the reset URL — points to the frontend page
+    frontend_base = getattr(settings, 'FRONTEND_BASE_URL', 'http://localhost:8000').rstrip('/')
+    reset_url = f'{frontend_base}/pages/forgot-password.html?token={token}'
+
+    # Send email
+    try:
+        from users.email_service import email_service
+        email_service.send_password_reset(user, reset_url, expiry_hours=1)
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f'Password reset email failed for {email}: {e}')
+
+    return generic_ok
+
+
+@csrf_exempt
+@api_view(['POST'])
+@authentication_classes([])
+@permission_classes([permissions.AllowAny])
+def password_reset_confirm_view(request):
+    """
+    Step 2 — User submits new password + the token from the email link.
+    Validates token, sets the new password, invalidates all existing tokens.
+    """
+    from django.core.cache import cache
+
+    token        = (request.data.get('token') or '').strip()
+    new_password = (request.data.get('new_password') or '').strip()
+    confirm      = (request.data.get('confirm_password') or '').strip()
+
+    if not token:
+        return Response({'error': 'Reset token is missing.'}, status=status.HTTP_400_BAD_REQUEST)
+    if not new_password:
+        return Response({'error': 'Please enter a new password.'}, status=status.HTTP_400_BAD_REQUEST)
+    if len(new_password) < 8:
+        return Response({'error': 'Password must be at least 8 characters.'}, status=status.HTTP_400_BAD_REQUEST)
+    if new_password != confirm:
+        return Response({'error': 'Passwords do not match.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Look up token in cache
+    cache_key = f'pwd_reset_{token}'
+    data = cache.get(cache_key)
+    if not data:
+        return Response(
+            {'error': 'This reset link has expired or already been used. Please request a new one.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    try:
+        user = User.objects.get(id=data['user_id'])
+    except User.DoesNotExist:
+        return Response({'error': 'User not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+    # Set new password
+    user.set_password(new_password)
+    user.save(update_fields=['password'])
+
+    # Invalidate the token immediately (one-time use)
+    cache.delete(cache_key)
+
+    # Invalidate all existing auth tokens so old sessions can't continue
+    Token.objects.filter(user=user).delete()
+
+    return Response({'message': 'Password reset successfully. You can now log in with your new password.'})

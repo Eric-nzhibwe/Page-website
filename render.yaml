@@ -53,20 +53,37 @@ services:
       - key: EMAIL_MODE
         value: smtp
       - key: EMAIL_HOST
-        sync: false
+        value: smtp.gmail.com
       - key: EMAIL_PORT
-        value: 587
+        value: "587"
       - key: EMAIL_USE_TLS
-        value: true
+        value: "true"
       - key: EMAIL_HOST_USER
         sync: false
       - key: EMAIL_HOST_PASSWORD
         sync: false
       - key: DEFAULT_FROM_EMAIL
+        value: "ARTX Platform <noreply@artxplatform.com>"
+      # Base URL used in email CTA buttons — update to your Render URL
+      - key: FRONTEND_BASE_URL
         sync: false
       - key: PAYSTACK_SECRET_KEY
         sync: false
       - key: PAYSTACK_PUBLIC_KEY
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_PUBLISHABLE_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: PAWAPAY_API_KEY
+        sync: false
+      - key: PAWAPAY_API_URL
+        value: https://api.pawapay.cloud
+      - key: PAWAPAY_WEBHOOK_SECRET
+        sync: false
+      - key: GROQ_API_KEY
         sync: false
       - key: OPENAI_API_KEY
         sync: false

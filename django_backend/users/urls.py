@@ -12,6 +12,10 @@ urlpatterns = [
     path('verify-otp/', views.verify_otp_view, name='verify-otp'),
     path('resend-otp/', views.resend_otp_view, name='resend-otp'),
 
+    # Password reset (no auth required)
+    path('password-reset/request/', views.password_reset_request_view, name='password-reset-request'),
+    path('password-reset/confirm/', views.password_reset_confirm_view, name='password-reset-confirm'),
+
     # Profile
     path('profile/', views.UserProfileView.as_view(), name='user-profile'),
     path('stats/', views.user_stats_view, name='user-stats'),

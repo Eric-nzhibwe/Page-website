@@ -44,61 +44,15 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
 
         user = User.objects.create_user(password=password, **validated_data)
 
-        # Send welcome email — never block registration if this fails
+        # Send welcome email via the central email service — never block registration
         try:
-            _send_welcome_email(user)
+            from users.email_service import email_service
+            email_service.send_welcome(user)
         except Exception as e:
             import logging
             logging.getLogger(__name__).warning(f"Welcome email failed for {user.email}: {e}")
 
         return user
-
-
-def _send_welcome_email(user):
-    """Send a welcome email to a newly registered user."""
-    from django.core.mail import send_mail
-    from django.conf import settings
-
-    subject = 'Welcome to ARTX Platform!'
-    plain = (
-        f"Hi {user.username},\n\n"
-        f"Your account has been created successfully. "
-        f"You can now log in and start playing.\n\n"
-        f"Welcome to ARTX!\n\nThe ARTX Team"
-    )
-    html = f"""
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <style>
-    body {{ font-family:Arial,sans-serif; background:#f4f4f4; margin:0; padding:0; }}
-    .wrap {{ max-width:560px; margin:40px auto; background:#fff;
-             border-radius:12px; overflow:hidden;
-             box-shadow:0 4px 20px rgba(0,0,0,.08); }}
-    .header {{ background:linear-gradient(135deg,#6c63ff,#3b2dbf);
-               padding:36px; text-align:center; color:#fff; }}
-    .header h1 {{ margin:0; font-size:26px; }}
-    .body {{ padding:32px; color:#333; line-height:1.7; }}
-    .btn {{ display:inline-block; margin:24px 0; padding:14px 36px;
-            background:#6c63ff; color:#fff; border-radius:8px;
-            text-decoration:none; font-weight:bold; font-size:16px; }}
-    .footer {{ text-align:center; padding:20px; color:#aaa; font-size:12px; }}
-  </style>
-</head>
-<body>
-  <div class="wrap">
-    <div class="header"><h1>🎮 Welcome to ARTX!</h1></div>
-    <div class="body">
-      <p>Hi <strong>{user.username}</strong>,</p>
-      <p>Your account has been created successfully. You're all set to start competing!</p>
-      <a href="{getattr(settings, 'FRONTEND_BASE_URL', 'http://localhost:8000')}" class="btn">
-        Go to ARTX
-      </a>
-      <p>Good luck and have fun!</p>
-    </div>
-    <div class="footer">© ARTX Platform &nbsp;|&nbsp; This is an automated message.</div>
-  </div>
 </body>
 </html>
 """

@@ -262,21 +262,27 @@ CORS_ALLOW_HEADERS = [
 ]
 
 # Email Configuration
-# Set to 'console' to print emails to terminal (for testing)
-# Set to 'smtp' to send real emails via Gmail
-EMAIL_MODE = config('EMAIL_MODE', default='smtp')
+# EMAIL_MODE=console → prints to terminal (safe for local dev, no real sends)
+# EMAIL_MODE=smtp    → sends real email via the SMTP credentials below
+EMAIL_MODE = config('EMAIL_MODE', default='console')
 
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = config('EMAIL_HOST', default='smtp.gmail.com')
-EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
-EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
-EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
-EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
-
-if EMAIL_MODE == 'smtp':
+if EMAIL_MODE == 'console':
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+else:
     EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 
-DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='ARTX Platform <noreply@artx.com>')
+EMAIL_HOST          = config('EMAIL_HOST',          default='smtp.gmail.com')
+EMAIL_PORT          = config('EMAIL_PORT',           default=587, cast=int)
+EMAIL_USE_TLS       = config('EMAIL_USE_TLS',        default=True, cast=bool)
+EMAIL_HOST_USER     = config('EMAIL_HOST_USER',      default='')
+EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD',  default='')
+EMAIL_TIMEOUT       = 10   # seconds — don't let a slow SMTP server hang a request
+
+DEFAULT_FROM_EMAIL  = config('DEFAULT_FROM_EMAIL',
+                              default='ARTX Platform <noreply@artxplatform.com>')
+
+# Base URL used in email CTA buttons (set this in .env for production)
+FRONTEND_BASE_URL = config('FRONTEND_BASE_URL', default='http://localhost:8000')
 
 # Payment Provider Configuration
 # ⚠️ IMPORTANT: All API keys should be in .env file, NOT in code
@@ -354,6 +360,16 @@ LOGGING = {
             'propagate': False,
         },
         'payments': {
+            'handlers': ['console'],
+            'level': 'WARNING',
+            'propagate': False,
+        },
+        'users': {
+            'handlers': ['console'],
+            'level': 'WARNING',
+            'propagate': False,
+        },
+        'users.email_service': {
             'handlers': ['console'],
             'level': 'WARNING',
             'propagate': False,
