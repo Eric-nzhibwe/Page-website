@@ -429,7 +429,7 @@ class Transaction(models.Model):
 class PaymentAuditLog(models.Model):
     """
     Immutable audit trail for every payment state change.
-    Never delete or update rows — append only.
+    Never delete or update rows -- append only.
     """
     ACTION_CHOICES = [
         ('initiated', 'Initiated'),
@@ -493,7 +493,7 @@ class PaymentAuditLog(models.Model):
     def log(cls, action, payment=None, withdrawal=None, user=None,
             previous_status='', new_status='', amount=None, currency='',
             provider='', ip_address=None, user_agent='', metadata=None, note=''):
-        """Convenience factory — never raises, always logs."""
+        """Convenience factory -- never raises, always logs."""
         try:
             return cls.objects.create(
                 payment=payment,

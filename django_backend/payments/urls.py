@@ -1,5 +1,5 @@
 """
-Payment URLs — ARTX Platform
+Payment URLs - ARTX Platform
 """
 from django.urls import path
 from . import views

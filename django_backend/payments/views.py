@@ -1,5 +1,6 @@
+# -*- coding: utf-8 -*-
 """
-Payment views — ARTX Platform
+Payment views -- ARTX Platform
 Views are thin HTTP wrappers. All logic lives in services.py.
 """
 import json

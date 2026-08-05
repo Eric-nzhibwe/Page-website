@@ -1,5 +1,6 @@
+# -*- coding: utf-8 -*-
 """
-User serializers — ARTX Platform
+User serializers - ARTX Platform
 """
 from rest_framework import serializers
 from django.contrib.auth import authenticate
@@ -35,7 +36,7 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
     def validate(self, data):
         password_confirm = data.get('password_confirm')
         if password_confirm and data['password'] != password_confirm:
-            raise serializers.ValidationError({'password_confirm': "Passwords don't match."})
+            raise serializers.ValidationError({"password_confirm": "Passwords don't match."})
         return data
 
     def create(self, validated_data):
@@ -44,26 +45,18 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
 
         user = User.objects.create_user(password=password, **validated_data)
 
-        # Send welcome email via the central email service — never block registration
+        # Send welcome email via the central email service.
+        # Never block registration if this fails.
         try:
             from users.email_service import email_service
             email_service.send_welcome(user)
-        except Exception as e:
+        except Exception as exc:
             import logging
-            logging.getLogger(__name__).warning(f"Welcome email failed for {user.email}: {e}")
+            logging.getLogger(__name__).warning(
+                "Welcome email failed for %s: %s", user.email, exc
+            )
 
         return user
-</body>
-</html>
-"""
-    send_mail(
-        subject=subject,
-        message=plain,
-        from_email=settings.DEFAULT_FROM_EMAIL,
-        recipient_list=[user.email],
-        html_message=html,
-        fail_silently=False,
-    )
 
 
 class UserLoginSerializer(serializers.Serializer):
@@ -131,16 +124,14 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
     def get_profile_image_url(self, obj):
         """
-        Return the profile image URL only if the underlying file actually exists.
-        On Render (ephemeral filesystem) uploaded files are lost on restart —
+        Return the profile image URL only if the file actually exists on disk.
+        On Render (ephemeral filesystem) uploaded files are lost on restart --
         returning a broken URL causes 404 log spam and broken avatar images.
         Falls back to None so the frontend can show a generated avatar instead.
         """
         if not obj.profile_image:
             return None
         try:
-            import os
-            # Check the file exists on disk before returning the URL
             if obj.profile_image.storage.exists(obj.profile_image.name):
                 request = self.context.get('request')
                 if request:

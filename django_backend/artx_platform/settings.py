@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 Django settings for ARTX Platform
 """
@@ -20,7 +21,7 @@ ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1,testserver'
 if 'testserver' not in ALLOWED_HOSTS:
     ALLOWED_HOSTS.append('testserver')
 
-# Render sets RENDER_EXTERNAL_HOSTNAME automatically — add it so Django
+# Render sets RENDER_EXTERNAL_HOSTNAME automatically -- add it so Django
 # doesn't return 400 Bad Request on production without manual config
 _render_host = config('RENDER_EXTERNAL_HOSTNAME', default='')
 if _render_host and _render_host not in ALLOWED_HOSTS:
@@ -108,7 +109,7 @@ if REDIS_URL:
         },
     }
 else:
-    # No Redis — InMemoryChannelLayer with a capped capacity to prevent
+    # No Redis -- InMemoryChannelLayer with a capped capacity to prevent
     # unbounded RAM growth on Render's free tier.
     CHANNEL_LAYERS = {
         'default': {
@@ -132,12 +133,12 @@ if _raw_db_url:
     DATABASES = {
         'default': dj_database_url.config(
             default=_raw_db_url,
-            conn_max_age=60,        # 60 s — avoids exhausting free-tier connection pool
+            conn_max_age=60,        # 60 s -- avoids exhausting free-tier connection pool
             ssl_require=not DEBUG,
         )
     }
 else:
-    # Local development only — SQLite
+    # Local development only -- SQLite
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
@@ -193,7 +194,7 @@ FILE_UPLOAD_MAX_MEMORY_SIZE = 3 * 1024 * 1024   # 3 MB
 # Custom User Model
 AUTH_USER_MODEL = 'users.User'
 
-# Authentication backends — email-first login
+# Authentication backends -- email-first login
 AUTHENTICATION_BACKENDS = [
     'users.backends.EmailOrUsernameBackend',
     'django.contrib.auth.backends.ModelBackend',
@@ -202,7 +203,7 @@ AUTHENTICATION_BACKENDS = [
 # REST Framework
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        # TokenAuthentication MUST be first — SessionAuthentication enforces
+        # TokenAuthentication MUST be first -- SessionAuthentication enforces
         # CSRF on POST requests which breaks token-authenticated API calls
         # from the frontend (no CSRF cookie is sent with fetch requests).
         'rest_framework.authentication.TokenAuthentication',
@@ -240,7 +241,7 @@ if DEBUG:
     CORS_ALLOW_ALL_ORIGINS = True
 else:
     CORS_ALLOW_ALL_ORIGINS = False
-    # Render automatically sets RENDER_EXTERNAL_URL — add it so the
+    # Render automatically sets RENDER_EXTERNAL_URL -- add it so the
     # frontend can talk to the backend without a manual env var update
     _render_url = config('RENDER_EXTERNAL_URL', default='').rstrip('/')
     if _render_url and _render_url not in CORS_ALLOWED_ORIGINS:
@@ -276,7 +277,7 @@ EMAIL_PORT          = config('EMAIL_PORT',           default=587, cast=int)
 EMAIL_USE_TLS       = config('EMAIL_USE_TLS',        default=True, cast=bool)
 EMAIL_HOST_USER     = config('EMAIL_HOST_USER',      default='')
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD',  default='')
-EMAIL_TIMEOUT       = 10   # seconds — don't let a slow SMTP server hang a request
+EMAIL_TIMEOUT       = 10   # seconds -- don't let a slow SMTP server hang a request
 
 DEFAULT_FROM_EMAIL  = config('DEFAULT_FROM_EMAIL',
                               default='ARTX Platform <noreply@artxplatform.com>')
@@ -302,15 +303,15 @@ PAYSTACK_SECRET_KEY = config('PAYSTACK_SECRET_KEY', default='')
 # ⚠️ IMPORTANT: Keep this in .env file ONLY - DO NOT commit to git
 OPENAI_API_KEY = config('OPENAI_API_KEY', default='')
 
-# Google Gemini (free tier — recommended)
+# Google Gemini (free tier -- recommended)
 # Get key at https://aistudio.google.com/app/apikey
 GEMINI_API_KEY = config('GEMINI_API_KEY', default='')
 
-# Groq / LLaMA 3.3 (free tier — PRIMARY AI engine)
+# Groq / LLaMA 3.3 (free tier -- PRIMARY AI engine)
 # Get key at https://console.groq.com/keys
 GROQ_API_KEY = config('GROQ_API_KEY', default='')
 
-# Logging — console-only (no filesystem writes; Render's disk is ephemeral)
+# Logging -- console-only (no filesystem writes; Render's disk is ephemeral)
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -321,7 +322,7 @@ LOGGING = {
         },
     },
     'filters': {
-        # Suppress 404 warnings for /media/ paths — these are expected on Render
+        # Suppress 404 warnings for /media/ paths -- these are expected on Render
         # where the ephemeral filesystem loses uploaded files on restart.
         # All other 404s still log normally.
         'suppress_media_404': {
@@ -381,7 +382,7 @@ LOGGING = {
     },
 }
 
-# CSRF trusted origins — built unconditionally so it works in both
+# CSRF trusted origins -- built unconditionally so it works in both
 # DEBUG and non-DEBUG modes. Render sets RENDER_EXTERNAL_HOSTNAME and
 # RENDER_EXTERNAL_URL automatically; CSRF_TRUSTED_ORIGINS env var is an
 # explicit escape-hatch for any additional domains.
@@ -408,7 +409,7 @@ if not DEBUG:
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_SECONDS = 31536000
     SECURE_REDIRECT_EXEMPT = []
-    # Render terminates SSL at its proxy — tell Django the request is HTTPS
+    # Render terminates SSL at its proxy -- tell Django the request is HTTPS
     # when the X-Forwarded-Proto header says so. Without this, Django thinks
     # all requests are HTTP and the admin login CSRF check fails.
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
