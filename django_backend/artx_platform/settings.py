@@ -262,27 +262,49 @@ CORS_ALLOW_HEADERS = [
     'x-requested-with',
 ]
 
-# Email Configuration
-# EMAIL_MODE=console → prints to terminal (safe for local dev, no real sends)
-# EMAIL_MODE=smtp    → sends real email via the SMTP credentials below
-EMAIL_MODE = config('EMAIL_MODE', default='console')
+# ─── Email Configuration ───────────────────────────────────────────────────────
+#
+# EMAIL_PROVIDER controls which sending backend is used:
+#
+#   resend  (recommended for Render free tier)
+#           Sends over HTTPS/443 -- not blocked by Render's free plan.
+#           Requires RESEND_API_KEY.
+#           Free tier: 3,000 emails/month -- https://resend.com
+#
+#   smtp    Direct SMTP. Works locally or on paid hosting.
+#           Blocked by Render free tier (Errno 101).
+#
+#   console Prints emails to stdout. Local dev only, nothing is sent.
+#
+EMAIL_PROVIDER = config('EMAIL_PROVIDER', default='console')
 
-if EMAIL_MODE == 'console':
-    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-else:
-    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+# Resend (used when EMAIL_PROVIDER=resend)
+RESEND_API_KEY = config('RESEND_API_KEY', default='')
 
+# SMTP credentials (used when EMAIL_PROVIDER=smtp)
 EMAIL_HOST          = config('EMAIL_HOST',          default='smtp.gmail.com')
 EMAIL_PORT          = config('EMAIL_PORT',           default=587, cast=int)
 EMAIL_USE_TLS       = config('EMAIL_USE_TLS',        default=True, cast=bool)
 EMAIL_HOST_USER     = config('EMAIL_HOST_USER',      default='')
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD',  default='')
-EMAIL_TIMEOUT       = 10   # seconds -- don't let a slow SMTP server hang a request
+EMAIL_TIMEOUT       = 10   # seconds
 
-DEFAULT_FROM_EMAIL  = config('DEFAULT_FROM_EMAIL',
-                              default='ARTX Platform <noreply@artxplatform.com>')
+# Django email backend -- kept in sync with EMAIL_PROVIDER so Django's
+# built-in send_mail() also works correctly if called anywhere directly.
+if EMAIL_PROVIDER == 'console':
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+else:
+    # Both 'resend' and 'smtp' use the SMTP backend as a base;
+    # email_service.py handles Resend separately via HTTPS.
+    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 
-# Base URL used in email CTA buttons (set this in .env for production)
+DEFAULT_FROM_EMAIL = config(
+    'DEFAULT_FROM_EMAIL',
+    default='ARTX Platform <noreply@artxplatform.com>'
+)
+
+# Base URL used in email CTA buttons (password reset link etc.)
+# Must be set to your Render URL in production.
 FRONTEND_BASE_URL = config('FRONTEND_BASE_URL', default='http://localhost:8000')
 
 # Payment Provider Configuration

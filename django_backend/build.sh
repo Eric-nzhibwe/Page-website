@@ -35,39 +35,53 @@ django.setup()
 
 from django.conf import settings
 
-mode = getattr(settings, 'EMAIL_MODE', 'console')
-print(f"   EMAIL_MODE       = {mode}")
-print(f"   EMAIL_BACKEND    = {settings.EMAIL_BACKEND}")
-print(f"   EMAIL_HOST       = {settings.EMAIL_HOST}")
-print(f"   EMAIL_PORT       = {settings.EMAIL_PORT}")
-print(f"   EMAIL_USE_TLS    = {settings.EMAIL_USE_TLS}")
-print(f"   EMAIL_HOST_USER  = {settings.EMAIL_HOST_USER or '(not set)'}")
-print(f"   FROM             = {settings.DEFAULT_FROM_EMAIL}")
-print(f"   FRONTEND_BASE_URL= {getattr(settings, 'FRONTEND_BASE_URL', '(not set)')}")
+provider = getattr(settings, 'EMAIL_PROVIDER', 'console')
+print(f"   EMAIL_PROVIDER   = {provider}")
+print(f"   DEFAULT_FROM     = {settings.DEFAULT_FROM_EMAIL}")
+print(f"   FRONTEND_BASE    = {getattr(settings, 'FRONTEND_BASE_URL', '(not set)')}")
 
-if mode == 'smtp':
+if provider == 'resend':
+    key = getattr(settings, 'RESEND_API_KEY', '')
+    if not key:
+        print("   ERROR: EMAIL_PROVIDER=resend but RESEND_API_KEY is not set!")
+        print("   -> Set RESEND_API_KEY in the Render dashboard environment variables.")
+        sys.exit(1)
+    print(f"   RESEND_API_KEY   = re_...{key[-4:]} (set)")
+    # Quick HTTPS connectivity test to Resend
+    import urllib.request
+    try:
+        urllib.request.urlopen('https://api.resend.com', timeout=8)
+    except Exception as e:
+        # A 405/403 response still means the host is reachable
+        err = str(e)
+        if 'HTTP Error' in err or 'Forbidden' in err or '405' in err or '401' in err:
+            print("   Resend HTTPS endpoint reachable -- OK")
+        else:
+            print(f"   WARNING: Could not reach api.resend.com: {e}")
+            print("   Emails may fail at runtime. Check network/firewall.")
+
+elif provider == 'smtp':
     if not settings.EMAIL_HOST_USER:
-        print("   WARNING: EMAIL_HOST_USER is empty — emails will fail!")
-        sys.exit(1)
+        print("   WARNING: EMAIL_HOST_USER is empty -- emails will fail!")
     if not settings.EMAIL_HOST_PASSWORD:
-        print("   WARNING: EMAIL_HOST_PASSWORD is empty — emails will fail!")
-        sys.exit(1)
-    # Quick TCP connection test (does NOT send any email)
+        print("   WARNING: EMAIL_HOST_PASSWORD is empty -- emails will fail!")
     import socket
     try:
-        s = socket.create_connection((settings.EMAIL_HOST, settings.EMAIL_PORT), timeout=10)
+        s = socket.create_connection((settings.EMAIL_HOST, settings.EMAIL_PORT), timeout=8)
         s.close()
-        print(f"   SMTP TCP connect to {settings.EMAIL_HOST}:{settings.EMAIL_PORT} — OK")
+        print(f"   SMTP TCP connect to {settings.EMAIL_HOST}:{settings.EMAIL_PORT} -- OK")
     except OSError as e:
-        print(f"   WARNING: Cannot reach SMTP server: {e}")
-        print("   Continuing build — emails will fail at runtime if this persists.")
+        print(f"   WARNING: Cannot reach SMTP server ({e})")
+        print("   On Render free tier, use EMAIL_PROVIDER=resend instead.")
+
 else:
-    print("   Console backend active — emails printed to stdout (dev mode)")
+    print("   Console mode -- emails printed to stdout only (dev mode)")
 
 frontend_url = getattr(settings, 'FRONTEND_BASE_URL', '')
 if not frontend_url or 'localhost' in frontend_url:
-    print("   WARNING: FRONTEND_BASE_URL is not set to a production URL.")
-    print("   Password reset links will point to localhost. Set it in Render env vars.")
+    print("   WARNING: FRONTEND_BASE_URL points to localhost.")
+    print("   Password reset links will be broken in production.")
+    print("   Set FRONTEND_BASE_URL=https://your-app.onrender.com")
 
 print("   Email config check complete.")
 PYEOF

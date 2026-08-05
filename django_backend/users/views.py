@@ -605,7 +605,7 @@ def spend_prestige_view(request):
 @permission_classes([permissions.AllowAny])
 def password_reset_request_view(request):
     """
-    Step 1 — User submits their email.
+    Step 1 -- User submits their email.
     Generates a secure token, stores it in cache, and emails a reset link.
     Always returns 200 so we never reveal whether an email is registered.
     """
@@ -620,7 +620,7 @@ def password_reset_request_view(request):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-    # Always respond with success — don't reveal account existence
+    # Always respond with success -- don't reveal account existence
     generic_ok = Response({
         'message': (
             "If that email is registered, you'll receive a reset link shortly. "
@@ -647,7 +647,7 @@ def password_reset_request_view(request):
     cache.set(cache_key, {'user_id': user.id}, timeout=3600)
     cache.set(rate_key, True, timeout=120)
 
-    # Build the reset URL — points to the frontend page
+    # Build the reset URL -- points to the frontend page
     frontend_base = getattr(settings, 'FRONTEND_BASE_URL', 'http://localhost:8000').rstrip('/')
     reset_url = f'{frontend_base}/pages/forgot-password.html?token={token}'
 
@@ -668,7 +668,7 @@ def password_reset_request_view(request):
 @permission_classes([permissions.AllowAny])
 def password_reset_confirm_view(request):
     """
-    Step 2 — User submits new password + the token from the email link.
+    Step 2 -- User submits new password + the token from the email link.
     Validates token, sets the new password, invalidates all existing tokens.
     """
     from django.core.cache import cache
