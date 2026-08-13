@@ -1,0 +1,247 @@
+/* ═══════════════════════════════════════════════════════════════
+   ARTX · smooth.css
+   Global smoothness layer — scroll, touch, clicks, animations.
+   Loaded on every page. Zero external dependencies.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── 1. Momentum / native smooth scroll ── */
+html {
+    scroll-behavior: smooth;
+}
+
+/* Momentum scrolling on iOS + smooth on all touch devices */
+* {
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Any scrollable container gets smooth momentum */
+[data-scroll], .scroll-container,
+.modal, .wmodal-box, .p-modal-box,
+.auth-container, .legal-modal-inner {
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* ── 2. Custom cursor (desktop only) ── */
+@media (pointer: fine) {
+    html, body { cursor: none !important; }
+
+    /* Everything that should show a pointer cursor */
+    a, button, [role="button"],
+    input[type="submit"], input[type="button"], input[type="reset"],
+    label[for], select, .clickable,
+    .p-method, .p-preset, .p-action-btn,
+    .color-swatch, [data-accent-swatch],
+    .stl-dot, .flip-card, .icon-nav-btn,
+    .p-pill, .p-load-more, .waction-btn {
+        cursor: none !important;
+    }
+
+    /* Text inputs keep the native I-beam logic through JS */
+    input[type="text"],
+    input[type="email"],
+    input[type="password"],
+    input[type="number"],
+    input[type="tel"],
+    textarea,
+    [contenteditable] {
+        cursor: text !important;
+    }
+}
+
+/* Cursor dot elements (injected by smooth.js) */
+#artx-cursor-dot {
+    position: fixed;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--artx-accent, #90ee90);
+    pointer-events: none;
+    z-index: 99999;
+    top: 0; left: 0;
+    transform: translate(-50%, -50%);
+    transition: width .15s, height .15s, opacity .2s, background .3s;
+    will-change: transform;
+    mix-blend-mode: difference;
+}
+
+#artx-cursor-ring {
+    position: fixed;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 1.5px solid var(--artx-accent, #90ee90);
+    pointer-events: none;
+    z-index: 99998;
+    top: 0; left: 0;
+    transform: translate(-50%, -50%);
+    transition: width .22s cubic-bezier(.34,1.56,.64,1),
+                height .22s cubic-bezier(.34,1.56,.64,1),
+                opacity .25s, border-color .3s;
+    will-change: transform;
+    opacity: 0.55;
+}
+
+/* Cursor states injected by JS */
+#artx-cursor-dot.hovering  { width: 12px; height: 12px; opacity: 1; }
+#artx-cursor-ring.hovering { width: 48px; height: 48px; opacity: 0.85; }
+#artx-cursor-dot.clicking  { width: 6px;  height: 6px;  opacity: 0.6; }
+#artx-cursor-ring.clicking { width: 24px; height: 24px; opacity: 1; }
+#artx-cursor-dot.text      { width: 2px;  height: 20px; border-radius: 1px; }
+#artx-cursor-ring.text     { opacity: 0; }
+
+/* ── 3. Ripple effect on clicks ── */
+.artx-ripple {
+    position: absolute;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.28);
+    pointer-events: none;
+    transform: scale(0);
+    animation: artxRipple .55s cubic-bezier(.4, 0, .2, 1) forwards;
+    z-index: 9;
+}
+
+@keyframes artxRipple {
+    to { transform: scale(4); opacity: 0; }
+}
+
+/* Ensure ripple-target elements have relative positioning */
+button:not([data-no-ripple]),
+.btn-submit, .btn-primary, .btn-auth,
+.p-btn-next, .p-btn-submit, .p-btn-back,
+.p-action-btn, .p-preset, .p-pill,
+.waction-btn, .wbtn-next, .wbtn-submit,
+.icon-nav-btn, .header-icon-btn,
+.color-swatch, [data-accent-swatch],
+.stl-dot, .p-load-more {
+    position: relative;
+    overflow: hidden;
+}
+
+/* ── 4. Button micro-press feedback ── */
+button:not([data-no-press]):not(:disabled),
+.p-action-btn,
+.icon-nav-btn,
+.waction-btn,
+.color-swatch,
+[data-accent-swatch] {
+    transition: transform .12s cubic-bezier(.34,1.56,.64,1),
+                box-shadow .12s ease;
+}
+
+button:not([data-no-press]):not(:disabled):active,
+.p-action-btn:active,
+.icon-nav-btn:active,
+.waction-btn:active {
+    transform: scale(0.95) !important;
+}
+
+/* ── 5. Scroll-entrance animations ── */
+
+/* Base hidden state — added by JS before element enters viewport */
+.artx-reveal {
+    opacity: 0;
+    transform: translateY(22px);
+    transition: opacity .55s cubic-bezier(.22,1,.36,1),
+                transform .55s cubic-bezier(.22,1,.36,1);
+    will-change: opacity, transform;
+}
+
+.artx-reveal.revealed {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Staggered children */
+.artx-reveal-stagger > * {
+    opacity: 0;
+    transform: translateY(18px);
+    transition: opacity .45s cubic-bezier(.22,1,.36,1),
+                transform .45s cubic-bezier(.22,1,.36,1);
+    will-change: opacity, transform;
+}
+
+.artx-reveal-stagger.revealed > *:nth-child(1)  { transition-delay: .04s; }
+.artx-reveal-stagger.revealed > *:nth-child(2)  { transition-delay: .08s; }
+.artx-reveal-stagger.revealed > *:nth-child(3)  { transition-delay: .12s; }
+.artx-reveal-stagger.revealed > *:nth-child(4)  { transition-delay: .16s; }
+.artx-reveal-stagger.revealed > *:nth-child(5)  { transition-delay: .20s; }
+.artx-reveal-stagger.revealed > *:nth-child(6)  { transition-delay: .24s; }
+.artx-reveal-stagger.revealed > *:nth-child(7)  { transition-delay: .28s; }
+.artx-reveal-stagger.revealed > *:nth-child(8)  { transition-delay: .32s; }
+.artx-reveal-stagger.revealed > * { opacity: 1; transform: translateY(0); }
+
+/* Slide in from left */
+.artx-reveal-left {
+    opacity: 0;
+    transform: translateX(-28px);
+    transition: opacity .5s cubic-bezier(.22,1,.36,1),
+                transform .5s cubic-bezier(.22,1,.36,1);
+}
+.artx-reveal-left.revealed { opacity: 1; transform: translateX(0); }
+
+/* Slide in from right */
+.artx-reveal-right {
+    opacity: 0;
+    transform: translateX(28px);
+    transition: opacity .5s cubic-bezier(.22,1,.36,1),
+                transform .5s cubic-bezier(.22,1,.36,1);
+}
+.artx-reveal-right.revealed { opacity: 1; transform: translateX(0); }
+
+/* Scale in */
+.artx-reveal-scale {
+    opacity: 0;
+    transform: scale(0.92);
+    transition: opacity .45s cubic-bezier(.34,1.4,.64,1),
+                transform .45s cubic-bezier(.34,1.4,.64,1);
+}
+.artx-reveal-scale.revealed { opacity: 1; transform: scale(1); }
+
+/* ── 6. Page transition overlay ── */
+#artx-page-veil {
+    position: fixed;
+    inset: 0;
+    background: var(--artx-primary, #556b2f);
+    z-index: 88888;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity .32s ease;
+}
+#artx-page-veil.leaving { opacity: 0.18; pointer-events: all; }
+
+/* ── 7. Touch feedback highlight suppression ──
+   Replace the ugly grey tap flash with a subtle branded tint */
+* {
+    -webkit-tap-highlight-color: rgba(144, 238, 144, 0.12);
+}
+
+/* ── 8. Image drag prevention ── */
+img, svg { -webkit-user-drag: none; user-drag: none; }
+
+/* ── 9. Smooth focus rings ── */
+:focus-visible {
+    outline: 2px solid var(--artx-accent, #90ee90);
+    outline-offset: 3px;
+    border-radius: 4px;
+    transition: outline-offset .18s ease;
+}
+:focus:not(:focus-visible) { outline: none; }
+
+/* ── 10. Respect reduced-motion preference ── */
+@media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    *, *::before, *::after {
+        animation-duration: .01ms !important;
+        transition-duration: .01ms !important;
+    }
+    .artx-reveal, .artx-reveal-left,
+    .artx-reveal-right, .artx-reveal-scale,
+    .artx-reveal-stagger > * {
+        opacity: 1 !important;
+        transform: none !important;
+        transition: none !important;
+    }
+    #artx-cursor-dot,
+    #artx-cursor-ring { display: none; }
+}
