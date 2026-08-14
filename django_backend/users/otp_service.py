@@ -124,10 +124,14 @@ class OTPService:
     
     @staticmethod
     def send_otp_sms(user, otp):
-        """Send OTP via SMS (placeholder for future implementation)"""
-        # TODO: Implement SMS sending via Twilio, AWS SNS, or other provider
-        logger.info(f"SMS OTP sending not implemented yet. OTP: {otp}")
-        return False
+        """Send OTP via SMS using the central SMS service."""
+        from users.sms_service import sms_service
+        result = sms_service.send_otp(user, otp, OTPService.OTP_EXPIRY_MINUTES)
+        if result:
+            logger.info(f"OTP SMS sent to {user.phone}")
+        else:
+            logger.warning(f"OTP SMS not sent for {user.username} (no phone or provider issue)")
+        return result
 
 
 # Singleton instance

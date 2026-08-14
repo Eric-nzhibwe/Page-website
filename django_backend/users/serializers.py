@@ -45,7 +45,7 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
 
         user = User.objects.create_user(password=password, **validated_data)
 
-        # Send welcome email via the central email service.
+        # Send welcome email + SMS via the central services.
         # Never block registration if this fails.
         try:
             from users.email_service import email_service
@@ -54,6 +54,15 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
             import logging
             logging.getLogger(__name__).warning(
                 "Welcome email failed for %s: %s", user.email, exc
+            )
+
+        try:
+            from users.sms_service import sms_service
+            sms_service.send_welcome(user)
+        except Exception as exc:
+            import logging
+            logging.getLogger(__name__).warning(
+                "Welcome SMS failed for %s: %s", user.username, exc
             )
 
         return user

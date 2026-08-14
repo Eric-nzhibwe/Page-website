@@ -307,6 +307,32 @@ DEFAULT_FROM_EMAIL = config(
 # Must be set to your Render URL in production.
 FRONTEND_BASE_URL = config('FRONTEND_BASE_URL', default='http://localhost:8000')
 
+# ─── SMS Configuration ────────────────────────────────────────────────────────
+#
+# SMS_PROVIDER controls which sending backend is used:
+#
+#   twilio          Global coverage. Requires TWILIO_ACCOUNT_SID,
+#                   TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER.
+#                   Free trial: https://www.twilio.com/try-twilio
+#
+#   africastalking  Better rates for African numbers. Requires
+#                   AFRICASTALKING_USERNAME and AFRICASTALKING_API_KEY.
+#                   Free sandbox: https://africastalking.com/
+#
+#   console         Prints SMS to stdout. Local dev only, nothing is sent.
+#
+SMS_PROVIDER = config('SMS_PROVIDER', default='console')
+
+# Twilio (used when SMS_PROVIDER=twilio)
+TWILIO_ACCOUNT_SID  = config('TWILIO_ACCOUNT_SID',  default='')
+TWILIO_AUTH_TOKEN   = config('TWILIO_AUTH_TOKEN',   default='')
+TWILIO_PHONE_NUMBER = config('TWILIO_PHONE_NUMBER', default='')
+
+# Africa's Talking (used when SMS_PROVIDER=africastalking)
+AFRICASTALKING_USERNAME  = config('AFRICASTALKING_USERNAME',  default='')
+AFRICASTALKING_API_KEY   = config('AFRICASTALKING_API_KEY',   default='')
+AFRICASTALKING_SENDER_ID = config('AFRICASTALKING_SENDER_ID', default='ARTX')
+
 # Payment Provider Configuration
 # ⚠️ IMPORTANT: All API keys should be in .env file, NOT in code
 STRIPE_PUBLISHABLE_KEY = config('STRIPE_PUBLISHABLE_KEY', default='')

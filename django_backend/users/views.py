@@ -118,6 +118,13 @@ def login_view(request):
     except Exception:
         pass  # Never block login if email fails
 
+    # Send login alert SMS (non-blocking, only if user has a phone number)
+    try:
+        from users.sms_service import sms_service
+        sms_service.send_login_alert(user)
+    except Exception:
+        pass  # Never block login if SMS fails
+
     return Response({
         'token': token.key,
         'user': UserProfileSerializer(user).data,
@@ -404,8 +411,9 @@ def resend_otp_view(request):
     # Generate new OTP
     otp, new_session_id = otp_service.create_otp(user, session_id)
     
-    # Send OTP
+    # Send OTP via email and SMS
     otp_service.send_otp_email(user, otp)
+    otp_service.send_otp_sms(user, otp)
     
     # Mark as resent
     otp_service.mark_resent(session_id)
@@ -651,13 +659,20 @@ def password_reset_request_view(request):
     frontend_base = getattr(settings, 'FRONTEND_BASE_URL', 'http://localhost:8000').rstrip('/')
     reset_url = f'{frontend_base}/pages/forgot-password.html?token={token}'
 
-    # Send email
+    # Send email + SMS reset notifications
     try:
         from users.email_service import email_service
         email_service.send_password_reset(user, reset_url, expiry_hours=1)
     except Exception as e:
         import logging
         logging.getLogger(__name__).error(f'Password reset email failed for {email}: {e}')
+
+    try:
+        from users.sms_service import sms_service
+        sms_service.send_password_reset(user, reset_url)
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning(f'Password reset SMS failed for {email}: {e}')
 
     return generic_ok
 
