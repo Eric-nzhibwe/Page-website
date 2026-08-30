@@ -124,12 +124,37 @@ else:
 # Database
 import dj_database_url
 
-# Render provides DATABASE_URL. Fix postgres:// → postgresql:// for Django compatibility.
+# Support both URL-style and keyword-style (psycopg2) connection strings.
+# Supabase's URI format can confuse Python 3.11's urlparse when the password
+# contains special characters or hyphens, so we also accept individual vars.
 _raw_db_url = config('DATABASE_URL', default=None)
-if _raw_db_url and _raw_db_url.startswith('postgres://'):
-    _raw_db_url = _raw_db_url.replace('postgres://', 'postgresql://', 1)
 
-if _raw_db_url:
+# Individual component overrides — set these instead of DATABASE_URL if the
+# URL keeps failing to parse (e.g. Supabase with a complex password).
+_db_host     = config('DB_HOST',     default=None)
+_db_name     = config('DB_NAME',     default='postgres')
+_db_user     = config('DB_USER',     default='postgres')
+_db_password = config('DB_PASSWORD', default=None)
+_db_port     = config('DB_PORT',     default='5432')
+
+if _db_host and _db_password:
+    # Explicit component vars take priority — avoids all URL-parsing issues
+    DATABASES = {
+        'default': {
+            'ENGINE':   'django.db.backends.postgresql',
+            'NAME':     _db_name,
+            'USER':     _db_user,
+            'PASSWORD': _db_password,
+            'HOST':     _db_host,
+            'PORT':     _db_port,
+            'OPTIONS':  {'sslmode': 'require'} if not DEBUG else {},
+            'CONN_MAX_AGE': 60,
+        }
+    }
+elif _raw_db_url:
+    # Fix postgres:// → postgresql:// for Django compatibility
+    if _raw_db_url.startswith('postgres://'):
+        _raw_db_url = _raw_db_url.replace('postgres://', 'postgresql://', 1)
     DATABASES = {
         'default': dj_database_url.config(
             default=_raw_db_url,

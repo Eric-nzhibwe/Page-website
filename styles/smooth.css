@@ -4,17 +4,15 @@
    Loaded on every page. Zero external dependencies.
    ═══════════════════════════════════════════════════════════════ */
 
-/* ── 1. Momentum / native smooth scroll ── */
+/* ── 1. Smooth scroll + momentum on iOS ── */
 html {
     scroll-behavior: smooth;
 }
 
-/* Momentum scrolling on iOS + smooth on all touch devices */
 * {
     -webkit-overflow-scrolling: touch;
 }
 
-/* Any scrollable container gets smooth momentum */
 [data-scroll], .scroll-container,
 .modal, .wmodal-box, .p-modal-box,
 .auth-container, .legal-modal-inner {
@@ -22,59 +20,39 @@ html {
     -webkit-overflow-scrolling: touch;
 }
 
-/* ── 2. Custom cursor (desktop only) ── */
-@media (pointer: fine) {
-    html, body { cursor: none !important; }
-
-    /* Everything that should show a pointer cursor */
-    a, button, [role="button"],
-    input[type="submit"], input[type="button"], input[type="reset"],
-    label[for], select, .clickable,
-    .p-method, .p-preset, .p-action-btn,
-    .color-swatch, [data-accent-swatch],
-    .stl-dot, .flip-card, .icon-nav-btn,
-    .p-pill, .p-load-more, .waction-btn {
-        cursor: none !important;
-    }
-
-    /* Text inputs keep the native I-beam logic through JS */
-    input[type="text"],
-    input[type="email"],
-    input[type="password"],
-    input[type="number"],
-    input[type="tel"],
-    textarea,
-    [contenteditable] {
-        cursor: text !important;
-    }
+/* ── 2. Native cursors — no overrides, no custom cursor ──
+   Keeping the browser's default cursor means links and buttons
+   always look and feel clickable without needing a JS companion. */
+a, button, [role="button"],
+input[type="submit"], input[type="button"], input[type="reset"],
+label[for], select, .clickable,
+.icon-nav-btn, .header-icon-btn,
+.quick-menu-item, .user-avatar-btn,
+.p-method, .p-preset, .p-action-btn,
+.color-swatch, [data-accent-swatch],
+.stl-dot, .flip-card, .p-pill,
+.p-load-more, .waction-btn,
+.story-card, .post-card, .challenge-card,
+.product-card, .filter-btn, .menu-item {
+    cursor: pointer;
 }
 
-/* Cursor dot elements (injected by smooth.js) */
-#artx-cursor-dot {
-    position: fixed;
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--artx-accent, #90ee90);
-    pointer-events: none;
-    z-index: 99999;
-    top: 0; left: 0;
-    transform: translate(-50%, -50%);
-    transition: width .15s, height .15s, opacity .2s, background .3s;
-    will-change: transform;
-    mix-blend-mode: difference;
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+input[type="tel"],
+textarea,
+[contenteditable] {
+    cursor: text;
 }
 
+/* ── 3. Tap highlight — replace grey flash with branded tint ── */
+* {
+    -webkit-tap-highlight-color: rgba(144, 238, 144, 0.12);
+}
 
-/* Cursor states injected by JS */
-#artx-cursor-dot.hovering  { width: 12px; height: 12px; opacity: 1; }
-#artx-cursor-ring.hovering { width: 48px; height: 48px; opacity: 0.85; }
-#artx-cursor-dot.clicking  { width: 6px;  height: 6px;  opacity: 0.6; }
-#artx-cursor-ring.clicking { width: 24px; height: 24px; opacity: 1; }
-#artx-cursor-dot.text      { width: 2px;  height: 20px; border-radius: 1px; }
-#artx-cursor-ring.text     { opacity: 0; }
-
-/* ── 3. Ripple effect on clicks ── */
+/* ── 4. Ripple effect on clicks ── */
 .artx-ripple {
     position: absolute;
     border-radius: 50%;
@@ -89,7 +67,7 @@ html {
     to { transform: scale(4); opacity: 0; }
 }
 
-/* Ensure ripple-target elements have relative positioning */
+/* Elements that receive ripple need relative + overflow:hidden */
 button:not([data-no-ripple]),
 .btn-submit, .btn-primary, .btn-auth,
 .p-btn-next, .p-btn-submit, .p-btn-back,
@@ -102,7 +80,7 @@ button:not([data-no-ripple]),
     overflow: hidden;
 }
 
-/* ── 4. Button micro-press feedback ── */
+/* ── 5. Button micro-press feedback ── */
 button:not([data-no-press]):not(:disabled),
 .p-action-btn,
 .icon-nav-btn,
@@ -120,9 +98,7 @@ button:not([data-no-press]):not(:disabled):active,
     transform: scale(0.95) !important;
 }
 
-/* ── 5. Scroll-entrance animations ── */
-
-/* Base hidden state — added by JS before element enters viewport */
+/* ── 6. Scroll-entrance animations ── */
 .artx-reveal {
     opacity: 0;
     transform: translateY(22px);
@@ -130,13 +106,11 @@ button:not([data-no-press]):not(:disabled):active,
                 transform .55s cubic-bezier(.22,1,.36,1);
     will-change: opacity, transform;
 }
-
 .artx-reveal.revealed {
     opacity: 1;
     transform: translateY(0);
 }
 
-/* Staggered children */
 .artx-reveal-stagger > * {
     opacity: 0;
     transform: translateY(18px);
@@ -144,7 +118,6 @@ button:not([data-no-press]):not(:disabled):active,
                 transform .45s cubic-bezier(.22,1,.36,1);
     will-change: opacity, transform;
 }
-
 .artx-reveal-stagger.revealed > *:nth-child(1)  { transition-delay: .04s; }
 .artx-reveal-stagger.revealed > *:nth-child(2)  { transition-delay: .08s; }
 .artx-reveal-stagger.revealed > *:nth-child(3)  { transition-delay: .12s; }
@@ -155,7 +128,6 @@ button:not([data-no-press]):not(:disabled):active,
 .artx-reveal-stagger.revealed > *:nth-child(8)  { transition-delay: .32s; }
 .artx-reveal-stagger.revealed > * { opacity: 1; transform: translateY(0); }
 
-/* Slide in from left */
 .artx-reveal-left {
     opacity: 0;
     transform: translateX(-28px);
@@ -164,7 +136,6 @@ button:not([data-no-press]):not(:disabled):active,
 }
 .artx-reveal-left.revealed { opacity: 1; transform: translateX(0); }
 
-/* Slide in from right */
 .artx-reveal-right {
     opacity: 0;
     transform: translateX(28px);
@@ -173,7 +144,6 @@ button:not([data-no-press]):not(:disabled):active,
 }
 .artx-reveal-right.revealed { opacity: 1; transform: translateX(0); }
 
-/* Scale in */
 .artx-reveal-scale {
     opacity: 0;
     transform: scale(0.92);
@@ -182,26 +152,21 @@ button:not([data-no-press]):not(:disabled):active,
 }
 .artx-reveal-scale.revealed { opacity: 1; transform: scale(1); }
 
-/* ── 6. Page transition overlay ── */
+/* ── 7. Page transition veil ──
+   pointer-events is ALWAYS none so it can never block clicks. */
 #artx-page-veil {
     position: fixed;
     inset: 0;
     background: var(--artx-primary, #556b2f);
     z-index: 88888;
-    pointer-events: none;
+    pointer-events: none !important;   /* never block clicks */
     opacity: 0;
     transition: opacity .32s ease;
 }
-#artx-page-veil.leaving { opacity: 0.18; pointer-events: all; }
-
-/* ── 7. Touch feedback highlight suppression ──
-   Replace the ugly grey tap flash with a subtle branded tint */
-* {
-    -webkit-tap-highlight-color: rgba(144, 238, 144, 0.12);
-}
+#artx-page-veil.leaving { opacity: 0.18; }
 
 /* ── 8. Image drag prevention ── */
-img, svg { -webkit-user-drag: none; user-drag: none; }
+img, svg { -webkit-user-drag: none; }
 
 /* ── 9. Smooth focus rings ── */
 :focus-visible {
@@ -212,34 +177,14 @@ img, svg { -webkit-user-drag: none; user-drag: none; }
 }
 :focus:not(:focus-visible) { outline: none; }
 
-/* ── 10. Respect reduced-motion preference ── */
-@media (prefers-reduced-motion: reduce) {
-    html { scroll-behavior: auto; }
-    *, *::before, *::after {
-        animation-duration: .01ms !important;
-        transition-duration: .01ms !important;
-    }
-    .artx-reveal, .artx-reveal-left,
-    .artx-reveal-right, .artx-reveal-scale,
-    .artx-reveal-stagger > * {
-        opacity: 1 !important;
-        transform: none !important;
-        transition: none !important;
-    }
-    #artx-cursor-dot,
-    #artx-cursor-ring { display: none; }
-}
-
-/* ── 11. Modal smooth open / close ── */
+/* ── 10. Modal smooth open / close ── */
 .modal {
     opacity: 0;
     transition: opacity .28s cubic-bezier(.4, 0, .2, 1);
 }
-
 .modal.artx-modal-open {
     opacity: 1;
 }
-
 .modal.artx-modal-closing {
     opacity: 0;
     pointer-events: none;
@@ -253,7 +198,6 @@ img, svg { -webkit-user-drag: none; user-drag: none; }
                 opacity .28s ease;
     opacity: 0;
 }
-
 .artx-modal-open .modal-content,
 .artx-modal-open .wmodal-box,
 .artx-modal-open .p-modal-box {
@@ -261,24 +205,22 @@ img, svg { -webkit-user-drag: none; user-drag: none; }
     opacity: 1;
 }
 
-/* ── 12. Auto-hide header on mobile scroll-down ── */
+/* ── 11. Auto-hide header on mobile scroll-down ── */
 @media (max-width: 767px) {
     .header {
         transition: transform .28s cubic-bezier(.4, 0, .2, 1),
                     box-shadow .28s ease !important;
     }
-
     body.scroll-down .header {
         transform: translateY(-100%) !important;
     }
-
     body.scroll-up .header {
         transform: translateY(0) !important;
         box-shadow: 0 4px 16px rgba(0,0,0,.15) !important;
     }
 }
 
-/* ── 13. Horizontal drag-scroll cursor hint ── */
+/* ── 12. Horizontal drag-scroll cursor hint ── */
 .stories-container,
 .ch-filter-row .filters,
 .marketplace-filters,
@@ -286,7 +228,6 @@ img, svg { -webkit-user-drag: none; user-drag: none; }
     cursor: grab;
     user-select: none;
 }
-
 .stories-container:active,
 .ch-filter-row .filters:active,
 .marketplace-filters:active,
@@ -294,26 +235,23 @@ img, svg { -webkit-user-drag: none; user-drag: none; }
     cursor: grabbing;
 }
 
-/* ── 14. Sticky bottom nav smooth appearance ── */
+/* ── 13. Sticky bottom nav smooth appearance ── */
 .mobile-bottom-nav {
     transition: transform .28s cubic-bezier(.4, 0, .2, 1) !important;
 }
-
 body.scroll-down .mobile-bottom-nav {
     transform: translateY(100%) !important;
 }
-
 body.scroll-up .mobile-bottom-nav,
 body:not(.scroll-down) .mobile-bottom-nav {
     transform: translateY(0) !important;
 }
 
-/* ── 15. Skeleton loading shimmer ── */
+/* ── 14. Skeleton loading shimmer ── */
 @keyframes artxShimmer {
     0%   { background-position: -600px 0; }
     100% { background-position:  600px 0; }
 }
-
 .artx-skeleton {
     background: linear-gradient(90deg,
         #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
@@ -322,7 +260,7 @@ body:not(.scroll-down) .mobile-bottom-nav {
     border-radius: 6px;
 }
 
-/* ── 16. Smooth card hover lift ── */
+/* ── 15. Smooth card hover lift ── */
 .post-card,
 .challenge-card,
 .product-card,
@@ -336,7 +274,6 @@ body:not(.scroll-down) .mobile-bottom-nav {
     transition: transform .22s cubic-bezier(.34,1.3,.64,1),
                 box-shadow .22s ease !important;
 }
-
 .post-card:hover,
 .challenge-card:hover,
 .product-card:hover,
@@ -349,14 +286,13 @@ body:not(.scroll-down) .mobile-bottom-nav {
     box-shadow: 0 8px 24px rgba(0,0,0,.13) !important;
 }
 
-/* ── 17. Input / textarea smooth focus ring ── */
+/* ── 16. Input smooth focus ring ── */
 input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
 textarea,
 select {
     transition: border-color .18s ease,
                 box-shadow   .18s ease !important;
 }
-
 input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):focus,
 textarea:focus,
 select:focus {
@@ -365,49 +301,49 @@ select:focus {
     box-shadow: 0 0 0 3px rgba(144, 238, 144, 0.22) !important;
 }
 
-/* ── 18. Toast / notification slide-in (override utils.js inline style) ── */
+/* ── 17. Toast / notification slide-in ── */
 @keyframes artxToastIn {
     from { transform: translateX(110%); opacity: 0; }
     to   { transform: translateX(0);   opacity: 1; }
 }
-
 @keyframes artxToastOut {
     from { transform: translateX(0);   opacity: 1; }
     to   { transform: translateX(110%); opacity: 0; }
 }
-
 .notification {
     animation: artxToastIn .3s cubic-bezier(.34,1.3,.64,1) forwards !important;
     border-radius: 12px !important;
     box-shadow: 0 6px 20px rgba(0,0,0,.18) !important;
 }
 
-/* ── 19. Filter button active transition ── */
+/* ── 18. Filter button transitions ── */
 .filter-btn {
     transition: background .18s ease,
                 color       .18s ease,
                 transform   .12s cubic-bezier(.34,1.56,.64,1) !important;
 }
-
 .filter-btn:active {
     transform: scale(0.94) !important;
 }
 
-/* ── 20. Scrollbar styling (Webkit) ── */
-::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
-}
+/* ── 19. Custom scrollbar (Webkit) ── */
+::-webkit-scrollbar        { width: 6px; height: 6px; }
+::-webkit-scrollbar-track  { background: transparent; }
+::-webkit-scrollbar-thumb  { background: rgba(85,107,47,.28); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(85,107,47,.5); }
 
-::-webkit-scrollbar-track {
-    background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-    background: rgba(85, 107, 47, 0.28);
-    border-radius: 3px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-    background: rgba(85, 107, 47, 0.5);
+/* ── 20. Respect reduced-motion preference ── */
+@media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    *, *::before, *::after {
+        animation-duration: .01ms !important;
+        transition-duration: .01ms !important;
+    }
+    .artx-reveal, .artx-reveal-left,
+    .artx-reveal-right, .artx-reveal-scale,
+    .artx-reveal-stagger > * {
+        opacity: 1 !important;
+        transform: none !important;
+        transition: none !important;
+    }
 }
