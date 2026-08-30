@@ -49,6 +49,30 @@ html {
     }
 }
 
+/* Cursor dot elements (injected by smooth.js) */
+#artx-cursor-dot {
+    position: fixed;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--artx-accent, #90ee90);
+    pointer-events: none;
+    z-index: 99999;
+    top: 0; left: 0;
+    transform: translate(-50%, -50%);
+    transition: width .15s, height .15s, opacity .2s, background .3s;
+    will-change: transform;
+    mix-blend-mode: difference;
+}
+
+
+/* Cursor states injected by JS */
+#artx-cursor-dot.hovering  { width: 12px; height: 12px; opacity: 1; }
+#artx-cursor-ring.hovering { width: 48px; height: 48px; opacity: 0.85; }
+#artx-cursor-dot.clicking  { width: 6px;  height: 6px;  opacity: 0.6; }
+#artx-cursor-ring.clicking { width: 24px; height: 24px; opacity: 1; }
+#artx-cursor-dot.text      { width: 2px;  height: 20px; border-radius: 1px; }
+#artx-cursor-ring.text     { opacity: 0; }
 
 /* ── 3. Ripple effect on clicks ── */
 .artx-ripple {
