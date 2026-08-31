@@ -6,7 +6,7 @@
     <title>Influencer Hub</title>
     <link rel="icon" type="image/jpeg" href="../images/ARTX.jpg">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
     <link rel="stylesheet" href="../styles/styles.css">
     <link rel="stylesheet" href="../styles/icon-nav.css">
     <link rel="stylesheet" href="../styles/influencers.css">
@@ -18,39 +18,39 @@
     <header class="header w-100">
         <div class="header-left d-flex align-items-center">
             <div class="logo" onclick="window.location.href='../index.html'" style="cursor:pointer">
-                <i class="fas fa-fire"></i>ARTX
+                <i class="fas fa-fire-flame-curved"></i>ARTX
             </div>
             <div class="search-bar d-none d-md-flex align-items-center">
-                <i class="fas fa-search"></i>
+                <i class="fas fa-magnifying-glass"></i>
                 <input type="text" placeholder="Search ARTX..." id="headerSearch">
             </div>
         </div>
 
         <nav class="icon-nav d-flex justify-content-center flex-grow-1">
             <button class="icon-nav-btn" title="Home" onclick="window.location.href='../index.html'">
-                <i class="fas fa-home" style="color:black;"></i>
+                <i class="fas fa-house"></i>
             </button>
             <button class="icon-nav-btn" title="Challenges" onclick="window.location.href='challenges.html'">
-                <i class="fas fa-trophy" style="color:black;"></i>
+                <i class="fas fa-trophy"></i>
             </button>
             <button class="icon-nav-btn" title="Community" onclick="window.location.href='community.html'">
-                <i class="fas fa-users" style="color:black;"></i>
+                <i class="fas fa-people-group"></i>
             </button>
             <button class="icon-nav-btn active" title="Influencers">
-                <i class="fas fa-star" style="color:black;"></i>
+                <i class="fas fa-star"></i>
             </button>
         </nav>
 
         <!-- Right Side Icons -->
         <div class="header-right d-flex align-items-center">
             <button class="header-icon-btn" onclick="window.location.href='../index.html'" title="Notifications">
-                <i class="fas fa-bell" style="color:black;"></i>
+                <i class="fas fa-bell"></i>
             </button>
             <button class="header-icon-btn" onclick="toggleQuickMenu()" title="Menu">
-                <i class="fas fa-th" style="color:black;"></i>
+                <i class="fas fa-grid-2"></i>
             </button>
             <div class="user-avatar-btn" onclick="toggleUserMenu()">
-                <i class="fas fa-user-circle" style="color:black;"></i>
+                <i class="fas fa-circle-user"></i>
             </div>
         </div>
 
@@ -65,7 +65,7 @@
                     <i class="fas fa-trophy"></i><span>Challenges</span>
                 </a>
                 <a href="community.html" class="quick-menu-item">
-                    <i class="fas fa-users"></i><span>Community</span>
+                    <i class="fas fa-people-group"></i><span>Community</span>
                 </a>
                 <a href="payment.html" class="quick-menu-item">
                     <i class="fas fa-wallet"></i><span>Wallet</span>
@@ -82,7 +82,7 @@
         <!-- User Menu Dropdown -->
         <div class="user-menu-dropdown" id="userMenuDropdown">
             <div class="user-menu-header">
-                <div class="user-menu-avatar"><i class="fas fa-user-circle"></i></div>
+                <div class="user-menu-avatar"><i class="fas fa-circle-user"></i></div>
                 <div class="user-menu-info">
                     <h4 id="menuUsername">Player</h4>
                     <p id="menuTier">Bronze Tier</p>
@@ -90,7 +90,7 @@
             </div>
             <div class="user-menu-stats">
                 <div class="user-menu-stat">
-                    <i class="fas fa-fire"></i>
+                    <i class="fas fa-bolt-lightning"></i>
                     <span id="menuStreak">0</span>
                 </div>
                 <div class="user-menu-stat">
@@ -104,16 +104,16 @@
             </div>
             <div class="user-menu-links">
                 <a href="user.html">
-                    <i class="fas fa-user"></i> View Profile
+                    <i class="fas fa-id-card"></i> View Profile
                 </a>
                 <a href="payment.html">
                     <i class="fas fa-wallet"></i> My Wallet
                 </a>
                 <a href="../pages/user.html">
-                    <i class="fas fa-cog"></i> Settings
+                    <i class="fas fa-gear"></i> Settings
                 </a>
-                <a href="#" onclick="logout(); return false;">
-                    <i class="fas fa-sign-out-alt"></i> Logout
+                <a href="#" onclick="logout(); return false;" class="logout-link">
+                    <i class="fas fa-right-from-bracket"></i> Logout
                 </a>
             </div>
         </div>
@@ -123,7 +123,7 @@
 
         <!-- Hero Section -->
         <section class="hero">
-            <h1><i class="fas fa-star"></i> Influencer Hub</h1>
+        <h1><i class="fas fa-crown"></i> Influencer Hub</h1>
             <p>Partner with content creators for exclusive challenges and rewards</p>
         </section>
 

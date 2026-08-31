@@ -8,7 +8,7 @@
     <link rel="icon" type="image/jpeg" href="./images/ARTX.jpg">
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
     <link rel="stylesheet" href="styles/styles.css">
     <link rel="stylesheet" href="styles/social-feed.css">
     <link rel="stylesheet" href="styles/social-features.css">
@@ -46,38 +46,38 @@
     <!-- Header with Bootstrap -->
     <header class="header w-100">
             <div class="header-left d-flex align-items-center">
-                <div class="logo"><i class="fas fa-fire"></i>ARTX</div>
+                <div class="logo"><i class="fas fa-fire-flame-curved"></i>ARTX</div>
                 <div class="search-bar d-none d-md-flex align-items-center">
-                    <i class="fas fa-search"></i>
+                    <i class="fas fa-magnifying-glass"></i>
                     <input type="text" placeholder="Search ARTX..." id="headerSearch">
                 </div>
             </div>
 
             <nav class="icon-nav d-flex justify-content-center flex-grow-1">
                 <button class="icon-nav-btn active" data-view="social-feed" title="Home" onclick="switchView('social-feed')">
-                    <i class="fas fa-home" style="color: black;"></i>
+                    <i class="fas fa-house"></i>
                 </button>
                     <span class="notification-badge" id="challengesBadge" style="display: none;">0</span>
                 </button>
                 <button class="icon-nav-btn" data-view="marketplace" title="Marketplace" onclick="switchView('marketplace')">
-                    <i class="fas fa-store" style="color: black;"></i>
+                    <i class="fas fa-bag-shopping"></i>
                 </button>
                 <button class="icon-nav-btn" onclick="window.location.href='pages/user.html'" title="Profile">
-                    <i class="fas fa-user-circle" style="color: black;"></i>
+                    <i class="fas fa-circle-user"></i>
                 </button>
             </nav>
 
             <!-- Right Side Icons -->
             <div class="header-right d-flex align-items-center">
                 <button class="header-icon-btn" onclick="showNotifications()" title="Notifications">
-                    <i class="fas fa-bell" style="color: black;"></i>
+                    <i class="fas fa-bell"></i>
                     <span class="notification-badge" id="notificationBadge" style="display: none;">0</span>
                 </button>
                 <button class="header-icon-btn" onclick="toggleQuickMenu()" title="Menu">
-                    <i class="fas fa-th" style="color: black;"></i>
+                    <i class="fas fa-grid-2"></i>
                 </button>
                 <div class="user-avatar-btn" onclick="toggleUserMenu()">
-                    <i class="fas fa-user-circle" style="color: black;"></i>
+                    <i class="fas fa-circle-user"></i>
                 </div>
             </div>
 
@@ -88,12 +88,16 @@
                 </div>
                 <div class="quick-menu-grid">
                     <a href="#" onclick="showDashboardView(); return false;" class="quick-menu-item">
-                        <i class="fas fa-chart-line" style="color: black;"></i>
+                        <i class="fas fa-chart-line"></i>
                         <span>Dashboard</span>
                     </a>
                     <a href="pages/community.html" class="quick-menu-item">
-                        <i class="fas fa-users"></i>
+                        <i class="fas fa-people-group"></i>
                         <span>Community</span>
+                    </a>
+                    <a href="pages/challenges.html" class="quick-menu-item">
+                        <i class="fas fa-trophy"></i>
+                        <span>Challenges</span>    
                     </a>
                     <a href="pages/payment.html" class="quick-menu-item">
                         <i class="fas fa-wallet"></i>
@@ -114,7 +118,7 @@
             <div class="user-menu-dropdown" id="userMenuDropdown">
                 <div class="user-menu-header">
                     <div class="user-menu-avatar">
-                        <i class="fas fa-user-circle"></i>
+                        <i class="fas fa-circle-user"></i>
                     </div>
                     <div class="user-menu-info">
                         <h4 id="userMenuName">Player</h4>
@@ -123,7 +127,7 @@
                 </div>
                 <div class="user-menu-stats">
                     <div class="user-menu-stat">
-                        <i class="fas fa-fire"></i>
+                        <i class="fas fa-bolt-lightning"></i>
                         <span id="userMenuStreak">0</span>
                     </div>
                     <div class="user-menu-stat">
@@ -137,16 +141,16 @@
                 </div>
                 <div class="user-menu-links">
                     <a href="pages/user.html">
-                        <i class="fas fa-user"></i> View Profile
+                        <i class="fas fa-id-card"></i> View Profile
                     </a>
                     <a href="pages/payment.html">
                         <i class="fas fa-wallet"></i> My Wallet
                     </a>
                     <a href="#" onclick="showSettings(); return false;">
-                        <i class="fas fa-cog"></i> Settings
+                        <i class="fas fa-gear"></i> Settings
                     </a>
-                    <a href="#" onclick="logout(); return false;">
-                        <i class="fas fa-sign-out-alt"></i> Logout
+                    <a href="#" onclick="logout(); return false;" class="logout-link">
+                        <i class="fas fa-right-from-bracket"></i> Logout
                     </a>
                 </div>
             </div>
