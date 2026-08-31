@@ -1,1 +1,1 @@
-web: daphne -p $PORT -b 0.0.0.0 --proxy-headers artx_platform.asgi:application
+web: python manage.py migrate --no-input && uvicorn artx_platform.asgi:application --host 0.0.0.0 --port $PORT --workers 2 --lifespan off
