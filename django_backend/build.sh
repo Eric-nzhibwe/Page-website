@@ -16,14 +16,11 @@ cp -r ../images static/frontend/
 echo "==> Collecting static files"
 python manage.py collectstatic --no-input
 
-echo "==> Making migrations"
-python manage.py makemigrations --no-input
-
-echo "==> Running database migrations"
-python manage.py migrate --no-input
-
-echo "==> Creating superuser from env vars (if not exists)"
-python manage.py ensure_superuser
+# NOTE: migrate, makemigrations, and ensure_superuser are intentionally NOT run
+# here. Render's build environment has no outbound network access, so any
+# command that connects to the database will fail. These steps are run instead
+# via a release/start command that executes at runtime, where the network is
+# available. See the Render dashboard Start Command.
 
 echo "==> Verifying email configuration"
 python - <<'PYEOF'
