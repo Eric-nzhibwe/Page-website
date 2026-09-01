@@ -602,12 +602,17 @@
             <i class="fas fa-times"></i>
         </button>
 
-        <!-- Blurred thumbnail -->
-        <div class="ii-preview-thumb-wrap">
+        <!-- Blurred / locked thumbnail -->
+        <div class="ii-preview-thumb-wrap" id="iiPreviewThumbWrap">
             <img id="iiPreviewThumb" src="" alt="" class="ii-preview-thumb ii-img-blurred">
-            <div class="ii-preview-thumb-overlay">
+            <!-- Shown when user HAS met K10 minimum — image is blurred -->
+            <div class="ii-preview-thumb-overlay" id="iiThumbBlurOverlay">
                 <i class="fas fa-eye-slash"></i>
                 <span>Image hidden until you start</span>
+            </div>
+            <!-- Shown when user has NOT met K10 minimum — image withheld by server -->
+            <div class="ii-preview-thumb-overlay" id="iiThumbLockedOverlay" style="display:none;">
+                <span class="ii-thumb-locked-label">Deposit <strong>K10</strong> to unlock this image</span>
             </div>
         </div>
 

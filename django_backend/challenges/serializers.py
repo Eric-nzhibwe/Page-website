@@ -20,6 +20,10 @@ class ChallengeSerializer(serializers.ModelSerializer):
     user_has_submitted = serializers.SerializerMethodField()
     user_has_img_submitted = serializers.SerializerMethodField()
     created_by_username = serializers.SerializerMethodField()
+    image_url = serializers.SerializerMethodField()
+
+    # Minimum deposit required to unlock image interpretation challenges (ZMW)
+    _MIN_DEPOSIT = 10
     
     class Meta:
         model = Challenge
@@ -63,6 +67,32 @@ class ChallengeSerializer(serializers.ModelSerializer):
 
     def get_created_by_username(self, obj):
         return obj.created_by.username if obj.created_by else None
+
+    def get_image_url(self, obj):
+        """
+        For image_interpretation challenges the full image URL is only returned
+        when the requesting user has at least K10 in their wallet (the minimum
+        deposit required to play).  Everyone else gets None so the frontend can
+        only show a blur placeholder — the actual image never reaches the client
+        until the requirement is satisfied.
+
+        Text interpretation challenges are unaffected.
+        """
+        if obj.challenge_type != 'image_interpretation':
+            return obj.image_url
+
+        request = self.context.get('request')
+        if not request or not request.user.is_authenticated:
+            return None
+
+        try:
+            balance = request.user.wallet.available_balance
+            if balance >= self._MIN_DEPOSIT:
+                return obj.image_url
+        except Exception:
+            pass
+
+        return None
 
 
 class ChallengeCreateSerializer(serializers.ModelSerializer):
@@ -191,16 +221,67 @@ class ImageInterpretationSubmissionCreateSerializer(serializers.ModelSerializer)
         if challenge.image_submissions.filter(user=user).exists():
             raise serializers.ValidationError('You have already submitted to this challenge.')
 
+        # ── K10 minimum deposit requirement ───────────────────────────────────
+        # Image interpretation challenges require the player to have deposited
+        # at least K10 into their wallet before they can participate.
+        # This is enforced server-side regardless of entry_fee value.
+        MIN_DEPOSIT_REQUIRED = 10  # ZMW
+        try:
+            wallet = user.wallet
+            if wallet.available_balance < MIN_DEPOSIT_REQUIRED:
+                raise serializers.ValidationError(
+                    f'You need a minimum wallet balance of K{MIN_DEPOSIT_REQUIRED} '
+                    f'to participate in image interpretation challenges. '
+                    f'Please top up your wallet and try again.'
+                )
+        except user.__class__.wallet.RelatedObjectDoesNotExist:
+            raise serializers.ValidationError(
+                f'You need a minimum wallet balance of K{MIN_DEPOSIT_REQUIRED} '
+                f'to participate in image interpretation challenges. '
+                f'Please top up your wallet and try again.'
+            )
+
+        # ── Entry fee deduction (if challenge has a fee on top of K10 minimum) ─
+        entry_fee = challenge.entry_fee
+        if entry_fee > 0:
+            try:
+                wallet = user.wallet
+                if wallet.available_balance < entry_fee:
+                    raise serializers.ValidationError(
+                        f'Insufficient balance. This challenge requires an entry fee of K{entry_fee}. '
+                        f'Your current balance is K{wallet.available_balance}.'
+                    )
+            except user.__class__.wallet.RelatedObjectDoesNotExist:
+                raise serializers.ValidationError(
+                    f'You need a wallet with at least K{entry_fee} to enter this challenge.'
+                )
+
         return data
 
     def create(self, validated_data):
         from django.utils import timezone
         from .scoring_service import score_image_interpretation
+        import decimal
 
         user       = self.context['request'].user
         challenge  = validated_data['challenge']
         discovered = validated_data['discovered_points']
         overall    = validated_data.get('overall_message', '')
+
+        # ── Deduct entry fee atomically before creating submission ────────────
+        entry_fee = challenge.entry_fee
+        if entry_fee > 0:
+            try:
+                user.wallet.deduct_funds(
+                    entry_fee,
+                    transaction_type='entry_fee',
+                    description=f'Entry fee — {challenge.title}',
+                    metadata={'challenge_id': str(challenge.id)},
+                )
+            except ValueError:
+                raise serializers.ValidationError(
+                    f'Insufficient balance to pay entry fee of K{entry_fee}.'
+                )
 
         # Create submission first
         submission = ImageInterpretationSubmission.objects.create(

@@ -26,6 +26,11 @@
 const IMG_INTERP_STEPS = { OBSERVE: 1, INTERPRET: 2, OVERALL: 3 };
 const IMG_INTERP_TIMER_DEFAULT = 120; // seconds (2 minutes); overridden by challenge.time_limit
 
+// Minimum wallet balance (ZMW) required to participate in any image
+// interpretation challenge, regardless of whether it has an entry fee.
+// Must match the backend MIN_DEPOSIT_REQUIRED constant in serializers.py.
+const II_MIN_DEPOSIT = 10;
+
 // ─────────────────────────────────────────────────────────────────────────────
 //  State
 // ─────────────────────────────────────────────────────────────────────────────
@@ -107,20 +112,52 @@ async function openImgInterpPreview(challengeId, entryFeePaid = false) {
     const timeLimitS = (c.time_limit || 2) * 60; // minutes → seconds
     const pointCount = Array.isArray(c.hidden_points) ? c.hidden_points.length : '?';
 
-    const isBalanceSufficient = entryFee > 0 ? balance >= entryFee : balance > 0;
-    const playBtn = _iiEl('iiPreviewPlayBtn');
+    // ── K10 minimum deposit check ─────────────────────────────────────────
+    // Players need at least K10 in their wallet before they can access any
+    // image interpretation challenge, regardless of entry_fee.
+    const meetsMinDeposit   = balance >= II_MIN_DEPOSIT;
+    // For challenges with an explicit entry_fee, the balance must cover that too
+    const requiredBalance   = Math.max(II_MIN_DEPOSIT, entryFee);
+    const isBalanceSufficient = balance >= requiredBalance;
+
+    const playBtn       = _iiEl('iiPreviewPlayBtn');
     const depositNotice = _iiEl('iiPreviewDepositNotice');
+
     if (depositNotice) {
-        if (!isBalanceSufficient) {
-            if (entryFee > 0) {
-                depositNotice.textContent = 'Your wallet balance is too low to join. Please deposit before playing.';
-            } else {
-                depositNotice.textContent = 'Deposit any amount to your wallet before you can play this image interpretation challenge.';
-            }
+        if (!meetsMinDeposit) {
+            depositNotice.innerHTML =
+                `<i class="fas fa-triangle-exclamation"></i> ` +
+                `You need a minimum of <strong>K${II_MIN_DEPOSIT}</strong> in your wallet ` +
+                `to participate in image interpretation challenges. Please top up your wallet first.`;
+            depositNotice.style.display = 'block';
+        } else if (!isBalanceSufficient && entryFee > 0) {
+            depositNotice.innerHTML =
+                `<i class="fas fa-triangle-exclamation"></i> ` +
+                `Your balance is too low to pay the K${entryFee.toFixed(2)} entry fee. Please top up your wallet.`;
             depositNotice.style.display = 'block';
         } else {
             depositNotice.style.display = 'none';
         }
+    }
+
+    // ── If image_url is null the backend withheld it (balance < K10) ─────
+    // Show a locked placeholder instead of a real blurred thumbnail.
+    const thumb = _iiEl('iiPreviewThumb');
+    const thumbWrap = _iiEl('iiPreviewThumbWrap');
+    const blurOverlay   = _iiEl('iiThumbBlurOverlay');
+    const lockedOverlay = _iiEl('iiThumbLockedOverlay');
+
+    if (c.image_url) {
+        if (thumb) { thumb.src = c.image_url; thumb.alt = c.title; }
+        if (thumbWrap) thumbWrap.classList.remove('ii-thumb-locked');
+        if (blurOverlay)   blurOverlay.style.display   = '';
+        if (lockedOverlay) lockedOverlay.style.display = 'none';
+    } else {
+        // Image withheld by server — show lock overlay, hide blurred img
+        if (thumb) { thumb.src = ''; thumb.alt = ''; }
+        if (thumbWrap) thumbWrap.classList.add('ii-thumb-locked');
+        if (blurOverlay)   blurOverlay.style.display   = 'none';
+        if (lockedOverlay) lockedOverlay.style.display = '';
     }
 
     // ── Populate preview modal ──────────────────────────────────────────────
@@ -129,10 +166,6 @@ async function openImgInterpPreview(challengeId, entryFeePaid = false) {
     _iiEl('iiPreviewDifficulty').textContent  = _iiCapitalize(c.difficulty);
     _iiEl('iiPreviewTimeLimit').textContent   = `${c.time_limit || 2} min`;
     _iiEl('iiPreviewPointCount').textContent  = `${pointCount} hidden points`;
-
-    // Blurred thumbnail
-    const thumb = _iiEl('iiPreviewThumb');
-    if (thumb) { thumb.src = c.image_url; thumb.alt = c.title; }
 
     // Entry fee / prize
     const feeBox = _iiEl('iiPreviewFeeBox');
@@ -147,12 +180,16 @@ async function openImgInterpPreview(challengeId, entryFeePaid = false) {
         feeBox.style.display = 'none';
     }
 
-    // Play button label
+    // Play button — three states:
+    //  1. Balance < K10        → "Deposit K10 to Play"
+    //  2. Balance < entry_fee  → "Deposit to Pay Entry Fee"
+    //  3. Balance sufficient   → "Pay K? & Join" or "Join Free"
     if (playBtn) {
-        if (!isBalanceSufficient) {
-            playBtn.innerHTML = entryFee > 0
-                ? `<i class="fas fa-wallet"></i> Deposit to Pay`
-                : `<i class="fas fa-wallet"></i> Deposit to Play`;
+        if (!meetsMinDeposit) {
+            playBtn.innerHTML = `<i class="fas fa-wallet"></i> Deposit K${II_MIN_DEPOSIT} to Play`;
+            playBtn.onclick = () => _iiPromptDeposit(c.id);
+        } else if (!isBalanceSufficient && entryFee > 0) {
+            playBtn.innerHTML = `<i class="fas fa-wallet"></i> Top Up Wallet`;
             playBtn.onclick = () => _iiPromptDeposit(c.id);
         } else {
             playBtn.innerHTML = entryFee > 0
@@ -168,10 +205,14 @@ async function openImgInterpPreview(challengeId, entryFeePaid = false) {
 function _iiPromptDeposit(challengeId) {
     closeImgInterpPreview();
     try {
-        sessionStorage.setItem('pendingChallengeId', challengeId);
+        // Store the pending challenge so the challenges page can auto-reopen
+        // the preview after the user returns from payment.
+        sessionStorage.setItem('pendingChallengeId', String(challengeId));
         sessionStorage.setItem('pendingChallengeType', 'image_interpretation');
+        // Store the referrer so payment.html can redirect back
+        sessionStorage.setItem('pendingReturnUrl', window.location.href);
     } catch (_) {
-        // ignore storage failures
+        // sessionStorage unavailable — user will need to navigate back manually
     }
     if (typeof goTopUpWallet === 'function') {
         goTopUpWallet();
@@ -191,27 +232,33 @@ async function startImgInterpGame() {
     const entryFee = parseFloat(c.entry_fee || 0);
     const balance  = _iiWalletBalance();
 
+    // ── K10 minimum deposit gate ──────────────────────────────────────────
+    if (balance < II_MIN_DEPOSIT) {
+        _iiShowToast(
+            `You need at least K${II_MIN_DEPOSIT} in your wallet to play image interpretation challenges.`,
+            'error'
+        );
+        return;
+    }
+
     if (entryFee > 0 && !_ii.entryFeePaid) {
         if (balance < entryFee) {
             _iiShowToast('Insufficient wallet balance. Please deposit first.', 'error');
             return;
         }
 
+        // Optimistic local deduction — backend also validates and deducts atomically
         const newBalance = balance - entryFee;
         _iiSetWalletBalance(newBalance);
 
         try {
             await apiService.deductEntryFee(entryFee, c.id, `Entry fee — ${c.title}`);
         } catch (_) {
-            // Backend unavailable — local balance already updated
+            // Backend unavailable — local balance already updated; server will
+            // validate on submission and reject if truly insufficient
         }
 
         _ii.entryFeePaid = true;
-    }
-
-    if (entryFee <= 0 && balance <= 0) {
-        _iiShowToast('Deposit funds to your wallet before playing.', 'error');
-        return;
     }
 
     closeImgInterpPreview();
@@ -700,6 +747,37 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     // Game modal cannot be closed by clicking outside — must use Done button
+
+    // ── Auto-reopen challenge preview after returning from payment.html ───
+    // When the user is sent to payment.html by _iiPromptDeposit() we store
+    // the pending challenge ID in sessionStorage.  On return we check whether
+    // the balance now meets the K10 minimum and, if so, reopen the preview
+    // automatically so the user can jump straight in.
+    try {
+        const pendingId   = sessionStorage.getItem('pendingChallengeId');
+        const pendingType = sessionStorage.getItem('pendingChallengeType');
+        if (pendingId && pendingType === 'image_interpretation') {
+            sessionStorage.removeItem('pendingChallengeId');
+            sessionStorage.removeItem('pendingChallengeType');
+            sessionStorage.removeItem('pendingReturnUrl');
+
+            // Wait for challenges.js to finish loading user data, then check balance
+            const tryReopen = (attempts = 0) => {
+                const bal = _iiWalletBalance();
+                if (bal >= II_MIN_DEPOSIT) {
+                    openImgInterpPreview(pendingId);
+                } else if (attempts < 10) {
+                    // Balance not yet loaded — retry up to ~5 s
+                    setTimeout(() => tryReopen(attempts + 1), 500);
+                }
+                // If balance is still < K10 after retries, silently skip —
+                // the user's deposit wasn't enough, they'll see the normal page.
+            };
+            setTimeout(() => tryReopen(), 800);
+        }
+    } catch (_) {
+        // sessionStorage unavailable — skip auto-reopen
+    }
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -986,6 +986,37 @@
 .ii-preview-thumb-overlay i { font-size: 28px; }
 .ii-preview-thumb-overlay span { font-size: 13px; font-weight: 500; letter-spacing: 0.3px; }
 
+/* Locked state — shown when backend withheld image_url because K10 minimum
+   deposit has not been met. Replaces the blurred thumbnail with a solid dark
+   background and a lock icon so there is no client-side image to inspect. */
+.ii-thumb-locked .ii-preview-thumb {
+    display: none; /* image src is empty — hide the broken img element */
+}
+.ii-thumb-locked {
+    background: linear-gradient(135deg, #1a1a2e, #16213e);
+}
+.ii-thumb-locked .ii-preview-thumb-overlay {
+    flex-direction: column;
+    gap: 10px;
+    color: rgba(255,255,255,0.65);
+}
+.ii-thumb-locked .ii-preview-thumb-overlay::before {
+    content: '\f023'; /* fa-lock */
+    font-family: 'Font Awesome 6 Free';
+    font-weight: 900;
+    font-size: 42px;
+    color: var(--artx-accent, #90ee90);
+    opacity: 0.85;
+}
+.ii-thumb-locked-label {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.4px;
+    text-align: center;
+    padding: 0 20px;
+    line-height: 1.5;
+}
+
 /* Body */
 .ii-preview-body { padding: 24px 26px 28px; }
 
