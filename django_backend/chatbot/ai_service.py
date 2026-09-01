@@ -1,5 +1,5 @@
 """
-ARTX AI Service — powered by Groq (LLaMA 3.3)
+ARTX AI Service — powered by Groq (LLaMA 3.1)
 ================================================
 Primary:  Groq REST API — called directly with `requests` (no extra SDK needed)
 Fallback: Smart rule-based responses
@@ -15,7 +15,7 @@ from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
-GROQ_MODEL   = "llama-3.3-70b-versatile"
+GROQ_MODEL   = "llama-3.1-8b-instant"
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 
 # ── System prompt ─────────────────────────────────────────────────────────────

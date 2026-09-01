@@ -1,7 +1,7 @@
 """
 Image Interpretation Scoring Service
 =====================================
-Uses Groq (LLaMA 3.3) to evaluate participant submissions against the
+Uses Groq (LLaMA 3.1) to evaluate participant submissions against the
 creator-defined answer key.
 
 Scoring model
@@ -26,7 +26,7 @@ from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
-GROQ_MODEL   = "llama-3.3-70b-versatile"
+GROQ_MODEL   = "llama-3.1-8b-instant"
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 
 
