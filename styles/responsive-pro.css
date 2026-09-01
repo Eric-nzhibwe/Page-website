@@ -269,6 +269,7 @@ body {
    =================================================================== */
 .quick-menu-dropdown,
 .user-menu-dropdown {
+  display: none !important;
   position: fixed !important;
   top: calc(var(--header-h) + 6px) !important;
   right: 8px !important;
@@ -277,8 +278,13 @@ body {
   border-radius: var(--artx-radius-md) !important;
   box-shadow: var(--artx-shadow-lg) !important;
   border: 1px solid var(--artx-border) !important;
-  animation: menuSlideDown .22s cubic-bezier(.4,0,.2,1) !important;
   overflow: hidden !important;
+}
+
+.quick-menu-dropdown.show,
+.user-menu-dropdown.show {
+  display: block !important;
+  animation: menuSlideDown .22s cubic-bezier(.4,0,.2,1) !important;
 }
 
 @keyframes menuSlideDown {
