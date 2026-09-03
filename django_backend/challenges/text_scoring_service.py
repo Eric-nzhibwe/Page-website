@@ -1,7 +1,7 @@
 """
 Text Interpretation Scoring Service
 =====================================
-Uses Groq (LLaMA 3.1) to evaluate a participant's written interpretation
+Uses Groq (GPT-OSS 20B via openai/gpt-oss-20b) to evaluate a participant's written interpretation
 against the challenge description, difficulty, and scoring weights set by
 the creator.
 
@@ -32,7 +32,7 @@ from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
-GROQ_MODEL   = "llama-3.1-70b-versatile"
+GROQ_MODEL   = "openai/gpt-oss-20b"
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 
 

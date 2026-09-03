@@ -1,5 +1,5 @@
 """
-ARTX AI Service — powered by Groq (LLaMA 3.1)
+ARTX AI Service — powered by Groq (openai/gpt-oss-20b)
 ================================================
 Primary:  Groq REST API — called directly with `requests` (no extra SDK needed)
 Fallback: Smart rule-based responses
@@ -15,7 +15,7 @@ from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
-GROQ_MODEL   = "llama-3.1-70b-versatile"
+GROQ_MODEL   = "openai/gpt-oss-20b"
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 
 # ── System prompt ─────────────────────────────────────────────────────────────
@@ -224,7 +224,7 @@ def _rule_based_response(message: str, user_context: dict | None) -> str:
 
 class AIService:
     """
-    Primary:  Groq LLaMA 3.3 70B (requires GROQ_API_KEY in .env)
+    Primary:  Groq GPT-OSS 20B (requires GROQ_API_KEY in .env)
     Fallback: Smart rule-based responses
     """
 

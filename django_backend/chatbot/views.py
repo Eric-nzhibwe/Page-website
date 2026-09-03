@@ -173,7 +173,7 @@ def ai_status_view(request):
                 'Content-Type':  'application/json',
             },
             json={
-                'model':      'llama-3.3-70b-versatile',
+                'model':      'openai/gpt-oss-20b',
                 'messages':   [{'role': 'user', 'content': 'Reply with exactly: OK'}],
                 'max_tokens': 5,
             },
@@ -183,9 +183,9 @@ def ai_status_view(request):
         if resp.status_code == 200:
             return Response({
                 'engine': 'groq',
-                'model':  'llama-3.3-70b-versatile',
+                'model':  'openai/gpt-oss-20b',
                 'status': 'online',
-                'label':  'LLaMA 3.3 70B',
+                'label':  'GPT-OSS 20B',
                 'tested': True,   # ← real API call succeeded
             })
         else:
