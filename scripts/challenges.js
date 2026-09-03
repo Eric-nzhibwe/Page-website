@@ -156,8 +156,17 @@ function renderChallenges() {
 
             <!-- Image banner -->
             <div class="challenge-image-wrap" onclick="openChallengeWithFeeCheck('${c.id}','${c.challenge_type||"text_interpretation"}')">
-                <img src="${escHtml(c.image_url)}" alt="${escHtml(c.title)}" class="challenge-image" loading="lazy">
+                ${isImgInterp ? `
+                <!-- Image interpretation: always blurred on card — only revealed inside the game -->
+                <img src="${escHtml(c.image_url || '')}" alt="${escHtml(c.title)}" class="challenge-image card-img-blurred" loading="lazy">
                 <div class="challenge-image-overlay"></div>
+                <div class="card-blur-lock-overlay">
+                    ${c.image_url
+                        ? '<i class="fas fa-eye-slash"></i><span>Revealed when you play</span>'
+                        : '<i class="fas fa-lock"></i><span>Deposit K10 to unlock</span>'}
+                </div>` : `
+                <img src="${escHtml(c.image_url)}" alt="${escHtml(c.title)}" class="challenge-image" loading="lazy">
+                <div class="challenge-image-overlay"></div>`}
 
                 <!-- Badges overlaid on image (top-left) -->
                 <div class="card-overlay-badges">
@@ -544,13 +553,30 @@ async function viewChallengeDetails(challengeId) {
         let stats = { unique_participants: 0, average_score: 0 };
         try { stats = await apiService.getChallengeStats(challengeId); } catch (_) { /* new challenge, no stats yet */ }
 
-        const hasSubmitted = mySubmissions.some(s => s.challenge === challengeId);
+        const hasSubmitted = mySubmissions.some(s => s.challenge === challengeId)
+            || (challenge.challenge_type === 'image_interpretation' && challenge.user_has_img_submitted);
+        const isImgDetail = challenge.challenge_type === 'image_interpretation';
         const rules = (challenge.submission_rules || []).map(r => `<li>${escHtml(r)}</li>`).join('');
+
+        // For image_interpretation: always show a blurred image in details.
+        // If backend withheld the URL (balance < K10), show a full lock placeholder.
+        const detailImageHTML = isImgDetail
+            ? `<div class="detail-blur-wrap">
+                    ${challenge.image_url
+                        ? `<img src="${escHtml(challenge.image_url)}" alt="${escHtml(challenge.title)}" class="challenge-detail-image detail-img-blurred">`
+                        : ''}
+                    <div class="detail-blur-overlay">
+                        ${challenge.image_url
+                            ? '<i class="fas fa-eye-slash"></i><span>Image hidden — revealed only during gameplay</span>'
+                            : '<i class="fas fa-lock"></i><span>Deposit K10 minimum to unlock this challenge</span>'}
+                    </div>
+               </div>`
+            : `<img src="${escHtml(challenge.image_url)}" alt="${escHtml(challenge.title)}" class="challenge-detail-image">`;
 
         document.getElementById('challengeContent').innerHTML = `
             <h2 style="font-size:22px;font-weight:700;margin-bottom:10px;">${escHtml(challenge.title)}</h2>
             <span class="difficulty-badge difficulty-${challenge.difficulty}" style="margin-bottom:16px;display:inline-block;">${challenge.difficulty}</span>
-            <img src="${escHtml(challenge.image_url)}" alt="${escHtml(challenge.title)}" class="challenge-detail-image">
+            ${detailImageHTML}
             <div class="details-section">
                 <h3><i class="fas fa-align-left"></i> Description</h3>
                 <p style="color:var(--text-secondary);line-height:1.8;font-size:14px;">${escHtml(challenge.description)}</p>
@@ -565,7 +591,9 @@ async function viewChallengeDetails(challengeId) {
                 <h3><i class="fas fa-list-check"></i> Rules</h3>
                 <div class="challenge-rules" style="margin:0;"><ul>${rules}</ul>
                     <p style="margin-top:12px;color:var(--text-muted);font-size:13px;">
-                        Words: ${challenge.min_word_count}–${challenge.max_word_count} &nbsp;|&nbsp;
+                        ${isImgDetail
+                            ? `Hidden points: ${Array.isArray(challenge.hidden_points) ? challenge.hidden_points.length : '?'} &nbsp;|&nbsp;`
+                            : `Words: ${challenge.min_word_count}–${challenge.max_word_count} &nbsp;|&nbsp;`}
                         ${challenge.is_active ? '🟢 Active' : '🔴 Inactive'} &nbsp;|&nbsp; ${getTimeRemaining(challenge.ends_at)}
                     </p>
                 </div>
@@ -584,9 +612,13 @@ async function viewChallengeDetails(challengeId) {
             </div>
             ${hasSubmitted
                 ? buildAlreadySubmittedBox()
-                : `<button class="btn-primary btn-large" onclick="openChallenge('${challenge.id}')" style="margin-top:22px;">
-                       <i class="fas fa-play"></i> Participate
-                   </button>`}`;
+                : isImgDetail
+                    ? `<button class="btn-primary btn-large" onclick="closeChallengeModal(); openChallengeWithFeeCheck('${challenge.id}','image_interpretation');" style="margin-top:22px;">
+                           <i class="fas fa-gamepad"></i> Play Challenge
+                       </button>`
+                    : `<button class="btn-primary btn-large" onclick="openChallenge('${challenge.id}')" style="margin-top:22px;">
+                           <i class="fas fa-play"></i> Participate
+                       </button>`}`;
     } catch (e) {
         console.error('viewChallengeDetails:', e);
         document.getElementById('challengeContent').innerHTML =

@@ -140,21 +140,29 @@ async function openImgInterpPreview(challengeId, entryFeePaid = false) {
         }
     }
 
-    // ── If image_url is null the backend withheld it (balance < K10) ─────
-    // Show a locked placeholder instead of a real blurred thumbnail.
+    // ── Preview thumbnail — always blurred ───────────────────────────────
+    // The image is NEVER shown clearly in the preview.
+    // If backend returned the URL (balance ≥ K10): show it blurred + "hidden until you start" overlay.
+    // If backend withheld the URL (balance < K10): show the locked placeholder overlay only.
     const thumb = _iiEl('iiPreviewThumb');
     const thumbWrap = _iiEl('iiPreviewThumbWrap');
     const blurOverlay   = _iiEl('iiThumbBlurOverlay');
     const lockedOverlay = _iiEl('iiThumbLockedOverlay');
 
     if (c.image_url) {
-        if (thumb) { thumb.src = c.image_url; thumb.alt = c.title; }
+        if (thumb) {
+            thumb.src = c.image_url;
+            thumb.alt = c.title;
+            // Ensure blur class is always applied in preview
+            thumb.classList.add('ii-img-blurred');
+        }
         if (thumbWrap) thumbWrap.classList.remove('ii-thumb-locked');
+        // Show "hidden until you start" overlay, hide "locked" overlay
         if (blurOverlay)   blurOverlay.style.display   = '';
         if (lockedOverlay) lockedOverlay.style.display = 'none';
     } else {
-        // Image withheld by server — show lock overlay, hide blurred img
-        if (thumb) { thumb.src = ''; thumb.alt = ''; }
+        // Image withheld by server (balance < K10) — show lock overlay, hide blurred img
+        if (thumb) { thumb.src = ''; thumb.alt = ''; thumb.classList.remove('ii-img-blurred'); }
         if (thumbWrap) thumbWrap.classList.add('ii-thumb-locked');
         if (blurOverlay)   blurOverlay.style.display   = 'none';
         if (lockedOverlay) lockedOverlay.style.display = '';
