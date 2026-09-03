@@ -7,11 +7,16 @@ pip install -r requirements.txt
 
 echo "==> Copying frontend files to static directory"
 mkdir -p static/frontend
-cp -r ../index.html static/frontend/
-cp -r ../pages static/frontend/
-cp -r ../scripts static/frontend/
-cp -r ../styles static/frontend/
-cp -r ../images static/frontend/
+if [ -f ../index.html ]; then
+    cp -r ../index.html static/frontend/
+    cp -r ../pages static/frontend/
+    cp -r ../scripts static/frontend/
+    cp -r ../styles static/frontend/
+    cp -r ../images static/frontend/
+    echo "   Frontend files copied."
+else
+    echo "   Frontend files not found at ../  -- skipping (API-only deploy)."
+fi
 
 echo "==> Collecting static files"
 python manage.py collectstatic --no-input

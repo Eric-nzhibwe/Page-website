@@ -26,7 +26,7 @@ from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
-GROQ_MODEL   = "llama-3.1-8b-instant"
+GROQ_MODEL   = "llama-3.1-70b-versatile"
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 
 
