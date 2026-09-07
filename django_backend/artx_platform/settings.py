@@ -384,6 +384,37 @@ GEMINI_API_KEY = config('GEMINI_API_KEY', default='')
 # Get key at https://console.groq.com/keys
 GROQ_API_KEY = config('GROQ_API_KEY', default='')
 
+# ─── Firebase / Firestore ──────────────────────────────────────────────────────
+# Get credentials from: Firebase Console → Project Settings → Service Accounts
+# → Generate new private key  (downloads a JSON — copy each field below)
+#
+# When all three required vars are set, Firestore is activated automatically.
+# Leave them blank to keep running on PostgreSQL only (safe for local dev).
+#
+FIREBASE_PROJECT_ID           = config('FIREBASE_PROJECT_ID',           default='')
+FIREBASE_PRIVATE_KEY_ID       = config('FIREBASE_PRIVATE_KEY_ID',       default='')
+FIREBASE_PRIVATE_KEY          = config('FIREBASE_PRIVATE_KEY',          default='')
+FIREBASE_CLIENT_EMAIL         = config('FIREBASE_CLIENT_EMAIL',         default='')
+FIREBASE_CLIENT_ID            = config('FIREBASE_CLIENT_ID',            default='')
+FIREBASE_CLIENT_X509_CERT_URL = config('FIREBASE_CLIENT_X509_CERT_URL', default='')
+
+# ── Per-collection feature flags ───────────────────────────────────────────────
+# Set a flag to True once you have migrated that collection to Firestore.
+# False = still using PostgreSQL (safe default for every collection).
+# Flip one at a time, verify, then move to the next.
+#
+FIRESTORE_COLLECTIONS = {
+    'notifications':         config('FS_NOTIFICATIONS',  default='False') in ('True', 'true', '1'),
+    'challenge_activities':  config('FS_ACTIVITIES',     default='False') in ('True', 'true', '1'),
+    'chatbot':               config('FS_CHATBOT',        default='False') in ('True', 'true', '1'),
+    'challenges':            config('FS_CHALLENGES',     default='False') in ('True', 'true', '1'),
+    'submissions':           config('FS_SUBMISSIONS',    default='False') in ('True', 'true', '1'),
+    'social':                config('FS_SOCIAL',         default='False') in ('True', 'true', '1'),
+    'alliances':             config('FS_ALLIANCES',      default='False') in ('True', 'true', '1'),
+    'users':                 config('FS_USERS',          default='False') in ('True', 'true', '1'),
+    'payments':              config('FS_PAYMENTS',       default='False') in ('True', 'true', '1'),
+}
+
 # Logging -- console-only (no filesystem writes; Render's disk is ephemeral)
 LOGGING = {
     'version': 1,
