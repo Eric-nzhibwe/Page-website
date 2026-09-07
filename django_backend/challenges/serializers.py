@@ -260,15 +260,18 @@ class ImageInterpretationSubmissionCreateSerializer(serializers.ModelSerializer)
 
     def create(self, validated_data):
         from django.utils import timezone
+        from django.conf import settings as _settings
         from .scoring_service import score_image_interpretation
-        import decimal
+        import decimal, json, logging
 
+        log        = logging.getLogger(__name__)
         user       = self.context['request'].user
         challenge  = validated_data['challenge']
         discovered = validated_data['discovered_points']
         overall    = validated_data.get('overall_message', '')
+        use_fs_sub = _settings.FIRESTORE_COLLECTIONS.get('submissions', False)
 
-        # ── Deduct entry fee atomically before creating submission ────────────
+        # ── Deduct entry fee ──────────────────────────────────────────────────
         entry_fee = challenge.entry_fee
         if entry_fee > 0:
             try:
@@ -283,69 +286,86 @@ class ImageInterpretationSubmissionCreateSerializer(serializers.ModelSerializer)
                     f'Insufficient balance to pay entry fee of K{entry_fee}.'
                 )
 
-        # Create submission first
-        submission = ImageInterpretationSubmission.objects.create(
-            user=user,
-            status='scoring',
-            **validated_data,
-        )
-
-        # Score immediately (synchronous — switch to Celery task for production scale)
+        # ── AI scoring ────────────────────────────────────────────────────────
+        score_result = None
         try:
-            result = score_image_interpretation(
+            score_result = score_image_interpretation(
                 hidden_points=challenge.hidden_points,
                 discovered_points=discovered,
                 overall_message=overall,
             )
+        except Exception as exc:
+            log.error(f'Image scoring failed: {exc}')
 
-            import json
-            submission.observation_score    = result['observation_score']
-            submission.interpretation_score = result['interpretation_score']
-            submission._matched_count       = result['matched_count']
-
-            # Store full result JSON in ai_feedback for point_results retrieval
-            submission.ai_feedback = json.dumps({
-                'summary':      result['ai_feedback'],
-                'point_results': result.get('point_results', []),
-            })
-
-            submission.calculate_final_score()
-
-            # Map final_score to prestige points
-            submission.points_earned = submission.final_score
-            submission.status        = 'scored'
-            submission.scored_at     = timezone.now()
-            submission.save()
-
-            # Award prestige
-            user.add_prestige(
-                submission.points_earned,
-                f'Image Interpretation — {challenge.title}',
+        # ── Persist submission ────────────────────────────────────────────────
+        if use_fs_sub:
+            from .firestore_submission_service import save_image_submission
+            from .firestore_challenge_service import increment_submission_count
+            instance = save_image_submission(user, challenge, validated_data, score_result)
+            increment_submission_count(challenge.id)
+        else:
+            submission = ImageInterpretationSubmission.objects.create(
+                user=user, status='scoring', **validated_data,
             )
+            if score_result:
+                submission.observation_score    = score_result['observation_score']
+                submission.interpretation_score = score_result['interpretation_score']
+                submission._matched_count       = score_result['matched_count']
+                submission.ai_feedback = json.dumps({
+                    'summary':       score_result['ai_feedback'],
+                    'point_results': score_result.get('point_results', []),
+                })
+                submission.calculate_final_score()
+                submission.points_earned = submission.final_score
+                submission.status        = 'scored'
+                submission.scored_at     = timezone.now()
+                submission.save()
+            else:
+                submission.status      = 'submitted'
+                submission.ai_feedback = 'Scoring is pending — check back shortly.'
+                submission.save(update_fields=['status', 'ai_feedback'])
+            instance = submission
 
-            # Record activity
-            from .models import ChallengeActivity
-            ChallengeActivity.objects.create(
-                challenge=challenge,
-                user=user,
+        # ── Award prestige ────────────────────────────────────────────────────
+        points_earned = (
+            instance.get('points_earned', 0)
+            if isinstance(instance, dict)
+            else getattr(instance, 'points_earned', 0)
+        )
+        if points_earned:
+            try:
+                user.add_prestige(points_earned,
+                                  f'Image Interpretation — {challenge.title}')
+            except Exception as exc:
+                log.error(f'add_prestige (image) failed: {exc}')
+
+        # ── Activity record ───────────────────────────────────────────────────
+        matched = score_result.get('matched_count', 0) if score_result else 0
+        total   = score_result.get('total_points',  0) if score_result else 0
+        act_meta = {
+            'observation_score': score_result.get('observation_score', 0) if score_result else 0,
+            'matched_count':     matched,
+        }
+        if _settings.FIRESTORE_COLLECTIONS.get('challenge_activities', False):
+            from .firestore_activity_service import create_activity
+            create_activity(
+                challenge=challenge, user=user,
                 activity_type='submission',
                 description=f"{user.username} submitted to {challenge.title} "
-                            f"({result['matched_count']}/{result['total_points']} points found)",
-                metadata={
-                    'submission_id':      str(submission.id),
-                    'observation_score':  result['observation_score'],
-                    'matched_count':      result['matched_count'],
-                },
+                            f"({matched}/{total} points found)",
+                metadata=act_meta,
+            )
+        else:
+            from .models import ChallengeActivity
+            ChallengeActivity.objects.create(
+                challenge=challenge, user=user,
+                activity_type='submission',
+                description=f"{user.username} submitted to {challenge.title} "
+                            f"({matched}/{total} points found)",
+                metadata=act_meta,
             )
 
-        except Exception as exc:
-            import logging
-            logging.getLogger(__name__).error(f'Scoring failed: {exc}')
-            submission.status     = 'submitted'
-            submission.ai_feedback = 'Scoring is pending — check back shortly.'
-            submission.save(update_fields=['status', 'ai_feedback'])
-
-        return submission
+        return instance
 
 
 class ChallengeSubmissionSerializer(serializers.ModelSerializer):
@@ -417,22 +437,19 @@ class ChallengeSubmissionCreateSerializer(serializers.ModelSerializer):
         """Create submission, score it with AI, and record activity."""
         import logging
         from django.utils import timezone
+        from django.conf import settings as _settings
         from .text_scoring_service import score_text_interpretation
 
         log  = logging.getLogger(__name__)
         user = self.context['request'].user
 
-        submission = ChallengeSubmission.objects.create(
-            user=user,
-            status='submitted',
-            **validated_data,
-        )
+        challenge  = validated_data['challenge']
+        use_fs_sub = _settings.FIRESTORE_COLLECTIONS.get('submissions', False)
 
-        challenge = submission.challenge
-
-        # ── AI scoring (synchronous; switch to Celery for high traffic) ──────
+        # ── AI scoring ────────────────────────────────────────────────────────
+        score_result = None
         try:
-            result = score_text_interpretation(
+            score_result = score_text_interpretation(
                 challenge_title=challenge.title,
                 challenge_description=challenge.description,
                 difficulty=challenge.difficulty,
@@ -442,41 +459,60 @@ class ChallengeSubmissionCreateSerializer(serializers.ModelSerializer):
                 detail_weight=challenge.detail_weight,
                 min_points=challenge.min_points,
                 max_points=challenge.max_points,
-                interpretation=submission.interpretation,
-                word_count=submission.word_count,
+                interpretation=validated_data['interpretation'],
+                word_count=validated_data.get('word_count', 0),
             )
-
-            submission.creativity_score = result['creativity_score']
-            submission.relevance_score  = result['relevance_score']
-            submission.detail_score     = result['detail_score']
-            submission.final_score      = result['final_score']
-            submission.status           = 'scored'
-            submission.scored_at        = timezone.now()
-            submission.save()
-
-            # Award prestige points
-            user.add_prestige(
-                submission.final_score,
-                f"{challenge.difficulty} challenge: {challenge.title}",
-            )
-
         except Exception as exc:
-            log.error(f"Text scoring failed for submission {submission.id}: {exc}")
-            # Leave status as 'submitted' — admin can re-score manually
+            log.error(f'Text scoring failed: {exc}')
+
+        # ── Persist submission ────────────────────────────────────────────────
+        if use_fs_sub:
+            from .firestore_submission_service import save_text_submission
+            from .firestore_challenge_service import increment_submission_count
+            doc = save_text_submission(user, challenge, validated_data, score_result)
+            increment_submission_count(challenge.id)
+        else:
+            submission = ChallengeSubmission.objects.create(
+                user=user, status='submitted', **validated_data,
+            )
+            if score_result:
+                submission.creativity_score = score_result['creativity_score']
+                submission.relevance_score  = score_result['relevance_score']
+                submission.detail_score     = score_result['detail_score']
+                submission.final_score      = score_result['final_score']
+                submission.status           = 'scored'
+                submission.scored_at        = timezone.now()
+                submission.save()
+            doc = submission
+
+        # ── Award prestige ────────────────────────────────────────────────────
+        if score_result:
+            final = score_result.get('final_score', 0)
+            if final:
+                try:
+                    user.add_prestige(final, f"{challenge.difficulty} challenge: {challenge.title}")
+                except Exception as exc:
+                    log.error(f'add_prestige failed: {exc}')
 
         # ── Activity record ───────────────────────────────────────────────────
-        ChallengeActivity.objects.create(
-            challenge=challenge,
-            user=user,
-            activity_type='submission',
-            description=f"{user.username} submitted to {challenge.title}",
-            metadata={
-                'submission_id': str(submission.id),
-                'word_count':    submission.word_count,
-            },
-        )
+        from django.conf import settings as _s
+        if _s.FIRESTORE_COLLECTIONS.get('challenge_activities', False):
+            from .firestore_activity_service import create_activity
+            create_activity(
+                challenge=challenge, user=user,
+                activity_type='submission',
+                description=f"{user.username} submitted to {challenge.title}",
+                metadata={'word_count': validated_data.get('word_count', 0)},
+            )
+        else:
+            ChallengeActivity.objects.create(
+                challenge=challenge, user=user,
+                activity_type='submission',
+                description=f"{user.username} submitted to {challenge.title}",
+                metadata={'word_count': validated_data.get('word_count', 0)},
+            )
 
-        return submission
+        return doc
 
 
 class ChallengeLeaderboardSerializer(serializers.ModelSerializer):

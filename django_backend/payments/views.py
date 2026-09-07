@@ -51,6 +51,13 @@ class WithdrawalHistoryView(generics.ListAPIView):
 @permission_classes([permissions.IsAuthenticated])
 def payment_status_view(request, payment_id):
     """Poll the status of a specific payment."""
+    from django.conf import settings as _s
+    if _s.FIRESTORE_COLLECTIONS.get('payments', False):
+        from payments.firestore_payment_service import get_payment_status
+        fs_status = get_payment_status(payment_id, str(request.user.id))
+        if fs_status:
+            return Response(fs_status)
+
     try:
         payment = Payment.objects.get(id=payment_id, user=request.user)
     except Payment.DoesNotExist:
@@ -265,6 +272,14 @@ request_withdrawal_view = withdraw_funds_view
 @api_view(['GET'])
 @permission_classes([permissions.IsAuthenticated])
 def wallet_balance_view(request):
+    from django.conf import settings as _s
+    if _s.FIRESTORE_COLLECTIONS.get('payments', False):
+        from payments.firestore_payment_service import get_wallet_balance
+        fs_wallet = get_wallet_balance(str(request.user.id))
+        if fs_wallet:
+            return Response({'wallet': fs_wallet, 'source': 'firestore'})
+        # Fall through to PostgreSQL if Firestore doc doesn't exist yet
+
     wallet, _ = Wallet.objects.get_or_create(user=request.user)
     if wallet.total_earned != request.user.total_earnings:
         wallet.total_earned = request.user.total_earnings
@@ -278,10 +293,20 @@ def wallet_balance_view(request):
 @api_view(['GET'])
 @permission_classes([permissions.IsAuthenticated])
 def transaction_history_view(request):
-    wallet, _ = Wallet.objects.get_or_create(user=request.user)
+    from django.conf import settings as _s
     tx_type = request.query_params.get('type')
     limit   = min(int(request.query_params.get('limit', 50)), 200)
-    qs      = wallet.transactions.all()
+
+    if _s.FIRESTORE_COLLECTIONS.get('payments', False):
+        from payments.firestore_payment_service import get_transaction_history
+        txs = get_transaction_history(
+            str(request.user.id), tx_type=tx_type, limit=limit
+        )
+        if txs is not None:
+            return Response({'transactions': txs, 'count': len(txs)})
+
+    wallet, _ = Wallet.objects.get_or_create(user=request.user)
+    qs = wallet.transactions.all()
     if tx_type:
         qs = qs.filter(transaction_type=tx_type)
     total = qs.count()

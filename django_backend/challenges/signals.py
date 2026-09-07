@@ -3,6 +3,7 @@ Signals for challenge app — update leaderboard, log activity, and
 broadcast real-time events to connected WebSocket clients.
 """
 import logging
+from django.conf import settings
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from asgiref.sync import async_to_sync
@@ -11,6 +12,37 @@ from channels.layers import get_channel_layer
 from .models import ChallengeSubmission, ChallengeLeaderboard, ChallengeActivity, ImageInterpretationSubmission
 
 logger = logging.getLogger(__name__)
+
+
+def _use_fs_activities():
+    return settings.FIRESTORE_COLLECTIONS.get('challenge_activities', False)
+
+
+def _record_activity(challenge, user, activity_type, description, metadata=None):
+    """
+    Write an activity record to either Firestore or PostgreSQL depending
+    on the feature flag.  Returns the created object/dict.
+    """
+    if _use_fs_activities():
+        from .firestore_activity_service import create_activity
+        return create_activity(
+            challenge=challenge,
+            user=user,
+            activity_type=activity_type,
+            description=description,
+            metadata=metadata or {},
+        )
+    else:
+        activity, _ = ChallengeActivity.objects.get_or_create(
+            challenge=challenge,
+            user=user,
+            activity_type=activity_type,
+            defaults={
+                'description': description,
+                'metadata':    metadata or {},
+            },
+        )
+        return activity
 
 
 def _broadcast(challenge_id, msg_type, payload):
@@ -43,16 +75,15 @@ def update_leaderboard_on_submission(sender, instance, created, **kwargs):
         )
         leaderboard.update_leaderboard()
 
-        # Broadcast updated leaderboard to all open challenge tabs
         _broadcast(
             instance.challenge_id,
             "leaderboard_update",
             {
-                "challenge_id":      str(instance.challenge_id),
-                "top_submissions":   leaderboard.top_submissions,
+                "challenge_id":       str(instance.challenge_id),
+                "top_submissions":    leaderboard.top_submissions,
                 "total_participants": leaderboard.total_participants,
-                "average_score":     leaderboard.average_score,
-                "highest_score":     leaderboard.highest_score,
+                "average_score":      leaderboard.average_score,
+                "highest_score":      leaderboard.highest_score,
             },
         )
 
@@ -63,7 +94,6 @@ def create_activity_on_submission(sender, instance, created, **kwargs):
     challenge_id = instance.challenge_id
 
     if created:
-        # New submission entered — tell the room someone joined
         _broadcast(
             challenge_id,
             "new_submission",
@@ -75,30 +105,35 @@ def create_activity_on_submission(sender, instance, created, **kwargs):
         )
 
     if instance.status == 'scored' and instance.scored_at:
-        activity, activity_created = ChallengeActivity.objects.get_or_create(
+        activity = _record_activity(
             challenge=instance.challenge,
             user=instance.user,
             activity_type='score_update',
-            defaults={
-                'description': f"{instance.user.username} scored {instance.final_score} points",
-                'metadata': {
-                    'submission_id': str(instance.id),
-                    'score':         instance.final_score,
-                    'word_count':    instance.word_count,
-                },
+            description=f"{instance.user.username} scored {instance.final_score} points",
+            metadata={
+                'submission_id': str(instance.id),
+                'score':         instance.final_score,
+                'word_count':    instance.word_count,
             },
         )
 
-        # Broadcast activity item
+        created_at = (
+            activity.get('created_at') if isinstance(activity, dict)
+            else activity.created_at.isoformat()
+        )
+
         _broadcast(
             challenge_id,
             "activity",
             {
                 "challenge_id": str(challenge_id),
                 "username":     instance.user.username,
-                "description":  activity.description,
+                "description":  (
+                    activity.get('description') if isinstance(activity, dict)
+                    else activity.description
+                ),
                 "score":        instance.final_score,
-                "created_at":   activity.created_at.isoformat(),
+                "created_at":   created_at,
             },
         )
 

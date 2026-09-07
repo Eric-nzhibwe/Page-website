@@ -187,16 +187,25 @@ class LeaderboardView(generics.ListAPIView):
     """Leaderboard endpoint"""
     serializer_class = LeaderboardSerializer
     permission_classes = [permissions.AllowAny]
-    
+
+    def list(self, request, *args, **kwargs):
+        from django.conf import settings
+        if settings.FIRESTORE_COLLECTIONS.get('users', False):
+            from users.firestore_user_service import get_leaderboard
+            data = get_leaderboard(limit=50)
+            # Add rank number client-side style
+            for i, u in enumerate(data, start=1):
+                u['rank'] = i
+            return Response(data)
+        return super().list(request, *args, **kwargs)
+
     def get_queryset(self):
-        # Add rank annotation
         queryset = User.objects.annotate(
             rank=Window(
                 expression=RowNumber(),
                 order_by=F('prestige_points').desc()
             )
         ).order_by('-prestige_points')[:50]
-        
         return queryset
 
 
@@ -208,13 +217,30 @@ def discover_users_view(request):
     excluding themselves. Used for the "Discover Users" sidebar.
     """
     from django.db.models import Q
+    from django.conf import settings
     from social.models import Follow
+
+    q       = request.query_params.get('q', '').strip()
+    use_fs  = settings.FIRESTORE_COLLECTIONS.get('users', False)
+
+    if use_fs:
+        from users.firestore_user_service import search_users, get_leaderboard
+        already_following = set(str(uid) for uid in
+            Follow.objects.filter(follower=request.user)
+                          .values_list('following_id', flat=True))
+        if q:
+            candidates = search_users(q, exclude_user_id=str(request.user.id))
+        else:
+            candidates = get_leaderboard(limit=50)
+
+        data = [u for u in candidates
+                if u['id'] != str(request.user.id)
+                and u['id'] not in already_following][:30]
+        return Response(data)
 
     already_following = Follow.objects.filter(
         follower=request.user
     ).values_list('following_id', flat=True)
-
-    q = request.query_params.get('q', '').strip()
 
     qs = User.objects.exclude(
         Q(id=request.user.id) | Q(id__in=already_following)
@@ -222,22 +248,19 @@ def discover_users_view(request):
 
     if q:
         qs = qs.filter(
-            Q(username__icontains=q) |
-            Q(display_name__icontains=q)
+            Q(username__icontains=q) | Q(display_name__icontains=q)
         )
-
-    qs = qs[:30]
 
     data = [
         {
-            'id':           u.id,
-            'username':     u.username,
-            'display_name': u.display_name or u.username,
-            'access_tier':  u.access_tier,
+            'id':            u.id,
+            'username':      u.username,
+            'display_name':  u.display_name or u.username,
+            'access_tier':   u.access_tier,
             'prestige_points': u.prestige_points,
             'profile_image': u.profile_image.url if u.profile_image else None,
         }
-        for u in qs
+        for u in qs[:30]
     ]
     return Response(data)
 
@@ -246,9 +269,14 @@ def discover_users_view(request):
 @permission_classes([permissions.IsAuthenticated])
 def search_users_view(request):
     """Search users by username or display_name."""
+    from django.conf import settings
     q = request.query_params.get('q', '').strip()
     if not q:
         return Response([])
+
+    if settings.FIRESTORE_COLLECTIONS.get('users', False):
+        from users.firestore_user_service import search_users
+        return Response(search_users(q, exclude_user_id=str(request.user.id)))
 
     from django.db.models import Q
     qs = User.objects.filter(
@@ -257,10 +285,10 @@ def search_users_view(request):
 
     data = [
         {
-            'id':           u.id,
-            'username':     u.username,
-            'display_name': u.display_name or u.username,
-            'access_tier':  u.access_tier,
+            'id':            u.id,
+            'username':      u.username,
+            'display_name':  u.display_name or u.username,
+            'access_tier':   u.access_tier,
             'prestige_points': u.prestige_points,
             'profile_image': u.profile_image.url if u.profile_image else None,
         }

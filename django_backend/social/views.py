@@ -2,6 +2,7 @@
 Views for social features - Posts, Comments, Shares, and Follows
 """
 import uuid
+from django.conf import settings as django_settings
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
@@ -20,6 +21,10 @@ from .serializers import (
 from users.models import User
 
 
+def _use_fs_social():
+    return django_settings.FIRESTORE_COLLECTIONS.get('social', False)
+
+
 class StandardResultsSetPagination(PageNumberPagination):
     page_size = 20
     page_size_query_param = 'page_size'
@@ -27,186 +32,294 @@ class StandardResultsSetPagination(PageNumberPagination):
 
 
 class PostViewSet(viewsets.ModelViewSet):
-    """
-    ViewSet for Posts with real-time updates
-    """
+    """ViewSet for Posts with real-time updates"""
+
     serializer_class = PostSerializer
     permission_classes = [IsAuthenticated]
     authentication_classes = [TokenAuthentication, SessionAuthentication]
     pagination_class = StandardResultsSetPagination
-    
+
     def get_queryset(self):
-        """Get posts from followed users and own posts"""
         user = self.request.user
         followed_users = user.following.values_list('following', flat=True)
         return Post.objects.filter(
             Q(author=user) | Q(author__in=followed_users)
         ).select_related('author').prefetch_related('comments', 'reactions', 'shares')
-    
-    def perform_create(self, serializer):
-        """Create post with current user as author and broadcast to feed group."""
-        post = serializer.save(author=self.request.user)
-        # Broadcast new post to all connected feed clients
-        try:
-            from channels.layers import get_channel_layer
-            from asgiref.sync import async_to_sync
-            from .serializers import PostSerializer as PS
-            import json
-            from django.core.serializers.json import DjangoJSONEncoder
-            req = type('Req', (), {'user': self.request.user})()
-            post_data = PS(post, context={'request': req}).data
-            channel_layer = get_channel_layer()
-            async_to_sync(channel_layer.group_send)(
-                'artx_feed',
-                {
-                    'type': 'feed_new_post',
-                    'post': json.loads(json.dumps(dict(post_data), cls=DjangoJSONEncoder))
-                }
-            )
-        except Exception:
-            pass  # Channel layer unavailable — still return success
 
     def get_serializer_context(self):
         ctx = super().get_serializer_context()
         ctx['request'] = self.request
         return ctx
-    
+
+    # ── create ────────────────────────────────────────────────────────────────
+
+    def perform_create(self, serializer):
+        if _use_fs_social():
+            return  # handled in create() override below
+        post = serializer.save(author=self.request.user)
+        self._broadcast_new_post(post)
+
+    def create(self, request, *args, **kwargs):
+        if _use_fs_social():
+            return self._create_firestore(request)
+        return super().create(request, *args, **kwargs)
+
+    def _create_firestore(self, request):
+        from .firestore_social_service import create_post
+        from django.core.files.storage import default_storage
+        from django.core.files.base import ContentFile
+        import os
+
+        data      = request.data
+        media_url = None
+
+        # Handle file upload if present
+        media_file = request.FILES.get('media')
+        if media_file:
+            ext       = os.path.splitext(media_file.name)[1].lower()
+            safe_name = f"posts/{request.user.id}_{uuid.uuid4().hex}{ext}"
+            path      = default_storage.save(safe_name, ContentFile(media_file.read()))
+            media_url = request.build_absolute_uri(default_storage.url(path))
+
+        post = create_post(request.user, dict(data), media_url=media_url)
+        if not post:
+            return Response({'error': 'Failed to create post.'},
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        self._broadcast_new_post_dict(post)
+        return Response(post, status=status.HTTP_201_CREATED)
+
+    # ── destroy ───────────────────────────────────────────────────────────────
+
+    def destroy(self, request, *args, **kwargs):
+        if _use_fs_social():
+            from .firestore_social_service import delete_post
+            ok = delete_post(kwargs.get('pk'), request.user.id)
+            if not ok:
+                return Response({'error': 'Not found or permission denied.'},
+                                status=status.HTTP_404_NOT_FOUND)
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        return super().destroy(request, *args, **kwargs)
+
+    # ── retrieve ──────────────────────────────────────────────────────────────
+
+    def retrieve(self, request, *args, **kwargs):
+        if _use_fs_social():
+            from .firestore_social_service import get_post
+            post = get_post(kwargs.get('pk'), requesting_user=request.user)
+            if post is None:
+                return Response({'error': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response(post)
+        return super().retrieve(request, *args, **kwargs)
+
+    # ── list (feed) ───────────────────────────────────────────────────────────
+
+    def list(self, request, *args, **kwargs):
+        if _use_fs_social():
+            from .firestore_social_service import get_feed
+            followed = list(request.user.following.values_list('following', flat=True))
+            posts    = get_feed(followed, request.user.id)
+            return Response({'results': posts, 'count': len(posts)})
+        return super().list(request, *args, **kwargs)
+
+    # ── reactions ─────────────────────────────────────────────────────────────
+
     @action(detail=True, methods=['post'])
     def react(self, request, pk=None):
-        """Add or update reaction to post"""
-        post = self.get_object()
+        """Add or update reaction to post."""
         reaction_type = request.data.get('reaction_type', 'fire')
-        
+
+        if _use_fs_social():
+            from .firestore_social_service import react_to_post
+            result = react_to_post(pk, request.user, reaction_type)
+            code   = (status.HTTP_201_CREATED if result.get('created')
+                      else status.HTTP_200_OK)
+            return Response(result, status=code)
+
+        post     = self.get_object()
         reaction, created = PostReaction.objects.update_or_create(
-            post=post,
-            user=request.user,
+            post=post, user=request.user,
             defaults={'reaction_type': reaction_type}
         )
-        
-        serializer = PostReactionSerializer(reaction)
-        return Response(serializer.data, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
-    
+        return Response(PostReactionSerializer(reaction).data,
+                        status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
+
     @action(detail=True, methods=['post'])
     def unreact(self, request, pk=None):
-        """Remove reaction from post"""
-        post = self.get_object()
+        """Remove reaction from post."""
+        if _use_fs_social():
+            from .firestore_social_service import unreact_to_post
+            removed = unreact_to_post(pk, request.user)
+            if removed:
+                return Response({'status': 'reaction removed'})
+            return Response({'error': 'No reaction found'},
+                            status=status.HTTP_404_NOT_FOUND)
+
+        post     = self.get_object()
         reaction = post.reactions.filter(user=request.user).first()
-        
         if reaction:
             reaction.delete()
-            return Response({'status': 'reaction removed'}, status=status.HTTP_200_OK)
-        
+            return Response({'status': 'reaction removed'})
         return Response({'error': 'No reaction found'}, status=status.HTTP_404_NOT_FOUND)
-    
+
+    # ── shares (always PostgreSQL — just tracking, not content) ──────────────
+
     @action(detail=True, methods=['post'])
     def share(self, request, pk=None):
-        """Share post to social media"""
-        post = self.get_object()
+        post     = self.get_object()
         platform = request.data.get('platform')
-        
         if not platform:
-            return Response({'error': 'Platform is required'}, status=status.HTTP_400_BAD_REQUEST)
-        
+            return Response({'error': 'Platform is required'},
+                            status=status.HTTP_400_BAD_REQUEST)
         share, created = PostShare.objects.get_or_create(
-            post=post,
-            user=request.user,
-            platform=platform
+            post=post, user=request.user, platform=platform
         )
-        
-        serializer = PostShareSerializer(share)
-        return Response(serializer.data, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
-    
+        return Response(PostShareSerializer(share).data,
+                        status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
+
     @action(detail=True, methods=['get'])
     def share_urls(self, request, pk=None):
-        """Get share URLs for different platforms"""
-        post = self.get_object()
-        
-        # Build share message
+        post       = self.get_object()
         share_text = f"Check out this post on ARTX: {post.content[:100]}..."
-        post_url = f"{request.build_absolute_uri('/').rstrip('/')}/posts/{post.id}"
-        
-        share_urls = {
+        post_url   = f"{request.build_absolute_uri('/').rstrip('/')}/posts/{post.id}"
+        return Response({
             'facebook': f"https://www.facebook.com/sharer/sharer.php?u={post_url}",
             'whatsapp': f"https://wa.me/?text={share_text}%20{post_url}",
-            'x': f"https://twitter.com/intent/tweet?text={share_text}&url={post_url}",
-            'copy_link': post_url
-        }
-        
-        return Response(share_urls)
+            'x':        f"https://twitter.com/intent/tweet?text={share_text}&url={post_url}",
+            'copy_link': post_url,
+        })
+
+    # ── broadcast helpers ─────────────────────────────────────────────────────
+
+    def _broadcast_new_post(self, post):
+        """Broadcast a Django model post instance to the feed channel."""
+        try:
+            from channels.layers import get_channel_layer
+            from asgiref.sync import async_to_sync
+            import json
+            from django.core.serializers.json import DjangoJSONEncoder
+            req       = type('Req', (), {'user': self.request.user})()
+            post_data = PostSerializer(post, context={'request': req}).data
+            get_channel_layer() and async_to_sync(
+                get_channel_layer().group_send
+            )('artx_feed', {
+                'type': 'feed_new_post',
+                'post': json.loads(json.dumps(dict(post_data), cls=DjangoJSONEncoder)),
+            })
+        except Exception:
+            pass
+
+    def _broadcast_new_post_dict(self, post_dict):
+        """Broadcast a plain dict post to the feed channel."""
+        try:
+            from channels.layers import get_channel_layer
+            from asgiref.sync import async_to_sync
+            import json
+            from django.core.serializers.json import DjangoJSONEncoder
+            get_channel_layer() and async_to_sync(
+                get_channel_layer().group_send
+            )('artx_feed', {
+                'type': 'feed_new_post',
+                'post': json.loads(json.dumps(post_dict, cls=DjangoJSONEncoder)),
+            })
+        except Exception:
+            pass
 
 
 class CommentViewSet(viewsets.ModelViewSet):
-    """
-    ViewSet for Comments with real-time updates
-    """
+    """ViewSet for Comments with real-time updates"""
+
     serializer_class = CommentSerializer
     permission_classes = [IsAuthenticated]
     authentication_classes = [TokenAuthentication, SessionAuthentication]
 
     def get_queryset(self):
-        """Get top-level comments for a specific post."""
         post_id = self.request.query_params.get('post_id')
-        qs = Comment.objects.select_related('author').prefetch_related(
+        qs      = Comment.objects.select_related('author').prefetch_related(
             'reactions', 'replies__author', 'replies__reactions'
         )
         if post_id:
-            # Validate that post_id is a valid UUID before hitting the DB.
-            # Local/offline IDs (e.g. "local-1234") must never reach this point.
             try:
                 uuid.UUID(str(post_id))
             except (ValueError, AttributeError):
                 raise ValidationError({'post_id': f'"{post_id}" is not a valid post ID.'})
             return qs.filter(post_id=post_id, parent_comment__isnull=True)
-        return qs.none()  # Don't list all comments without a post_id
+        return qs.none()
 
     def get_serializer_context(self):
         ctx = super().get_serializer_context()
         ctx['request'] = self.request
         return ctx
 
+    def list(self, request, *args, **kwargs):
+        if _use_fs_social():
+            from .firestore_social_service import get_comments
+            post_id = request.query_params.get('post_id')
+            if not post_id:
+                return Response({'error': 'post_id is required'},
+                                status=status.HTTP_400_BAD_REQUEST)
+            return Response(get_comments(post_id))
+        return super().list(request, *args, **kwargs)
+
     def perform_create(self, serializer):
-        """Create comment with current user as author."""
-        post_id = self.request.data.get('post_id')
-        post = get_object_or_404(Post, id=post_id)
-        parent_id = self.request.data.get('parent_comment_id')
-        kwargs = {'author': self.request.user, 'post': post}
+        if _use_fs_social():
+            return  # handled in create() override
+        post_id    = self.request.data.get('post_id')
+        post       = get_object_or_404(Post, id=post_id)
+        parent_id  = self.request.data.get('parent_comment_id')
+        kwargs     = {'author': self.request.user, 'post': post}
         if parent_id:
             kwargs['parent_comment'] = get_object_or_404(Comment, id=parent_id)
         serializer.save(**kwargs)
-    
+
+    def create(self, request, *args, **kwargs):
+        if _use_fs_social():
+            from .firestore_social_service import add_comment
+            post_id  = request.data.get('post_id')
+            content  = request.data.get('content', '').strip()
+            parent   = request.data.get('parent_comment_id')
+            if not post_id or not content:
+                return Response({'error': 'post_id and content are required.'},
+                                status=status.HTTP_400_BAD_REQUEST)
+            comment = add_comment(post_id, request.user, content, parent_id=parent)
+            if not comment:
+                return Response({'error': 'Failed to add comment.'},
+                                status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(comment, status=status.HTTP_201_CREATED)
+        return super().create(request, *args, **kwargs)
+
     @action(detail=True, methods=['post'])
     def react(self, request, pk=None):
-        """Add or update reaction to comment"""
-        comment = self.get_object()
+        comment      = self.get_object()
         reaction_type = request.data.get('reaction_type', 'fire')
-        
         reaction, created = CommentReaction.objects.update_or_create(
-            comment=comment,
-            user=request.user,
+            comment=comment, user=request.user,
             defaults={'reaction_type': reaction_type}
         )
-        
-        serializer = CommentReactionSerializer(reaction)
-        return Response(serializer.data, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
-    
+        return Response(CommentReactionSerializer(reaction).data,
+                        status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
+
     @action(detail=True, methods=['post'])
     def reply(self, request, pk=None):
-        """Reply to a comment"""
-        parent_comment = self.get_object()
         content = request.data.get('content')
-        
         if not content:
-            return Response({'error': 'Content is required'}, status=status.HTTP_400_BAD_REQUEST)
-        
+            return Response({'error': 'Content is required'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        if _use_fs_social():
+            from .firestore_social_service import add_comment
+            parent = self.get_object()  # still fetches from PG but only for validation
+            comment = add_comment(str(parent.post_id), request.user,
+                                  content, parent_id=str(pk))
+            return Response(comment, status=status.HTTP_201_CREATED)
+
+        parent_comment = self.get_object()
         reply = Comment.objects.create(
-            post=parent_comment.post,
-            author=request.user,
-            content=content,
-            parent_comment=parent_comment
+            post=parent_comment.post, author=request.user,
+            content=content, parent_comment=parent_comment
         )
-        
-        serializer = CommentSerializer(reply, context={'request': request})
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(CommentSerializer(reply, context={'request': request}).data,
+                        status=status.HTTP_201_CREATED)
 
 
 class FollowViewSet(viewsets.ViewSet):
