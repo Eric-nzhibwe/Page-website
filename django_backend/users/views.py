@@ -691,7 +691,9 @@ def firebase_config_view(request):
     })
 
 
-
+@api_view(['POST'])
+@permission_classes([permissions.IsAuthenticated])
+def spend_prestige_view(request):
     """Deduct prestige points for a reward purchase."""
     amount = request.data.get('amount')
     reason = request.data.get('reason', 'Reward redemption')
