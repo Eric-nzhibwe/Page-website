@@ -5,7 +5,13 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
-    # Authentication
+    # ── Firebase Auth ──────────────────────────────────────────────────────
+    # Frontend exchanges a Firebase ID token for a DRF token
+    path('firebase-login/', views.firebase_token_login_view, name='firebase-login'),
+    # Returns public Firebase web config for the JS SDK initialisation
+    path('firebase-config/', views.firebase_config_view, name='firebase-config'),
+
+    # Authentication (existing Django email/password — kept as fallback)
     path('register/', views.UserRegistrationView.as_view(), name='user-register'),
     path('login/', views.login_view, name='user-login'),
     path('logout/', views.logout_view, name='user-logout'),

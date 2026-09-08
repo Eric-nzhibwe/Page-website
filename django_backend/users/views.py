@@ -605,8 +605,93 @@ def delete_account_view(request):
 
 
 @api_view(['POST'])
+@permission_classes([permissions.AllowAny])
+@authentication_classes([])
+def firebase_token_login_view(request):
+    """
+    Exchange a Firebase ID token for a Django auth token.
+
+    Called by the frontend after Firebase Auth completes sign-in/sign-up.
+    The frontend sends:
+        { "firebase_token": "<Firebase ID token>" }
+    and receives back the same shape as the regular login endpoint:
+        { "token": "<DRF token>", "user": {...}, "message": "..." }
+
+    This endpoint works even when Postgres is the only database — it just
+    creates/finds a User row in Postgres using the Firebase uid as the key.
+    Once Firebase Auth is the primary auth source, Postgres only stores
+    profile data, not passwords.
+    """
+    firebase_token = request.data.get('firebase_token', '').strip()
+    if not firebase_token:
+        return Response(
+            {'error': 'firebase_token is required.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    from artx_platform.firebase_client import firebase_enabled
+    if not firebase_enabled():
+        return Response(
+            {'error': 'Firebase Auth is not configured on this server.'},
+            status=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
+
+    # Verify the token and get/create the Django user
+    from users.firebase_auth_backend import FirebaseAuthenticationBackend
+    backend = FirebaseAuthenticationBackend()
+    user    = backend.authenticate(request, firebase_token=firebase_token)
+
+    if user is None:
+        return Response(
+            {'error': 'Invalid or expired Firebase token. Please sign in again.'},
+            status=status.HTTP_401_UNAUTHORIZED,
+        )
+
+    if not user.is_active:
+        return Response(
+            {'error': 'This account has been deactivated.'},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    # Issue a DRF token so the rest of the app works unchanged
+    token, _ = Token.objects.get_or_create(user=user)
+
+    # Mirror profile to Firestore if FS_USERS is enabled
+    try:
+        from django.conf import settings as _s
+        if _s.FIRESTORE_COLLECTIONS.get('users', False):
+            from users.firestore_user_service import sync_user
+            sync_user(user)
+    except Exception:
+        pass
+
+    return Response({
+        'token':   token.key,
+        'user':    UserProfileSerializer(user).data,
+        'message': f'Welcome, {user.username}! 🔥',
+    })
+
+
+@api_view(['GET'])
 @permission_classes([permissions.IsAuthenticated])
-def spend_prestige_view(request):
+def firebase_config_view(request):
+    """
+    Return the public Firebase web config so the frontend can initialise
+    the Firebase JS SDK without hardcoding keys in HTML.
+    Only public-safe keys are returned (never private_key or client secrets).
+    """
+    from django.conf import settings as _s
+    return Response({
+        'projectId':         getattr(_s, 'FIREBASE_PROJECT_ID', ''),
+        'apiKey':            getattr(_s, 'FIREBASE_WEB_API_KEY', ''),
+        'authDomain':        getattr(_s, 'FIREBASE_AUTH_DOMAIN', ''),
+        'storageBucket':     getattr(_s, 'FIREBASE_STORAGE_BUCKET', ''),
+        'messagingSenderId': getattr(_s, 'FIREBASE_MESSAGING_SENDER_ID', ''),
+        'appId':             getattr(_s, 'FIREBASE_APP_ID', ''),
+    })
+
+
+
     """Deduct prestige points for a reward purchase."""
     amount = request.data.get('amount')
     reason = request.data.get('reason', 'Reward redemption')

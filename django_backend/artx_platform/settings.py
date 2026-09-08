@@ -219,8 +219,11 @@ FILE_UPLOAD_MAX_MEMORY_SIZE = 3 * 1024 * 1024   # 3 MB
 # Custom User Model
 AUTH_USER_MODEL = 'users.User'
 
-# Authentication backends -- email-first login
+# Authentication backends -- email-first login + Firebase Auth
 AUTHENTICATION_BACKENDS = [
+    # Firebase Auth — validates ID tokens from the Firebase JS SDK
+    # Runs first; falls back to email/password when Firebase is not configured
+    'users.firebase_auth_backend.FirebaseAuthenticationBackend',
     'users.backends.EmailOrUsernameBackend',
     'django.contrib.auth.backends.ModelBackend',
 ]
@@ -397,6 +400,15 @@ FIREBASE_PRIVATE_KEY          = config('FIREBASE_PRIVATE_KEY',          default=
 FIREBASE_CLIENT_EMAIL         = config('FIREBASE_CLIENT_EMAIL',         default='')
 FIREBASE_CLIENT_ID            = config('FIREBASE_CLIENT_ID',            default='')
 FIREBASE_CLIENT_X509_CERT_URL = config('FIREBASE_CLIENT_X509_CERT_URL', default='')
+
+# ── Firebase Web SDK config (public keys — safe to expose to the frontend) ──
+# Get these from Firebase Console → Project Settings → Your apps → Web app
+# → SDK setup and configuration → Config
+FIREBASE_WEB_API_KEY         = config('FIREBASE_WEB_API_KEY',         default='')
+FIREBASE_AUTH_DOMAIN         = config('FIREBASE_AUTH_DOMAIN',         default='')
+FIREBASE_STORAGE_BUCKET      = config('FIREBASE_STORAGE_BUCKET',      default='')
+FIREBASE_MESSAGING_SENDER_ID = config('FIREBASE_MESSAGING_SENDER_ID', default='')
+FIREBASE_APP_ID              = config('FIREBASE_APP_ID',              default='')
 
 # ── Per-collection feature flags ───────────────────────────────────────────────
 # Set a flag to True once you have migrated that collection to Firestore.

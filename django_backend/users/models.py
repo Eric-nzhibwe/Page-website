@@ -306,6 +306,26 @@ class PasswordResetToken(models.Model):
         return not self.used and timezone.now() < self.expires_at
 
 
+class UserFirebaseProfile(models.Model):
+    """
+    Links a Django User to a Firebase Auth uid.
+    One row per user — created automatically on first Firebase login.
+    """
+    user         = models.OneToOneField(
+        User, on_delete=models.CASCADE, related_name='firebase_profile'
+    )
+    firebase_uid = models.CharField(max_length=128, unique=True, db_index=True)
+    picture_url  = models.URLField(max_length=500, blank=True)
+    created_at   = models.DateTimeField(auto_now_add=True)
+    updated_at   = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'user_firebase_profiles'
+
+    def __str__(self):
+        return f'{self.user.username} → Firebase uid={self.firebase_uid}'
+
+
 class LoginHistory(models.Model):
     """Immutable log of every login attempt."""
     STATUS_CHOICES = [
