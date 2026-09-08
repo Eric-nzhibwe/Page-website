@@ -15,7 +15,7 @@
     <link rel="stylesheet" href="styles/realtime-features.css">
     <link rel="stylesheet" href="styles/story-viewer.css">
     <link rel="stylesheet" href="styles/icon-nav.css">
-    <link rel="stylesheet" href="styles/marketplace.css">
+    <link rel="stylesheet" href="styles/messenger.css">
     <link rel="stylesheet" href="styles/challenges-enhanced.css">
     <link rel="stylesheet" href="styles/settings.css">
     <link rel="stylesheet" href="styles/streak.css">
@@ -61,8 +61,9 @@
                     <i class="fas fa-trophy"></i>
                     <span class="notification-badge" id="challengesBadge" style="display: none;">0</span>
                 </button>
-                <button class="icon-nav-btn" data-view="marketplace" title="Marketplace" onclick="switchView('marketplace')">
-                    <i class="fas fa-bag-shopping"></i>
+                <button class="icon-nav-btn" data-view="messenger" title="Messages" onclick="switchView('messenger')">
+                    <i class="fas fa-comment-dots"></i>
+                    <span class="notification-badge" id="msgBadge" style="display:none;">0</span>
                 </button>
                 <button class="icon-nav-btn" onclick="window.location.href='pages/user.html'" title="Profile">
                     <i class="fas fa-circle-user"></i>
@@ -108,6 +109,10 @@
                     <a href="pages/chatbot.html" class="quick-menu-item">
                         <i class="fas fa-robot"></i>
                         <span>AI Assistant</span>
+                    </a>
+                    <a href="#" onclick="switchView('messenger'); toggleQuickMenu(); return false;" class="quick-menu-item">
+                        <i class="fas fa-comment-dots"></i>
+                        <span>Messages</span>
                     </a>
                     <a href="pages/influencers.html" class="quick-menu-item">
                         <i class="fas fa-star"></i>
@@ -375,132 +380,113 @@
             </div>
         </section>
 
-        <!-- Marketplace View (New) -->
-        <section id="marketplace" class="view">
-            <div class="marketplace-container">
-                <!-- Marketplace Header -->
-                <div class="marketplace-header">
-                    <h1><i class="fas fa-store"></i> Marketplace</h1>
-                    <button class="btn-primary" onclick="openCreateProductModal()">
-                        <i class="fas fa-plus"></i> Sell Product
-                    </button>
-                </div>
+        <!-- Messenger View -->
+        <section id="messenger" class="view">
+            <div class="dm-shell">
 
-                <!-- Marketplace Filters -->
-                <div class="marketplace-filters">
-                    <button class="filter-btn active" onclick="filterMarketplace('all')">
-                        <i class="fas fa-th"></i> All Items
-                    </button>
-                    <button class="filter-btn" onclick="filterMarketplace('electronics')">
-                        <i class="fas fa-laptop"></i> Electronics
-                    </button>
-                    <button class="filter-btn" onclick="filterMarketplace('fashion')">
-                        <i class="fas fa-tshirt"></i> Fashion
-                    </button>
-                    <button class="filter-btn" onclick="filterMarketplace('gaming')">
-                        <i class="fas fa-gamepad"></i> Gaming
-                    </button>
-                    <button class="filter-btn" onclick="filterMarketplace('sports')">
-                        <i class="fas fa-football-ball"></i> Sports
-                    </button>
-                    <button class="filter-btn" onclick="filterMarketplace('other')">
-                        <i class="fas fa-ellipsis-h"></i> Other
-                    </button>
-                </div>
-
-                <!-- Marketplace Grid -->
-                <div class="marketplace-grid" id="marketplaceGrid">
-                    <!-- Sample Product 1 -->
-                    <div class="product-card" data-category="electronics">
-                        <div class="product-image">
-                            <img src="https://via.placeholder.com/300x200/556b2f/90ee90?text=Gaming+Laptop"
-                                alt="Product">
-                            <div class="product-badge">Featured</div>
-                        </div>
-                        <div class="product-info">
-                            <h3 class="product-title">Gaming Laptop - RTX 3060</h3>
-                            <p class="product-description">High-performance gaming laptop, barely used, excellent
-                                condition</p>
-                            <div class="product-seller">
-                                <i class="fas fa-user-circle"></i>
-                                <span>ProGamer</span>
-                            </div>
-                            <div class="product-footer">
-                                <div class="product-price">K12,500</div>
-                                <button class="btn-contact" onclick="contactSeller('ProGamer')">
-                                    <i class="fas fa-comments"></i> Contact
-                                </button>
-                            </div>
+                <!-- ── Conversation list (left panel) ── -->
+                <aside class="dm-sidebar" id="dmSidebar">
+                    <div class="dm-sidebar-header">
+                        <h2 class="dm-sidebar-title"><i class="fas fa-comment-dots"></i> Messages</h2>
+                        <button class="dm-new-btn" onclick="dmOpenNewChat()" title="New conversation">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                    </div>
+                    <div class="dm-search-wrap">
+                        <i class="fas fa-magnifying-glass"></i>
+                        <input type="text" id="dmSearchInput" placeholder="Search conversations…"
+                               oninput="dmFilterConversations(this.value)">
+                    </div>
+                    <div class="dm-conv-list" id="dmConvList">
+                        <div class="dm-empty-state">
+                            <div class="dm-spinner"></div>
                         </div>
                     </div>
+                </aside>
 
-                    <!-- Sample Product 2 -->
-                    <div class="product-card" data-category="gaming">
-                        <div class="product-image">
-                            <img src="https://via.placeholder.com/300x200/556b2f/90ee90?text=PS5+Controller"
-                                alt="Product">
-                        </div>
-                        <div class="product-info">
-                            <h3 class="product-title">PS5 DualSense Controller</h3>
-                            <p class="product-description">Brand new, sealed in box, white color</p>
-                            <div class="product-seller">
-                                <i class="fas fa-user-circle"></i>
-                                <span>ElitePlayer</span>
-                            </div>
-                            <div class="product-footer">
-                                <div class="product-price">K850</div>
-                                <button class="btn-contact" onclick="contactSeller('ElitePlayer')">
-                                    <i class="fas fa-comments"></i> Contact
-                                </button>
-                            </div>
-                        </div>
+                <!-- ── Chat window (right panel) ── -->
+                <main class="dm-chat-area" id="dmChatArea">
+
+                    <!-- Placeholder shown when no conversation is open -->
+                    <div class="dm-welcome" id="dmWelcome">
+                        <div class="dm-welcome-icon"><i class="fas fa-comment-dots"></i></div>
+                        <h3>Your Messages</h3>
+                        <p>Select a conversation or start a new one to begin chatting.</p>
+                        <button class="dm-start-btn" onclick="dmOpenNewChat()">
+                            <i class="fas fa-edit"></i> New Message
+                        </button>
                     </div>
 
-                    <!-- Sample Product 3 -->
-                    <div class="product-card" data-category="fashion">
-                        <div class="product-image">
-                            <img src="https://via.placeholder.com/300x200/556b2f/90ee90?text=Sneakers" alt="Product">
-                        </div>
-                        <div class="product-info">
-                            <h3 class="product-title">Nike Air Max Sneakers</h3>
-                            <p class="product-description">Size 42, worn twice, like new condition</p>
-                            <div class="product-seller">
-                                <i class="fas fa-user-circle"></i>
-                                <span>Champion</span>
-                            </div>
-                            <div class="product-footer">
-                                <div class="product-price">K1,200</div>
-                                <button class="btn-contact" onclick="contactSeller('Champion')">
-                                    <i class="fas fa-comments"></i> Contact
-                                </button>
-                            </div>
-                        </div>
-                    </div>
+                    <!-- Active conversation (hidden until a conv is selected) -->
+                    <div class="dm-chat-inner" id="dmChatInner" style="display:none;">
 
-                    <!-- Sample Product 4 -->
-                    <div class="product-card" data-category="electronics">
-                        <div class="product-image">
-                            <img src="https://via.placeholder.com/300x200/556b2f/90ee90?text=iPhone+13" alt="Product">
-                            <div class="product-badge sold">Sold</div>
-                        </div>
-                        <div class="product-info">
-                            <h3 class="product-title">iPhone 13 Pro Max</h3>
-                            <p class="product-description">256GB, Pacific Blue, excellent condition</p>
-                            <div class="product-seller">
-                                <i class="fas fa-user-circle"></i>
-                                <span>TechMaster</span>
+                        <!-- Chat header -->
+                        <div class="dm-chat-header">
+                            <button class="dm-back-btn" onclick="dmCloseChat()" title="Back">
+                                <i class="fas fa-arrow-left"></i>
+                            </button>
+                            <div class="dm-chat-avatar" id="dmChatAvatar">
+                                <i class="fas fa-circle-user"></i>
                             </div>
-                            <div class="product-footer">
-                                <div class="product-price">K8,500</div>
-                                <button class="btn-contact" disabled>
-                                    <i class="fas fa-check"></i> Sold
-                                </button>
+                            <div class="dm-chat-meta">
+                                <span class="dm-chat-name"  id="dmChatName">—</span>
+                                <span class="dm-chat-status" id="dmChatStatus">Online</span>
                             </div>
                         </div>
+
+                        <!-- Message list -->
+                        <div class="dm-messages" id="dmMessages">
+                            <div class="dm-msgs-loading">
+                                <div class="dm-spinner"></div>
+                            </div>
+                        </div>
+
+                        <!-- Compose bar -->
+                        <form class="dm-compose" id="dmComposeForm" onsubmit="dmSendMessage(event)">
+                            <!-- Media attachment button -->
+                            <label class="dm-attach-btn" title="Attach image">
+                                <i class="fas fa-image"></i>
+                                <input type="file" id="dmMediaInput" accept="image/*,video/*,audio/*"
+                                       style="display:none" onchange="dmHandleMedia(event)">
+                            </label>
+
+                            <!-- Image preview strip (hidden until a file is selected) -->
+                            <div class="dm-media-preview" id="dmMediaPreview" style="display:none;">
+                                <img id="dmMediaThumb" src="" alt="preview">
+                                <button type="button" class="dm-remove-media"
+                                        onclick="dmRemoveMedia()">&times;</button>
+                            </div>
+
+                            <input type="text" id="dmTextInput" class="dm-text-input"
+                                   placeholder="Type a message…" autocomplete="off">
+                            <button type="submit" class="dm-send-btn" title="Send">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </form>
                     </div>
-                </div>
+                </main>
+
             </div>
         </section>
+
+        <!-- New Chat Modal — search for a user to start a conversation -->
+        <div id="dmNewChatModal" class="dm-modal-backdrop" style="display:none;"
+             onclick="if(event.target===this)dmCloseNewChat()">
+            <div class="dm-modal">
+                <div class="dm-modal-header">
+                    <h3><i class="fas fa-user-plus"></i> New Message</h3>
+                    <button class="dm-modal-close" onclick="dmCloseNewChat()">&times;</button>
+                </div>
+                <div class="dm-modal-search">
+                    <i class="fas fa-magnifying-glass"></i>
+                    <input type="text" id="dmUserSearch" placeholder="Search by username…"
+                           oninput="dmSearchUsers(this.value)" autocomplete="off">
+                </div>
+                <div class="dm-user-results" id="dmUserResults">
+                    <p class="dm-hint">Start typing to find a user.</p>
+                </div>
+            </div>
+        </div>
 
         <!-- Challenges View (Enhanced with Money Rewards) -->
         <section id="challenges" class="view">
@@ -2091,8 +2077,9 @@
             <i class="fas fa-trophy"></i>
             <span class="notification-badge" id="challengesBadgeMobile" style="display:none;">0</span>
         </button>
-        <button class="icon-nav-btn" data-view="marketplace" title="Marketplace" onclick="switchView('marketplace')">
-            <i class="fas fa-store"></i>
+        <button class="icon-nav-btn" data-view="messenger" title="Messages" onclick="switchView('messenger')">
+            <i class="fas fa-comment-dots"></i>
+            <span class="notification-badge" id="msgBadgeMobile" style="display:none;">0</span>
         </button>
         <button class="icon-nav-btn" data-view="people" title="People" onclick="switchView('people')">
             <i class="fas fa-users"></i>
@@ -2110,6 +2097,12 @@
         document.querySelectorAll('.icon-nav-btn[data-view]').forEach(function(btn) {
             btn.classList.toggle('active', btn.getAttribute('data-view') === viewName);
         });
+        // Messenger lifecycle hooks
+        if (viewName === 'messenger') {
+            if (typeof dmInit === 'function') dmInit();
+        } else {
+            if (typeof dmStopPolling === 'function') dmStopPolling();
+        }
     }
 
     // Mobile bottom-nav "More" — opens the user menu anchored above the nav bar
@@ -2163,7 +2156,7 @@
     <script src="scripts/websocket-client.js"></script>
     <script src="scripts/app.js"></script>
     <script src="scripts/social-feed.js"></script>
-    <script src="scripts/marketplace.js"></script>
+    <script src="scripts/messenger.js"></script>
     <script src="scripts/challenges-enhanced.js"></script>
     <script src="scripts/image-interpretation.js"></script>
     <script src="scripts/settings.js"></script>
