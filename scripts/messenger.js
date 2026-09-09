@@ -41,8 +41,8 @@ const DM_API = {
 };
 
 // ── Init (called when messenger view becomes active) ──────────────────────────
-function dmInit() {
-    dmLoadConversations();
+async function dmInit() {
+    await dmLoadConversations();
     dmStartPolling();
     // Handle deep-link: index.html#messenger?conv=<id>
     const hash = window.location.hash;
