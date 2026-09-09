@@ -23,23 +23,21 @@ const _dm = {
 };
 
 const DM_API = {
-    conversations:  () => apiService.get('/messenger/conversations/'),
+    conversations:  ()    => apiService.get('/messenger/conversations/'),
     startConv:      (uid) => apiService.post('/messenger/conversations/start_conversation/', { user_id: uid }),
     messages:       (id)  => apiService.get(`/messenger/conversations/${id}/messages/?page_size=100`),
     sendMessage:    (id, data) => {
-        // multipart for media, JSON for text-only
         if (data instanceof FormData) {
             return apiService.request(`/messenger/conversations/${id}/send_message/`, {
-                method: 'POST',
-                body: data,
+                method:  'POST',
+                body:    data,
                 headers: apiService.token ? { Authorization: `Token ${apiService.token}` } : {},
             });
         }
         return apiService.post(`/messenger/conversations/${id}/send_message/`, data);
     },
-    users:          () => apiService.get('/messenger/users/'),
-    unreadCount:    () => apiService.get('/messenger/unread-count/'),
-    searchUsers:    (q) => apiService.get(`/api/users/search/?q=${encodeURIComponent(q)}`),
+    availableUsers: (q)   => apiService.get(`/messenger/available-users/${q ? `?q=${encodeURIComponent(q)}` : ''}`),
+    unreadCount:    ()    => apiService.get('/messenger/unread-count/'),
 };
 
 // ── Init (called when messenger view becomes active) ──────────────────────────
@@ -94,7 +92,10 @@ function dmRenderConvList(convs) {
     if (!list) return;
 
     if (!convs.length) {
-        list.innerHTML = '<div class="dm-empty-state">No conversations yet.<br>Start one by clicking <strong>✏️</strong></div>';
+        list.innerHTML = `<div class="dm-empty-state">
+            <i class="fas fa-comment-slash" style="font-size:32px;opacity:0.25;display:block;margin-bottom:10px;"></i>
+            No conversations yet.<br>Tap <strong>✏️</strong> to start one.
+        </div>`;
         return;
     }
 
@@ -103,24 +104,28 @@ function dmRenderConvList(convs) {
     list.innerHTML = convs.map(conv => {
         const other     = _dmOtherParticipant(conv, currentUserId);
         const last      = conv.last_message;
-        const preview   = last ? (last.message_type !== 'text' ? `📎 ${last.message_type}` : (last.text || '')) : 'Start chatting';
+        const preview   = last ? (last.message_type !== 'text' ? `📎 ${last.message_type}` : (last.text || '')) : 'Say hello 👋';
         const unread    = conv.unread_count || 0;
         const isActive  = conv.id == _dm.activeConvId;
         const timeStr   = last ? _dmRelativeTime(last.timestamp) : '';
+        const name      = other?.display_name || other?.username || 'Unknown';
+        const initials  = _dmInitials(name);
+        const avatarHtml = other?.profile_image
+            ? `<img src="${_escHtml(other.profile_image)}" alt="">`
+            : `<span style="font-size:14px;font-weight:700;letter-spacing:-0.5px;">${initials}</span>`;
 
         return `
         <div class="dm-conv-item ${isActive ? 'active' : ''}" onclick="dmOpenConversation(${conv.id})" data-conv-id="${conv.id}">
             <div class="dm-conv-avatar">
-                ${other?.profile_image ? `<img src="${_escHtml(other.profile_image)}" alt="">` : '<i class="fas fa-circle-user"></i>'}
-                <span class="dm-online-dot" style="display:none"></span>
+                ${avatarHtml}
             </div>
             <div class="dm-conv-body">
-                <div class="dm-conv-name">${_escHtml(other?.display_name || other?.username || 'Unknown')}</div>
+                <div class="dm-conv-name">${_escHtml(name)}</div>
                 <div class="dm-conv-preview ${unread ? 'unread' : ''}">${_escHtml(preview.slice(0, 60))}</div>
             </div>
             <div class="dm-conv-meta">
                 ${timeStr ? `<span class="dm-conv-time">${timeStr}</span>` : ''}
-                ${unread ? `<span class="dm-unread-badge">${unread}</span>` : ''}
+                ${unread ? `<span class="dm-unread-badge">${unread > 9 ? '9+' : unread}</span>` : ''}
             </div>
         </div>`;
     }).join('');
@@ -138,14 +143,19 @@ async function dmOpenConversation(convId) {
     // Find conversation meta
     const conv = _dm.conversations.find(c => c.id == convId);
     const other = conv ? _dmOtherParticipant(conv, _dmCurrentUserId()) : null;
+    const name = other?.display_name || other?.username || 'Chat';
+    const initials = _dmInitials(name);
 
     // Update chat header
-    const nameEl = document.getElementById('dmChatName');
+    const nameEl   = document.getElementById('dmChatName');
     const avatarEl = document.getElementById('dmChatAvatar');
-    if (nameEl)   nameEl.textContent   = other?.display_name || other?.username || 'Chat';
-    if (avatarEl) avatarEl.innerHTML   = other?.profile_image
+    if (nameEl)   nameEl.textContent = name;
+    if (avatarEl) avatarEl.innerHTML = other?.profile_image
         ? `<img src="${_escHtml(other.profile_image)}" alt="">`
-        : '<i class="fas fa-circle-user"></i>';
+        : `<span style="font-size:15px;font-weight:700;letter-spacing:-0.5px;">${initials}</span>`;
+
+    // Store other user id for profile link
+    if (other?.id) avatarEl?.setAttribute('data-user-id', other.id);
 
     // Show chat inner, hide welcome
     const welcome = document.getElementById('dmWelcome');
@@ -331,8 +341,8 @@ function dmOpenNewChat() {
     if (modal) modal.style.display = 'flex';
     const input = document.getElementById('dmUserSearch');
     if (input) { input.value = ''; input.focus(); }
-    const results = document.getElementById('dmUserResults');
-    if (results) results.innerHTML = '<p class="dm-hint">Start typing to find a user.</p>';
+    // Load suggested players immediately — no typing required
+    _dmLoadSuggestedUsers();
 }
 
 function dmCloseNewChat() {
@@ -340,36 +350,85 @@ function dmCloseNewChat() {
     if (modal) modal.style.display = 'none';
 }
 
+// Load the full suggested list (no query) when the modal first opens
+async function _dmLoadSuggestedUsers() {
+    const results = document.getElementById('dmUserResults');
+    if (!results) return;
+    results.innerHTML = '<div class="dm-empty-state"><div class="dm-spinner"></div></div>';
+    try {
+        const users = await DM_API.availableUsers('');
+        _dmRenderUserResults(users);
+    } catch (e) {
+        results.innerHTML = '<p class="dm-hint">Could not load users. Try searching.</p>';
+    }
+}
+
 async function dmSearchUsers(query) {
     clearTimeout(_dm.searchDebounce);
     const results = document.getElementById('dmUserResults');
+
     if (!query.trim()) {
-        if (results) results.innerHTML = '<p class="dm-hint">Start typing to find a user.</p>';
+        // Empty search — reload the full suggested list
+        _dmLoadSuggestedUsers();
         return;
     }
+
     _dm.searchDebounce = setTimeout(async () => {
         if (results) results.innerHTML = '<div class="dm-empty-state"><div class="dm-spinner"></div></div>';
         try {
-            const data = await apiService.get(`/users/search/?q=${encodeURIComponent(query)}`);
-            const users = Array.isArray(data) ? data : [];
-            if (!users.length) {
-                results.innerHTML = '<p class="dm-hint">No users found.</p>';
-                return;
-            }
-            results.innerHTML = users.map(u => `
-            <div class="dm-user-result-item" onclick="dmStartConversation(${u.id})">
-                <div class="dm-user-result-avatar">
-                    ${u.profile_image ? `<img src="${_escHtml(u.profile_image)}" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">` : '<i class="fas fa-circle-user"></i>'}
-                </div>
-                <div class="dm-user-result-info">
-                    <div class="dm-user-result-name">${_escHtml(u.display_name || u.username)}</div>
-                    <div class="dm-user-result-tier">${_escHtml(u.access_tier || 'Bronze')} · ${u.prestige_points || 0} pts</div>
-                </div>
-            </div>`).join('');
+            const users = await DM_API.availableUsers(query);
+            _dmRenderUserResults(users);
         } catch (e) {
             if (results) results.innerHTML = '<p class="dm-hint">Search failed. Try again.</p>';
         }
-    }, 350);
+    }, 300);
+}
+
+function _dmRenderUserResults(users) {
+    const results = document.getElementById('dmUserResults');
+    if (!results) return;
+
+    if (!users.length) {
+        results.innerHTML = '<p class="dm-hint">No players found.</p>';
+        return;
+    }
+
+    const currentUserId = _dmCurrentUserId();
+
+    results.innerHTML = users.map(u => {
+        const name     = u.display_name || u.username;
+        const initials = _dmInitials(name);
+        const avatarHtml = u.profile_image
+            ? `<img src="${_escHtml(u.profile_image)}" alt="">`
+            : `<span style="font-size:14px;font-weight:700;">${initials}</span>`;
+        const isFollowing = u.is_following;
+        const isActive    = u.is_active;
+
+        return `
+        <div class="dm-user-result-item" onclick="dmStartConversation(${u.id})">
+            <div class="dm-user-result-avatar" style="position:relative;">
+                ${avatarHtml}
+                ${isActive ? `<span style="
+                    position:absolute;bottom:1px;right:1px;
+                    width:10px;height:10px;background:#22c55e;
+                    border-radius:50%;border:2px solid #fff;">
+                </span>` : ''}
+            </div>
+            <div class="dm-user-result-info">
+                <div class="dm-user-result-name">
+                    ${_escHtml(name)}
+                    ${isFollowing ? `<span style="font-size:10px;color:var(--artx-primary,#556b2f);font-weight:600;margin-left:5px;">Following</span>` : ''}
+                </div>
+                <div class="dm-user-result-tier">
+                    ${_escHtml(u.access_tier || 'Bronze')} · ${(u.prestige_points || 0).toLocaleString()} pts
+                </div>
+            </div>
+            <button class="dm-user-result-action"
+                    onclick="event.stopPropagation();dmStartConversation(${u.id})">
+                Message
+            </button>
+        </div>`;
+    }).join('');
 }
 
 async function dmStartConversation(userId) {
@@ -421,12 +480,14 @@ if (typeof window !== 'undefined') {
         setInterval(async () => {
             try {
                 const d = await DM_API.unreadCount();
-                const badge = document.getElementById('msgBadge');
-                if (badge) {
-                    const n = d?.unread_count || 0;
-                    badge.textContent   = n > 9 ? '9+' : n;
-                    badge.style.display = n > 0 ? '' : 'none';
-                }
+                const badge  = document.getElementById('msgBadge');
+                const badge2 = document.getElementById('msgBadgeMobile');
+                const n = d?.unread_count || 0;
+                [badge, badge2].forEach(b => {
+                    if (!b) return;
+                    b.textContent   = n > 9 ? '9+' : n;
+                    b.style.display = n > 0 ? '' : 'none';
+                });
             } catch (_) {}
         }, 30000);
 
@@ -488,6 +549,19 @@ function _escHtml(s) {
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
+function _dmInitials(name) {
+    if (!name) return '?';
+    const parts = name.trim().split(/\s+/);
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+function dmViewProfile() {
+    const avatarEl = document.getElementById('dmChatAvatar');
+    const userId   = avatarEl?.getAttribute('data-user-id');
+    if (userId) window.location.href = `pages/user.html?id=${userId}`;
+}
+
 // Expose for use by other scripts (e.g. social-feed "Message" buttons)
 window.dmStartConversation = dmStartConversation;
 window.dmOpenNewChat       = dmOpenNewChat;
@@ -499,3 +573,4 @@ window.dmCloseChat         = dmCloseChat;
 window.dmSendMessage       = dmSendMessage;
 window.dmHandleMedia       = dmHandleMedia;
 window.dmRemoveMedia       = dmRemoveMedia;
+window.dmViewProfile       = dmViewProfile;

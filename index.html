@@ -387,16 +387,25 @@
                 <!-- ── Conversation list (left panel) ── -->
                 <aside class="dm-sidebar" id="dmSidebar">
                     <div class="dm-sidebar-header">
-                        <h2 class="dm-sidebar-title"><i class="fas fa-comment-dots"></i> Messages</h2>
+                        <h2 class="dm-sidebar-title">
+                            <i class="fas fa-comment-dots"></i>
+                            Messages
+                        </h2>
                         <button class="dm-new-btn" onclick="dmOpenNewChat()" title="New conversation">
-                            <i class="fas fa-edit"></i>
+                            <i class="fas fa-pen-to-square"></i>
                         </button>
                     </div>
+
                     <div class="dm-search-wrap">
                         <i class="fas fa-magnifying-glass"></i>
-                        <input type="text" id="dmSearchInput" placeholder="Search conversations…"
-                               oninput="dmFilterConversations(this.value)">
+                        <input type="text" id="dmSearchInput"
+                               placeholder="Search conversations…"
+                               oninput="dmFilterConversations(this.value)"
+                               autocomplete="off">
                     </div>
+
+                    <div class="dm-conv-section-label">Recent</div>
+
                     <div class="dm-conv-list" id="dmConvList">
                         <div class="dm-empty-state">
                             <div class="dm-spinner"></div>
@@ -407,17 +416,19 @@
                 <!-- ── Chat window (right panel) ── -->
                 <main class="dm-chat-area" id="dmChatArea">
 
-                    <!-- Placeholder shown when no conversation is open -->
+                    <!-- Welcome / no-selection state -->
                     <div class="dm-welcome" id="dmWelcome">
-                        <div class="dm-welcome-icon"><i class="fas fa-comment-dots"></i></div>
+                        <div class="dm-welcome-icon">
+                            <i class="fas fa-comment-dots"></i>
+                        </div>
                         <h3>Your Messages</h3>
-                        <p>Select a conversation or start a new one to begin chatting.</p>
+                        <p>Select a conversation from the list or start a new one to begin chatting with other players.</p>
                         <button class="dm-start-btn" onclick="dmOpenNewChat()">
-                            <i class="fas fa-edit"></i> New Message
+                            <i class="fas fa-pen-to-square"></i> New Message
                         </button>
                     </div>
 
-                    <!-- Active conversation (hidden until a conv is selected) -->
+                    <!-- Active conversation -->
                     <div class="dm-chat-inner" id="dmChatInner" style="display:none;">
 
                         <!-- Chat header -->
@@ -429,8 +440,17 @@
                                 <i class="fas fa-circle-user"></i>
                             </div>
                             <div class="dm-chat-meta">
-                                <span class="dm-chat-name"  id="dmChatName">—</span>
-                                <span class="dm-chat-status" id="dmChatStatus">Online</span>
+                                <span class="dm-chat-name"   id="dmChatName">—</span>
+                                <span class="dm-chat-status" id="dmChatStatus">Active now</span>
+                            </div>
+                            <div class="dm-chat-actions">
+                                <button class="dm-header-action-btn" title="Search in conversation">
+                                    <i class="fas fa-magnifying-glass"></i>
+                                </button>
+                                <button class="dm-header-action-btn" title="View profile"
+                                        onclick="dmViewProfile()">
+                                    <i class="fas fa-circle-info"></i>
+                                </button>
                             </div>
                         </div>
 
@@ -443,47 +463,57 @@
 
                         <!-- Compose bar -->
                         <form class="dm-compose" id="dmComposeForm" onsubmit="dmSendMessage(event)">
-                            <!-- Media attachment button -->
-                            <label class="dm-attach-btn" title="Attach image">
-                                <i class="fas fa-image"></i>
-                                <input type="file" id="dmMediaInput" accept="image/*,video/*,audio/*"
-                                       style="display:none" onchange="dmHandleMedia(event)">
-                            </label>
 
-                            <!-- Image preview strip (hidden until a file is selected) -->
+                            <!-- Media preview (shown only when a file is staged) -->
                             <div class="dm-media-preview" id="dmMediaPreview" style="display:none;">
                                 <img id="dmMediaThumb" src="" alt="preview">
                                 <button type="button" class="dm-remove-media"
-                                        onclick="dmRemoveMedia()">&times;</button>
+                                        onclick="dmRemoveMedia()" title="Remove">&times;</button>
                             </div>
+
+                            <!-- Attach button -->
+                            <label class="dm-attach-btn" title="Attach image or video">
+                                <i class="fas fa-paperclip"></i>
+                                <input type="file" id="dmMediaInput"
+                                       accept="image/*,video/*,audio/*"
+                                       style="display:none"
+                                       onchange="dmHandleMedia(event)">
+                            </label>
 
                             <input type="text" id="dmTextInput" class="dm-text-input"
                                    placeholder="Type a message…" autocomplete="off">
+
                             <button type="submit" class="dm-send-btn" title="Send">
                                 <i class="fas fa-paper-plane"></i>
                             </button>
                         </form>
-                    </div>
+
+                    </div><!-- /dm-chat-inner -->
                 </main>
 
-            </div>
+            </div><!-- /dm-shell -->
         </section>
 
-        <!-- New Chat Modal — search for a user to start a conversation -->
+        <!-- New Chat Modal -->
         <div id="dmNewChatModal" class="dm-modal-backdrop" style="display:none;"
              onclick="if(event.target===this)dmCloseNewChat()">
             <div class="dm-modal">
                 <div class="dm-modal-header">
                     <h3><i class="fas fa-user-plus"></i> New Message</h3>
-                    <button class="dm-modal-close" onclick="dmCloseNewChat()">&times;</button>
+                    <button class="dm-modal-close" onclick="dmCloseNewChat()" title="Close">&times;</button>
                 </div>
                 <div class="dm-modal-search">
                     <i class="fas fa-magnifying-glass"></i>
-                    <input type="text" id="dmUserSearch" placeholder="Search by username…"
-                           oninput="dmSearchUsers(this.value)" autocomplete="off">
+                    <input type="text" id="dmUserSearch"
+                           placeholder="Search by username…"
+                           oninput="dmSearchUsers(this.value)"
+                           autocomplete="off">
                 </div>
                 <div class="dm-user-results" id="dmUserResults">
-                    <p class="dm-hint">Start typing to find a user.</p>
+                    <p class="dm-hint">
+                        <i class="fas fa-search" style="display:block;font-size:28px;margin-bottom:8px;opacity:0.3;"></i>
+                        Loading players…
+                    </p>
                 </div>
             </div>
         </div>
@@ -2157,6 +2187,7 @@
     <script src="scripts/app.js"></script>
     <script src="scripts/social-feed.js"></script>
     <script src="scripts/messenger.js"></script>
+    <script src="scripts/firebase-messenger.js"></script>
     <script src="scripts/challenges-enhanced.js"></script>
     <script src="scripts/image-interpretation.js"></script>
     <script src="scripts/settings.js"></script>

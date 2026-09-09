@@ -20,6 +20,7 @@ urlpatterns = [
     path('api/chatbot/', include('chatbot.urls')),
     path('api/challenges/', include('challenges.urls')),
     path('api/social/', include('social.urls')),  # <-- ADDED THIS
+    path('api/messenger/', include('messenger.urls')),
     
     # Webhooks
     path('webhooks/', include('payments.webhook_urls')),
