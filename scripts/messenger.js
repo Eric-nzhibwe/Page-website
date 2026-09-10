@@ -110,8 +110,10 @@ function dmRenderConvList(convs) {
         const timeStr   = last ? _dmRelativeTime(last.timestamp) : '';
         const name      = other?.display_name || other?.username || 'Unknown';
         const initials  = _dmInitials(name);
-        const avatarHtml = other?.profile_image
-            ? `<img src="${_escHtml(other.profile_image)}" alt="">`
+        // Serializer returns profile_image_url; available_users_view returns profile_image
+        const avatarSrc = other?.profile_image_url || other?.profile_image || null;
+        const avatarHtml = avatarSrc
+            ? `<img src="${_escHtml(avatarSrc)}" alt="">`
             : `<span style="font-size:14px;font-weight:700;letter-spacing:-0.5px;">${initials}</span>`;
 
         return `
@@ -150,8 +152,10 @@ async function dmOpenConversation(convId) {
     const nameEl   = document.getElementById('dmChatName');
     const avatarEl = document.getElementById('dmChatAvatar');
     if (nameEl)   nameEl.textContent = name;
-    if (avatarEl) avatarEl.innerHTML = other?.profile_image
-        ? `<img src="${_escHtml(other.profile_image)}" alt="">`
+    // Serializer returns profile_image_url; fall back to profile_image for other sources
+    const chatAvatarSrc = other?.profile_image_url || other?.profile_image || null;
+    if (avatarEl) avatarEl.innerHTML = chatAvatarSrc
+        ? `<img src="${_escHtml(chatAvatarSrc)}" alt="">`
         : `<span style="font-size:15px;font-weight:700;letter-spacing:-0.5px;">${initials}</span>`;
 
     // Store other user id for profile link
@@ -355,10 +359,17 @@ async function _dmLoadSuggestedUsers() {
     const results = document.getElementById('dmUserResults');
     if (!results) return;
     results.innerHTML = '<div class="dm-empty-state"><div class="dm-spinner"></div></div>';
+
+    // Ensure apiService has the latest token (it may have been set after construction)
+    if (!apiService.token) {
+        apiService.token = localStorage.getItem('djangoAuthToken') || localStorage.getItem('authToken') || null;
+    }
+
     try {
         const users = await DM_API.availableUsers('');
         _dmRenderUserResults(users);
     } catch (e) {
+        console.error('dmLoadSuggestedUsers:', e);
         results.innerHTML = '<p class="dm-hint">Could not load users. Try searching.</p>';
     }
 }
@@ -371,6 +382,11 @@ async function dmSearchUsers(query) {
         // Empty search — reload the full suggested list
         _dmLoadSuggestedUsers();
         return;
+    }
+
+    // Ensure apiService has the latest token
+    if (!apiService.token) {
+        apiService.token = localStorage.getItem('djangoAuthToken') || localStorage.getItem('authToken') || null;
     }
 
     _dm.searchDebounce = setTimeout(async () => {
@@ -398,8 +414,10 @@ function _dmRenderUserResults(users) {
     results.innerHTML = users.map(u => {
         const name     = u.display_name || u.username;
         const initials = _dmInitials(name);
-        const avatarHtml = u.profile_image
-            ? `<img src="${_escHtml(u.profile_image)}" alt="">`
+        // available_users_view returns 'profile_image'; serializer returns 'profile_image_url'
+        const userAvatarSrc = u.profile_image || u.profile_image_url || null;
+        const avatarHtml = userAvatarSrc
+            ? `<img src="${_escHtml(userAvatarSrc)}" alt="">`
             : `<span style="font-size:14px;font-weight:700;">${initials}</span>`;
         const isFollowing = u.is_following;
         const isActive    = u.is_active;
