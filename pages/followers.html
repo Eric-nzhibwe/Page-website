@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Followers & Following — ARTX</title>
+    <link rel="icon" type="image/jpeg" href="../images/ARTX.jpg">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+    <link rel="stylesheet" href="../styles/styles.css">
+    <link rel="stylesheet" href="../styles/icon-nav.css">
+    <script src="../scripts/theme.js"></script>
+    <style>
+        /* ── Page shell ── */
+        body { background: var(--bg-primary, #f4f7f0); min-height: 100vh; margin: 0; font-family: 'Segoe UI', system-ui, sans-serif; }
+
+        .flw-header {
+            position: sticky; top: 0; z-index: 100;
+            background: #fff;
+            border-bottom: 1px solid rgba(85,107,47,0.14);
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+            display: flex; align-items: center; gap: 14px;
+            padding: 14px 20px;
+        }
+        .flw-back-btn {
+            width: 38px; height: 38px;
+            background: rgba(85,107,47,0.08);
+            border: 1.5px solid rgba(85,107,47,0.18);
+            border-radius: 9px;
+            color: #556b2f;
+            font-size: 15px;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: background 0.15s;
+            text-decoration: none;
+        }
+        .flw-back-btn:hover { background: #556b2f; color: #fff; }
+        .flw-header-title { font-size: 18px; font-weight: 800; color: #1a2010; letter-spacing: -0.3px; }
+
+        .flw-page { max-width: 700px; margin: 0 auto; padding: 24px 16px 80px; }
+
+        /* ── Profile mini card ── */
+        .flw-profile-card {
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 2px 16px rgba(0,0,0,0.07);
+            padding: 20px;
+            display: flex; align-items: center; gap: 18px;
+            margin-bottom: 24px;
+        }
+        .flw-profile-avatar {
+            width: 64px; height: 64px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #556b2f, #8bc34a);
+            display: flex; align-items: center; justify-content: center;
+            color: #fff; font-size: 26px;
+            flex-shrink: 0; overflow: hidden;
+            box-shadow: 0 4px 14px rgba(85,107,47,0.25);
+        }
+        .flw-profile-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+        .flw-profile-info h2 { margin: 0 0 4px; font-size: 18px; font-weight: 800; color: #1a2010; }
+        .flw-profile-info p  { margin: 0; font-size: 13px; color: #8a9e7a; }
+        .flw-counts { display: flex; gap: 20px; margin-top: 8px; }
+        .flw-count-item { text-align: center; cursor: pointer; }
+        .flw-count-item strong { display: block; font-size: 20px; font-weight: 800; color: #556b2f; }
+        .flw-count-item span   { font-size: 12px; color: #8a9e7a; }
+        .flw-count-item.active strong { color: #4a8024; }
+
+        /* ── Tabs ── */
+        .flw-tabs {
+            display: flex; gap: 0;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+        .flw-tab {
+            flex: 1;
+            padding: 13px 10px;
+            border: none;
+            background: none;
+            font-size: 14px; font-weight: 700;
+            color: #8a9e7a;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center; gap: 7px;
+            border-bottom: 3px solid transparent;
+            transition: color 0.15s, border-color 0.15s, background 0.15s;
+            font-family: inherit;
+        }
+        .flw-tab:hover { color: #556b2f; background: rgba(85,107,47,0.05); }
+        .flw-tab.active { color: #556b2f; border-bottom-color: #556b2f; background: rgba(85,107,47,0.04); }
+        .flw-tab .flw-tab-count {
+            background: rgba(85,107,47,0.12);
+            color: #556b2f;
+            border-radius: 999px;
+            padding: 1px 7px;
+            font-size: 11px; font-weight: 700;
+        }
+
+        /* ── Search ── */
+        .flw-search {
+            display: flex; align-items: center; gap: 10px;
+            background: #fff; border: 1.5px solid rgba(85,107,47,0.16);
+            border-radius: 999px;
+            padding: 10px 16px;
+            margin-bottom: 16px;
+            transition: border-color 0.15s, box-shadow 0.15s;
+        }
+        .flw-search:focus-within {
+            border-color: #556b2f;
+            box-shadow: 0 0 0 3px rgba(85,107,47,0.12);
+        }
+        .flw-search i { color: #8a9e7a; font-size: 13px; }
+        .flw-search input { flex: 1; border: none; outline: none; font-size: 14px; background: transparent; color: #1a2010; font-family: inherit; }
+        .flw-search input::placeholder { color: #8a9e7a; }
+
+        /* ── User list ── */
+        .flw-list { display: flex; flex-direction: column; gap: 4px; }
+
+        .flw-user-card {
+            background: #fff;
+            border-radius: 12px;
+            padding: 13px 16px;
+            display: flex; align-items: center; gap: 14px;
+            box-shadow: 0 1px 6px rgba(0,0,0,0.05);
+            transition: box-shadow 0.15s, background 0.15s;
+        }
+        .flw-user-card:hover { box-shadow: 0 3px 14px rgba(0,0,0,0.09); background: #fafdf6; }
+
+        .flw-user-avatar {
+            width: 48px; height: 48px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #556b2f, #8bc34a);
+            display: flex; align-items: center; justify-content: center;
+            color: #fff; font-size: 19px; font-weight: 700;
+            flex-shrink: 0; overflow: hidden;
+            box-shadow: 0 2px 8px rgba(85,107,47,0.2);
+            cursor: pointer;
+        }
+        .flw-user-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+
+        .flw-user-info { flex: 1; min-width: 0; cursor: pointer; }
+        .flw-user-name {
+            font-size: 14px; font-weight: 700; color: #1a2010;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .flw-user-sub {
+            font-size: 12px; color: #8a9e7a; margin-top: 2px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .flw-user-tier {
+            background: rgba(85,107,47,0.1);
+            color: #556b2f;
+            padding: 1px 7px;
+            border-radius: 999px;
+            font-size: 10px; font-weight: 600;
+        }
+
+        .flw-user-actions { display: flex; gap: 6px; flex-shrink: 0; }
+
+        .flw-follow-btn {
+            padding: 7px 14px;
+            border-radius: 999px;
+            font-size: 12px; font-weight: 700;
+            cursor: pointer;
+            border: 1.5px solid rgba(85,107,47,0.3);
+            background: transparent;
+            color: #556b2f;
+            font-family: inherit;
+            display: flex; align-items: center; gap: 5px;
+            transition: all 0.15s;
+        }
+        .flw-follow-btn:hover { background: #556b2f; color: #fff; border-color: #556b2f; }
+        .flw-follow-btn.following {
+            background: rgba(85,107,47,0.1);
+            border-color: #556b2f;
+            color: #556b2f;
+        }
+        .flw-follow-btn.following:hover { background: #fee2e2; border-color: #ef4444; color: #ef4444; }
+
+        .flw-msg-btn {
+            width: 34px; height: 34px;
+            background: rgba(85,107,47,0.1);
+            border: 1.5px solid rgba(85,107,47,0.2);
+            border-radius: 9px;
+            color: #556b2f;
+            font-size: 14px;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.15s;
+            text-decoration: none;
+        }
+        .flw-msg-btn:hover { background: #556b2f; color: #fff; }
+
+        /* States */
+        .flw-empty {
+            text-align: center;
+            padding: 48px 20px;
+            color: #8a9e7a;
+        }
+        .flw-empty i { font-size: 42px; margin-bottom: 14px; display: block; opacity: 0.3; }
+        .flw-empty p { margin: 0; font-size: 14px; }
+
+        .flw-skeleton {
+            display: flex; flex-direction: column; gap: 4px;
+        }
+        .flw-skel-card {
+            background: #fff; border-radius: 12px;
+            padding: 13px 16px; display: flex; align-items: center; gap: 14px;
+        }
+        .flw-skel-circle { width: 48px; height: 48px; border-radius: 50%; background: #e8f0dc; flex-shrink: 0; animation: flwPulse 1.4s ease infinite; }
+        .flw-skel-lines  { flex: 1; display: flex; flex-direction: column; gap: 7px; }
+        .flw-skel-line   { height: 12px; background: #e8f0dc; border-radius: 6px; animation: flwPulse 1.4s ease infinite; }
+        .flw-skel-line--w70 { width: 70%; }
+        .flw-skel-line--w45 { width: 45%; }
+        @keyframes flwPulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+
+        /* Responsive */
+        @media (max-width: 480px) {
+            .flw-user-sub .flw-user-pts { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ── Header ── -->
+<header class="flw-header">
+    <a href="javascript:history.back()" class="flw-back-btn" title="Go back">
+        <i class="fas fa-arrow-left"></i>
+    </a>
+    <span class="flw-header-title">Connections</span>
+</header>
+
+<!-- ── Page ── -->
+<div class="flw-page">
+
+    <!-- Profile mini card -->
+    <div class="flw-profile-card">
+        <div class="flw-profile-avatar" id="flwAvatar">
+            <i class="fas fa-user-circle"></i>
+        </div>
+        <div class="flw-profile-info">
+            <h2 id="flwUsername">Loading…</h2>
+            <p id="flwTier">—</p>
+            <div class="flw-counts">
+                <div class="flw-count-item" onclick="flwSwitchTab('followers')" id="flwFollowersCount">
+                    <strong id="flwFollowersNum">—</strong>
+                    <span>Followers</span>
+                </div>
+                <div class="flw-count-item" onclick="flwSwitchTab('following')" id="flwFollowingCount">
+                    <strong id="flwFollowingNum">—</strong>
+                    <span>Following</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="flw-tabs">
+        <button class="flw-tab active" id="flwTabFollowers" onclick="flwSwitchTab('followers')">
+            <i class="fas fa-users"></i> Followers
+            <span class="flw-tab-count" id="flwTabFollowersCount">0</span>
+        </button>
+        <button class="flw-tab" id="flwTabFollowing" onclick="flwSwitchTab('following')">
+            <i class="fas fa-user-check"></i> Following
+            <span class="flw-tab-count" id="flwTabFollowingCount">0</span>
+        </button>
+    </div>
+
+    <!-- Search -->
+    <div class="flw-search">
+        <i class="fas fa-magnifying-glass"></i>
+        <input type="text" id="flwSearchInput" placeholder="Search…" oninput="flwSearch(this.value)" autocomplete="off">
+    </div>
+
+    <!-- List container -->
+    <div class="flw-list" id="flwList">
+        <div class="flw-skeleton" id="flwSkeleton">
+            ${[1,2,3,4].map(() => `
+            <div class="flw-skel-card">
+                <div class="flw-skel-circle"></div>
+                <div class="flw-skel-lines">
+                    <div class="flw-skel-line flw-skel-line--w70"></div>
+                    <div class="flw-skel-line flw-skel-line--w45"></div>
+                </div>
+            </div>`).join('')}
+        </div>
+    </div>
+
+</div>
+
+<script>
+'use strict';
+
+const FLW_API = (
+    window.location.hostname === 'localhost' ||
+    window.location.hostname === '127.0.0.1'
+) ? 'http://localhost:8000/api'
+  : `${window.location.origin}/api`;
+
+function flwHeaders() {
+    const t = localStorage.getItem('djangoAuthToken');
+    return t
+        ? { 'Content-Type': 'application/json', 'Authorization': `Token ${t}` }
+        : { 'Content-Type': 'application/json' };
+}
+
+// ── State ──────────────────────────────────────────────────────────────────
+let _flwTab         = 'followers';
+let _flwFollowers   = [];
+let _flwFollowing   = [];
+let _flwFollowingIds = new Set();
+let _flwViewUserId  = null; // viewing own profile by default (null = self)
+
+// ── Boot ───────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', async () => {
+    // Check URL param ?id= to allow viewing other users' connections
+    const params = new URLSearchParams(window.location.search);
+    _flwViewUserId = params.get('id') || null;
+
+    await Promise.all([flwLoadProfile(), flwLoadAll()]);
+    flwSwitchTab('followers');
+});
+
+async function flwLoadProfile() {
+    try {
+        const endpoint = _flwViewUserId
+            ? `${FLW_API}/auth/profile/?id=${_flwViewUserId}`
+            : `${FLW_API}/auth/profile/`;
+        const res  = await fetch(endpoint, { headers: flwHeaders() });
+        if (!res.ok) throw new Error();
+        const u = await res.json();
+
+        const avatarEl = document.getElementById('flwAvatar');
+        if (u.profile_image_url) {
+            avatarEl.innerHTML = `<img src="${esc(u.profile_image_url)}" alt="">`;
+        }
+
+        document.getElementById('flwUsername').textContent = u.display_name || u.username || 'Player';
+        document.getElementById('flwTier').textContent = `${esc(u.access_tier || 'Bronze')} · ${(u.prestige_points || 0).toLocaleString()} pts`;
+    } catch {
+        document.getElementById('flwUsername').textContent = 'Player';
+    }
+}
+
+async function flwLoadAll() {
+    const uid = _flwViewUserId || '';
+    const qp  = uid ? `?user_id=${uid}` : '';
+
+    try {
+        // Load own following set (always self) for follow buttons
+        const myRes = await fetch(`${FLW_API}/social/follows/following/`, { headers: flwHeaders() });
+        if (myRes.ok) {
+            const myData = await myRes.json();
+            const myList = Array.isArray(myData) ? myData : (myData.results || []);
+            myList.forEach(f => {
+                const fid = f.user?.id ?? f.following?.id ?? f.id;
+                if (fid) _flwFollowingIds.add(String(fid));
+            });
+        }
+
+        // Load followers and following for the viewed profile
+        const [frsRes, fngRes] = await Promise.all([
+            fetch(`${FLW_API}/social/follows/followers/${qp}`, { headers: flwHeaders() }),
+            fetch(`${FLW_API}/social/follows/following/${qp}`, { headers: flwHeaders() }),
+        ]);
+
+        if (frsRes.ok) {
+            const d = await frsRes.json();
+            _flwFollowers = Array.isArray(d) ? d : (d.results || []);
+        }
+        if (fngRes.ok) {
+            const d = await fngRes.json();
+            _flwFollowing = Array.isArray(d) ? d : (d.results || []);
+        }
+
+        // Update counts
+        document.getElementById('flwFollowersNum').textContent     = _flwFollowers.length;
+        document.getElementById('flwFollowingNum').textContent      = _flwFollowing.length;
+        document.getElementById('flwTabFollowersCount').textContent = _flwFollowers.length;
+        document.getElementById('flwTabFollowingCount').textContent = _flwFollowing.length;
+
+    } catch (e) {
+        console.error('flwLoadAll:', e);
+    }
+}
+
+// ── Tab switch ─────────────────────────────────────────────────────────────
+function flwSwitchTab(tab) {
+    _flwTab = tab;
+    document.getElementById('flwTabFollowers').classList.toggle('active', tab === 'followers');
+    document.getElementById('flwTabFollowing').classList.toggle('active', tab === 'following');
+    document.getElementById('flwFollowersCount').classList.toggle('active', tab === 'followers');
+    document.getElementById('flwFollowingCount').classList.toggle('active', tab === 'following');
+    document.getElementById('flwSearchInput').value = '';
+    flwRender(tab === 'followers' ? _flwFollowers : _flwFollowing);
+}
+
+// ── Search ─────────────────────────────────────────────────────────────────
+function flwSearch(q) {
+    const src = _flwTab === 'followers' ? _flwFollowers : _flwFollowing;
+    if (!q.trim()) { flwRender(src); return; }
+    const lower = q.toLowerCase();
+    flwRender(src.filter(u => {
+        const user = u.user || u.follower || u.following || u;
+        const name = ((user.display_name || '') + ' ' + (user.username || '')).toLowerCase();
+        return name.includes(lower);
+    }));
+}
+
+// ── Render list ────────────────────────────────────────────────────────────
+function flwRender(list) {
+    const container = document.getElementById('flwList');
+    document.getElementById('flwSkeleton')?.remove();
+
+    if (!list || !list.length) {
+        container.innerHTML = `
+          <div class="flw-empty">
+            <i class="fas fa-users"></i>
+            <p>${_flwTab === 'followers' ? 'No followers yet.' : 'Not following anyone yet.'}</p>
+          </div>`;
+        return;
+    }
+
+    container.innerHTML = list.map(row => {
+        // The Follow API returns objects like { id, follower: {…}, following: {…} }
+        // Normalise to a flat user object
+        const u = row.user || (_flwTab === 'followers' ? row.follower : row.following) || row;
+        const name     = esc(u.display_name || u.username || 'Player');
+        const username = esc(u.username || '');
+        const tier     = esc(u.access_tier || 'Bronze');
+        const pts      = (u.prestige_points || 0).toLocaleString();
+        const uid      = u.id || u.user_id || '';
+        const initials = flwInitials(u.display_name || u.username || '?');
+
+        const avatarSrc = u.profile_image || u.profile_image_url || null;
+        const avatarHtml = avatarSrc
+            ? `<img src="${esc(avatarSrc)}" alt="${name}">`
+            : `<span>${initials}</span>`;
+
+        const amFollowing = _flwFollowingIds.has(String(uid));
+        const followLabel = amFollowing
+            ? '<i class="fas fa-check"></i> Following'
+            : '<i class="fas fa-user-plus"></i> Follow';
+        const followClass = amFollowing ? 'flw-follow-btn following' : 'flw-follow-btn';
+
+        // Don't show follow button for own profile viewing followers of self
+        const isSelf = !_flwViewUserId && String(uid) === flwSelfId();
+        const actionBtns = isSelf ? '' : `
+            <button class="${followClass}" data-uid="${uid}"
+                    onclick="flwToggleFollow('${uid}', this)">
+                ${followLabel}
+            </button>
+            <a href="../index.html#messenger?user=${uid}"
+               class="flw-msg-btn" title="Send message"
+               onclick="flwMessage('${uid}'); return false;">
+                <i class="fas fa-comment-dots"></i>
+            </a>`;
+
+        return `
+        <div class="flw-user-card" data-uid="${uid}">
+            <div class="flw-user-avatar" onclick="flwViewProfile('${uid}')">${avatarHtml}</div>
+            <div class="flw-user-info" onclick="flwViewProfile('${uid}')">
+                <div class="flw-user-name">${name}</div>
+                <div class="flw-user-sub">
+                    <span>@${username}</span>
+                    <span class="flw-user-tier">${tier}</span>
+                    <span class="flw-user-pts">${pts} pts</span>
+                </div>
+            </div>
+            <div class="flw-user-actions">${actionBtns}</div>
+        </div>`;
+    }).join('');
+}
+
+// ── Follow / Unfollow ──────────────────────────────────────────────────────
+async function flwToggleFollow(userId, btnEl) {
+    const amFollowing = _flwFollowingIds.has(String(userId));
+    const endpoint = amFollowing
+        ? `${FLW_API}/social/follows/unfollow/`
+        : `${FLW_API}/social/follows/follow/`;
+
+    // Optimistic UI
+    const nowFollowing = !amFollowing;
+    _applyFlwBtn(btnEl, nowFollowing);
+    if (nowFollowing) _flwFollowingIds.add(String(userId));
+    else              _flwFollowingIds.delete(String(userId));
+    _syncAllBtns(userId, nowFollowing);
+
+    try {
+        const res = await fetch(endpoint, {
+            method: 'POST',
+            headers: flwHeaders(),
+            body: JSON.stringify({ user_id: userId })
+        });
+        if (!res.ok) throw new Error(`${res.status}`);
+    } catch {
+        // Rollback
+        _applyFlwBtn(btnEl, amFollowing);
+        if (amFollowing) _flwFollowingIds.add(String(userId));
+        else             _flwFollowingIds.delete(String(userId));
+        _syncAllBtns(userId, amFollowing);
+    }
+}
+
+function _applyFlwBtn(btn, following) {
+    btn.className = following ? 'flw-follow-btn following' : 'flw-follow-btn';
+    btn.innerHTML = following
+        ? '<i class="fas fa-check"></i> Following'
+        : '<i class="fas fa-user-plus"></i> Follow';
+}
+
+function _syncAllBtns(userId, following) {
+    document.querySelectorAll(`.flw-follow-btn[data-uid="${userId}"]`)
+        .forEach(b => _applyFlwBtn(b, following));
+}
+
+// ── Navigate ───────────────────────────────────────────────────────────────
+function flwViewProfile(userId) {
+    window.location.href = `user.html?id=${userId}`;
+}
+
+function flwMessage(userId) {
+    // Open messenger on index.html and trigger conversation
+    window.location.href = `../index.html#messenger`;
+    sessionStorage.setItem('dmStartUserId', userId);
+}
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+function flwSelfId() {
+    try { return String(JSON.parse(localStorage.getItem('artxUser') || '{}').id || ''); }
+    catch { return ''; }
+}
+
+function flwInitials(name) {
+    if (!name) return '?';
+    const p = name.trim().split(/\s+/);
+    return p.length === 1 ? p[0].slice(0,2).toUpperCase() : (p[0][0] + p[p.length-1][0]).toUpperCase();
+}
+
+function esc(s) {
+    const d = document.createElement('div');
+    d.textContent = String(s ?? '');
+    return d.innerHTML;
+}
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

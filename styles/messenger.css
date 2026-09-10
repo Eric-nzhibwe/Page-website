@@ -1034,3 +1034,162 @@
     --dm-bubble-in:    #1c2214;
     --dm-bubble-in-text: #e8f0d8;
 }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   SIDEBAR TABS  (Chats / People)
+   ───────────────────────────────────────────────────────────────────────────── */
+.dm-tabs {
+    display: flex;
+    gap: 4px;
+    padding: 8px 12px 0;
+    border-bottom: 1px solid var(--dm-border-soft);
+    flex-shrink: 0;
+}
+.dm-tab {
+    flex: 1;
+    padding: 9px 4px;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--dm-text-muted);
+    font-size: 13px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: color var(--dm-transition), border-color var(--dm-transition);
+    margin-bottom: -1px;
+}
+.dm-tab:hover { color: var(--dm-text-sub); }
+.dm-tab.active {
+    color: var(--dm-accent);
+    border-bottom-color: var(--dm-accent);
+}
+.dm-tab i { font-size: 12px; }
+
+/* Make chats panel scrollable when it's visible */
+#dmPanelChats {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+}
+#dmPanelChats .dm-conv-list {
+    flex: 1;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   PEOPLE PANEL  (Online + Discover)
+   ───────────────────────────────────────────────────────────────────────────── */
+.dm-people-list {
+    padding: 4px 6px;
+}
+
+/* Each person row — same card feel as conv-item */
+.dm-person-item {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    padding: 9px 12px;
+    border-radius: var(--dm-radius);
+    cursor: default;
+    transition: background var(--dm-transition);
+    margin: 1px 0;
+}
+.dm-person-item:hover { background: var(--dm-surface-2); }
+
+.dm-person-avatar {
+    width: 42px; height: 42px;
+    border-radius: 50%;
+    background: var(--dm-gradient);
+    display: flex; align-items: center; justify-content: center;
+    color: #fff;
+    font-size: 17px;
+    flex-shrink: 0;
+    position: relative;
+    overflow: hidden;
+    box-shadow: var(--dm-shadow-sm);
+}
+.dm-person-avatar img {
+    width: 100%; height: 100%;
+    object-fit: cover; border-radius: 50%;
+}
+.dm-person-online-dot {
+    position: absolute;
+    bottom: 1px; right: 1px;
+    width: 11px; height: 11px;
+    background: #22c55e;
+    border-radius: 50%;
+    border: 2px solid var(--dm-surface);
+}
+
+.dm-person-info { flex: 1; min-width: 0; }
+.dm-person-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--dm-text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.3;
+}
+.dm-person-tier {
+    font-size: 11px;
+    color: var(--dm-text-muted);
+    margin-top: 2px;
+}
+
+/* Action buttons — Follow and Message side by side */
+.dm-person-actions {
+    display: flex;
+    gap: 5px;
+    flex-shrink: 0;
+}
+.dm-person-msg-btn {
+    width: 30px; height: 30px;
+    background: var(--dm-accent-glow);
+    border: 1.5px solid var(--dm-border);
+    border-radius: var(--dm-radius-sm);
+    color: var(--dm-accent);
+    font-size: 13px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all var(--dm-transition);
+    flex-shrink: 0;
+}
+.dm-person-msg-btn:hover {
+    background: var(--dm-accent);
+    border-color: var(--dm-accent);
+    color: #fff;
+    transform: scale(1.05);
+}
+
+/* Re-skin the existing artx-follow-btn for compact use inside messenger */
+.dm-person-actions .artx-follow-btn {
+    padding: 5px 10px;
+    font-size: 11px;
+    border-radius: var(--dm-radius-pill);
+    background: transparent;
+    border: 1.5px solid var(--dm-border);
+    color: var(--dm-text-sub);
+    cursor: pointer;
+    font-family: inherit;
+    font-weight: 600;
+    transition: all var(--dm-transition);
+    display: flex; align-items: center; gap: 4px;
+    white-space: nowrap;
+}
+.dm-person-actions .artx-follow-btn:hover {
+    background: var(--dm-accent-glow);
+    border-color: var(--dm-accent);
+    color: var(--dm-accent);
+}
+.dm-person-actions .artx-follow-btn.artx-follow-btn--following {
+    background: var(--dm-accent-glow);
+    border-color: var(--dm-accent);
+    color: var(--dm-accent);
+}

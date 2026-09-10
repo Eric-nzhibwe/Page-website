@@ -190,6 +190,46 @@
                     <i class="fas fa-share-nodes"></i>
                 </button>
             </div>
+
+            <!-- Stats strip (8 cells including followers / following) -->
+            <div class="stats-row" id="statsRow" style="display:none;">
+                <div class="stat-cell">
+                    <span class="stat-val" id="statPrestige">0</span>
+                    <span class="stat-lbl">Prestige</span>
+                </div>
+                <div class="stat-cell">
+                    <span class="stat-val" id="statLevel">1</span>
+                    <span class="stat-lbl">Level</span>
+                </div>
+                <div class="stat-cell">
+                    <span class="stat-val" id="statStreak">0</span>
+                    <span class="stat-lbl">Streak</span>
+                </div>
+                <div class="stat-cell">
+                    <span class="stat-val" id="statWins">0</span>
+                    <span class="stat-lbl">Wins</span>
+                </div>
+                <div class="stat-cell">
+                    <span class="stat-val" id="statSuccessRate">0%</span>
+                    <span class="stat-lbl">Success</span>
+                </div>
+                <div class="stat-cell">
+                    <span class="stat-val" id="statEarnings">K0</span>
+                    <span class="stat-lbl">Earnings</span>
+                </div>
+                <!-- Followers — clickable → followers page -->
+                <div class="stat-cell stat-cell--link" onclick="openFollowersModal('followers')" title="View followers"
+                     style="cursor:pointer;">
+                    <span class="stat-val" id="statFollowers">0</span>
+                    <span class="stat-lbl">Followers</span>
+                </div>
+                <!-- Following — clickable → followers page -->
+                <div class="stat-cell stat-cell--link" onclick="openFollowersModal('following')" title="View following"
+                     style="cursor:pointer;">
+                    <span class="stat-val" id="statFollowing">0</span>
+                    <span class="stat-lbl">Following</span>
+                </div>
+            </div>
         </div>
     </section>
 

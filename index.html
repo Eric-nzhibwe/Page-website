@@ -404,13 +404,40 @@
                                autocomplete="off">
                     </div>
 
-                    <div class="dm-conv-section-label">Recent</div>
+                    <!-- Tab switcher -->
+                    <div class="dm-tabs">
+                        <button class="dm-tab active" id="dmTabChats"
+                                onclick="dmSwitchTab('chats')">
+                            <i class="fas fa-comment-dots"></i> Chats
+                        </button>
+                        <button class="dm-tab" id="dmTabPeople"
+                                onclick="dmSwitchTab('people')">
+                            <i class="fas fa-users"></i> People
+                        </button>
+                    </div>
 
-                    <div class="dm-conv-list" id="dmConvList">
-                        <div class="dm-empty-state">
-                            <div class="dm-spinner"></div>
+                    <!-- Chats panel -->
+                    <div id="dmPanelChats">
+                        <div class="dm-conv-section-label">Recent</div>
+                        <div class="dm-conv-list" id="dmConvList">
+                            <div class="dm-empty-state">
+                                <div class="dm-spinner"></div>
+                            </div>
                         </div>
                     </div>
+
+                    <!-- People panel (hidden by default) -->
+                    <div id="dmPanelPeople" style="display:none; flex:1; overflow-y:auto;">
+                        <div class="dm-conv-section-label">Online Now</div>
+                        <div id="dmPeopleOnline" class="dm-people-list">
+                            <div class="dm-empty-state"><div class="dm-spinner"></div></div>
+                        </div>
+                        <div class="dm-conv-section-label" style="margin-top:8px;">Discover Players</div>
+                        <div id="dmPeopleDiscover" class="dm-people-list">
+                            <div class="dm-empty-state"><div class="dm-spinner"></div></div>
+                        </div>
+                    </div>
+
                 </aside>
 
                 <!-- ── Chat window (right panel) ── -->

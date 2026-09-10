@@ -492,6 +492,228 @@ function dmUpdateBadge() {
 // ── Public entry point called by switchView() in app.js ──────────────────────
 window.dmInit = dmInit;
 window.dmStopPolling = dmStopPolling;
+window.dmSwitchTab = dmSwitchTab;
+window.dmSearchPeople = dmSearchPeople;
+window._dmToggleFollow = _dmToggleFollow;
+window._dmPersonMessage = _dmPersonMessage;
+
+// ── Tab switcher ─────────────────────────────────────────────────────────────
+let _dmActivePeopleLoaded = false;
+
+function dmSwitchTab(tab) {
+    const chatsPanel  = document.getElementById('dmPanelChats');
+    const peoplePanel = document.getElementById('dmPanelPeople');
+    const tabChats    = document.getElementById('dmTabChats');
+    const tabPeople   = document.getElementById('dmTabPeople');
+    const searchWrap  = document.querySelector('.dm-search-wrap');
+
+    if (tab === 'chats') {
+        if (chatsPanel)  chatsPanel.style.display  = 'flex';
+        if (peoplePanel) peoplePanel.style.display = 'none';
+        tabChats?.classList.add('active');
+        tabPeople?.classList.remove('active');
+        // Restore conversation search
+        if (searchWrap) {
+            searchWrap.querySelector('input').placeholder = 'Search conversations…';
+            searchWrap.querySelector('input').oninput = function() { dmFilterConversations(this.value); };
+        }
+    } else {
+        if (chatsPanel)  chatsPanel.style.display  = 'none';
+        if (peoplePanel) peoplePanel.style.display = 'block';
+        tabChats?.classList.remove('active');
+        tabPeople?.classList.add('active');
+        // Switch search to user search
+        if (searchWrap) {
+            searchWrap.querySelector('input').placeholder = 'Search players…';
+            searchWrap.querySelector('input').value = '';
+            searchWrap.querySelector('input').oninput = function() { dmSearchPeople(this.value); };
+        }
+        // Load people only once (or on explicit refresh)
+        if (!_dmActivePeopleLoaded) {
+            _dmLoadPeoplePanel();
+            _dmActivePeopleLoaded = true;
+        }
+    }
+}
+
+// ── People panel loaders ──────────────────────────────────────────────────────
+
+async function _dmLoadPeoplePanel() {
+    // Ensure token is fresh
+    if (!apiService.token) {
+        apiService.token = localStorage.getItem('djangoAuthToken') || localStorage.getItem('authToken') || null;
+    }
+
+    const BASE = apiService.baseURL.replace('/api', '');
+    const token = apiService.token;
+    const headers = token
+        ? { 'Content-Type': 'application/json', 'Authorization': `Token ${token}` }
+        : { 'Content-Type': 'application/json' };
+
+    // Load "Online Now" — approximate with up to 6 users from discover
+    const onlineEl   = document.getElementById('dmPeopleOnline');
+    const discoverEl = document.getElementById('dmPeopleDiscover');
+
+    try {
+        const res = await fetch(`${apiService.baseURL}/auth/discover/?limit=8`, { headers });
+        if (!res.ok) throw new Error(`${res.status}`);
+        const users = await res.json();
+        const list = Array.isArray(users) ? users : (users.results || []);
+
+        _dmRenderPeopleList(onlineEl, list.slice(0, 5), true);   // online section
+        _dmRenderPeopleList(discoverEl, list.slice(0, 20), false); // discover section
+    } catch (e) {
+        const msg = `<p class="dm-hint" style="padding:12px 16px;">Could not load users (${e.message}). Try again later.</p>`;
+        if (onlineEl)   onlineEl.innerHTML   = msg;
+        if (discoverEl) discoverEl.innerHTML = msg;
+    }
+}
+
+async function dmSearchPeople(query) {
+    const onlineEl   = document.getElementById('dmPeopleOnline');
+    const discoverEl = document.getElementById('dmPeopleDiscover');
+
+    if (!query.trim()) {
+        _dmActivePeopleLoaded = false;  // force reload
+        _dmLoadPeoplePanel();
+        return;
+    }
+
+    if (!apiService.token) {
+        apiService.token = localStorage.getItem('djangoAuthToken') || localStorage.getItem('authToken') || null;
+    }
+
+    const headers = apiService.token
+        ? { 'Content-Type': 'application/json', 'Authorization': `Token ${apiService.token}` }
+        : { 'Content-Type': 'application/json' };
+
+    // Hide online section while searching
+    const onlineLabelEl = onlineEl?.previousElementSibling;
+    if (onlineEl)       onlineEl.style.display = 'none';
+    if (onlineLabelEl)  onlineLabelEl.style.display = 'none';
+    if (discoverEl) discoverEl.innerHTML = '<div class="dm-empty-state"><div class="dm-spinner"></div></div>';
+
+    try {
+        const res = await fetch(
+            `${apiService.baseURL}/auth/search/?q=${encodeURIComponent(query)}`,
+            { headers }
+        );
+        if (!res.ok) throw new Error(`${res.status}`);
+        const users = await res.json();
+        const list = Array.isArray(users) ? users : (users.results || []);
+        _dmRenderPeopleList(discoverEl, list, false);
+    } catch (e) {
+        if (discoverEl) discoverEl.innerHTML = `<p class="dm-hint">Search failed. Try again.</p>`;
+    }
+}
+
+function _dmRenderPeopleList(container, users, showOnlineDot) {
+    if (!container) return;
+    if (!users || !users.length) {
+        container.innerHTML = '<p class="dm-hint" style="padding:8px 16px;font-size:12px;">No users to show.</p>';
+        return;
+    }
+
+    // Restore visibility in case it was hidden by search
+    container.style.display = '';
+    const labelEl = container.previousElementSibling;
+    if (labelEl && labelEl.classList.contains('dm-conv-section-label')) {
+        labelEl.style.display = '';
+    }
+
+    // Seed follow state from realtime-updates' _followingSet if available
+    const followingIds = typeof _followingSet !== 'undefined'
+        ? _followingSet
+        : new Set();
+
+    container.innerHTML = users.map(u => {
+        const name      = _escHtml(u.display_name || u.username || 'Player');
+        const initials  = _dmInitials(u.display_name || u.username || '?');
+        const avatarSrc = u.profile_image || u.profile_image_url || null;
+        const tier      = _escHtml(u.access_tier || 'Bronze');
+        const isFollowing = followingIds.has(String(u.id));
+
+        const avatarInner = avatarSrc
+            ? `<img src="${_escHtml(avatarSrc)}" alt="${name}">`
+            : `<span style="font-size:13px;font-weight:700;">${initials}</span>`;
+
+        const onlineDot = showOnlineDot
+            ? `<span class="dm-person-online-dot"></span>`
+            : '';
+
+        const followLabel = isFollowing
+            ? '<i class="fas fa-check"></i> Following'
+            : '<i class="fas fa-user-plus"></i> Follow';
+        const followClass = isFollowing ? 'artx-follow-btn artx-follow-btn--following' : 'artx-follow-btn';
+
+        return `<div class="dm-person-item">
+            <div class="dm-person-avatar">
+                ${avatarInner}${onlineDot}
+            </div>
+            <div class="dm-person-info">
+                <div class="dm-person-name">${name}</div>
+                <div class="dm-person-tier">${tier}</div>
+            </div>
+            <div class="dm-person-actions">
+                <button class="${followClass}" data-uid="${u.id}"
+                        onclick="event.stopPropagation(); _dmToggleFollow(${u.id}, this)"
+                        title="${isFollowing ? 'Unfollow' : 'Follow'}">${followLabel}</button>
+                <button class="dm-person-msg-btn"
+                        onclick="event.stopPropagation(); _dmPersonMessage(${u.id})"
+                        title="Send message">
+                    <i class="fas fa-comment-dots"></i>
+                </button>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+// Thin wrapper — delegates to realtime-updates.js toggleFollow if available,
+// otherwise calls the API directly so the messenger works standalone.
+async function _dmToggleFollow(userId, btnEl) {
+    if (typeof toggleFollow === 'function') {
+        // realtime-updates.js is loaded — use its full implementation
+        await toggleFollow(userId, btnEl);
+        return;
+    }
+
+    // Standalone fallback
+    const token = localStorage.getItem('djangoAuthToken');
+    if (!token) { alert('Please log in first.'); return; }
+
+    const BASE = apiService.baseURL;
+    const isFollowing = btnEl.classList.contains('artx-follow-btn--following');
+    const endpoint = isFollowing
+        ? `${BASE}/social/follows/unfollow/`
+        : `${BASE}/social/follows/follow/`;
+
+    // Optimistic
+    btnEl.classList.toggle('artx-follow-btn--following', !isFollowing);
+    btnEl.innerHTML = !isFollowing
+        ? '<i class="fas fa-check"></i> Following'
+        : '<i class="fas fa-user-plus"></i> Follow';
+
+    try {
+        const res = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Token ${token}` },
+            body: JSON.stringify({ user_id: userId })
+        });
+        if (!res.ok) throw new Error(`${res.status}`);
+    } catch {
+        // Rollback
+        btnEl.classList.toggle('artx-follow-btn--following', isFollowing);
+        btnEl.innerHTML = isFollowing
+            ? '<i class="fas fa-check"></i> Following'
+            : '<i class="fas fa-user-plus"></i> Follow';
+    }
+}
+
+async function _dmPersonMessage(userId) {
+    // Switch back to chats tab then start conversation
+    dmSwitchTab('chats');
+    await dmStartConversation(userId);
+}
 
 // Auto-init when the messenger section becomes visible (hook into switchView)
 const _origSwitchView = typeof switchView === 'function' ? switchView : null;
@@ -515,9 +737,15 @@ if (typeof window !== 'undefined') {
 
         // Deep-link: if page loaded with #messenger in hash, open the view
         if (window.location.hash.startsWith('#messenger')) {
-            setTimeout(() => {
+            setTimeout(async () => {
                 if (typeof switchView === 'function') switchView('messenger');
-            }, 400);
+                // Pick up a pending user to message (set by followers.html)
+                const pendingUserId = sessionStorage.getItem('dmStartUserId');
+                if (pendingUserId) {
+                    sessionStorage.removeItem('dmStartUserId');
+                    await dmStartConversation(pendingUserId);
+                }
+            }, 600);
         }
     });
 }
