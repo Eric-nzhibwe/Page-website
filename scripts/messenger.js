@@ -366,11 +366,13 @@ async function _dmLoadSuggestedUsers() {
     }
 
     try {
-        const users = await DM_API.availableUsers('');
+        const data = await DM_API.availableUsers('');
+        // API may return an array directly or a paginated {results:[]} object
+        const users = Array.isArray(data) ? data : (data.results || []);
         _dmRenderUserResults(users);
     } catch (e) {
-        console.error('dmLoadSuggestedUsers:', e);
-        results.innerHTML = '<p class="dm-hint">Could not load users. Try searching.</p>';
+        console.error('dmLoadSuggestedUsers error:', e);
+        results.innerHTML = `<p class="dm-hint">Could not load users (${e.message || 'network error'}). Try searching.</p>`;
     }
 }
 
@@ -392,10 +394,12 @@ async function dmSearchUsers(query) {
     _dm.searchDebounce = setTimeout(async () => {
         if (results) results.innerHTML = '<div class="dm-empty-state"><div class="dm-spinner"></div></div>';
         try {
-            const users = await DM_API.availableUsers(query);
+            const data = await DM_API.availableUsers(query);
+            const users = Array.isArray(data) ? data : (data.results || []);
             _dmRenderUserResults(users);
         } catch (e) {
-            if (results) results.innerHTML = '<p class="dm-hint">Search failed. Try again.</p>';
+            console.error('dmSearchUsers error:', e);
+            if (results) results.innerHTML = `<p class="dm-hint">Search failed (${e.message || 'network error'}). Try again.</p>`;
         }
     }, 300);
 }

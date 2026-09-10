@@ -165,76 +165,80 @@ def available_users_view(request):
     Excludes the requesting user and supports ?q= search filtering.
     Returns up to 50 results.
     """
-    from django.db.models import Value, IntegerField, Case, When
+    import logging
     from datetime import timedelta
 
-    q         = request.query_params.get('q', '').strip()
-    thirty_days_ago = timezone.now() - timedelta(days=30)
+    logger = logging.getLogger(__name__)
 
-    # Build base queryset excluding self
-    qs = User.objects.filter(is_active=True).exclude(id=request.user.id)
-
-    # Apply search filter if provided
-    if q:
-        qs = qs.filter(
-            Q(username__icontains=q) | Q(display_name__icontains=q)
-        )
-
-    # Annotate with a sort_priority:
-    #   0 = followed by current user
-    #   1 = recently active (last 30 days)
-    #   2 = everyone else
     try:
-        from social.models import Follow
-        followed_ids = set(
-            Follow.objects.filter(follower=request.user)
-            .values_list('following_id', flat=True)
-        )
-    except Exception:
-        followed_ids = set()
+        q = request.query_params.get('q', '').strip()
+        thirty_days_ago = timezone.now() - timedelta(days=30)
 
-    # Build Case/When for priority
-    when_clauses = []
-    if followed_ids:
-        when_clauses.append(When(id__in=followed_ids, then=Value(0)))
-    when_clauses.append(
-        When(last_login__gte=thirty_days_ago, then=Value(1))
-    )
+        # Build base queryset excluding self
+        qs = User.objects.filter(is_active=True).exclude(id=request.user.id)
 
-    qs = qs.annotate(
-        sort_priority=Case(
-            *when_clauses,
-            default=Value(2),
-            output_field=IntegerField(),
-        )
-    ).order_by('sort_priority', '-prestige_points')[:50]
+        # Apply search filter if provided
+        if q:
+            qs = qs.filter(
+                Q(username__icontains=q) | Q(display_name__icontains=q)
+            )
 
-    users_data = []
-    for user in qs:
-        profile_image_url = None
+        # Resolve followed user IDs safely
         try:
-            if user.profile_image and user.profile_image.storage.exists(user.profile_image.name):
-                profile_image_url = request.build_absolute_uri(user.profile_image.url)
+            from social.models import Follow
+            followed_ids = set(
+                Follow.objects.filter(follower=request.user)
+                .values_list('following_id', flat=True)
+            )
         except Exception:
-            pass
+            followed_ids = set()
 
-        users_data.append({
-            'id':               user.id,
-            'username':         user.username,
-            'display_name':     user.display_name or user.username,
-            'access_tier':      user.access_tier,
-            'prestige_points':  user.prestige_points,
-            'profile_image':    profile_image_url,
-            'is_following':     user.id in followed_ids,
-            # Real-time online status would need a presence layer (Redis/channels).
-            # We approximate: "active" if logged in within the last 30 days.
-            'is_active':        (
-                user.last_login is not None
-                and user.last_login >= thirty_days_ago
-            ),
-        })
+        # Sort: followed first, then by prestige — avoid complex Case/When
+        # that can crash when last_login is NULL for Firebase-auth users.
+        users_list = list(qs.order_by('-prestige_points')[:200])
 
-    return Response(users_data)
+        def sort_key(u):
+            if u.id in followed_ids:
+                return 0
+            if u.last_login is not None and u.last_login >= thirty_days_ago:
+                return 1
+            return 2
+
+        users_list.sort(key=sort_key)
+        users_list = users_list[:50]
+
+        users_data = []
+        for user in users_list:
+            profile_image_url = None
+            try:
+                if user.profile_image and user.profile_image.storage.exists(user.profile_image.name):
+                    profile_image_url = request.build_absolute_uri(user.profile_image.url)
+            except Exception:
+                pass
+
+            users_data.append({
+                'id':              user.id,
+                'username':        user.username,
+                'display_name':    user.display_name or user.username,
+                'access_tier':     user.access_tier,
+                'prestige_points': user.prestige_points,
+                'profile_image':   profile_image_url,
+                'is_following':    user.id in followed_ids,
+                # Approximate online: logged in within last 30 days
+                'is_active': (
+                    user.last_login is not None
+                    and user.last_login >= thirty_days_ago
+                ),
+            })
+
+        return Response(users_data)
+
+    except Exception as exc:
+        logger.error(f'available_users_view error: {exc}', exc_info=True)
+        return Response(
+            {'error': 'Could not load users. Please try again.'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
 
 
 @api_view(['GET'])
