@@ -297,7 +297,7 @@ function _insertPostCard(post) {
     card.innerHTML = `
         <div class="post-header">
             <div class="post-author">
-                <div class="post-avatar">${avatarHTML}</div>
+                <div class="post-avatar">${avatarHTML_str}</div>
                 <div class="post-author-info">
                     <h4>${name}</h4>
                     <span class="post-time">${when}</span>
@@ -748,7 +748,7 @@ function _appendPostCard(post, container) {
     card.innerHTML = `
         <div class="post-header">
             <div class="post-author">
-                <div class="post-avatar">${avatarHTML}</div>
+                <div class="post-avatar">${avatarHTML_str}</div>
                 <div class="post-author-info">
                     <h4>${name}</h4>
                     <span class="post-time">${when}</span>
