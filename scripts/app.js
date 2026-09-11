@@ -858,15 +858,36 @@ function toggleUserMenu() {
     dropdown.classList.toggle('show');
 }
 
-// Close dropdown when clicking outside
+// Toggle Quick Menu / User Menu (used by multiple pages)
+function toggleQuickMenu() {
+    const qm = document.getElementById('quickMenuDropdown');
+    const um = document.getElementById('userMenuDropdown');
+    if (um) um.classList.remove('show');
+    if (qm) qm.classList.toggle('show');
+}
+
+// Normalize user menu toggle to match other pages
+function toggleUserMenu() {
+    const um = document.getElementById('userMenuDropdown');
+    const qm = document.getElementById('quickMenuDropdown');
+    if (qm) qm.classList.remove('show');
+    if (um) um.classList.toggle('show');
+}
+
+// Close dropdowns when clicking outside header controls
 window.addEventListener('click', function(event) {
-    if (!event.target.matches('.btn-user-menu') && !event.target.closest('.btn-user-menu')) {
-        const dropdowns = document.getElementsByClassName('dropdown-content');
-        for (let dropdown of dropdowns) {
-            if (dropdown.classList.contains('show')) {
-                dropdown.classList.remove('show');
-            }
-        }
+    // quick menu: toggle via header-icon-btn; user menu: via user-avatar-btn
+    const qm = document.getElementById('quickMenuDropdown');
+    const um = document.getElementById('userMenuDropdown');
+
+    if (qm && qm.classList.contains('show')) {
+        const clickedQuickBtn = event.target.closest('.header-icon-btn');
+        if (!qm.contains(event.target) && !clickedQuickBtn) qm.classList.remove('show');
+    }
+
+    if (um && um.classList.contains('show')) {
+        const clickedUserBtn = event.target.closest('.user-avatar-btn');
+        if (!um.contains(event.target) && !clickedUserBtn) um.classList.remove('show');
     }
 });
 
