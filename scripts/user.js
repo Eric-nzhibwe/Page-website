@@ -259,6 +259,10 @@ function renderProfile(u, rank) {
 
     // Social
     renderSocial(u.social_connections || {});
+
+    // Show the stats row now that data is populated
+    const statsRow = document.getElementById('statsRow');
+    if (statsRow) statsRow.style.display = '';
 }
 
 function setAvatarImg(src) {
