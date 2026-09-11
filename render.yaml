@@ -85,3 +85,31 @@ services:
         sync: false
       - key: DJANGO_SUPERUSER_PASSWORD
         sync: false
+
+  # ── Keep-alive cron ──────────────────────────────────────────────────────────
+  # Pings /health/ every 14 minutes so the free-tier web service never cold-starts.
+  # Render free tier sleeps after 15 min of inactivity; 14-min ping prevents that.
+  - type: cron
+    name: keep-alive
+    runtime: python
+    region: oregon
+    plan: free
+    branch: main
+    rootDir: django_backend
+    buildCommand: pip install requests
+    schedule: "*/14 * * * *"
+    startCommand: >
+      python -c "
+      import requests, os, sys;
+      url = os.environ.get('SERVICE_URL', 'https://artx-website.onrender.com');
+      try:
+          r = requests.get(url + '/health/', timeout=10);
+          print('keep-alive ping', r.status_code, url);
+          sys.exit(0 if r.status_code == 200 else 1)
+      except Exception as e:
+          print('keep-alive failed:', e);
+          sys.exit(1)
+      "
+    envVars:
+      - key: SERVICE_URL
+        sync: false

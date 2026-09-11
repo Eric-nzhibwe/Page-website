@@ -5,9 +5,19 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
+from django.http import JsonResponse
 from .frontend_views import serve_frontend_file, serve_favicon
 
+
+def health_check(request):
+    """Lightweight health check — no DB query, just confirms the process is alive."""
+    return JsonResponse({'status': 'ok'})
+
+
 urlpatterns = [
+    # Health check — used by UptimeRobot / self-ping to prevent Render cold starts
+    path('health/', health_check, name='health'),
+
     # Admin
     path('admin/', admin.site.urls),
     
