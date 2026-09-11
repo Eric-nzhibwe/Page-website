@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Messages</title>
+    <link rel="icon" type="image/jpeg" href="../images/ARTX.jpg">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+    <link rel="stylesheet" href="../styles/styles.css">
+    <link rel="stylesheet" href="../styles/icon-nav.css">
+    <link rel="stylesheet" href="../styles/messenger.css">
+    <script src="../scripts/theme.js"></script>
+    <style>
+        /* Page-level reset so messenger fills the viewport */
+        html, body { height: 100%; margin: 0; overflow: hidden; }
+        .dm-page-wrap {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        .dm-page-header {
+            flex-shrink: 0;
+            background: #fff;
+            border-bottom: 1px solid rgba(85,107,47,0.14);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 18px;
+            height: 54px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+            z-index: 100;
+        }
+        .dm-page-logo {
+            font-size: 20px;
+            font-weight: 900;
+            color: #556b2f;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            letter-spacing: -0.4px;
+        }
+        .dm-page-logo i { color: #ff6b35; }
+        .dm-nav-links {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .dm-nav-btn {
+            width: 38px; height: 38px;
+            background: none;
+            border: none;
+            border-radius: 9px;
+            color: #8a9e7a;
+            font-size: 16px;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            text-decoration: none;
+            transition: background 0.15s, color 0.15s;
+            position: relative;
+        }
+        .dm-nav-btn:hover, .dm-nav-btn.active {
+            background: rgba(85,107,47,0.1);
+            color: #556b2f;
+        }
+        .dm-nav-badge {
+            position: absolute;
+            top: 4px; right: 4px;
+            background: #556b2f;
+            color: #fff;
+            font-size: 9px;
+            font-weight: 700;
+            border-radius: 999px;
+            padding: 1px 4px;
+            min-width: 14px;
+            text-align: center;
+            display: none;
+        }
+        .dm-shell {
+            flex: 1;
+            min-height: 0; /* critical — lets flex children scroll */
+        }
+    </style>
+</head>
+<body>
+
+<div class="dm-page-wrap">
+
+    <!-- ── Minimal header ── -->
+    <header class="dm-page-header">
+        <a href="#" class="dm-page-logo">
+            <i class="fas fa-fire-flame-curved"></i>ARTX
+        </a>
+        <nav class="dm-nav-links">
+            <a href="../index.html" class="dm-nav-btn" title="Home">
+                <i class="fas fa-house"></i>
+            </a>
+            <a href="challenges.html" class="dm-nav-btn" title="Challenges">
+                <i class="fas fa-trophy"></i>
+            </a>
+            <a href="messenger.html" class="dm-nav-btn active" title="Messages">
+                <i class="fas fa-comment-dots"></i>
+                <span class="dm-nav-badge" id="msgBadge"></span>
+            </a>
+            <a href="user.html" class="dm-nav-btn" title="Profile">
+                <i class="fas fa-circle-user"></i>
+            </a>
+        </nav>
+    </header>
+
+    <!-- ── Messenger shell ── -->
+    <div class="dm-shell">
+        <div class="dm-shell" style="height:100%;">
+
+            <!-- ── Sidebar ── -->
+            <aside class="dm-sidebar" id="dmSidebar">
+                <div class="dm-sidebar-header">
+                    <h2 class="dm-sidebar-title">
+                        <i class="fas fa-comment-dots"></i>
+                        Messages
+                    </h2>
+                    <button class="dm-new-btn" onclick="dmOpenNewChat()" title="New conversation">
+                        <i class="fas fa-pen-to-square"></i>
+                    </button>
+                </div>
+
+                <div class="dm-search-wrap">
+                    <i class="fas fa-magnifying-glass"></i>
+                    <input type="text" id="dmSearchInput"
+                           placeholder="Search conversations…"
+                           oninput="dmFilterConversations(this.value)"
+                           autocomplete="off">
+                </div>
+
+                <!-- Tabs -->
+                <div class="dm-tabs">
+                    <button class="dm-tab active" id="dmTabChats" onclick="dmSwitchTab('chats')">
+                        <i class="fas fa-comment-dots"></i> Chats
+                    </button>
+                    <button class="dm-tab" id="dmTabPeople" onclick="dmSwitchTab('people')">
+                        <i class="fas fa-users"></i> People
+                    </button>
+                </div>
+
+                <!-- Chats panel -->
+                <div id="dmPanelChats" style="display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden;">
+                    <div class="dm-conv-section-label">Recent</div>
+                    <div class="dm-conv-list" id="dmConvList">
+                        <div class="dm-empty-state"><div class="dm-spinner"></div></div>
+                    </div>
+                </div>
+
+                <!-- People panel -->
+                <div id="dmPanelPeople" style="display:none;flex:1;overflow-y:auto;">
+                    <div class="dm-conv-section-label">Online Now</div>
+                    <div id="dmPeopleOnline" class="dm-people-list">
+                        <div class="dm-empty-state"><div class="dm-spinner"></div></div>
+                    </div>
+                    <div class="dm-conv-section-label" style="margin-top:8px;">Discover Players</div>
+                    <div id="dmPeopleDiscover" class="dm-people-list">
+                        <div class="dm-empty-state"><div class="dm-spinner"></div></div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- ── Chat area ── -->
+            <main class="dm-chat-area" id="dmChatArea">
+
+                <!-- Welcome state -->
+                <div class="dm-welcome" id="dmWelcome">
+                    <div class="dm-welcome-icon">
+                        <i class="fas fa-comment-dots"></i>
+                    </div>
+                    <h3>Your Messages</h3>
+                    <p>Select a conversation or tap <strong>People</strong> to find someone to chat with.</p>
+                    <button class="dm-start-btn" onclick="dmSwitchTab('people')">
+                        <i class="fas fa-users"></i> Find Players
+                    </button>
+                </div>
+
+                <!-- Active conversation -->
+                <div class="dm-chat-inner" id="dmChatInner" style="display:none;">
+
+                    <div class="dm-chat-header">
+                        <button class="dm-back-btn" onclick="dmCloseChat()" title="Back">
+                            <i class="fas fa-arrow-left"></i>
+                        </button>
+                        <div class="dm-chat-avatar" id="dmChatAvatar">
+                            <i class="fas fa-circle-user"></i>
+                        </div>
+                        <div class="dm-chat-meta">
+                            <span class="dm-chat-name"   id="dmChatName">—</span>
+                            <span class="dm-chat-status" id="dmChatStatus">Active now</span>
+                        </div>
+                        <div class="dm-chat-actions">
+                            <button class="dm-header-action-btn" title="View profile" onclick="dmViewProfile()">
+                                <i class="fas fa-circle-info"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="dm-messages" id="dmMessages">
+                        <div class="dm-msgs-loading"><div class="dm-spinner"></div></div>
+                    </div>
+
+                    <form class="dm-compose" id="dmComposeForm" onsubmit="dmSendMessage(event)">
+                        <div class="dm-media-preview" id="dmMediaPreview" style="display:none;">
+                            <img id="dmMediaThumb" src="" alt="preview">
+                            <button type="button" class="dm-remove-media" onclick="dmRemoveMedia()" title="Remove">&times;</button>
+                        </div>
+                        <label class="dm-attach-btn" title="Attach media">
+                            <i class="fas fa-paperclip"></i>
+                            <input type="file" id="dmMediaInput" accept="image/*,video/*,audio/*"
+                                   style="display:none" onchange="dmHandleMedia(event)">
+                        </label>
+                        <input type="text" id="dmTextInput" class="dm-text-input"
+                               placeholder="Type a message…" autocomplete="off">
+                        <button type="submit" class="dm-send-btn" title="Send">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </form>
+                </div>
+            </main>
+
+        </div><!-- /inner dm-shell -->
+    </div><!-- /dm-shell wrapper -->
+
+</div><!-- /dm-page-wrap -->
+
+<!-- New Chat Modal -->
+<div id="dmNewChatModal" class="dm-modal-backdrop" style="display:none;"
+     onclick="if(event.target===this)dmCloseNewChat()">
+    <div class="dm-modal">
+        <div class="dm-modal-header">
+            <h3><i class="fas fa-user-plus"></i> New Message</h3>
+            <button class="dm-modal-close" onclick="dmCloseNewChat()" title="Close">&times;</button>
+        </div>
+        <div class="dm-modal-search">
+            <i class="fas fa-magnifying-glass"></i>
+            <input type="text" id="dmUserSearch"
+                   placeholder="Search by username…"
+                   oninput="dmSearchUsers(this.value)"
+                   autocomplete="off">
+        </div>
+        <div class="dm-user-results" id="dmUserResults">
+            <div class="dm-empty-state"><div class="dm-spinner"></div></div>
+        </div>
+    </div>
+</div>
+
+<!--
+    Scripts load in dependency order:
+    1. api-service.js   — defines apiService (required by messenger.js)
+    2. messenger.js     — all DM logic
+    3. firebase-messenger.js — optional Firestore layer
+-->
+<script src="../scripts/api-service.js"></script>
+<script>
+'use strict';
+
+// ── Auth guard ────────────────────────────────────────────────────────────────
+// Redirect to auth page if not logged in
+(function() {
+    const token = localStorage.getItem('djangoAuthToken') || localStorage.getItem('authToken');
+    if (!token) {
+        window.location.href = 'auth.html';
+    }
+})();
+
+// ── Shared helpers that messenger.js expects ──────────────────────────────────
+
+// switchView is a no-op here (single-page messenger — no views to switch)
+window.switchView = function() {};
+
+// showToast — lightweight version
+window.showToast = function(msg, type) {
+    let box = document.getElementById('_toastBox');
+    if (!box) {
+        box = document.createElement('div');
+        box.id = '_toastBox';
+        box.style.cssText = 'position:fixed;bottom:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:8px;';
+        document.body.appendChild(box);
+    }
+    const colors = { success: '#22c55e', error: '#ef4444', info: '#556b2f' };
+    const t = document.createElement('div');
+    t.style.cssText = `background:${colors[type]||colors.info};color:#fff;padding:10px 16px;border-radius:10px;
+        font-size:13px;font-weight:600;box-shadow:0 4px 14px rgba(0,0,0,.2);
+        opacity:0;transform:translateY(6px);transition:all .25s ease;`;
+    t.textContent = msg;
+    box.appendChild(t);
+    requestAnimationFrame(() => { t.style.opacity='1'; t.style.transform='translateY(0)'; });
+    setTimeout(() => {
+        t.style.opacity = '0';
+        setTimeout(() => t.remove(), 250);
+    }, 3000);
+};
+
+// logout
+window.logout = function() {
+    localStorage.removeItem('djangoAuthToken');
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('artxUser');
+    window.location.href = 'auth.html';
+};
+</script>
+
+<script src="../scripts/messenger.js"></script>
+<script src="../scripts/firebase-messenger.js"></script>
+
+<script>
+'use strict';
+// ── Boot ──────────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', function() {
+    // Start the messenger
+    if (typeof dmInit === 'function') dmInit();
+
+    // Handle ?conv=<id> deep-link
+    const params = new URLSearchParams(window.location.search);
+    const convId = params.get('conv');
+    if (convId) {
+        setTimeout(() => {
+            if (typeof dmOpenConversation === 'function') dmOpenConversation(convId);
+        }, 700);
+    }
+
+    // Handle ?user=<id> — open/start a conversation immediately
+    const userId = params.get('user') || sessionStorage.getItem('dmStartUserId');
+    if (userId) {
+        sessionStorage.removeItem('dmStartUserId');
+        setTimeout(async () => {
+            if (typeof dmStartConversation === 'function') await dmStartConversation(userId);
+        }, 700);
+    }
+});
+</script>
+
+</body>
+</html>

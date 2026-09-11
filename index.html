@@ -10,12 +10,11 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
     <link rel="stylesheet" href="styles/styles.css">
-    <link rel="stylesheet" href="styles/social-feed.css">
     <link rel="stylesheet" href="styles/social-features.css">
     <link rel="stylesheet" href="styles/realtime-features.css">
     <link rel="stylesheet" href="styles/story-viewer.css">
     <link rel="stylesheet" href="styles/icon-nav.css">
-    <link rel="stylesheet" href="styles/messenger.css">
+    <link rel="stylesheet" href="styles/social-feed.css">
     <link rel="stylesheet" href="styles/challenges-enhanced.css">
     <link rel="stylesheet" href="styles/settings.css">
     <link rel="stylesheet" href="styles/streak.css">
@@ -61,9 +60,8 @@
                     <i class="fas fa-trophy"></i>
                     <span class="notification-badge" id="challengesBadge" style="display: none;">0</span>
                 </button>
-                <button class="icon-nav-btn" data-view="messenger" title="Messages" onclick="switchView('messenger')">
+                <button class="icon-nav-btn" title="Messages" onclick="window.location.href='pages/messenger.html'">
                     <i class="fas fa-comment-dots"></i>
-                    <span class="notification-badge" id="msgBadge" style="display:none;">0</span>
                 </button>
                 <button class="icon-nav-btn" onclick="window.location.href='pages/user.html'" title="Profile">
                     <i class="fas fa-circle-user"></i>
@@ -110,7 +108,7 @@
                         <i class="fas fa-robot"></i>
                         <span>AI Assistant</span>
                     </a>
-                    <a href="#" onclick="switchView('messenger'); toggleQuickMenu(); return false;" class="quick-menu-item">
+                    <a href="pages/messenger.html" class="quick-menu-item">
                         <i class="fas fa-comment-dots"></i>
                         <span>Messages</span>
                     </a>
@@ -379,171 +377,6 @@
                 </aside>
             </div>
         </section>
-
-        <!-- Messenger View -->
-        <section id="messenger" class="view">
-            <div class="dm-shell">
-
-                <!-- ── Conversation list (left panel) ── -->
-                <aside class="dm-sidebar" id="dmSidebar">
-                    <div class="dm-sidebar-header">
-                        <h2 class="dm-sidebar-title">
-                            <i class="fas fa-comment-dots"></i>
-                            Messages
-                        </h2>
-                        <button class="dm-new-btn" onclick="dmOpenNewChat()" title="New conversation">
-                            <i class="fas fa-pen-to-square"></i>
-                        </button>
-                    </div>
-
-                    <div class="dm-search-wrap">
-                        <i class="fas fa-magnifying-glass"></i>
-                        <input type="text" id="dmSearchInput"
-                               placeholder="Search conversations…"
-                               oninput="dmFilterConversations(this.value)"
-                               autocomplete="off">
-                    </div>
-
-                    <!-- Tab switcher -->
-                    <div class="dm-tabs">
-                        <button class="dm-tab active" id="dmTabChats"
-                                onclick="dmSwitchTab('chats')">
-                            <i class="fas fa-comment-dots"></i> Chats
-                        </button>
-                        <button class="dm-tab" id="dmTabPeople"
-                                onclick="dmSwitchTab('people')">
-                            <i class="fas fa-users"></i> People
-                        </button>
-                    </div>
-
-                    <!-- Chats panel -->
-                    <div id="dmPanelChats">
-                        <div class="dm-conv-section-label">Recent</div>
-                        <div class="dm-conv-list" id="dmConvList">
-                            <div class="dm-empty-state">
-                                <div class="dm-spinner"></div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- People panel (hidden by default) -->
-                    <div id="dmPanelPeople" style="display:none; flex:1; overflow-y:auto;">
-                        <div class="dm-conv-section-label">Online Now</div>
-                        <div id="dmPeopleOnline" class="dm-people-list">
-                            <div class="dm-empty-state"><div class="dm-spinner"></div></div>
-                        </div>
-                        <div class="dm-conv-section-label" style="margin-top:8px;">Discover Players</div>
-                        <div id="dmPeopleDiscover" class="dm-people-list">
-                            <div class="dm-empty-state"><div class="dm-spinner"></div></div>
-                        </div>
-                    </div>
-
-                </aside>
-
-                <!-- ── Chat window (right panel) ── -->
-                <main class="dm-chat-area" id="dmChatArea">
-
-                    <!-- Welcome / no-selection state -->
-                    <div class="dm-welcome" id="dmWelcome">
-                        <div class="dm-welcome-icon">
-                            <i class="fas fa-comment-dots"></i>
-                        </div>
-                        <h3>Your Messages</h3>
-                        <p>Select a conversation from the list or start a new one to begin chatting with other players.</p>
-                        <button class="dm-start-btn" onclick="dmOpenNewChat()">
-                            <i class="fas fa-pen-to-square"></i> New Message
-                        </button>
-                    </div>
-
-                    <!-- Active conversation -->
-                    <div class="dm-chat-inner" id="dmChatInner" style="display:none;">
-
-                        <!-- Chat header -->
-                        <div class="dm-chat-header">
-                            <button class="dm-back-btn" onclick="dmCloseChat()" title="Back">
-                                <i class="fas fa-arrow-left"></i>
-                            </button>
-                            <div class="dm-chat-avatar" id="dmChatAvatar">
-                                <i class="fas fa-circle-user"></i>
-                            </div>
-                            <div class="dm-chat-meta">
-                                <span class="dm-chat-name"   id="dmChatName">—</span>
-                                <span class="dm-chat-status" id="dmChatStatus">Active now</span>
-                            </div>
-                            <div class="dm-chat-actions">
-                                <button class="dm-header-action-btn" title="Search in conversation">
-                                    <i class="fas fa-magnifying-glass"></i>
-                                </button>
-                                <button class="dm-header-action-btn" title="View profile"
-                                        onclick="dmViewProfile()">
-                                    <i class="fas fa-circle-info"></i>
-                                </button>
-                            </div>
-                        </div>
-
-                        <!-- Message list -->
-                        <div class="dm-messages" id="dmMessages">
-                            <div class="dm-msgs-loading">
-                                <div class="dm-spinner"></div>
-                            </div>
-                        </div>
-
-                        <!-- Compose bar -->
-                        <form class="dm-compose" id="dmComposeForm" onsubmit="dmSendMessage(event)">
-
-                            <!-- Media preview (shown only when a file is staged) -->
-                            <div class="dm-media-preview" id="dmMediaPreview" style="display:none;">
-                                <img id="dmMediaThumb" src="" alt="preview">
-                                <button type="button" class="dm-remove-media"
-                                        onclick="dmRemoveMedia()" title="Remove">&times;</button>
-                            </div>
-
-                            <!-- Attach button -->
-                            <label class="dm-attach-btn" title="Attach image or video">
-                                <i class="fas fa-paperclip"></i>
-                                <input type="file" id="dmMediaInput"
-                                       accept="image/*,video/*,audio/*"
-                                       style="display:none"
-                                       onchange="dmHandleMedia(event)">
-                            </label>
-
-                            <input type="text" id="dmTextInput" class="dm-text-input"
-                                   placeholder="Type a message…" autocomplete="off">
-
-                            <button type="submit" class="dm-send-btn" title="Send">
-                                <i class="fas fa-paper-plane"></i>
-                            </button>
-                        </form>
-
-                    </div><!-- /dm-chat-inner -->
-                </main>
-
-            </div><!-- /dm-shell -->
-        </section>
-
-        <!-- New Chat Modal -->
-        <div id="dmNewChatModal" class="dm-modal-backdrop" style="display:none;"
-             onclick="if(event.target===this)dmCloseNewChat()">
-            <div class="dm-modal">
-                <div class="dm-modal-header">
-                    <h3><i class="fas fa-user-plus"></i> New Message</h3>
-                    <button class="dm-modal-close" onclick="dmCloseNewChat()" title="Close">&times;</button>
-                </div>
-                <div class="dm-modal-search">
-                    <i class="fas fa-magnifying-glass"></i>
-                    <input type="text" id="dmUserSearch"
-                           placeholder="Search by username…"
-                           oninput="dmSearchUsers(this.value)"
-                           autocomplete="off">
-                </div>
-                <div class="dm-user-results" id="dmUserResults">
-                    <p class="dm-hint">
-                        <i class="fas fa-search" style="display:block;font-size:28px;margin-bottom:8px;opacity:0.3;"></i>
-                        Loading players…
-                    </p>
-                </div>
-            </div>
-        </div>
 
         <!-- Challenges View (Enhanced with Money Rewards) -->
         <section id="challenges" class="view">
@@ -2134,9 +1967,8 @@
             <i class="fas fa-trophy"></i>
             <span class="notification-badge" id="challengesBadgeMobile" style="display:none;">0</span>
         </button>
-        <button class="icon-nav-btn" data-view="messenger" title="Messages" onclick="switchView('messenger')">
+        <button class="icon-nav-btn" title="Messages" onclick="window.location.href='pages/messenger.html'">
             <i class="fas fa-comment-dots"></i>
-            <span class="notification-badge" id="msgBadgeMobile" style="display:none;">0</span>
         </button>
         <button class="icon-nav-btn" data-view="people" title="People" onclick="switchView('people')">
             <i class="fas fa-users"></i>
@@ -2154,12 +1986,6 @@
         document.querySelectorAll('.icon-nav-btn[data-view]').forEach(function(btn) {
             btn.classList.toggle('active', btn.getAttribute('data-view') === viewName);
         });
-        // Messenger lifecycle hooks
-        if (viewName === 'messenger') {
-            if (typeof dmInit === 'function') dmInit();
-        } else {
-            if (typeof dmStopPolling === 'function') dmStopPolling();
-        }
     }
 
     // Mobile bottom-nav "More" — opens the user menu anchored above the nav bar
@@ -2213,8 +2039,6 @@
     <script src="scripts/websocket-client.js"></script>
     <script src="scripts/app.js"></script>
     <script src="scripts/social-feed.js"></script>
-    <script src="scripts/messenger.js"></script>
-    <script src="scripts/firebase-messenger.js"></script>
     <script src="scripts/challenges-enhanced.js"></script>
     <script src="scripts/image-interpretation.js"></script>
     <script src="scripts/settings.js"></script>

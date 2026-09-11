@@ -44,11 +44,9 @@ const DM_API = {
 async function dmInit() {
     await dmLoadConversations();
     dmStartPolling();
-    // Pre-warm the People panel data in the background.
-    // Don't set _dmActivePeopleLoaded here — the DOM elements don't exist
-    // until the People tab is clicked, so _dmLoadPeoplePanel will bail early.
-    // When the user clicks People, dmSwitchTab sees the flag is still false
-    // and triggers a proper load with the DOM ready.
+    // Pre-warm the People panel in the background.
+    // Elements exist in the DOM (just hidden), so this will render users
+    // immediately — they'll be visible the moment the user clicks People.
     setTimeout(() => { _dmLoadPeoplePanel(); }, 1200);
     // Handle deep-link: index.html#messenger?conv=<id>
     const hash = window.location.hash;
@@ -367,7 +365,7 @@ async function _dmLoadSuggestedUsers() {
     results.innerHTML = '<div class="dm-empty-state"><div class="dm-spinner"></div></div>';
 
     // Ensure apiService has the latest token (it may have been set after construction)
-    if (!apiService.token) {
+    if (typeof apiService !== 'undefined' && !apiService.token) {
         apiService.token = localStorage.getItem('djangoAuthToken') || localStorage.getItem('authToken') || null;
     }
 
@@ -393,7 +391,7 @@ async function dmSearchUsers(query) {
     }
 
     // Ensure apiService has the latest token
-    if (!apiService.token) {
+    if (typeof apiService !== 'undefined' && !apiService.token) {
         apiService.token = localStorage.getItem('djangoAuthToken') || localStorage.getItem('authToken') || null;
     }
 
@@ -513,12 +511,16 @@ function _dmApiBase() {
 
 // Shared headers helper
 function _dmHeaders() {
-    const token = apiService.token
-        || localStorage.getItem('djangoAuthToken')
-        || localStorage.getItem('authToken')
-        || null;
-    // Keep apiService in sync
-    if (token && !apiService.token) apiService.token = token;
+    // Always read fresh from localStorage — apiService may have been constructed
+    // before the token was stored (e.g. after a redirect from login)
+    const token = localStorage.getItem('djangoAuthToken')
+               || localStorage.getItem('authToken')
+               || (typeof apiService !== 'undefined' ? apiService.token : null)
+               || null;
+    // Keep apiService in sync if it exists
+    if (token && typeof apiService !== 'undefined' && !apiService.token) {
+        apiService.token = token;
+    }
     return token
         ? { 'Content-Type': 'application/json', 'Authorization': `Token ${token}` }
         : { 'Content-Type': 'application/json' };
@@ -584,15 +586,15 @@ async function _dmLoadPeoplePanel() {
     const onlineEl   = document.getElementById('dmPeopleOnline');
     const discoverEl = document.getElementById('dmPeopleDiscover');
 
-    // DOM not ready yet (panel hidden) — flag stays false so dmSwitchTab retries
-    if (!onlineEl || !discoverEl) {
-        _dmActivePeopleLoaded = false;
-        return;
-    }
+    // Elements don't exist in DOM — skip silently, retry will happen on tab click
+    if (!onlineEl || !discoverEl) { _dmActivePeopleLoaded = false; return; }
+
+    // Reset to spinners so the user sees loading feedback
+    onlineEl.innerHTML   = '<div class="dm-empty-state"><div class="dm-spinner"></div></div>';
+    discoverEl.innerHTML = '<div class="dm-empty-state"><div class="dm-spinner"></div></div>';
 
     try {
         const controller = new AbortController();
-        // 30s — Render free tier cold-starts can take 20-30s
         const timeoutId  = setTimeout(() => controller.abort(), 30000);
 
         const res = await fetch(`${_dmApiBase()}/auth/discover/?limit=20`, {
@@ -608,10 +610,10 @@ async function _dmLoadPeoplePanel() {
 
         _dmRenderPeopleList(onlineEl,   users.slice(0, 5),  true);
         _dmRenderPeopleList(discoverEl, users.slice(0, 20), false);
-        _dmActivePeopleLoaded = true; // mark done only on success
+        _dmActivePeopleLoaded = true;
 
     } catch (e) {
-        _dmActivePeopleLoaded = false; // allow retry on next tab click
+        _dmActivePeopleLoaded = false;
         const isTimeout = e.name === 'AbortError';
         const label = isTimeout
             ? 'Server is waking up (~30s on first load). <a href="#" onclick="_dmRetryPeople(event)">Retry</a>'
@@ -724,26 +726,18 @@ function _dmRenderPeopleList(container, users, showOnlineDot) {
     }).join('');
 }
 
-// Thin wrapper — delegates to realtime-updates.js toggleFollow if available,
-// otherwise calls the API directly so the messenger works standalone.
 async function _dmToggleFollow(userId, btnEl) {
     if (typeof toggleFollow === 'function') {
-        // realtime-updates.js is loaded — use its full implementation
         await toggleFollow(userId, btnEl);
         return;
     }
-
-    // Standalone fallback
-    const token = localStorage.getItem('djangoAuthToken');
-    if (!token) { alert('Please log in first.'); return; }
-
-    const BASE = apiService.baseURL;
+    // Standalone fallback — no dependency on apiService
     const isFollowing = btnEl.classList.contains('artx-follow-btn--following');
     const endpoint = isFollowing
-        ? `${BASE}/social/follows/unfollow/`
-        : `${BASE}/social/follows/follow/`;
+        ? `${_dmApiBase()}/social/follows/unfollow/`
+        : `${_dmApiBase()}/social/follows/follow/`;
 
-    // Optimistic
+    // Optimistic UI
     btnEl.classList.toggle('artx-follow-btn--following', !isFollowing);
     btnEl.innerHTML = !isFollowing
         ? '<i class="fas fa-check"></i> Following'
@@ -751,13 +745,13 @@ async function _dmToggleFollow(userId, btnEl) {
 
     try {
         const res = await fetch(endpoint, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Token ${token}` },
-            body: JSON.stringify({ user_id: userId })
+            method:  'POST',
+            headers: _dmHeaders(),
+            body:    JSON.stringify({ user_id: userId })
         });
         if (!res.ok) throw new Error(`${res.status}`);
     } catch {
-        // Rollback
+        // Rollback on failure
         btnEl.classList.toggle('artx-follow-btn--following', isFollowing);
         btnEl.innerHTML = isFollowing
             ? '<i class="fas fa-check"></i> Following'
@@ -766,43 +760,28 @@ async function _dmToggleFollow(userId, btnEl) {
 }
 
 async function _dmPersonMessage(userId) {
-    // Switch back to chats tab then start conversation
+    // Switch to chats tab then open/create conversation
     dmSwitchTab('chats');
     await dmStartConversation(userId);
 }
 
-// Auto-init when the messenger section becomes visible (hook into switchView)
-const _origSwitchView = typeof switchView === 'function' ? switchView : null;
+// ── DOMContentLoaded — badge polling only ────────────────────────────────────
+// (Deep-linking and init are handled by messenger.html's own boot script)
 if (typeof window !== 'undefined') {
-    // Attach after DOM ready so app.js has already defined switchView
     document.addEventListener('DOMContentLoaded', () => {
-        // Poll unread count globally every 30s (even when not in messenger view)
+        // Poll unread count every 30 s so the nav badge stays current
         setInterval(async () => {
             try {
                 const d = await DM_API.unreadCount();
-                const badge  = document.getElementById('msgBadge');
-                const badge2 = document.getElementById('msgBadgeMobile');
                 const n = d?.unread_count || 0;
-                [badge, badge2].forEach(b => {
+                ['msgBadge', 'msgBadgeMobile'].forEach(id => {
+                    const b = document.getElementById(id);
                     if (!b) return;
                     b.textContent   = n > 9 ? '9+' : n;
                     b.style.display = n > 0 ? '' : 'none';
                 });
             } catch (_) {}
         }, 30000);
-
-        // Deep-link: if page loaded with #messenger in hash, open the view
-        if (window.location.hash.startsWith('#messenger')) {
-            setTimeout(async () => {
-                if (typeof switchView === 'function') switchView('messenger');
-                // Pick up a pending user to message (set by followers.html)
-                const pendingUserId = sessionStorage.getItem('dmStartUserId');
-                if (pendingUserId) {
-                    sessionStorage.removeItem('dmStartUserId');
-                    await dmStartConversation(pendingUserId);
-                }
-            }, 600);
-        }
     });
 }
 
@@ -865,7 +844,10 @@ function _dmInitials(name) {
 function dmViewProfile() {
     const avatarEl = document.getElementById('dmChatAvatar');
     const userId   = avatarEl?.getAttribute('data-user-id');
-    if (userId) window.location.href = `pages/user.html?id=${userId}`;
+    if (!userId) return;
+    // messenger.html lives in pages/ — user.html is a sibling
+    const base = window.location.pathname.includes('/pages/') ? '' : 'pages/';
+    window.location.href = `${base}user.html?id=${userId}`;
 }
 
 // Expose for use by other scripts (e.g. social-feed "Message" buttons)

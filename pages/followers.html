@@ -452,9 +452,8 @@ function flwRender(list) {
                     onclick="flwToggleFollow('${uid}', this)">
                 ${followLabel}
             </button>
-            <a href="../index.html#messenger?user=${uid}"
-               class="flw-msg-btn" title="Send message"
-               onclick="flwMessage('${uid}'); return false;">
+            <a href="messenger.html?user=${uid}"
+               class="flw-msg-btn" title="Send message">
                 <i class="fas fa-comment-dots"></i>
             </a>`;
 
@@ -522,9 +521,8 @@ function flwViewProfile(userId) {
 }
 
 function flwMessage(userId) {
-    // Open messenger on index.html and trigger conversation
-    window.location.href = `../index.html#messenger`;
     sessionStorage.setItem('dmStartUserId', userId);
+    window.location.href = `messenger.html?user=${userId}`;
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
