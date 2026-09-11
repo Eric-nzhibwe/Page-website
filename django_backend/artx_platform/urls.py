@@ -5,7 +5,9 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
-from django.http import JsonResponse
+from django.http import JsonResponse, FileResponse, Http404
+from django.views.decorators.http import require_GET
+import os
 from .frontend_views import serve_frontend_file, serve_favicon
 
 
@@ -14,9 +16,41 @@ def health_check(request):
     return JsonResponse({'status': 'ok'})
 
 
+@require_GET
+def serve_media_file(request, file_path):
+    """
+    Serve uploaded media files (voice messages, profile images, post media).
+    Works in both development and production (Render).
+    Render free tier uses an ephemeral filesystem — files persist for the
+    lifetime of the deployment but are cleared on restart.
+    """
+    full_path = os.path.join(settings.MEDIA_ROOT, file_path)
+    # Security: prevent path traversal
+    full_path = os.path.abspath(full_path)
+    media_root = os.path.abspath(str(settings.MEDIA_ROOT))
+    if not full_path.startswith(media_root):
+        raise Http404('Access denied')
+    if not os.path.isfile(full_path):
+        raise Http404('Media file not found')
+    import mimetypes
+    content_type, _ = mimetypes.guess_type(full_path)
+    response = FileResponse(
+        open(full_path, 'rb'),
+        content_type=content_type or 'application/octet-stream',
+    )
+    # Allow audio to be played cross-origin (needed when frontend is on same domain)
+    response['Accept-Ranges'] = 'bytes'
+    response['Cache-Control'] = 'private, max-age=86400'
+    return response
+
+
 urlpatterns = [
     # Health check — used by UptimeRobot / self-ping to prevent Render cold starts
     path('health/', health_check, name='health'),
+
+    # Media files — served in both dev and production
+    # Must come before the catch-all frontend routes
+    path('media/<path:file_path>', serve_media_file, name='serve_media'),
 
     # Admin
     path('admin/', admin.site.urls),

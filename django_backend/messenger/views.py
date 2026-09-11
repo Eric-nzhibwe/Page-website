@@ -115,6 +115,7 @@ class ConversationViewSet(viewsets.ModelViewSet):
         message_type = request.data.get('message_type', 'text')
         text         = request.data.get('text', '').strip()
         media_file   = request.FILES.get('media_file')
+        duration     = request.data.get('duration')  # seconds, sent by client for audio
 
         if message_type == 'text' and not text:
             return Response({'error': 'Message text cannot be empty'},
@@ -132,7 +133,12 @@ class ConversationViewSet(viewsets.ModelViewSet):
             allowed = {
                 'image': ['image/jpeg', 'image/png', 'image/gif', 'image/webp'],
                 'video': ['video/mp4', 'video/webm', 'video/ogg'],
-                'audio': ['audio/mpeg', 'audio/ogg', 'audio/wav', 'audio/webm'],
+                'audio': [
+                    'audio/mpeg', 'audio/ogg', 'audio/wav', 'audio/webm',
+                    'audio/webm;codecs=opus',
+                    'audio/ogg;codecs=opus',
+                    'audio/mp4',
+                ],
             }
             if message_type in allowed and media_file.content_type not in allowed[message_type]:
                 return Response({'error': f'Invalid file type for {message_type}'},
@@ -144,6 +150,7 @@ class ConversationViewSet(viewsets.ModelViewSet):
             message_type=message_type,
             text=text or None,
             media_file=media_file or None,
+            media_duration=int(duration) if duration and str(duration).isdigit() else None,
         )
         conversation.save()  # bumps updated_at for sidebar ordering
 

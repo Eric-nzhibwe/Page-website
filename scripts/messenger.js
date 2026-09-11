@@ -108,7 +108,30 @@ function dmRenderConvList(convs) {
     list.innerHTML = convs.map(conv => {
         const other     = _dmOtherParticipant(conv, currentUserId);
         const last      = conv.last_message;
-        const preview   = last ? (last.message_type !== 'text' ? `📎 ${last.message_type}` : (last.text || '')) : 'Say hello 👋';
+
+        // Build the preview text — voice messages get a mic icon label
+        let preview = 'Say hello 👋';
+        if (last) {
+            if (last.message_type === 'audio') {
+                preview = '🎤 Voice message';
+            } else if (last.message_type === 'image') {
+                preview = '📷 Photo';
+            } else if (last.message_type === 'video') {
+                preview = '🎥 Video';
+            } else if (last.message_type !== 'text') {
+                preview = `📎 ${last.message_type}`;
+            } else {
+                preview = last.text || '';
+            }
+        }
+
+        // Is the last message a voice message? Render a styled pill instead of plain text
+        const isVoice  = last?.message_type === 'audio';
+        const previewHtml = isVoice
+            ? `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;color:#556b2f;background:rgba(85,107,47,0.1);border-radius:999px;padding:2px 8px;">
+                   <i class="fas fa-microphone" style="font-size:9px;"></i> Voice message
+               </span>`
+            : `<span>${_escHtml(preview.slice(0, 55))}</span>`;
         const unread    = conv.unread_count || 0;
         const isActive  = conv.id == _dm.activeConvId;
         const timeStr   = last ? _dmRelativeTime(last.timestamp) : '';
@@ -127,7 +150,7 @@ function dmRenderConvList(convs) {
             </div>
             <div class="dm-conv-body">
                 <div class="dm-conv-name">${_escHtml(name)}</div>
-                <div class="dm-conv-preview ${unread ? 'unread' : ''}">${_escHtml(preview.slice(0, 60))}</div>
+                <div class="dm-conv-preview ${unread ? 'unread' : ''}">${previewHtml}</div>
             </div>
             <div class="dm-conv-meta">
                 ${timeStr ? `<span class="dm-conv-time">${timeStr}</span>` : ''}
@@ -251,24 +274,35 @@ function dmRenderMessages(msgs, currentUserId) {
         } else if (msg.message_type === 'audio') {
             // Rich voice message player with waveform
             const src = msg.media_url || msg.media_file;
-            const msgId = `vm_${msg.id || Date.now()}`;
-            const dur = msg.duration ? _dmFmtDuration(msg.duration) : '0:00';
+            const msgId = `vm_${msg.id || Date.now()}_${Math.random().toString(36).slice(2,6)}`;
+            const dur = msg.media_duration ? _dmFmtDuration(msg.media_duration) : '';
             if (src) {
                 bubbleContent = `
                 <audio id="audio_${msgId}" src="${_escHtml(src)}" preload="metadata"
-                       onloadedmetadata="(function(a,d){const el=document.getElementById('dur_${msgId}');if(el&&a.duration&&isFinite(a.duration))el.textContent=window._dmFmtDuration(a.duration);})(this)"
-                       onended="document.getElementById('play_${msgId}')?.querySelector('i')?.classList.replace('fa-pause','fa-play')">
+                       onloadedmetadata="(function(a){
+                           const el=document.getElementById('dur_${msgId}');
+                           if(el&&a.duration&&isFinite(a.duration))
+                               el.textContent=window._dmFmtDuration(Math.round(a.duration));
+                       })(this)"
+                       onended="(function(){
+                           const btn=document.getElementById('play_${msgId}');
+                           const icon=btn&&btn.querySelector('i');
+                           if(icon){icon.className='fas fa-play';}
+                       })()">
                 </audio>
                 <div class="dm-voice-bubble">
                     <button class="dm-voice-play" id="play_${msgId}"
-                            onclick="_dmToggleVoice('audio_${msgId}','play_${msgId}')" type="button">
+                            onclick="_dmToggleVoice('audio_${msgId}','play_${msgId}')"
+                            type="button" title="Play voice message">
                         <i class="fas fa-play"></i>
                     </button>
-                    <div class="dm-voice-waveform">${_dmVoiceWaveform(18)}</div>
-                    <span class="dm-voice-dur" id="dur_${msgId}">${dur}</span>
+                    <div class="dm-voice-waveform" id="wave_${msgId}">${_dmVoiceWaveform(18)}</div>
+                    <span class="dm-voice-dur" id="dur_${msgId}">${dur || '0:00'}</span>
                 </div>`;
             } else {
-                bubbleContent = `<span><i class="fas fa-microphone"></i> Voice message</span>`;
+                bubbleContent = `<span style="display:inline-flex;align-items:center;gap:5px;">
+                    <i class="fas fa-microphone"></i> Voice message
+                </span>`;
             }
         } else {
             bubbleContent = `<span>📎 ${_escHtml(msg.message_type)}</span>`;
@@ -318,6 +352,10 @@ async function dmSendMessage(event) {
             fd.append('message_type', _dm.pendingMedia.type);
             fd.append('media_file',   _dm.pendingMedia.file);
             if (text) fd.append('text', text);
+            // Send duration for audio so the receiver sees the correct length
+            if (_dm.pendingMedia.type === 'audio' && _dm.pendingMedia.duration) {
+                fd.append('duration', String(Math.round(_dm.pendingMedia.duration)));
+            }
             await DM_API.sendMessage(_dm.activeConvId, fd);
             dmRemoveMedia();
         } else {
@@ -436,10 +474,11 @@ async function dmStartRecording() {
 
             const ext  = mimeType.includes('ogg') ? 'ogg' : 'webm';
             const file = new File([blob], `voice-${Date.now()}.${ext}`, { type: mimeType });
-            _dm.pendingMedia = { file, type: 'audio', dataUrl: null };
+            // Store duration so it gets sent to the backend
+            _dm.pendingMedia = { file, type: 'audio', dataUrl: null, duration: durationSec };
 
             _dmStopRecordingUI();
-            _dmShowPreview('audio', null, `Voice message — ${durationSec}s`);
+            _dmShowPreview('audio', null, `Voice message — ${_dmFmtDuration(durationSec)}`);
         };
 
         _rec.mediaRecorder.start(100); // collect data every 100ms
@@ -1036,26 +1075,32 @@ window._dmToggleVoice = function(audioId, btnId) {
     document.querySelectorAll('audio').forEach(a => {
         if (a.id !== audioId && !a.paused) {
             a.pause();
-            // Reset their button icons
-            const otherBtn = document.getElementById(a.id.replace('audio_', 'play_'));
-            otherBtn?.querySelector('i')?.classList.replace('fa-pause', 'fa-play');
+            const otherId  = a.id.replace('audio_', 'play_');
+            const otherBtn = document.getElementById(otherId);
+            const icon = otherBtn?.querySelector('i');
+            if (icon) icon.className = 'fas fa-play';
         }
     });
 
     if (audio.paused) {
-        audio.play().catch(() => {});
-        btn?.querySelector('i')?.classList.replace('fa-play', 'fa-pause');
+        audio.play().catch(() => {
+            if (typeof showToast === 'function') showToast('Could not play audio.', 'error');
+        });
+        const icon = btn?.querySelector('i');
+        if (icon) icon.className = 'fas fa-pause';
         // Animate waveform bars while playing
-        _dmAnimateWaveform(btnId, audio);
+        const waveId = audioId.replace('audio_', 'wave_');
+        _dmAnimateWaveform(waveId, audio);
     } else {
         audio.pause();
-        btn?.querySelector('i')?.classList.replace('fa-pause', 'fa-play');
+        const icon = btn?.querySelector('i');
+        if (icon) icon.className = 'fas fa-play';
     }
 };
 
 /** Subtly animate waveform bars while voice plays */
-function _dmAnimateWaveform(btnId, audio) {
-    const container = document.getElementById(btnId)?.closest('.dm-voice-bubble')?.querySelector('.dm-voice-waveform');
+function _dmAnimateWaveform(waveId, audio) {
+    const container = document.getElementById(waveId);
     if (!container) return;
 
     const bars = container.querySelectorAll('.dm-voice-bar');
@@ -1063,10 +1108,11 @@ function _dmAnimateWaveform(btnId, audio) {
 
     function tick() {
         if (audio.paused || audio.ended) {
+            // Reset bars to static heights
             bars.forEach(b => { b.style.height = (Math.floor(Math.random() * 8) + 4) + 'px'; });
             return;
         }
-        bars.forEach(b => { b.style.height = (Math.floor(Math.random() * 14) + 4) + 'px'; });
+        bars.forEach(b => { b.style.height = (Math.floor(Math.random() * 16) + 4) + 'px'; });
         frame = requestAnimationFrame(tick);
     }
     cancelAnimationFrame(frame);
