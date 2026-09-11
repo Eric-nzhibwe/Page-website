@@ -33,6 +33,26 @@ function initPaymentPage() {
     loadPaymentData();
     loadTxs();
 
+    // ── Auto-refresh balance every 30s ──────────────────────────────────────
+    // Silently re-fetches the wallet so the balance stays current after
+    // a deposit, withdrawal, or challenge entry fee — no page reload needed.
+    setInterval(async () => {
+        if (document.hidden) return; // skip when tab is not visible
+        try {
+            const res  = await api('/payments/wallet/');
+            const data = await res.json();
+            if (!res.ok) return;
+            const prev = _wallet?.available_balance;
+            _wallet = data.wallet;
+            renderBalance();
+            // If balance went up (deposit confirmed), also refresh transactions
+            if (prev !== undefined && parseFloat(data.wallet.available_balance) > parseFloat(prev)) {
+                loadTxs();
+                pToast('💰 Balance updated!', 'success');
+            }
+        } catch { /* silent — don't disrupt the UI */ }
+    }, 30_000);
+
     // Pill filter clicks
     document.getElementById('pTxPills')?.addEventListener('click', e => {
         const pill = e.target.closest('.p-pill');

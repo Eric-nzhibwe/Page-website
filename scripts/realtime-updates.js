@@ -864,7 +864,120 @@ window.addEventListener('beforeunload', () => {
     clearInterval(_feedPollTimer);
     clearInterval(_notifTimer);
     clearInterval(_onlinePollTimer);
+    clearInterval(_statsPollTimer);
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  USER STATS AUTO-REFRESH  (prestige, tier, streak, wallet, badges)
+// ─────────────────────────────────────────────────────────────────────────────
+let _statsPollTimer  = null;
+const STATS_POLL_MS  = 60_000;  // every 60 s — stats don't change every second
+
+/**
+ * Fetch the current user's profile and silently patch any DOM elements
+ * that show stats. Doesn't re-render the whole profile — just updates
+ * the specific values that can change during a session.
+ */
+async function _pollUserStats() {
+    // Only run when page is visible
+    if (document.hidden) return;
+
+    try {
+        const res = await fetch(`${_RT_BASE}/auth/profile/`, { headers: _rtHeaders() });
+        if (!res.ok) return;
+        const u = await res.json();
+
+        // ── Patch DOM elements by their IDs ───────────────────────────────────
+        const patch = (id, val) => {
+            const el = document.getElementById(id);
+            if (el && el.textContent !== String(val)) el.textContent = val;
+        };
+        const patchAttr = (id, attr, val) => {
+            const el = document.getElementById(id);
+            if (el) el.setAttribute(attr, val);
+        };
+
+        const pts     = (u.prestige_points || 0).toLocaleString();
+        const streak  = u.current_streak || 0;
+        const tier    = u.access_tier   || 'Bronze';
+        const balance = `K${parseFloat(u.total_earnings || 0).toFixed(0)}`;
+        const wins    = u.tournament_wins || 0;
+        const level   = u.level || 1;
+
+        // Sidebar + header stat elements (index.html)
+        patch('sidebarPrestige',   pts);
+        patch('userMenuPrestige',  pts);
+        patch('userMenuStreak',    streak);
+        patch('userMenuBalance',   balance);
+        patch('userMenuTier',      `${tier} Tier`);
+
+        // Profile page stats (user.html via user.js set())
+        patch('statPrestige',      pts);
+        patch('statLevel',         level);
+        patch('statStreak',        streak);
+        patch('statWins',          wins);
+        patch('statEarnings',      balance);
+        patch('statFollowers',     u.followers_count ?? '');
+        patch('statFollowing',     u.following_count ?? '');
+        patch('prestigePoints',    pts);
+
+        // Tier badge anywhere on page
+        ['profileTier', 'sidebarTier', 'menuTier', 'userMenuTier'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                const newVal = id.includes('Tier') ? `${tier} Tier` : tier;
+                if (el.textContent !== newVal) el.textContent = newVal;
+            }
+        });
+
+        // Update cached user object in localStorage
+        try {
+            const stored = JSON.parse(localStorage.getItem('artxUser') || '{}');
+            const updated = {
+                ...stored,
+                prestige_points:  u.prestige_points,
+                current_streak:   u.current_streak,
+                access_tier:      u.access_tier,
+                level:            u.level,
+                tournament_wins:  u.tournament_wins,
+                total_earnings:   u.total_earnings,
+                followers_count:  u.followers_count,
+                following_count:  u.following_count,
+            };
+            localStorage.setItem('artxUser', JSON.stringify(updated));
+        } catch (_) { /* non-critical */ }
+
+    } catch (_) { /* silent — don't disrupt the UI */ }
+}
+
+function _startStatsPoller() {
+    _pollUserStats();  // immediate first fetch
+    _statsPollTimer = setInterval(_pollUserStats, STATS_POLL_MS);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Hook into existing init — add stats poller only
+//  (challenges list auto-refresh is built into challenges.js directly)
+// ─────────────────────────────────────────────────────────────────────────────
+
+(function _extendRealtime() {
+    const start = () => {
+        const token = localStorage.getItem('djangoAuthToken');
+        if (!token) return;
+        _startStatsPoller();
+
+        // Resume on tab visibility restore
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) _pollUserStats();
+        });
+    };
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', start);
+    } else {
+        setTimeout(start, 100);
+    }
+})();
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  GLOBAL EXPORTS  (called from inline HTML and other scripts)

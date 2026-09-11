@@ -22,6 +22,58 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderChallenges();
     renderMySubmissions();
     renderMyChallenges();
+
+    // ── Auto-refresh challenges list every 45s ─────────────────────────────
+    // Re-fetches active challenges and patches participant counts + new cards
+    // without wiping the user's current filter/search state.
+    setInterval(async () => {
+        if (document.hidden) return;
+        try {
+            const data = await apiService.getActiveChallenges();
+            const fresh = Array.isArray(data) ? data : (data.results || []);
+            if (!fresh.length) return;
+
+            // Detect if anything actually changed before re-rendering
+            const oldIds  = new Set(challenges.map(c => String(c.id)));
+            const newIds  = new Set(fresh.map(c => String(c.id)));
+            const added   = fresh.filter(c => !oldIds.has(String(c.id)));
+            const changed = fresh.filter(c => {
+                const old = challenges.find(o => String(o.id) === String(c.id));
+                return old && old.submission_count !== c.submission_count;
+            });
+
+            if (!added.length && !changed.length) return; // nothing changed
+
+            challenges = fresh;
+
+            // If new challenges arrived, do a full re-render
+            if (added.length) {
+                renderChallenges();
+                return;
+            }
+
+            // Otherwise just patch the counts on existing cards (no flicker)
+            const grid = document.getElementById('challengesGrid');
+            if (!grid) return;
+            changed.forEach(c => {
+                const card = grid.querySelector(`[data-id="${c.id}"]`);
+                if (!card) return;
+                // Update submission count pill
+                const pill = card.querySelector('.card-count-pill');
+                if (pill) pill.innerHTML = `<i class="fas fa-users"></i> ${c.submission_count}`;
+                // Flash subtle ring to signal new activity
+                card.style.transition  = 'box-shadow 0.4s ease';
+                card.style.boxShadow   = '0 0 0 3px rgba(85,107,47,0.35)';
+                setTimeout(() => { card.style.boxShadow = ''; }, 900);
+                card.dataset.cachedParticipants = c.submission_count;
+            });
+
+            // Update hero stats row
+            const setHero = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+            setHero('statActiveChallenges', challenges.length);
+            setHero('statTotalPlayers', challenges.reduce((s, c) => s + (c.submission_count || 0), 0).toLocaleString());
+        } catch { /* silent */ }
+    }, 45_000);
 });
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
