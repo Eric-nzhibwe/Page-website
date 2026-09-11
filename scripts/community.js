@@ -343,9 +343,26 @@ async function submitNewPost() {
             showNpError(Object.values(err).flat().join(' ') || 'Post failed.');
             return;
         }
+        // Use the created post returned by the API and prepend to feed
+        const created = await r.json();
         closeNewPostModal();
         showToast('Post published ✓');
-        loadFeed();
+        try {
+            const grid = document.getElementById('feedGrid');
+            if (grid) {
+                const card = document.createElement('div');
+                card.className = 'feed-card';
+                card.style.animationDelay = '0s';
+                card.innerHTML = buildPostCard(created);
+                grid.insertBefore(card, grid.firstChild);
+            } else {
+                // fallback to reload feed
+                loadFeed();
+            }
+        } catch (e) {
+            // If anything goes wrong, fallback to reloading the feed
+            loadFeed();
+        }
     } catch (e) {
         showNpError('Network error. Try again.');
     } finally {
