@@ -323,6 +323,8 @@ async function submitNewPost() {
     }
 
     const body = { content, post_type: newPostType };
+    // ensure posts are public by default so non-followers can see them
+    body.privacy = 'public';
     if (newPostType === 'media') {
         const mu = document.getElementById('newPostMediaUrl').value.trim();
         if (mu) { body.media_url = mu; body.media_type = 'image'; }
@@ -345,6 +347,12 @@ async function submitNewPost() {
         }
         // Use the created post returned by the API and prepend to feed
         const created = await r.json();
+        // persist created post id for reload-sync
+        try {
+            const ids = JSON.parse(localStorage.getItem('myCreatedPostIds') || '[]');
+            ids.unshift(created.id);
+            localStorage.setItem('myCreatedPostIds', JSON.stringify(Array.from(new Set(ids)).slice(0,100)));
+        } catch (e) {}
         closeNewPostModal();
         showToast('Post published ✓');
         try {
@@ -370,6 +378,35 @@ async function submitNewPost() {
         btn.innerHTML = '<i class="fas fa-paper-plane"></i> Post';
     }
 }
+
+// Sync created posts stored in localStorage: fetch each by id and insert if visible
+async function _syncMyCreatedPosts() {
+    const ids = JSON.parse(localStorage.getItem('myCreatedPostIds') || '[]');
+    if (!ids.length) return;
+    const token = localStorage.getItem('djangoAuthToken');
+    if (!token) return;
+    for (const id of ids.slice()) {
+        try {
+            const res = await fetch(`${API}/social/posts/${id}/`, { headers: { 'Authorization': `Token ${token}` } });
+            if (!res.ok) continue;
+            const post = await res.json();
+            const grid = document.getElementById('feedGrid');
+            if (grid && !grid.querySelector(`[data-post-id="${post.id}"]`)) {
+                const card = document.createElement('div');
+                card.className = 'feed-card';
+                card.style.animationDelay = '0s';
+                card.innerHTML = buildPostCard(post);
+                grid.insertBefore(card, grid.firstChild);
+            }
+            const newIds = JSON.parse(localStorage.getItem('myCreatedPostIds') || '[]').filter(x => String(x) !== String(id));
+            localStorage.setItem('myCreatedPostIds', JSON.stringify(newIds));
+        } catch(e) {
+            // ignore and try next time
+        }
+    }
+}
+
+document.addEventListener('DOMContentLoaded', _syncMyCreatedPosts);
 
 function showNpError(msg) {
     const el = document.getElementById('npError');

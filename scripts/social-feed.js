@@ -220,11 +220,13 @@ function publishPost() {
                     : mediaData.length ? 'media' : 'text';
     const token = localStorage.getItem('djangoAuthToken');
 
-    const doPost = token
+        const privacy = document.querySelector('#createPostModal .post-privacy')?.value || 'public';
+
+        const doPost = token
         ? fetch(_POST_API, {
             method:  'POST',
             headers: { 'Authorization': `Token ${token}`, 'Content-Type': 'application/json' },
-            body:    JSON.stringify({ content, post_type })
+                        body:    JSON.stringify({ content, post_type, privacy })
           }).then(r => r.ok ? r.json() : Promise.reject(r.status))
         : Promise.reject('no_token');
 
@@ -232,6 +234,12 @@ function publishPost() {
         .then(apiPost => {
             if (mediaData.length) apiPost._localMedia = mediaData;
             _insertPostCard(apiPost);
+            // persist created post id so it can be reloaded on page refresh
+            try {
+                const ids = JSON.parse(localStorage.getItem('myCreatedPostIds') || '[]');
+                ids.unshift(apiPost.id);
+                localStorage.setItem('myCreatedPostIds', JSON.stringify(Array.from(new Set(ids)).slice(0, 100)));
+            } catch(e) {}
             closeCreatePostModal();
             _feedToast('Post published! 🎉', 'success');
         })
@@ -331,6 +339,33 @@ function _insertPostCard(post) {
 
     container.insertBefore(card, container.firstChild);
 }
+
+// Sync any created posts saved in localStorage by fetching them from the API
+async function _syncCreatedPosts() {
+    const ids = JSON.parse(localStorage.getItem('myCreatedPostIds') || '[]');
+    if (!ids.length) return;
+    const token = localStorage.getItem('djangoAuthToken');
+    if (!token) return;
+    for (const id of ids.slice()) {
+        try {
+            const res = await fetch(`${_POST_API}${id}/`, { headers: { 'Authorization': `Token ${token}` } });
+            if (!res.ok) continue;
+            const post = await res.json();
+            // insert if not already present
+            const container = document.getElementById('feedPosts');
+            if (container && !container.querySelector(`[data-post-id="${post.id}"]`)) {
+                _insertPostCard(post);
+            }
+            // remove id from storage
+            const newIds = JSON.parse(localStorage.getItem('myCreatedPostIds') || '[]').filter(x => String(x) !== String(id));
+            localStorage.setItem('myCreatedPostIds', JSON.stringify(newIds));
+        } catch (e) {
+            // ignore network errors, try next time
+        }
+    }
+}
+
+document.addEventListener('DOMContentLoaded', _syncCreatedPosts);
 
 function _saveLocalPost(post) {
     const posts = JSON.parse(localStorage.getItem('userPosts') || '[]');
