@@ -242,13 +242,34 @@ function dmRenderMessages(msgs, currentUserId) {
             bubbleContent = `<span>${_escHtml(msg.text || '')}</span>`;
         } else if (msg.message_type === 'image') {
             const src = msg.media_url || msg.media_file;
-            bubbleContent = src ? `<img src="${_escHtml(src)}" alt="image" onclick="window.open(this.src,'_blank')">` : '[image]';
+            bubbleContent = src
+                ? `<img src="${_escHtml(src)}" alt="image" onclick="window.open(this.src,'_blank')">`
+                : '[image]';
         } else if (msg.message_type === 'video') {
             const src = msg.media_url || msg.media_file;
             bubbleContent = src ? `<video src="${_escHtml(src)}" controls></video>` : '[video]';
         } else if (msg.message_type === 'audio') {
+            // Rich voice message player with waveform
             const src = msg.media_url || msg.media_file;
-            bubbleContent = src ? `<audio src="${_escHtml(src)}" controls></audio>` : '[audio]';
+            const msgId = `vm_${msg.id || Date.now()}`;
+            const dur = msg.duration ? _dmFmtDuration(msg.duration) : '0:00';
+            if (src) {
+                bubbleContent = `
+                <audio id="audio_${msgId}" src="${_escHtml(src)}" preload="metadata"
+                       onloadedmetadata="(function(a,d){const el=document.getElementById('dur_${msgId}');if(el&&a.duration&&isFinite(a.duration))el.textContent=window._dmFmtDuration(a.duration);})(this)"
+                       onended="document.getElementById('play_${msgId}')?.querySelector('i')?.classList.replace('fa-pause','fa-play')">
+                </audio>
+                <div class="dm-voice-bubble">
+                    <button class="dm-voice-play" id="play_${msgId}"
+                            onclick="_dmToggleVoice('audio_${msgId}','play_${msgId}')" type="button">
+                        <i class="fas fa-play"></i>
+                    </button>
+                    <div class="dm-voice-waveform">${_dmVoiceWaveform(18)}</div>
+                    <span class="dm-voice-dur" id="dur_${msgId}">${dur}</span>
+                </div>`;
+            } else {
+                bubbleContent = `<span><i class="fas fa-microphone"></i> Voice message</span>`;
+            }
         } else {
             bubbleContent = `<span>📎 ${_escHtml(msg.message_type)}</span>`;
         }
@@ -326,21 +347,160 @@ function dmHandleMedia(event) {
     const reader = new FileReader();
     reader.onload = e => {
         _dm.pendingMedia = { file, type, dataUrl: e.target.result };
-        const preview = document.getElementById('dmMediaPreview');
-        const thumb   = document.getElementById('dmMediaThumb');
-        if (preview) preview.style.display = 'flex';
-        if (thumb)   thumb.src = type === 'image' ? e.target.result
-                                                   : 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
+        _dmShowPreview(type, e.target.result, file.name);
     };
     reader.readAsDataURL(file);
-    // Reset input so same file can be selected again
     event.target.value = '';
 }
 
 function dmRemoveMedia() {
     _dm.pendingMedia = null;
-    const preview = document.getElementById('dmMediaPreview');
-    if (preview) preview.style.display = 'none';
+    _dmHidePreview();
+    // Reset voice UI if applicable
+    _dmStopRecordingUI();
+}
+
+/** Show the compose preview strip (image thumb or voice indicator) */
+function _dmShowPreview(type, dataUrl, label) {
+    const strip = document.getElementById('dmComposePreview');
+    if (!strip) return;
+
+    if (type === 'image') {
+        strip.innerHTML = `
+            <img src="${dataUrl}" alt="" class="dm-media-thumb">
+            <button type="button" class="dm-preview-remove" onclick="dmRemoveMedia()" title="Remove">&times;</button>`;
+    } else if (type === 'audio') {
+        strip.innerHTML = `
+            <div class="dm-voice-preview-inner">
+                <i class="fas fa-microphone"></i>
+                <span>${label || 'Voice message'}</span>
+            </div>
+            <button type="button" class="dm-preview-remove" onclick="dmRemoveMedia()" title="Remove">&times;</button>`;
+    } else {
+        strip.innerHTML = `
+            <div class="dm-voice-preview-inner">
+                <i class="fas fa-paperclip"></i>
+                <span>${_escHtml(label || type)}</span>
+            </div>
+            <button type="button" class="dm-preview-remove" onclick="dmRemoveMedia()" title="Remove">&times;</button>`;
+    }
+    strip.classList.add('visible');
+}
+
+function _dmHidePreview() {
+    const strip = document.getElementById('dmComposePreview');
+    if (strip) { strip.innerHTML = ''; strip.classList.remove('visible'); }
+}
+
+// ── Voice recording ───────────────────────────────────────────────────────────
+const _rec = {
+    mediaRecorder: null,
+    chunks:        [],
+    startTime:     null,
+    timerInterval: null,
+};
+
+async function dmStartRecording() {
+    // Don't start if already recording or if there's pending media
+    if (_rec.mediaRecorder) return;
+
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+            ? 'audio/webm;codecs=opus'
+            : MediaRecorder.isTypeSupported('audio/webm')
+                ? 'audio/webm'
+                : 'audio/ogg';
+
+        _rec.chunks        = [];
+        _rec.startTime     = Date.now();
+        _rec.mediaRecorder = new MediaRecorder(stream, { mimeType });
+
+        _rec.mediaRecorder.ondataavailable = e => {
+            if (e.data.size > 0) _rec.chunks.push(e.data);
+        };
+
+        _rec.mediaRecorder.onstop = () => {
+            // Stop all tracks to release the mic
+            stream.getTracks().forEach(t => t.stop());
+
+            if (_rec.chunks.length === 0) return;
+            const blob = new Blob(_rec.chunks, { type: mimeType });
+            const durationSec = Math.round((Date.now() - _rec.startTime) / 1000);
+
+            // Only keep if at least 1 second
+            if (durationSec < 1) {
+                _dmStopRecordingUI();
+                return;
+            }
+
+            const ext  = mimeType.includes('ogg') ? 'ogg' : 'webm';
+            const file = new File([blob], `voice-${Date.now()}.${ext}`, { type: mimeType });
+            _dm.pendingMedia = { file, type: 'audio', dataUrl: null };
+
+            _dmStopRecordingUI();
+            _dmShowPreview('audio', null, `Voice message — ${durationSec}s`);
+        };
+
+        _rec.mediaRecorder.start(100); // collect data every 100ms
+
+        // Update UI
+        const btn = document.getElementById('dmVoiceBtn');
+        if (btn) btn.classList.add('recording');
+        const timer = document.getElementById('dmRecTimer');
+        if (timer) timer.classList.add('visible');
+        const textInput = document.getElementById('dmTextInput');
+        if (textInput) textInput.style.display = 'none';
+
+        // Tick the recording timer
+        _rec.timerInterval = setInterval(() => {
+            const elapsed = Math.round((Date.now() - _rec.startTime) / 1000);
+            const mins = Math.floor(elapsed / 60);
+            const secs = String(elapsed % 60).padStart(2, '0');
+            const el = document.getElementById('dmRecTimerVal');
+            if (el) el.textContent = `${mins}:${secs}`;
+        }, 500);
+
+    } catch (err) {
+        if (err.name === 'NotAllowedError') {
+            if (typeof showToast === 'function') showToast('Microphone permission denied.', 'error');
+        } else {
+            console.error('Recording error:', err);
+        }
+    }
+}
+
+function dmStopRecording() {
+    if (!_rec.mediaRecorder) return;
+    if (_rec.mediaRecorder.state !== 'inactive') {
+        _rec.mediaRecorder.stop();
+    }
+    _rec.mediaRecorder = null;
+}
+
+function _dmStopRecordingUI() {
+    clearInterval(_rec.timerInterval);
+    _rec.timerInterval = null;
+    const btn = document.getElementById('dmVoiceBtn');
+    if (btn) btn.classList.remove('recording');
+    const timer = document.getElementById('dmRecTimer');
+    if (timer) timer.classList.remove('visible');
+    const textInput = document.getElementById('dmTextInput');
+    if (textInput) textInput.style.display = '';
+}
+
+/** Build the waveform bars for a voice bubble (purely decorative) */
+function _dmVoiceWaveform(count = 20) {
+    const heights = Array.from({ length: count }, () => Math.floor(Math.random() * 16) + 4);
+    return heights.map(h =>
+        `<div class="dm-voice-bar" style="height:${h}px;"></div>`
+    ).join('');
+}
+
+/** Format seconds as M:SS */
+function _dmFmtDuration(seconds) {
+    const s = Math.round(seconds || 0);
+    return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 }
 
 // ── New chat modal ────────────────────────────────────────────────────────────
@@ -561,7 +721,7 @@ function dmSwitchTab(tab) {
         }
     } else {
         if (chatsPanel)  chatsPanel.style.display  = 'none';
-        if (peoplePanel) peoplePanel.style.display = 'block';
+        if (peoplePanel) peoplePanel.style.display = 'flex';
         tabChats?.classList.remove('active');
         tabPeople?.classList.add('active');
         // Switch search to user search
@@ -862,3 +1022,55 @@ window.dmSendMessage       = dmSendMessage;
 window.dmHandleMedia       = dmHandleMedia;
 window.dmRemoveMedia       = dmRemoveMedia;
 window.dmViewProfile       = dmViewProfile;
+window.dmStartRecording    = dmStartRecording;
+window.dmStopRecording     = dmStopRecording;
+window._dmFmtDuration      = _dmFmtDuration;
+
+/** Toggle play/pause on a voice message */
+window._dmToggleVoice = function(audioId, btnId) {
+    const audio = document.getElementById(audioId);
+    const btn   = document.getElementById(btnId);
+    if (!audio) return;
+
+    // Pause all other playing audios first
+    document.querySelectorAll('audio').forEach(a => {
+        if (a.id !== audioId && !a.paused) {
+            a.pause();
+            // Reset their button icons
+            const otherBtn = document.getElementById(a.id.replace('audio_', 'play_'));
+            otherBtn?.querySelector('i')?.classList.replace('fa-pause', 'fa-play');
+        }
+    });
+
+    if (audio.paused) {
+        audio.play().catch(() => {});
+        btn?.querySelector('i')?.classList.replace('fa-play', 'fa-pause');
+        // Animate waveform bars while playing
+        _dmAnimateWaveform(btnId, audio);
+    } else {
+        audio.pause();
+        btn?.querySelector('i')?.classList.replace('fa-pause', 'fa-play');
+    }
+};
+
+/** Subtly animate waveform bars while voice plays */
+function _dmAnimateWaveform(btnId, audio) {
+    const container = document.getElementById(btnId)?.closest('.dm-voice-bubble')?.querySelector('.dm-voice-waveform');
+    if (!container) return;
+
+    const bars = container.querySelectorAll('.dm-voice-bar');
+    let frame;
+
+    function tick() {
+        if (audio.paused || audio.ended) {
+            bars.forEach(b => { b.style.height = (Math.floor(Math.random() * 8) + 4) + 'px'; });
+            return;
+        }
+        bars.forEach(b => { b.style.height = (Math.floor(Math.random() * 14) + 4) + 'px'; });
+        frame = requestAnimationFrame(tick);
+    }
+    cancelAnimationFrame(frame);
+    tick();
+    audio.addEventListener('pause',  () => cancelAnimationFrame(frame), { once: true });
+    audio.addEventListener('ended',  () => cancelAnimationFrame(frame), { once: true });
+}

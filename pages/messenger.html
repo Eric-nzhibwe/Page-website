@@ -3,230 +3,879 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Messages</title>
+    <title>Messages — ARTX</title>
     <link rel="icon" type="image/jpeg" href="../images/ARTX.jpg">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
-    <link rel="stylesheet" href="../styles/styles.css">
-    <link rel="stylesheet" href="../styles/icon-nav.css">
-    <link rel="stylesheet" href="../styles/messenger.css">
     <script src="../scripts/theme.js"></script>
     <style>
-        /* Page-level reset so messenger fills the viewport */
-        html, body { height: 100%; margin: 0; overflow: hidden; }
-        .dm-page-wrap {
+        /* ── Reset ── */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { height: 100%; overflow: hidden; font-family: 'Segoe UI', system-ui, sans-serif; }
+
+        /* ── Page shell ── */
+        .dm-app {
             display: flex;
             flex-direction: column;
             height: 100vh;
+            background: #f0f4ec;
         }
-        .dm-page-header {
+
+        /* ══════════════════════════════════════════
+           TOP NAV BAR
+        ══════════════════════════════════════════ */
+        .dm-topbar {
+            height: 56px;
             flex-shrink: 0;
             background: #fff;
-            border-bottom: 1px solid rgba(85,107,47,0.14);
+            border-bottom: 1px solid rgba(85,107,47,0.13);
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            padding: 0 18px;
-            height: 54px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.06);
-            z-index: 100;
+            padding: 0 16px;
+            gap: 12px;
+            box-shadow: 0 1px 8px rgba(0,0,0,0.06);
+            z-index: 200;
         }
-        .dm-page-logo {
-            font-size: 20px;
+        .dm-topbar-logo {
+            font-size: 19px;
             font-weight: 900;
             color: #556b2f;
             text-decoration: none;
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 7px;
             letter-spacing: -0.4px;
+            flex-shrink: 0;
         }
-        .dm-page-logo i { color: #ff6b35; }
-        .dm-nav-links {
+        .dm-topbar-logo i { color: #ff6b35; }
+        .dm-topbar-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #1a2010;
+            flex: 1;
+        }
+        .dm-topbar-nav {
             display: flex;
             align-items: center;
-            gap: 4px;
+            gap: 2px;
         }
-        .dm-nav-btn {
+        .dm-topbar-btn {
             width: 38px; height: 38px;
-            background: none;
             border: none;
-            border-radius: 9px;
+            background: none;
+            border-radius: 10px;
             color: #8a9e7a;
             font-size: 16px;
             cursor: pointer;
             display: flex; align-items: center; justify-content: center;
             text-decoration: none;
-            transition: background 0.15s, color 0.15s;
+            transition: background 0.14s, color 0.14s;
             position: relative;
         }
-        .dm-nav-btn:hover, .dm-nav-btn.active {
-            background: rgba(85,107,47,0.1);
-            color: #556b2f;
+        .dm-topbar-btn:hover { background: rgba(85,107,47,0.1); color: #556b2f; }
+        .dm-topbar-btn.active { background: rgba(85,107,47,0.1); color: #556b2f; }
+        .dm-topbar-badge {
+            position: absolute; top: 4px; right: 3px;
+            background: #ef4444; color: #fff;
+            font-size: 9px; font-weight: 700;
+            border-radius: 999px; padding: 1px 4px;
+            min-width: 14px; text-align: center; display: none;
         }
-        .dm-nav-badge {
-            position: absolute;
-            top: 4px; right: 4px;
-            background: #556b2f;
-            color: #fff;
-            font-size: 9px;
-            font-weight: 700;
-            border-radius: 999px;
-            padding: 1px 4px;
-            min-width: 14px;
-            text-align: center;
-            display: none;
-        }
-        .dm-shell {
+
+        /* ══════════════════════════════════════════
+           BODY (sidebar + chat)
+        ══════════════════════════════════════════ */
+        .dm-body {
             flex: 1;
-            min-height: 0; /* critical — lets flex children scroll */
+            min-height: 0;
+            display: flex;
+            overflow: hidden;
         }
+
+        /* ══════════════════════════════════════════
+           SIDEBAR
+        ══════════════════════════════════════════ */
+        .dm-sidebar {
+            width: 320px;
+            min-width: 320px;
+            flex-shrink: 0;
+            background: #fff;
+            border-right: 1px solid rgba(85,107,47,0.1);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            transition: transform 0.28s cubic-bezier(0.4,0,0.2,1);
+        }
+
+        .dm-sidebar-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 16px 10px;
+            flex-shrink: 0;
+        }
+        .dm-sidebar-title {
+            font-size: 18px; font-weight: 800; color: #1a2010;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .dm-sidebar-title i { color: #556b2f; font-size: 16px; }
+        .dm-new-btn {
+            width: 34px; height: 34px;
+            background: rgba(85,107,47,0.1);
+            border: none; border-radius: 9px;
+            color: #556b2f; font-size: 14px;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: background 0.14s, transform 0.14s;
+        }
+        .dm-new-btn:hover { background: #556b2f; color: #fff; transform: scale(1.05); }
+
+        /* Search bar */
+        .dm-search-wrap {
+            margin: 0 12px 10px;
+            display: flex; align-items: center; gap: 8px;
+            background: #f4f7f0;
+            border: 1.5px solid transparent;
+            border-radius: 12px;
+            padding: 9px 13px;
+            transition: border-color 0.14s, box-shadow 0.14s;
+            flex-shrink: 0;
+        }
+        .dm-search-wrap:focus-within {
+            border-color: #556b2f;
+            box-shadow: 0 0 0 3px rgba(85,107,47,0.1);
+            background: #fff;
+        }
+        .dm-search-wrap i { color: #8a9e7a; font-size: 13px; flex-shrink: 0; }
+        .dm-search-wrap input {
+            flex: 1; background: none; border: none; outline: none;
+            font-size: 13px; color: #1a2010; font-family: inherit;
+        }
+        .dm-search-wrap input::placeholder { color: #aac090; }
+
+        /* Tabs */
+        .dm-tabs {
+            display: flex;
+            margin: 0 12px 8px;
+            background: #f4f7f0;
+            border-radius: 10px;
+            padding: 3px;
+            flex-shrink: 0;
+        }
+        .dm-tab {
+            flex: 1; padding: 7px 6px;
+            border: none; background: none;
+            font-size: 12px; font-weight: 600; color: #8a9e7a;
+            border-radius: 8px; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; gap: 5px;
+            transition: all 0.15s; font-family: inherit;
+        }
+        .dm-tab.active { background: #fff; color: #556b2f; box-shadow: 0 1px 6px rgba(0,0,0,0.08); }
+        .dm-tab i { font-size: 11px; }
+
+        /* Section labels */
+        .dm-section-label {
+            font-size: 10px; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.8px; color: #aac090;
+            padding: 6px 16px 4px; flex-shrink: 0;
+        }
+
+        /* Panels */
+        #dmPanelChats {
+            display: flex; flex-direction: column;
+            flex: 1; min-height: 0; overflow: hidden;
+        }
+        #dmPanelPeople {
+            display: none; flex: 1; overflow-y: auto;
+            flex-direction: column;
+        }
+        #dmPanelPeople::-webkit-scrollbar { width: 4px; }
+        #dmPanelPeople::-webkit-scrollbar-thumb { background: rgba(85,107,47,0.2); border-radius: 4px; }
+
+        /* Conv list */
+        .dm-conv-list {
+            flex: 1; overflow-y: auto;
+            padding: 4px 6px 8px;
+        }
+        .dm-conv-list::-webkit-scrollbar { width: 4px; }
+        .dm-conv-list::-webkit-scrollbar-thumb { background: rgba(85,107,47,0.2); border-radius: 4px; }
+
+        /* Conversation item */
+        .dm-conv-item {
+            display: flex; align-items: center; gap: 11px;
+            padding: 10px 10px; border-radius: 12px;
+            cursor: pointer; transition: background 0.12s;
+            margin-bottom: 2px; position: relative;
+        }
+        .dm-conv-item:hover { background: #f4f7f0; }
+        .dm-conv-item.active { background: linear-gradient(135deg, rgba(85,107,47,0.1), rgba(139,195,74,0.07)); }
+
+        .dm-conv-avatar {
+            width: 46px; height: 46px; border-radius: 50%;
+            background: linear-gradient(135deg, #556b2f, #8bc34a);
+            display: flex; align-items: center; justify-content: center;
+            color: #fff; font-size: 18px; flex-shrink: 0;
+            overflow: hidden; position: relative;
+            box-shadow: 0 2px 8px rgba(85,107,47,0.2);
+        }
+        .dm-conv-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+        .dm-online-dot {
+            position: absolute; bottom: 1px; right: 1px;
+            width: 12px; height: 12px; background: #22c55e;
+            border-radius: 50%; border: 2px solid #fff;
+        }
+
+        .dm-conv-body { flex: 1; min-width: 0; }
+        .dm-conv-name {
+            font-size: 13px; font-weight: 700; color: #1a2010;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .dm-conv-preview {
+            font-size: 12px; color: #8a9e7a; margin-top: 2px;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .dm-conv-preview.unread { color: #556b2f; font-weight: 600; }
+
+        .dm-conv-meta {
+            display: flex; flex-direction: column; align-items: flex-end; gap: 4px;
+            flex-shrink: 0;
+        }
+        .dm-conv-time { font-size: 10px; color: #aac090; white-space: nowrap; }
+        .dm-unread-badge {
+            background: #556b2f; color: #fff;
+            border-radius: 999px; padding: 2px 6px;
+            font-size: 10px; font-weight: 700;
+        }
+
+        /* People panel items */
+        .dm-people-list { padding: 2px 6px 8px; }
+        .dm-person-item {
+            display: flex; align-items: center; gap: 10px;
+            padding: 9px 10px; border-radius: 12px;
+            transition: background 0.12s; margin-bottom: 2px;
+        }
+        .dm-person-item:hover { background: #f4f7f0; }
+        .dm-person-avatar {
+            width: 40px; height: 40px; border-radius: 50%;
+            background: linear-gradient(135deg, #556b2f, #8bc34a);
+            display: flex; align-items: center; justify-content: center;
+            color: #fff; font-size: 15px; flex-shrink: 0;
+            overflow: hidden; position: relative;
+        }
+        .dm-person-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+        .dm-person-online-dot {
+            position: absolute; bottom: 1px; right: 1px;
+            width: 10px; height: 10px; background: #22c55e;
+            border-radius: 50%; border: 2px solid #fff;
+        }
+        .dm-person-info { flex: 1; min-width: 0; }
+        .dm-person-name { font-size: 13px; font-weight: 600; color: #1a2010; }
+        .dm-person-tier { font-size: 11px; color: #8a9e7a; }
+        .dm-person-actions { display: flex; gap: 5px; flex-shrink: 0; }
+        .dm-person-msg-btn {
+            width: 30px; height: 30px;
+            background: rgba(85,107,47,0.1); border: none; border-radius: 8px;
+            color: #556b2f; font-size: 13px; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: background 0.14s;
+        }
+        .dm-person-msg-btn:hover { background: #556b2f; color: #fff; }
+        .artx-follow-btn {
+            padding: 5px 10px; border-radius: 999px;
+            border: 1.5px solid rgba(85,107,47,0.3);
+            background: transparent; color: #556b2f;
+            font-size: 11px; font-weight: 600; cursor: pointer;
+            font-family: inherit; display: flex; align-items: center; gap: 4px;
+            transition: all 0.14s; white-space: nowrap;
+        }
+        .artx-follow-btn:hover { background: #556b2f; color: #fff; border-color: #556b2f; }
+        .artx-follow-btn.artx-follow-btn--following { background: rgba(85,107,47,0.1); border-color: #556b2f; }
+
+        /* Empty / loading */
+        .dm-empty-state {
+            text-align: center; padding: 28px 16px;
+            color: #aac090; font-size: 12px;
+        }
+        .dm-hint { text-align: center; padding: 16px; color: #aac090; font-size: 12px; }
+        .dm-hint a { color: #556b2f; }
+
+        /* ══════════════════════════════════════════
+           CHAT AREA
+        ══════════════════════════════════════════ */
+        .dm-chat-area {
+            flex: 1; display: flex; flex-direction: column; min-width: 0;
+            background: #f0f4ec;
+            background-image:
+                radial-gradient(circle at 15% 85%, rgba(85,107,47,0.04) 0%, transparent 50%),
+                radial-gradient(circle at 85% 15%, rgba(139,195,74,0.04) 0%, transparent 50%);
+        }
+
+        /* Welcome screen */
+        .dm-welcome {
+            flex: 1; display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            gap: 14px; padding: 40px; text-align: center;
+        }
+        .dm-welcome-icon {
+            width: 80px; height: 80px; border-radius: 50%;
+            background: linear-gradient(135deg, #556b2f, #8bc34a);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 34px; color: #fff;
+            box-shadow: 0 8px 30px rgba(85,107,47,0.25);
+            animation: dmPulse 3s ease-in-out infinite;
+        }
+        @keyframes dmPulse {
+            0%,100% { box-shadow: 0 8px 30px rgba(85,107,47,0.25); }
+            50% { box-shadow: 0 8px 44px rgba(85,107,47,0.4); }
+        }
+        .dm-welcome h3 { font-size: 20px; font-weight: 800; color: #1a2010; }
+        .dm-welcome p { font-size: 13px; color: #8a9e7a; max-width: 280px; line-height: 1.6; }
+        .dm-start-btn {
+            background: linear-gradient(135deg, #556b2f, #8bc34a);
+            border: none; border-radius: 999px; color: #fff;
+            font-size: 13px; font-weight: 700; padding: 11px 26px;
+            cursor: pointer; display: flex; align-items: center; gap: 7px;
+            box-shadow: 0 4px 16px rgba(85,107,47,0.3);
+            transition: opacity 0.15s, transform 0.15s; font-family: inherit;
+        }
+        .dm-start-btn:hover { opacity: 0.9; transform: translateY(-2px); }
+
+        /* Chat inner */
+        .dm-chat-inner { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+
+        /* Chat header */
+        .dm-chat-header {
+            display: flex; align-items: center; gap: 12px;
+            padding: 12px 18px;
+            background: #fff;
+            border-bottom: 1px solid rgba(85,107,47,0.1);
+            flex-shrink: 0;
+            box-shadow: 0 1px 8px rgba(0,0,0,0.05);
+        }
+        .dm-back-btn {
+            width: 34px; height: 34px;
+            background: #f4f7f0; border: none; border-radius: 9px;
+            color: #556b2f; font-size: 14px; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: background 0.14s; flex-shrink: 0;
+        }
+        .dm-back-btn:hover { background: #e8f0dc; }
+        .dm-chat-avatar {
+            width: 40px; height: 40px; border-radius: 50%;
+            background: linear-gradient(135deg, #556b2f, #8bc34a);
+            display: flex; align-items: center; justify-content: center;
+            color: #fff; font-size: 18px; flex-shrink: 0;
+            overflow: hidden; box-shadow: 0 2px 8px rgba(85,107,47,0.2);
+        }
+        .dm-chat-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+        .dm-chat-meta { flex: 1; min-width: 0; }
+        .dm-chat-name { display: block; font-size: 15px; font-weight: 700; color: #1a2010; }
+        .dm-chat-status { display: block; font-size: 11px; color: #22c55e; font-weight: 500; margin-top: 1px; }
+        .dm-chat-actions { display: flex; gap: 4px; flex-shrink: 0; }
+        .dm-header-action-btn {
+            width: 34px; height: 34px;
+            background: #f4f7f0; border: none; border-radius: 9px;
+            color: #8a9e7a; font-size: 14px; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.14s;
+        }
+        .dm-header-action-btn:hover { background: rgba(85,107,47,0.1); color: #556b2f; }
+
+        /* Messages area */
+        .dm-messages {
+            flex: 1; overflow-y: auto;
+            padding: 18px 20px 12px;
+            display: flex; flex-direction: column; gap: 3px;
+            scroll-behavior: smooth;
+        }
+        .dm-messages::-webkit-scrollbar { width: 5px; }
+        .dm-messages::-webkit-scrollbar-thumb { background: rgba(85,107,47,0.2); border-radius: 4px; }
+
+        .dm-date-sep {
+            align-self: center;
+            font-size: 10px; font-weight: 600; color: #8a9e7a;
+            background: rgba(255,255,255,0.8); border: 1px solid rgba(85,107,47,0.12);
+            border-radius: 999px; padding: 3px 12px; margin: 8px 0;
+            backdrop-filter: blur(4px);
+        }
+
+        /* Message rows */
+        .dm-msg-row {
+            display: flex; gap: 7px; align-items: flex-end;
+            max-width: 72%;
+            animation: dmIn 0.18s ease;
+        }
+        @keyframes dmIn { from { opacity:0; transform:translateY(5px); } to { opacity:1; transform:translateY(0); } }
+        .dm-msg-row.mine { align-self: flex-end; flex-direction: row-reverse; }
+        .dm-msg-row.theirs { align-self: flex-start; }
+        .dm-msg-avatar {
+            width: 26px; height: 26px; border-radius: 50%;
+            background: linear-gradient(135deg, #556b2f, #8bc34a);
+            display: flex; align-items: center; justify-content: center;
+            color: #fff; font-size: 10px; flex-shrink: 0;
+            overflow: hidden;
+        }
+        .dm-msg-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+        .dm-msg-row.theirs + .dm-msg-row.theirs { margin-top: -2px; }
+        .dm-msg-row.theirs + .dm-msg-row.theirs .dm-msg-avatar { visibility: hidden; }
+        .dm-msg-row.mine + .dm-msg-row.mine { margin-top: -2px; }
+
+        .dm-bubble {
+            padding: 9px 13px;
+            border-radius: 18px; font-size: 14px; line-height: 1.5;
+            word-break: break-word; max-width: 100%;
+        }
+        .dm-msg-row.theirs .dm-bubble {
+            background: #fff; color: #1a2010;
+            border-bottom-left-radius: 4px;
+            border: 1px solid rgba(85,107,47,0.1);
+            box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+        }
+        .dm-msg-row.mine .dm-bubble {
+            background: linear-gradient(135deg, #4a8024, #7ab629);
+            color: #fff; border-bottom-right-radius: 4px;
+            box-shadow: 0 2px 10px rgba(85,107,47,0.25);
+        }
+        .dm-bubble img { max-width: 220px; max-height: 220px; border-radius: 10px; display: block; cursor: pointer; }
+        .dm-bubble video, .dm-bubble audio { max-width: 220px; width: 100%; border-radius: 10px; display: block; }
+
+        /* Voice message bubble */
+        .dm-voice-bubble {
+            display: flex; align-items: center; gap: 10px;
+            padding: 10px 14px; min-width: 180px;
+        }
+        .dm-voice-play {
+            width: 34px; height: 34px; border-radius: 50%;
+            border: none; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 13px; flex-shrink: 0;
+            transition: transform 0.14s;
+        }
+        .dm-msg-row.mine .dm-voice-play { background: rgba(255,255,255,0.25); color: #fff; }
+        .dm-msg-row.theirs .dm-voice-play { background: rgba(85,107,47,0.15); color: #556b2f; }
+        .dm-voice-play:hover { transform: scale(1.1); }
+        .dm-voice-waveform {
+            flex: 1; height: 28px; display: flex; align-items: center; gap: 2px;
+        }
+        .dm-voice-bar {
+            width: 3px; border-radius: 2px; flex-shrink: 0;
+            transition: height 0.1s;
+        }
+        .dm-msg-row.mine .dm-voice-bar { background: rgba(255,255,255,0.6); }
+        .dm-msg-row.theirs .dm-voice-bar { background: rgba(85,107,47,0.4); }
+        .dm-voice-dur {
+            font-size: 11px; font-weight: 600; flex-shrink: 0;
+        }
+        .dm-msg-row.mine .dm-voice-dur { color: rgba(255,255,255,0.8); }
+        .dm-msg-row.theirs .dm-voice-dur { color: #8a9e7a; }
+
+        .dm-msg-time {
+            font-size: 10px; color: #aac090; margin-top: 3px;
+            align-self: flex-end; white-space: nowrap;
+        }
+        .dm-msg-row.mine .dm-msg-time { text-align: right; }
+        .dm-msgs-loading { display: flex; justify-content: center; align-items: center; flex: 1; }
+
+        /* ══════════════════════════════════════════
+           COMPOSE BAR
+        ══════════════════════════════════════════ */
+        .dm-compose {
+            padding: 10px 14px 12px;
+            background: #fff;
+            border-top: 1px solid rgba(85,107,47,0.1);
+            flex-shrink: 0;
+        }
+
+        /* Media / voice preview row */
+        .dm-compose-preview {
+            display: none;
+            align-items: center; gap: 10px;
+            padding: 8px 4px 6px;
+            border-bottom: 1px solid rgba(85,107,47,0.1);
+            margin-bottom: 8px;
+            animation: dmIn 0.2s ease;
+        }
+        .dm-compose-preview.visible { display: flex; }
+        .dm-media-thumb {
+            height: 56px; width: 56px;
+            object-fit: cover; border-radius: 8px;
+            border: 2px solid rgba(85,107,47,0.2);
+        }
+        .dm-voice-preview-inner {
+            display: flex; align-items: center; gap: 10px; flex: 1;
+            background: rgba(85,107,47,0.06); border-radius: 10px; padding: 8px 12px;
+        }
+        .dm-voice-preview-inner i { color: #556b2f; font-size: 18px; }
+        .dm-voice-preview-inner span { font-size: 13px; font-weight: 600; color: #556b2f; }
+        .dm-preview-remove {
+            width: 26px; height: 26px; border-radius: 50%;
+            background: #fee2e2; border: none; color: #ef4444;
+            font-size: 13px; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .dm-preview-remove:hover { background: #fecaca; }
+
+        /* Input row */
+        .dm-compose-row {
+            display: flex; align-items: center; gap: 7px;
+        }
+        .dm-compose-action {
+            width: 38px; height: 38px; flex-shrink: 0;
+            background: #f4f7f0; border: none; border-radius: 10px;
+            color: #8a9e7a; font-size: 15px; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.14s; position: relative;
+        }
+        .dm-compose-action:hover { background: rgba(85,107,47,0.12); color: #556b2f; }
+        .dm-compose-action input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+
+        .dm-text-input {
+            flex: 1;
+            background: #f4f7f0; border: 1.5px solid transparent;
+            border-radius: 20px; color: #1a2010;
+            font-size: 14px; font-family: inherit;
+            padding: 9px 16px; outline: none;
+            transition: border-color 0.14s, background 0.14s;
+        }
+        .dm-text-input:focus {
+            border-color: #556b2f;
+            background: #fff;
+            box-shadow: 0 0 0 3px rgba(85,107,47,0.1);
+        }
+        .dm-text-input::placeholder { color: #aac090; }
+
+        /* Voice record button */
+        .dm-voice-btn {
+            width: 38px; height: 38px; flex-shrink: 0;
+            background: #f4f7f0; border: none; border-radius: 10px;
+            color: #8a9e7a; font-size: 15px; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.14s;
+        }
+        .dm-voice-btn:hover { background: rgba(85,107,47,0.12); color: #556b2f; }
+        .dm-voice-btn.recording {
+            background: #fee2e2; color: #ef4444;
+            animation: dmRecordPulse 1s ease-in-out infinite;
+        }
+        @keyframes dmRecordPulse {
+            0%,100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.4); }
+            50% { box-shadow: 0 0 0 6px rgba(239,68,68,0); }
+        }
+
+        /* Send button */
+        .dm-send-btn {
+            width: 38px; height: 38px; flex-shrink: 0;
+            background: linear-gradient(135deg, #556b2f, #8bc34a);
+            border: none; border-radius: 10px; color: #fff;
+            font-size: 14px; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 3px 10px rgba(85,107,47,0.3);
+            transition: transform 0.14s, opacity 0.14s;
+        }
+        .dm-send-btn:hover { transform: scale(1.06); }
+        .dm-send-btn:active { transform: scale(0.95); }
+        .dm-send-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+        /* Recording timer in compose bar */
+        .dm-rec-timer {
+            font-size: 12px; font-weight: 700; color: #ef4444;
+            display: none; align-items: center; gap: 5px;
+        }
+        .dm-rec-timer.visible { display: flex; }
+        .dm-rec-dot { width: 7px; height: 7px; background: #ef4444; border-radius: 50%; animation: dmRecordPulse 1s infinite; }
+
+        /* ══════════════════════════════════════════
+           SPINNER
+        ══════════════════════════════════════════ */
+        .dm-spinner {
+            width: 24px; height: 24px;
+            border: 3px solid rgba(85,107,47,0.2);
+            border-top-color: #556b2f;
+            border-radius: 50%;
+            animation: dmSpin 0.7s linear infinite;
+            margin: 20px auto;
+        }
+        @keyframes dmSpin { to { transform: rotate(360deg); } }
+
+        /* ══════════════════════════════════════════
+           NEW CHAT MODAL
+        ══════════════════════════════════════════ */
+        .dm-modal-backdrop {
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.4);
+            backdrop-filter: blur(6px);
+            z-index: 500;
+            display: flex; align-items: center; justify-content: center;
+            padding: 16px;
+            animation: dmFadeIn 0.18s ease;
+        }
+        @keyframes dmFadeIn { from { opacity:0; } to { opacity:1; } }
+        .dm-modal {
+            background: #fff; border-radius: 18px;
+            width: 100%; max-width: 420px; max-height: 80vh;
+            display: flex; flex-direction: column; overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+            animation: dmModalIn 0.2s cubic-bezier(0.34,1.56,0.64,1);
+        }
+        @keyframes dmModalIn { from { transform: scale(0.93) translateY(8px); opacity:0; } to { transform: scale(1) translateY(0); opacity:1; } }
+        .dm-modal-header {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 16px 18px 12px;
+            border-bottom: 1px solid rgba(85,107,47,0.1);
+            flex-shrink: 0;
+        }
+        .dm-modal-header h3 { font-size: 15px; font-weight: 800; color: #1a2010; display: flex; align-items: center; gap: 8px; }
+        .dm-modal-header h3 i { color: #556b2f; }
+        .dm-modal-close {
+            width: 28px; height: 28px; background: #f4f7f0; border: none;
+            border-radius: 50%; color: #8a9e7a; font-size: 14px; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: background 0.14s;
+        }
+        .dm-modal-close:hover { background: #fee2e2; color: #ef4444; }
+        .dm-modal-search {
+            display: flex; align-items: center; gap: 9px;
+            padding: 10px 16px;
+            border-bottom: 1px solid rgba(85,107,47,0.1);
+            flex-shrink: 0;
+        }
+        .dm-modal-search i { color: #aac090; font-size: 13px; }
+        .dm-modal-search input {
+            flex: 1; border: none; outline: none;
+            font-size: 13px; color: #1a2010; font-family: inherit;
+        }
+        .dm-user-results { flex: 1; overflow-y: auto; min-height: 80px; }
+        .dm-user-results::-webkit-scrollbar { width: 4px; }
+        .dm-user-results::-webkit-scrollbar-thumb { background: rgba(85,107,47,0.2); border-radius: 4px; }
+        .dm-user-result-item {
+            display: flex; align-items: center; gap: 11px;
+            padding: 10px 16px; cursor: pointer; transition: background 0.12s;
+        }
+        .dm-user-result-item:hover { background: #f4f7f0; }
+        .dm-user-result-avatar {
+            width: 40px; height: 40px; border-radius: 50%;
+            background: linear-gradient(135deg, #556b2f, #8bc34a);
+            display: flex; align-items: center; justify-content: center;
+            color: #fff; font-size: 15px; flex-shrink: 0;
+            overflow: hidden;
+        }
+        .dm-user-result-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+        .dm-user-result-info { flex: 1; min-width: 0; }
+        .dm-user-result-name { font-size: 13px; font-weight: 700; color: #1a2010; }
+        .dm-user-result-tier { font-size: 11px; color: #8a9e7a; margin-top: 2px; }
+        .dm-user-result-action {
+            padding: 6px 13px; background: rgba(85,107,47,0.1);
+            border: 1.5px solid rgba(85,107,47,0.25); border-radius: 999px;
+            color: #556b2f; font-size: 12px; font-weight: 600; cursor: pointer;
+            transition: all 0.14s; white-space: nowrap; font-family: inherit;
+        }
+        .dm-user-result-action:hover { background: #556b2f; color: #fff; }
+
+        /* ══════════════════════════════════════════
+           RESPONSIVE — MOBILE
+        ══════════════════════════════════════════ */
+        @media (max-width: 640px) {
+            .dm-sidebar {
+                position: absolute; top: 0; left: 0; bottom: 0;
+                width: 100%; z-index: 10;
+                transform: translateX(0);
+                box-shadow: none;
+            }
+            .dm-sidebar.hidden { transform: translateX(-100%); }
+            .dm-chat-area {
+                position: absolute; inset: 0; z-index: 9;
+                transform: translateX(100%);
+                transition: transform 0.28s cubic-bezier(0.4,0,0.2,1);
+            }
+            .dm-chat-area.visible { transform: translateX(0); }
+            .dm-back-btn { display: flex; }
+            .dm-msg-row { max-width: 88%; }
+            .dm-body { position: relative; }
+        }
+        @media (min-width: 641px) {
+            .dm-back-btn { display: none; }
+            .dm-sidebar.hidden { transform: none !important; }
+            .dm-chat-area { transform: none !important; }
+        }
+        @media (min-width: 1100px) {
+            .dm-sidebar { width: 340px; min-width: 340px; }
+        }
+
+        /* ── Dark mode ── */
+        .dark-mode .dm-app, [data-theme="dark"] .dm-app {
+            --dm-bg: #0d0f0a; --dm-surf: #141810; --dm-surf2: #1c2214;
+        }
+        .dark-mode .dm-topbar, .dark-mode .dm-sidebar,
+        .dark-mode .dm-chat-header, .dark-mode .dm-compose,
+        .dark-mode .dm-modal { background: #141810; border-color: rgba(139,195,74,0.1); }
+        .dark-mode .dm-conv-name, .dark-mode .dm-chat-name,
+        .dark-mode .dm-person-name, .dark-mode .dm-user-result-name { color: #e8f0d8; }
+        .dark-mode .dm-text-input { background: #1c2214; color: #e8f0d8; }
+        .dark-mode .dm-msg-row.theirs .dm-bubble { background: #1c2214; color: #e8f0d8; }
+        .dark-mode .dm-search-wrap, .dark-mode .dm-tabs { background: #1c2214; }
+        .dark-mode .dm-app { background: #0d0f0a; }
     </style>
 </head>
 <body>
 
-<div class="dm-page-wrap">
+<div class="dm-app">
 
-    <!-- ── Minimal header ── -->
-    <header class="dm-page-header">
-        <a href="#" class="dm-page-logo">
+    <!-- ══ TOP BAR ══ -->
+    <header class="dm-topbar">
+        <a href="../index.html" class="dm-topbar-logo">
             <i class="fas fa-fire-flame-curved"></i>ARTX
         </a>
-        <nav class="dm-nav-links">
-            <a href="../index.html" class="dm-nav-btn" title="Home">
-                <i class="fas fa-house"></i>
-            </a>
-            <a href="challenges.html" class="dm-nav-btn" title="Challenges">
-                <i class="fas fa-trophy"></i>
-            </a>
-            <a href="messenger.html" class="dm-nav-btn active" title="Messages">
+        <span class="dm-topbar-title">Messages</span>
+        <nav class="dm-topbar-nav">
+            <a href="../index.html" class="dm-topbar-btn" title="Home"><i class="fas fa-house"></i></a>
+            <a href="challenges.html" class="dm-topbar-btn" title="Challenges"><i class="fas fa-trophy"></i></a>
+            <a href="messenger.html" class="dm-topbar-btn active" title="Messages">
                 <i class="fas fa-comment-dots"></i>
-                <span class="dm-nav-badge" id="msgBadge"></span>
+                <span class="dm-topbar-badge" id="msgBadge"></span>
             </a>
-            <a href="user.html" class="dm-nav-btn" title="Profile">
-                <i class="fas fa-circle-user"></i>
-            </a>
+            <a href="user.html" class="dm-topbar-btn" title="Profile"><i class="fas fa-circle-user"></i></a>
         </nav>
     </header>
 
-    <!-- ── Messenger shell ── -->
-    <div class="dm-shell">
-        <div class="dm-shell" style="height:100%;">
+    <!-- ══ BODY ══ -->
+    <div class="dm-body">
 
-            <!-- ── Sidebar ── -->
-            <aside class="dm-sidebar" id="dmSidebar">
-                <div class="dm-sidebar-header">
-                    <h2 class="dm-sidebar-title">
-                        <i class="fas fa-comment-dots"></i>
-                        Messages
-                    </h2>
-                    <button class="dm-new-btn" onclick="dmOpenNewChat()" title="New conversation">
-                        <i class="fas fa-pen-to-square"></i>
+        <!-- ══ SIDEBAR ══ -->
+        <aside class="dm-sidebar" id="dmSidebar">
+            <div class="dm-sidebar-header">
+                <h2 class="dm-sidebar-title">
+                    <i class="fas fa-comment-dots"></i> Chats
+                </h2>
+                <button class="dm-new-btn" onclick="dmOpenNewChat()" title="New conversation">
+                    <i class="fas fa-pen-to-square"></i>
+                </button>
+            </div>
+
+            <div class="dm-search-wrap">
+                <i class="fas fa-magnifying-glass"></i>
+                <input type="text" id="dmSearchInput"
+                       placeholder="Search conversations or people…"
+                       oninput="dmFilterConversations(this.value)"
+                       autocomplete="off">
+            </div>
+
+            <!-- Tabs -->
+            <div class="dm-tabs">
+                <button class="dm-tab active" id="dmTabChats" onclick="dmSwitchTab('chats')">
+                    <i class="fas fa-comment-dots"></i> Chats
+                </button>
+                <button class="dm-tab" id="dmTabPeople" onclick="dmSwitchTab('people')">
+                    <i class="fas fa-users"></i> People
+                </button>
+            </div>
+
+            <!-- Chats panel -->
+            <div id="dmPanelChats">
+                <div class="dm-section-label">Recent</div>
+                <div class="dm-conv-list" id="dmConvList">
+                    <div class="dm-empty-state"><div class="dm-spinner"></div></div>
+                </div>
+            </div>
+
+            <!-- People panel -->
+            <div id="dmPanelPeople">
+                <div class="dm-section-label">Online Now</div>
+                <div id="dmPeopleOnline" class="dm-people-list">
+                    <div class="dm-empty-state"><div class="dm-spinner"></div></div>
+                </div>
+                <div class="dm-section-label" style="margin-top:6px;">Discover Players</div>
+                <div id="dmPeopleDiscover" class="dm-people-list">
+                    <div class="dm-empty-state"><div class="dm-spinner"></div></div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- ══ CHAT AREA ══ -->
+        <main class="dm-chat-area" id="dmChatArea">
+
+            <!-- Welcome -->
+            <div class="dm-welcome" id="dmWelcome">
+                <div class="dm-welcome-icon"><i class="fas fa-comment-dots"></i></div>
+                <h3>Your Messages</h3>
+                <p>Select a conversation or find players to chat with.</p>
+                <button class="dm-start-btn" onclick="dmSwitchTab('people')">
+                    <i class="fas fa-users"></i> Find Players
+                </button>
+            </div>
+
+            <!-- Active chat -->
+            <div class="dm-chat-inner" id="dmChatInner" style="display:none;">
+
+                <!-- Header -->
+                <div class="dm-chat-header">
+                    <button class="dm-back-btn" onclick="dmCloseChat()" title="Back">
+                        <i class="fas fa-arrow-left"></i>
                     </button>
-                </div>
-
-                <div class="dm-search-wrap">
-                    <i class="fas fa-magnifying-glass"></i>
-                    <input type="text" id="dmSearchInput"
-                           placeholder="Search conversations…"
-                           oninput="dmFilterConversations(this.value)"
-                           autocomplete="off">
-                </div>
-
-                <!-- Tabs -->
-                <div class="dm-tabs">
-                    <button class="dm-tab active" id="dmTabChats" onclick="dmSwitchTab('chats')">
-                        <i class="fas fa-comment-dots"></i> Chats
-                    </button>
-                    <button class="dm-tab" id="dmTabPeople" onclick="dmSwitchTab('people')">
-                        <i class="fas fa-users"></i> People
-                    </button>
-                </div>
-
-                <!-- Chats panel -->
-                <div id="dmPanelChats" style="display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden;">
-                    <div class="dm-conv-section-label">Recent</div>
-                    <div class="dm-conv-list" id="dmConvList">
-                        <div class="dm-empty-state"><div class="dm-spinner"></div></div>
+                    <div class="dm-chat-avatar" id="dmChatAvatar">
+                        <i class="fas fa-circle-user"></i>
                     </div>
-                </div>
-
-                <!-- People panel -->
-                <div id="dmPanelPeople" style="display:none;flex:1;overflow-y:auto;">
-                    <div class="dm-conv-section-label">Online Now</div>
-                    <div id="dmPeopleOnline" class="dm-people-list">
-                        <div class="dm-empty-state"><div class="dm-spinner"></div></div>
+                    <div class="dm-chat-meta">
+                        <span class="dm-chat-name" id="dmChatName">—</span>
+                        <span class="dm-chat-status" id="dmChatStatus">Active now</span>
                     </div>
-                    <div class="dm-conv-section-label" style="margin-top:8px;">Discover Players</div>
-                    <div id="dmPeopleDiscover" class="dm-people-list">
-                        <div class="dm-empty-state"><div class="dm-spinner"></div></div>
-                    </div>
-                </div>
-            </aside>
-
-            <!-- ── Chat area ── -->
-            <main class="dm-chat-area" id="dmChatArea">
-
-                <!-- Welcome state -->
-                <div class="dm-welcome" id="dmWelcome">
-                    <div class="dm-welcome-icon">
-                        <i class="fas fa-comment-dots"></i>
-                    </div>
-                    <h3>Your Messages</h3>
-                    <p>Select a conversation or tap <strong>People</strong> to find someone to chat with.</p>
-                    <button class="dm-start-btn" onclick="dmSwitchTab('people')">
-                        <i class="fas fa-users"></i> Find Players
-                    </button>
-                </div>
-
-                <!-- Active conversation -->
-                <div class="dm-chat-inner" id="dmChatInner" style="display:none;">
-
-                    <div class="dm-chat-header">
-                        <button class="dm-back-btn" onclick="dmCloseChat()" title="Back">
-                            <i class="fas fa-arrow-left"></i>
+                    <div class="dm-chat-actions">
+                        <button class="dm-header-action-btn" title="View profile" onclick="dmViewProfile()">
+                            <i class="fas fa-circle-info"></i>
                         </button>
-                        <div class="dm-chat-avatar" id="dmChatAvatar">
-                            <i class="fas fa-circle-user"></i>
-                        </div>
-                        <div class="dm-chat-meta">
-                            <span class="dm-chat-name"   id="dmChatName">—</span>
-                            <span class="dm-chat-status" id="dmChatStatus">Active now</span>
-                        </div>
-                        <div class="dm-chat-actions">
-                            <button class="dm-header-action-btn" title="View profile" onclick="dmViewProfile()">
-                                <i class="fas fa-circle-info"></i>
-                            </button>
-                        </div>
+                    </div>
+                </div>
+
+                <!-- Messages -->
+                <div class="dm-messages" id="dmMessages">
+                    <div class="dm-msgs-loading"><div class="dm-spinner"></div></div>
+                </div>
+
+                <!-- Compose -->
+                <form class="dm-compose" id="dmComposeForm" onsubmit="dmSendMessage(event)">
+
+                    <!-- Preview strip (media or voice) -->
+                    <div class="dm-compose-preview" id="dmComposePreview">
+                        <!-- filled by JS -->
                     </div>
 
-                    <div class="dm-messages" id="dmMessages">
-                        <div class="dm-msgs-loading"><div class="dm-spinner"></div></div>
-                    </div>
-
-                    <form class="dm-compose" id="dmComposeForm" onsubmit="dmSendMessage(event)">
-                        <div class="dm-media-preview" id="dmMediaPreview" style="display:none;">
-                            <img id="dmMediaThumb" src="" alt="preview">
-                            <button type="button" class="dm-remove-media" onclick="dmRemoveMedia()" title="Remove">&times;</button>
-                        </div>
-                        <label class="dm-attach-btn" title="Attach media">
+                    <div class="dm-compose-row">
+                        <!-- Attach file -->
+                        <label class="dm-compose-action" title="Attach image/video">
                             <i class="fas fa-paperclip"></i>
-                            <input type="file" id="dmMediaInput" accept="image/*,video/*,audio/*"
-                                   style="display:none" onchange="dmHandleMedia(event)">
+                            <input type="file" id="dmMediaInput"
+                                   accept="image/*,video/*,audio/*"
+                                   onchange="dmHandleMedia(event)">
                         </label>
+
+                        <!-- Text input -->
                         <input type="text" id="dmTextInput" class="dm-text-input"
                                placeholder="Type a message…" autocomplete="off">
-                        <button type="submit" class="dm-send-btn" title="Send">
+
+                        <!-- Recording timer -->
+                        <div class="dm-rec-timer" id="dmRecTimer">
+                            <span class="dm-rec-dot"></span>
+                            <span id="dmRecTimerVal">0:00</span>
+                        </div>
+
+                        <!-- Voice record button -->
+                        <button type="button" class="dm-voice-btn" id="dmVoiceBtn"
+                                title="Hold to record voice message"
+                                onmousedown="dmStartRecording()"
+                                ontouchstart="dmStartRecording()"
+                                onmouseup="dmStopRecording()"
+                                ontouchend="dmStopRecording()">
+                            <i class="fas fa-microphone"></i>
+                        </button>
+
+                        <!-- Send -->
+                        <button type="submit" class="dm-send-btn" id="dmSendBtn" title="Send">
                             <i class="fas fa-paper-plane"></i>
                         </button>
-                    </form>
-                </div>
-            </main>
-
-        </div><!-- /inner dm-shell -->
-    </div><!-- /dm-shell wrapper -->
-
-</div><!-- /dm-page-wrap -->
+                    </div>
+                </form>
+            </div><!-- /dm-chat-inner -->
+        </main>
+    </div><!-- /dm-body -->
+</div><!-- /dm-app -->
 
 <!-- New Chat Modal -->
 <div id="dmNewChatModal" class="dm-modal-backdrop" style="display:none;"
@@ -234,12 +883,12 @@
     <div class="dm-modal">
         <div class="dm-modal-header">
             <h3><i class="fas fa-user-plus"></i> New Message</h3>
-            <button class="dm-modal-close" onclick="dmCloseNewChat()" title="Close">&times;</button>
+            <button class="dm-modal-close" onclick="dmCloseNewChat()">&times;</button>
         </div>
         <div class="dm-modal-search">
             <i class="fas fa-magnifying-glass"></i>
             <input type="text" id="dmUserSearch"
-                   placeholder="Search by username…"
+                   placeholder="Search players…"
                    oninput="dmSearchUsers(this.value)"
                    autocomplete="off">
         </div>
@@ -249,58 +898,35 @@
     </div>
 </div>
 
-<!--
-    Scripts load in dependency order:
-    1. api-service.js   — defines apiService (required by messenger.js)
-    2. messenger.js     — all DM logic
-    3. firebase-messenger.js — optional Firestore layer
--->
+<!-- Scripts -->
 <script src="../scripts/api-service.js"></script>
 <script>
 'use strict';
-
-// ── Auth guard ────────────────────────────────────────────────────────────────
-// Redirect to auth page if not logged in
+// Auth guard
 (function() {
-    const token = localStorage.getItem('djangoAuthToken') || localStorage.getItem('authToken');
-    if (!token) {
+    if (!localStorage.getItem('djangoAuthToken') && !localStorage.getItem('authToken')) {
         window.location.href = 'auth.html';
     }
 })();
-
-// ── Shared helpers that messenger.js expects ──────────────────────────────────
-
-// switchView is a no-op here (single-page messenger — no views to switch)
 window.switchView = function() {};
-
-// showToast — lightweight version
 window.showToast = function(msg, type) {
-    let box = document.getElementById('_toastBox');
+    let box = document.getElementById('_tb');
     if (!box) {
         box = document.createElement('div');
-        box.id = '_toastBox';
-        box.style.cssText = 'position:fixed;bottom:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:8px;';
+        box.id = '_tb';
+        box.style.cssText = 'position:fixed;bottom:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:8px;pointer-events:none;';
         document.body.appendChild(box);
     }
-    const colors = { success: '#22c55e', error: '#ef4444', info: '#556b2f' };
+    const c = {success:'#22c55e',error:'#ef4444',info:'#556b2f'}[type]||'#556b2f';
     const t = document.createElement('div');
-    t.style.cssText = `background:${colors[type]||colors.info};color:#fff;padding:10px 16px;border-radius:10px;
-        font-size:13px;font-weight:600;box-shadow:0 4px 14px rgba(0,0,0,.2);
-        opacity:0;transform:translateY(6px);transition:all .25s ease;`;
+    t.style.cssText = `background:${c};color:#fff;padding:9px 14px;border-radius:10px;font-size:13px;font-weight:600;box-shadow:0 4px 14px rgba(0,0,0,.18);opacity:0;transform:translateY(6px);transition:all .22s ease;`;
     t.textContent = msg;
     box.appendChild(t);
     requestAnimationFrame(() => { t.style.opacity='1'; t.style.transform='translateY(0)'; });
-    setTimeout(() => {
-        t.style.opacity = '0';
-        setTimeout(() => t.remove(), 250);
-    }, 3000);
+    setTimeout(() => { t.style.opacity='0'; setTimeout(() => t.remove(), 220); }, 3000);
 };
-
-// logout
 window.logout = function() {
-    localStorage.removeItem('djangoAuthToken');
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('artxUser');
+    ['djangoAuthToken','authToken','artxUser'].forEach(k => localStorage.removeItem(k));
     window.location.href = 'auth.html';
 };
 </script>
@@ -310,27 +936,19 @@ window.logout = function() {
 
 <script>
 'use strict';
-// ── Boot ──────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', function() {
-    // Start the messenger
     if (typeof dmInit === 'function') dmInit();
 
-    // Handle ?conv=<id> deep-link
-    const params = new URLSearchParams(window.location.search);
-    const convId = params.get('conv');
-    if (convId) {
-        setTimeout(() => {
-            if (typeof dmOpenConversation === 'function') dmOpenConversation(convId);
-        }, 700);
-    }
+    const p = new URLSearchParams(window.location.search);
+    const convId = p.get('conv');
+    const userId = p.get('user') || sessionStorage.getItem('dmStartUserId');
 
-    // Handle ?user=<id> — open/start a conversation immediately
-    const userId = params.get('user') || sessionStorage.getItem('dmStartUserId');
+    if (convId) {
+        setTimeout(() => dmOpenConversation && dmOpenConversation(convId), 700);
+    }
     if (userId) {
         sessionStorage.removeItem('dmStartUserId');
-        setTimeout(async () => {
-            if (typeof dmStartConversation === 'function') await dmStartConversation(userId);
-        }, 700);
+        setTimeout(async () => dmStartConversation && await dmStartConversation(userId), 700);
     }
 });
 </script>
