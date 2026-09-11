@@ -44,6 +44,12 @@ const DM_API = {
 async function dmInit() {
     await dmLoadConversations();
     dmStartPolling();
+    // Pre-warm the People panel data in the background.
+    // Don't set _dmActivePeopleLoaded here — the DOM elements don't exist
+    // until the People tab is clicked, so _dmLoadPeoplePanel will bail early.
+    // When the user clicks People, dmSwitchTab sees the flag is still false
+    // and triggers a proper load with the DOM ready.
+    setTimeout(() => { _dmLoadPeoplePanel(); }, 1200);
     // Handle deep-link: index.html#messenger?conv=<id>
     const hash = window.location.hash;
     const match = hash.match(/conv=([^&]+)/);
@@ -497,6 +503,40 @@ window.dmSearchPeople = dmSearchPeople;
 window._dmToggleFollow = _dmToggleFollow;
 window._dmPersonMessage = _dmPersonMessage;
 
+// Shared helper — same base URL pattern as realtime-updates.js
+function _dmApiBase() {
+    return (
+        window.location.hostname === 'localhost' ||
+        window.location.hostname === '127.0.0.1'
+    ) ? 'http://localhost:8000/api' : `${window.location.origin}/api`;
+}
+
+// Shared headers helper
+function _dmHeaders() {
+    const token = apiService.token
+        || localStorage.getItem('djangoAuthToken')
+        || localStorage.getItem('authToken')
+        || null;
+    // Keep apiService in sync
+    if (token && !apiService.token) apiService.token = token;
+    return token
+        ? { 'Content-Type': 'application/json', 'Authorization': `Token ${token}` }
+        : { 'Content-Type': 'application/json' };
+}
+
+// Retry handler referenced from error HTML
+window._dmRetryPeople = function(e) {
+    e.preventDefault();
+    _dmActivePeopleLoaded = false;
+    // Reset spinners before reloading
+    const onlineEl   = document.getElementById('dmPeopleOnline');
+    const discoverEl = document.getElementById('dmPeopleDiscover');
+    if (onlineEl)   onlineEl.innerHTML   = '<div class="dm-empty-state"><div class="dm-spinner"></div></div>';
+    if (discoverEl) discoverEl.innerHTML = '<div class="dm-empty-state"><div class="dm-spinner"></div></div>';
+    _dmLoadPeoplePanel();
+    _dmActivePeopleLoaded = true;
+};
+
 // ── Tab switcher ─────────────────────────────────────────────────────────────
 let _dmActivePeopleLoaded = false;
 
@@ -528,10 +568,12 @@ function dmSwitchTab(tab) {
             searchWrap.querySelector('input').value = '';
             searchWrap.querySelector('input').oninput = function() { dmSearchPeople(this.value); };
         }
-        // Load people only once (or on explicit refresh)
+        // Load people — always load when switching to this tab
+        // The flag prevents duplicate loads if the background init already loaded it
+        // but resets to false if the DOM wasn't ready during the background load
         if (!_dmActivePeopleLoaded) {
+            _dmActivePeopleLoaded = true; // set before await so double-clicks don't double-load
             _dmLoadPeoplePanel();
-            _dmActivePeopleLoaded = true;
         }
     }
 }
@@ -539,33 +581,44 @@ function dmSwitchTab(tab) {
 // ── People panel loaders ──────────────────────────────────────────────────────
 
 async function _dmLoadPeoplePanel() {
-    // Ensure token is fresh
-    if (!apiService.token) {
-        apiService.token = localStorage.getItem('djangoAuthToken') || localStorage.getItem('authToken') || null;
-    }
-
-    const BASE = apiService.baseURL.replace('/api', '');
-    const token = apiService.token;
-    const headers = token
-        ? { 'Content-Type': 'application/json', 'Authorization': `Token ${token}` }
-        : { 'Content-Type': 'application/json' };
-
-    // Load "Online Now" — approximate with up to 6 users from discover
     const onlineEl   = document.getElementById('dmPeopleOnline');
     const discoverEl = document.getElementById('dmPeopleDiscover');
 
-    try {
-        const res = await fetch(`${apiService.baseURL}/auth/discover/?limit=8`, { headers });
-        if (!res.ok) throw new Error(`${res.status}`);
-        const users = await res.json();
-        const list = Array.isArray(users) ? users : (users.results || []);
+    // DOM not ready yet (panel hidden) — flag stays false so dmSwitchTab retries
+    if (!onlineEl || !discoverEl) {
+        _dmActivePeopleLoaded = false;
+        return;
+    }
 
-        _dmRenderPeopleList(onlineEl, list.slice(0, 5), true);   // online section
-        _dmRenderPeopleList(discoverEl, list.slice(0, 20), false); // discover section
+    try {
+        const controller = new AbortController();
+        // 30s — Render free tier cold-starts can take 20-30s
+        const timeoutId  = setTimeout(() => controller.abort(), 30000);
+
+        const res = await fetch(`${_dmApiBase()}/auth/discover/?limit=20`, {
+            headers: _dmHeaders(),
+            signal:  controller.signal
+        });
+        clearTimeout(timeoutId);
+
+        if (!res.ok) throw new Error(`Server returned ${res.status}`);
+
+        const data  = await res.json();
+        const users = Array.isArray(data) ? data : (data.results || []);
+
+        _dmRenderPeopleList(onlineEl,   users.slice(0, 5),  true);
+        _dmRenderPeopleList(discoverEl, users.slice(0, 20), false);
+        _dmActivePeopleLoaded = true; // mark done only on success
+
     } catch (e) {
-        const msg = `<p class="dm-hint" style="padding:12px 16px;">Could not load users (${e.message}). Try again later.</p>`;
-        if (onlineEl)   onlineEl.innerHTML   = msg;
-        if (discoverEl) discoverEl.innerHTML = msg;
+        _dmActivePeopleLoaded = false; // allow retry on next tab click
+        const isTimeout = e.name === 'AbortError';
+        const label = isTimeout
+            ? 'Server is waking up (~30s on first load). <a href="#" onclick="_dmRetryPeople(event)">Retry</a>'
+            : `${e.message} — <a href="#" onclick="_dmRetryPeople(event)">Retry</a>`;
+        const html = `<p class="dm-hint" style="padding:10px 16px;font-size:12px;">${label}</p>`;
+        if (onlineEl)   onlineEl.innerHTML   = html;
+        if (discoverEl) discoverEl.innerHTML = '';
     }
 }
 
@@ -574,36 +627,39 @@ async function dmSearchPeople(query) {
     const discoverEl = document.getElementById('dmPeopleDiscover');
 
     if (!query.trim()) {
-        _dmActivePeopleLoaded = false;  // force reload
+        // Restore online section visibility
+        if (onlineEl) onlineEl.style.display = '';
+        const onlineLabel = onlineEl?.previousElementSibling;
+        if (onlineLabel) onlineLabel.style.display = '';
+        _dmActivePeopleLoaded = false;
         _dmLoadPeoplePanel();
+        _dmActivePeopleLoaded = true;
         return;
     }
 
-    if (!apiService.token) {
-        apiService.token = localStorage.getItem('djangoAuthToken') || localStorage.getItem('authToken') || null;
-    }
-
-    const headers = apiService.token
-        ? { 'Content-Type': 'application/json', 'Authorization': `Token ${apiService.token}` }
-        : { 'Content-Type': 'application/json' };
-
-    // Hide online section while searching
+    // Hide online section, show search spinner in discover
     const onlineLabelEl = onlineEl?.previousElementSibling;
-    if (onlineEl)       onlineEl.style.display = 'none';
-    if (onlineLabelEl)  onlineLabelEl.style.display = 'none';
-    if (discoverEl) discoverEl.innerHTML = '<div class="dm-empty-state"><div class="dm-spinner"></div></div>';
+    if (onlineEl)      onlineEl.style.display      = 'none';
+    if (onlineLabelEl) onlineLabelEl.style.display = 'none';
+    if (discoverEl)    discoverEl.innerHTML = '<div class="dm-empty-state"><div class="dm-spinner"></div></div>';
 
     try {
+        const controller = new AbortController();
+        const timeoutId  = setTimeout(() => controller.abort(), 10000);
+
         const res = await fetch(
-            `${apiService.baseURL}/auth/search/?q=${encodeURIComponent(query)}`,
-            { headers }
+            `${_dmApiBase()}/auth/search/?q=${encodeURIComponent(query)}`,
+            { headers: _dmHeaders(), signal: controller.signal }
         );
+        clearTimeout(timeoutId);
+
         if (!res.ok) throw new Error(`${res.status}`);
-        const users = await res.json();
-        const list = Array.isArray(users) ? users : (users.results || []);
-        _dmRenderPeopleList(discoverEl, list, false);
+        const data  = await res.json();
+        const users = Array.isArray(data) ? data : (data.results || []);
+        _dmRenderPeopleList(discoverEl, users, false);
     } catch (e) {
-        if (discoverEl) discoverEl.innerHTML = `<p class="dm-hint">Search failed. Try again.</p>`;
+        if (discoverEl) discoverEl.innerHTML =
+            `<p class="dm-hint" style="padding:10px 16px;font-size:12px;">Search failed (${e.message}). <a href="#" onclick="dmSearchPeople('${_escHtml(query)}')">Retry</a></p>`;
     }
 }
 
