@@ -436,14 +436,32 @@ const _rec = {
     chunks:        [],
     startTime:     null,
     timerInterval: null,
+    aborted:       false,
+    stream:        null,
+    analyser:      null,   // Web Audio AnalyserNode — reads mic levels
+    animFrame:     null,   // requestAnimationFrame handle for waveform
+    audioCtx:      null,   // AudioContext instance
 };
 
 async function dmStartRecording() {
-    // Don't start if already recording or if there's pending media
-    if (_rec.mediaRecorder) return;
+    // Don't start a new recording if one is already active
+    if (_rec.mediaRecorder && _rec.mediaRecorder.state !== 'inactive') return;
+
+    // Reset abort flag for this new recording attempt
+    _rec.aborted  = false;
+    _rec.stream   = null;
 
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+        // If stop was called while we were waiting for permission, clean up and bail
+        if (_rec.aborted) {
+            stream.getTracks().forEach(t => t.stop());
+            return;
+        }
+
+        _rec.stream = stream;
+
         const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
             ? 'audio/webm;codecs=opus'
             : MediaRecorder.isTypeSupported('audio/webm')
@@ -459,50 +477,75 @@ async function dmStartRecording() {
         };
 
         _rec.mediaRecorder.onstop = () => {
-            // Stop all tracks to release the mic
+            // Always release the mic
             stream.getTracks().forEach(t => t.stop());
+            _rec.stream = null;
 
-            if (_rec.chunks.length === 0) return;
+            // If aborted or too short, discard
+            if (_rec.aborted || _rec.chunks.length === 0) {
+                _dmStopRecordingUI();
+                return;
+            }
+
             const blob = new Blob(_rec.chunks, { type: mimeType });
             const durationSec = Math.round((Date.now() - _rec.startTime) / 1000);
 
-            // Only keep if at least 1 second
             if (durationSec < 1) {
                 _dmStopRecordingUI();
+                if (typeof showToast === 'function') showToast('Hold longer to record.', 'info');
                 return;
             }
 
             const ext  = mimeType.includes('ogg') ? 'ogg' : 'webm';
             const file = new File([blob], `voice-${Date.now()}.${ext}`, { type: mimeType });
-            // Store duration so it gets sent to the backend
             _dm.pendingMedia = { file, type: 'audio', dataUrl: null, duration: durationSec };
 
             _dmStopRecordingUI();
             _dmShowPreview('audio', null, `Voice message — ${_dmFmtDuration(durationSec)}`);
         };
 
-        _rec.mediaRecorder.start(100); // collect data every 100ms
+        _rec.mediaRecorder.start(100);
 
-        // Update UI
+        // ── Update UI ──────────────────────────────────────────────────────
         const btn = document.getElementById('dmVoiceBtn');
         if (btn) btn.classList.add('recording');
+
         const timer = document.getElementById('dmRecTimer');
         if (timer) timer.classList.add('visible');
-        const textInput = document.getElementById('dmTextInput');
-        if (textInput) textInput.style.display = 'none';
 
-        // Tick the recording timer
+        // Hide text input, show live waveform canvas
+        const textInput = document.getElementById('dmTextInput');
+        const liveWave  = document.getElementById('dmLiveWave');
+        if (textInput) textInput.style.display = 'none';
+        if (liveWave)  liveWave.classList.add('visible');
+
+        // ── Web Audio visualiser ────────────────────────────────────────────
+        try {
+            _rec.audioCtx  = new (window.AudioContext || window.webkitAudioContext)();
+            const source   = _rec.audioCtx.createMediaStreamSource(stream);
+            _rec.analyser  = _rec.audioCtx.createAnalyser();
+            _rec.analyser.fftSize       = 128;
+            _rec.analyser.smoothingTimeConstant = 0.6;
+            source.connect(_rec.analyser);
+            _dmDrawLiveWave();
+        } catch (audioErr) {
+            // AudioContext unavailable — waveform just shows static bars
+            console.warn('AudioContext unavailable:', audioErr.message);
+        }
+
+        // ── Live timer ──────────────────────────────────────────────────────
         _rec.timerInterval = setInterval(() => {
             const elapsed = Math.round((Date.now() - _rec.startTime) / 1000);
-            const mins = Math.floor(elapsed / 60);
-            const secs = String(elapsed % 60).padStart(2, '0');
             const el = document.getElementById('dmRecTimerVal');
-            if (el) el.textContent = `${mins}:${secs}`;
+            if (el) el.textContent = `${Math.floor(elapsed/60)}:${String(elapsed%60).padStart(2,'0')}`;
         }, 500);
 
     } catch (err) {
-        if (err.name === 'NotAllowedError') {
+        _rec.aborted = false; // reset so next attempt works
+        if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
             if (typeof showToast === 'function') showToast('Microphone permission denied.', 'error');
+        } else if (err.name === 'NotFoundError') {
+            if (typeof showToast === 'function') showToast('No microphone found.', 'error');
         } else {
             console.error('Recording error:', err);
         }
@@ -510,22 +553,125 @@ async function dmStartRecording() {
 }
 
 function dmStopRecording() {
-    if (!_rec.mediaRecorder) return;
-    if (_rec.mediaRecorder.state !== 'inactive') {
+    // Mark as aborted so the onstop handler discards the recording if
+    // getUserMedia hasn't resolved yet (fast tap / permission dialog race)
+    _rec.aborted = true;
+
+    if (_rec.mediaRecorder && _rec.mediaRecorder.state !== 'inactive') {
+        _rec.aborted = false; // recording was active — process it normally
         _rec.mediaRecorder.stop();
+    } else if (_rec.stream) {
+        // getUserMedia resolved but MediaRecorder not started yet — kill the stream
+        _rec.stream.getTracks().forEach(t => t.stop());
+        _rec.stream = null;
+        _dmStopRecordingUI();
     }
+
     _rec.mediaRecorder = null;
 }
 
 function _dmStopRecordingUI() {
+    // Cancel waveform animation
+    if (_rec.animFrame) {
+        cancelAnimationFrame(_rec.animFrame);
+        _rec.animFrame = null;
+    }
+    // Close AudioContext and release resources
+    if (_rec.audioCtx) {
+        _rec.audioCtx.close().catch(() => {});
+        _rec.audioCtx = null;
+        _rec.analyser = null;
+    }
+
     clearInterval(_rec.timerInterval);
     _rec.timerInterval = null;
+
+    // Reset compose bar UI
     const btn = document.getElementById('dmVoiceBtn');
     if (btn) btn.classList.remove('recording');
+
     const timer = document.getElementById('dmRecTimer');
     if (timer) timer.classList.remove('visible');
+
+    const liveWave = document.getElementById('dmLiveWave');
+    if (liveWave) liveWave.classList.remove('visible');
+
     const textInput = document.getElementById('dmTextInput');
     if (textInput) textInput.style.display = '';
+
+    // Clear canvas
+    const canvas = document.getElementById('dmWaveCanvas');
+    if (canvas) {
+        const ctx2d = canvas.getContext('2d');
+        if (ctx2d) ctx2d.clearRect(0, 0, canvas.width, canvas.height);
+    }
+}
+
+/**
+ * Draw the live microphone waveform onto the canvas while recording.
+ * Uses the Web Audio AnalyserNode to read real frequency data.
+ * Falls back to animated random bars if AudioContext isn't available.
+ */
+function _dmDrawLiveWave() {
+    const canvas = document.getElementById('dmWaveCanvas');
+    if (!canvas) return;
+
+    const ctx    = canvas.getContext('2d');
+    const W      = canvas.offsetWidth  || 140;
+    const H      = canvas.offsetHeight || 36;
+    canvas.width  = W;
+    canvas.height = H;
+
+    // Bar settings
+    const BAR_COUNT  = 28;
+    const BAR_GAP    = 2;
+    const BAR_W      = Math.floor((W - (BAR_COUNT - 1) * BAR_GAP) / BAR_COUNT);
+    const COLOR_MID  = '#ef4444';
+    const COLOR_LOW  = 'rgba(239,68,68,0.35)';
+
+    function draw() {
+        if (!_rec.mediaRecorder || _rec.mediaRecorder.state === 'inactive') return;
+
+        _rec.animFrame = requestAnimationFrame(draw);
+        ctx.clearRect(0, 0, W, H);
+
+        let levels;
+
+        if (_rec.analyser) {
+            // Real audio data from microphone
+            const bufLen = _rec.analyser.frequencyBinCount;
+            const data   = new Uint8Array(bufLen);
+            _rec.analyser.getByteFrequencyData(data);
+
+            // Map frequency bins to bar count (use lower 60% of spectrum = voice range)
+            const voiceBins = Math.floor(bufLen * 0.6);
+            levels = Array.from({ length: BAR_COUNT }, (_, i) => {
+                const start = Math.floor(i * voiceBins / BAR_COUNT);
+                const end   = Math.floor((i + 1) * voiceBins / BAR_COUNT);
+                let sum = 0;
+                for (let j = start; j < end; j++) sum += data[j];
+                return sum / Math.max(end - start, 1); // 0–255
+            });
+        } else {
+            // No AudioContext — animated random fallback
+            levels = Array.from({ length: BAR_COUNT }, () => Math.random() * 180 + 20);
+        }
+
+        // Draw bars centred vertically
+        levels.forEach((level, i) => {
+            const normH   = Math.max(3, (level / 255) * (H - 4));
+            const x       = i * (BAR_W + BAR_GAP);
+            const y       = (H - normH) / 2;
+            ctx.fillStyle = level > 80 ? COLOR_MID : COLOR_LOW;
+            ctx.beginPath();
+            ctx.roundRect
+                ? ctx.roundRect(x, y, BAR_W, normH, 2)
+                : ctx.rect(x, y, BAR_W, normH);
+            ctx.fill();
+        });
+    }
+
+    draw();
 }
 
 /** Build the waveform bars for a voice bubble (purely decorative) */
