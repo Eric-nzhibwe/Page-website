@@ -250,8 +250,23 @@
                             <div class="post-avatar rounded-circle d-flex align-items-center justify-content-center">
                                 <i class="fas fa-user-circle"></i>
                             </div>
-                            <input type="text" class="post-input form-control rounded-pill" placeholder="What's on your mind?"
-                                onclick="openCreatePostModal()">
+                            <div class="post-input-wrap">
+                                <input type="text" class="post-input form-control rounded-pill" placeholder="What's on your mind?"
+                                    onclick="openCreatePostModal()">
+                                <button class="voice-record-btn" id="voiceRecordBtn" onclick="toggleVoiceRecording(event)" title="Record voice message">
+                                    <i class="fas fa-microphone" id="voiceRecordIcon"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <!-- Voice recording status bar -->
+                        <div class="voice-recording-bar" id="voiceRecordingBar" style="display:none;">
+                            <span class="voice-rec-dot"></span>
+                            <span class="voice-rec-label">Recording… <span id="voiceRecTimer">0:00</span></span>
+                            <audio id="voicePreviewPlayer" controls style="display:none;"></audio>
+                            <div class="voice-rec-actions">
+                                <button class="voice-discard-btn" onclick="discardVoiceRecording()"><i class="fas fa-trash"></i> Discard</button>
+                                <button class="voice-post-btn" id="voicePostBtn" style="display:none;" onclick="postVoiceRecording()"><i class="fas fa-paper-plane"></i> Post</button>
+                            </div>
                         </div>
                         <div class="create-post-actions d-flex gap-2">
                             <button class="post-action-btn btn btn-light flex-fill" onclick="openCreatePostModal('photo')">

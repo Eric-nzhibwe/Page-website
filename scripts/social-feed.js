@@ -72,6 +72,139 @@ function scrollToSection(id) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+//  VOICE RECORDING (inline, "What's on your mind" bar)
+// ─────────────────────────────────────────────────────────────────────────────
+let _voiceMediaRecorder = null;
+let _voiceChunks        = [];
+let _voiceBlob          = null;
+let _voiceTimerInterval = null;
+let _voiceSeconds       = 0;
+let _voiceIsRecording   = false;
+
+function toggleVoiceRecording(e) {
+    e.stopPropagation();
+    _voiceIsRecording ? _stopVoiceRecording() : _startVoiceRecording();
+}
+
+function _startVoiceRecording() {
+    if (!navigator.mediaDevices?.getUserMedia) {
+        _feedToast('Microphone not supported in this browser.', 'error');
+        return;
+    }
+    navigator.mediaDevices.getUserMedia({ audio: true })
+        .then(stream => {
+            _voiceChunks = [];
+            _voiceBlob   = null;
+            _voiceIsRecording = true;
+
+            _voiceMediaRecorder = new MediaRecorder(stream);
+            _voiceMediaRecorder.ondataavailable = e => { if (e.data.size) _voiceChunks.push(e.data); };
+            _voiceMediaRecorder.onstop = () => {
+                stream.getTracks().forEach(t => t.stop());
+                _voiceBlob = new Blob(_voiceChunks, { type: 'audio/webm' });
+                const url  = URL.createObjectURL(_voiceBlob);
+
+                // Show preview player (no autoplay — only playable after send)
+                const player = document.getElementById('voicePreviewPlayer');
+                if (player) { player.src = url; player.style.display = 'block'; }
+
+                // Swap UI: hide rec dot, show post button
+                const dot   = document.querySelector('.voice-rec-dot');
+                const label = document.querySelector('.voice-rec-label');
+                if (dot)   dot.style.display   = 'none';
+                if (label) label.textContent    = 'Voice message ready';
+                document.getElementById('voicePostBtn').style.display = 'inline-flex';
+            };
+
+            _voiceMediaRecorder.start();
+
+            // Timer
+            _voiceSeconds = 0;
+            _voiceTimerInterval = setInterval(() => {
+                _voiceSeconds++;
+                const m = Math.floor(_voiceSeconds / 60);
+                const s = String(_voiceSeconds % 60).padStart(2, '0');
+                const el = document.getElementById('voiceRecTimer');
+                if (el) el.textContent = `${m}:${s}`;
+            }, 1000);
+
+            // Update button
+            const btn  = document.getElementById('voiceRecordBtn');
+            const icon = document.getElementById('voiceRecordIcon');
+            if (btn)  btn.classList.add('recording');
+            if (icon) { icon.classList.remove('fa-microphone'); icon.classList.add('fa-stop'); }
+
+            // Show bar
+            document.getElementById('voiceRecordingBar').style.display = 'flex';
+        })
+        .catch(() => _feedToast('Microphone access denied.', 'error'));
+}
+
+function _stopVoiceRecording() {
+    _voiceIsRecording = false;
+    clearInterval(_voiceTimerInterval);
+
+    if (_voiceMediaRecorder?.state !== 'inactive') _voiceMediaRecorder.stop();
+
+    const btn  = document.getElementById('voiceRecordBtn');
+    const icon = document.getElementById('voiceRecordIcon');
+    if (btn)  btn.classList.remove('recording');
+    if (icon) { icon.classList.remove('fa-stop'); icon.classList.add('fa-microphone'); }
+}
+
+function discardVoiceRecording() {
+    _voiceIsRecording = false;
+    clearInterval(_voiceTimerInterval);
+    if (_voiceMediaRecorder?.state !== 'inactive') _voiceMediaRecorder.stop();
+
+    _voiceBlob   = null;
+    _voiceChunks = [];
+
+    const bar    = document.getElementById('voiceRecordingBar');
+    const player = document.getElementById('voicePreviewPlayer');
+    const btn    = document.getElementById('voiceRecordBtn');
+    const icon   = document.getElementById('voiceRecordIcon');
+    const dot    = document.querySelector('.voice-rec-dot');
+    const label  = document.querySelector('.voice-rec-label');
+    const timer  = document.getElementById('voiceRecTimer');
+
+    if (bar)    bar.style.display    = 'none';
+    if (player) { player.src = ''; player.style.display = 'none'; }
+    if (btn)    btn.classList.remove('recording');
+    if (icon)   { icon.classList.remove('fa-stop'); icon.classList.add('fa-microphone'); }
+    if (dot)    dot.style.display    = '';
+    if (label)  label.textContent    = 'Recording… ';
+    if (timer)  timer.textContent    = '0:00';
+    document.getElementById('voicePostBtn').style.display = 'none';
+}
+
+function postVoiceRecording() {
+    if (!_voiceBlob) return;
+
+    const duration = _voiceSeconds;
+    const url      = URL.createObjectURL(_voiceBlob);
+    const m = Math.floor(duration / 60);
+    const s = String(duration % 60).padStart(2, '0');
+
+    // Build a local post with the audio
+    const local = {
+        id:           `local-voice-${Date.now()}`,
+        content:      '',
+        post_type:    'voice',
+        _voiceUrl:    url,
+        _voiceDur:    `${m}:${s}`,
+        author:       { username: _currentUsername() },
+        created_at:   new Date().toISOString(),
+        reaction_count: 0, comment_count: 0, share_count: 0
+    };
+
+    _saveLocalPost(local);
+    _insertPostCard(local);
+    discardVoiceRecording();
+    _feedToast('Voice message posted! 🎤', 'success');
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 //  CREATE POST MODAL
 // ─────────────────────────────────────────────────────────────────────────────
 let _selectedMedia     = null;
@@ -280,7 +413,12 @@ function _insertPostCard(post) {
             : `<i class="fas fa-user-circle"></i>`);
 
     let mediaHTML = '';
-    if (media[0]?.type === 'achievement') {
+    if (post._voiceUrl) {
+        mediaHTML = `<div class="post-media">
+            <audio class="voice-note-player" controls src="${_esc(post._voiceUrl)}"></audio>
+            <span style="font-size:12px;color:#888;display:block;margin-top:4px;"><i class="fas fa-microphone"></i> Voice message · ${_esc(post._voiceDur || '')}</span>
+        </div>`;
+    } else if (media[0]?.type === 'achievement') {
         mediaHTML = `<div class="post-media"><div class="achievement-badge-large">
             <i class="fas fa-trophy"></i><h3>Achievement Unlocked!</h3>
             <p>Shared your success</p></div></div>`;

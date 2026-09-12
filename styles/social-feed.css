@@ -1954,3 +1954,122 @@
     align-items: center;
     gap: 8px;
 }
+
+/* ── Voice Recording ───────────────────────────────────────────── */
+.post-input-wrap {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #f0f0f0;
+    border-radius: 25px;
+    padding-right: 6px;
+}
+
+.post-input-wrap .post-input {
+    background: transparent;
+    border-radius: 25px 0 0 25px;
+    flex: 1;
+    padding-right: 0;
+}
+
+.voice-record-btn {
+    flex-shrink: 0;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    border: none;
+    background: transparent;
+    color: #888;
+    font-size: 15px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.2s, background 0.2s;
+}
+
+.voice-record-btn:hover {
+    color: var(--artx-primary, #6c63ff);
+}
+
+.voice-record-btn.recording {
+    background: #ff4d4d22;
+    color: #ff4d4d;
+    animation: pulse-rec 1s infinite;
+}
+
+@keyframes pulse-rec {
+    0%, 100% { box-shadow: 0 0 0 0 #ff4d4d55; }
+    50%       { box-shadow: 0 0 0 6px #ff4d4d00; }
+}
+
+.voice-recording-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #fff3f3;
+    border: 1px solid #ffc0c0;
+    border-radius: 12px;
+    padding: 8px 12px;
+    margin-top: 8px;
+    flex-wrap: wrap;
+}
+
+.voice-rec-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #ff4d4d;
+    flex-shrink: 0;
+    animation: blink-dot 1s infinite;
+}
+
+@keyframes blink-dot {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.2; }
+}
+
+.voice-rec-label {
+    font-size: 13px;
+    color: #cc0000;
+    font-weight: 500;
+    flex: 1;
+}
+
+.voice-rec-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.voice-discard-btn,
+.voice-post-btn {
+    border: none;
+    border-radius: 20px;
+    padding: 5px 14px;
+    font-size: 12px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: opacity 0.2s;
+}
+
+.voice-discard-btn {
+    background: #eee;
+    color: #555;
+}
+
+.voice-post-btn {
+    background: var(--artx-primary, #6c63ff);
+    color: #fff;
+}
+
+.voice-discard-btn:hover { opacity: 0.75; }
+.voice-post-btn:hover    { opacity: 0.85; }
+
+/* Voice note in the feed */
+.voice-note-player {
+    width: 100%;
+    margin-top: 8px;
+    border-radius: 8px;
+}
