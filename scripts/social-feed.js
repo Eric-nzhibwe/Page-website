@@ -80,10 +80,16 @@ let _voiceBlob          = null;
 let _voiceTimerInterval = null;
 let _voiceSeconds       = 0;
 let _voiceIsRecording   = false;
+let _voiceDiscarding    = false;   // guard: ignore onstop when discarding
 
 function toggleVoiceRecording(e) {
     e.stopPropagation();
     _voiceIsRecording ? _stopVoiceRecording() : _startVoiceRecording();
+}
+
+function _getBestMimeType() {
+    const types = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus', 'audio/ogg'];
+    return types.find(t => MediaRecorder.isTypeSupported(t)) || '';
 }
 
 function _startVoiceRecording() {
@@ -93,114 +99,156 @@ function _startVoiceRecording() {
     }
     navigator.mediaDevices.getUserMedia({ audio: true })
         .then(stream => {
-            _voiceChunks = [];
-            _voiceBlob   = null;
+            _voiceChunks      = [];
+            _voiceBlob        = null;
             _voiceIsRecording = true;
+            _voiceDiscarding  = false;
 
-            _voiceMediaRecorder = new MediaRecorder(stream);
-            _voiceMediaRecorder.ondataavailable = e => { if (e.data.size) _voiceChunks.push(e.data); };
+            const mimeType = _getBestMimeType();
+            _voiceMediaRecorder = mimeType
+                ? new MediaRecorder(stream, { mimeType })
+                : new MediaRecorder(stream);
+
+            _voiceMediaRecorder.ondataavailable = ev => {
+                if (ev.data && ev.data.size > 0) _voiceChunks.push(ev.data);
+            };
+
             _voiceMediaRecorder.onstop = () => {
+                // Stop all mic tracks regardless
                 stream.getTracks().forEach(t => t.stop());
-                _voiceBlob = new Blob(_voiceChunks, { type: 'audio/webm' });
-                const url  = URL.createObjectURL(_voiceBlob);
 
-                // Show preview player (no autoplay — only playable after send)
+                // If the user hit Discard, don't show the preview
+                if (_voiceDiscarding) return;
+
+                if (!_voiceChunks.length) {
+                    _feedToast('No audio captured — check your microphone.', 'error');
+                    _resetVoiceUI();
+                    return;
+                }
+
+                const usedMime = _voiceMediaRecorder.mimeType || mimeType || 'audio/webm';
+                _voiceBlob = new Blob(_voiceChunks, { type: usedMime });
+
+                const url = URL.createObjectURL(_voiceBlob);
                 const player = document.getElementById('voicePreviewPlayer');
-                if (player) { player.src = url; player.style.display = 'block'; }
+                if (player) {
+                    if (player._prevUrl) URL.revokeObjectURL(player._prevUrl);
+                    player._prevUrl      = url;
+                    player.src           = url;   // assign once, cleanly
+                    player.style.display = 'block';
+                }
 
-                // Swap UI: hide rec dot, show post button
+                // Swap UI to "ready" state
                 const dot   = document.querySelector('.voice-rec-dot');
                 const label = document.querySelector('.voice-rec-label');
-                if (dot)   dot.style.display   = 'none';
-                if (label) label.textContent    = 'Voice message ready';
+                if (dot)   dot.style.display = 'none';
+                if (label) label.textContent = 'Voice message ready — preview below';
                 document.getElementById('voicePostBtn').style.display = 'inline-flex';
             };
 
-            _voiceMediaRecorder.start();
+            // collect chunks every 250 ms so audio data isn't lost
+            _voiceMediaRecorder.start(250);
 
             // Timer
             _voiceSeconds = 0;
             _voiceTimerInterval = setInterval(() => {
                 _voiceSeconds++;
-                const m = Math.floor(_voiceSeconds / 60);
-                const s = String(_voiceSeconds % 60).padStart(2, '0');
+                const m  = Math.floor(_voiceSeconds / 60);
+                const s  = String(_voiceSeconds % 60).padStart(2, '0');
                 const el = document.getElementById('voiceRecTimer');
                 if (el) el.textContent = `${m}:${s}`;
             }, 1000);
 
-            // Update button
+            // Update mic button to stop icon
             const btn  = document.getElementById('voiceRecordBtn');
             const icon = document.getElementById('voiceRecordIcon');
             if (btn)  btn.classList.add('recording');
             if (icon) { icon.classList.remove('fa-microphone'); icon.classList.add('fa-stop'); }
 
-            // Show bar
             document.getElementById('voiceRecordingBar').style.display = 'flex';
         })
-        .catch(() => _feedToast('Microphone access denied.', 'error'));
+        .catch(err => {
+            console.error('Voice recording error:', err);
+            _feedToast('Microphone access denied or unavailable.', 'error');
+        });
 }
 
 function _stopVoiceRecording() {
     _voiceIsRecording = false;
     clearInterval(_voiceTimerInterval);
-
-    if (_voiceMediaRecorder?.state !== 'inactive') _voiceMediaRecorder.stop();
-
+    if (_voiceMediaRecorder && _voiceMediaRecorder.state !== 'inactive') {
+        _voiceMediaRecorder.stop();   // triggers onstop → shows preview
+    }
     const btn  = document.getElementById('voiceRecordBtn');
     const icon = document.getElementById('voiceRecordIcon');
     if (btn)  btn.classList.remove('recording');
     if (icon) { icon.classList.remove('fa-stop'); icon.classList.add('fa-microphone'); }
 }
 
-function discardVoiceRecording() {
-    _voiceIsRecording = false;
-    clearInterval(_voiceTimerInterval);
-    if (_voiceMediaRecorder?.state !== 'inactive') _voiceMediaRecorder.stop();
-
-    _voiceBlob   = null;
-    _voiceChunks = [];
-
+function _resetVoiceUI() {
     const bar    = document.getElementById('voiceRecordingBar');
     const player = document.getElementById('voicePreviewPlayer');
     const btn    = document.getElementById('voiceRecordBtn');
     const icon   = document.getElementById('voiceRecordIcon');
     const dot    = document.querySelector('.voice-rec-dot');
     const label  = document.querySelector('.voice-rec-label');
-    const timer  = document.getElementById('voiceRecTimer');
 
+    if (player?._prevUrl) { URL.revokeObjectURL(player._prevUrl); player._prevUrl = null; }
     if (bar)    bar.style.display    = 'none';
     if (player) { player.src = ''; player.style.display = 'none'; }
     if (btn)    btn.classList.remove('recording');
     if (icon)   { icon.classList.remove('fa-stop'); icon.classList.add('fa-microphone'); }
     if (dot)    dot.style.display    = '';
-    if (label)  label.textContent    = 'Recording… ';
-    if (timer)  timer.textContent    = '0:00';
-    document.getElementById('voicePostBtn').style.display = 'none';
+    if (label)  label.innerHTML      = 'Recording\u2026 <span id="voiceRecTimer">0:00</span>';
+    const postBtn = document.getElementById('voicePostBtn');
+    if (postBtn) postBtn.style.display = 'none';
+}
+
+function discardVoiceRecording() {
+    _voiceIsRecording = false;
+    _voiceDiscarding  = true;
+    clearInterval(_voiceTimerInterval);
+
+    if (_voiceMediaRecorder && _voiceMediaRecorder.state !== 'inactive') {
+        _voiceMediaRecorder.stop();
+    }
+
+    _voiceBlob   = null;
+    _voiceChunks = [];
+    _resetVoiceUI();
 }
 
 function postVoiceRecording() {
     if (!_voiceBlob) return;
 
-    const duration = _voiceSeconds;
-    const url      = URL.createObjectURL(_voiceBlob);
-    const m = Math.floor(duration / 60);
-    const s = String(duration % 60).padStart(2, '0');
+    const player = document.getElementById('voicePreviewPlayer');
+    const url    = player?._prevUrl || URL.createObjectURL(_voiceBlob);
+    const m = Math.floor(_voiceSeconds / 60);
+    const s = String(_voiceSeconds % 60).padStart(2, '0');
 
-    // Build a local post with the audio
+    // Hand off URL — prevent discard from revoking it
+    if (player) player._prevUrl = null;
+
     const local = {
-        id:           `local-voice-${Date.now()}`,
-        content:      '',
-        post_type:    'voice',
-        _voiceUrl:    url,
-        _voiceDur:    `${m}:${s}`,
-        author:       { username: _currentUsername() },
-        created_at:   new Date().toISOString(),
+        id:             `local-voice-${Date.now()}`,
+        content:        '',
+        post_type:      'voice',
+        _voiceUrl:      url,
+        _voiceDur:      `${m}:${s}`,
+        author:         { username: _currentUsername() },
+        created_at:     new Date().toISOString(),
         reaction_count: 0, comment_count: 0, share_count: 0
     };
 
+    _voiceBlob   = null;
+    _voiceChunks = [];
+    _voiceDiscarding = true;
+    clearInterval(_voiceTimerInterval);
+    if (_voiceMediaRecorder && _voiceMediaRecorder.state !== 'inactive') _voiceMediaRecorder.stop();
+    _resetVoiceUI();
+
     _saveLocalPost(local);
     _insertPostCard(local);
-    discardVoiceRecording();
     _feedToast('Voice message posted! 🎤', 'success');
 }
 
