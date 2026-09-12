@@ -880,8 +880,9 @@
                         <button type="button" class="dm-voice-btn" id="dmVoiceBtn"
                                 title="Hold to record voice message"
                                 onmousedown="dmStartRecording()"
-                                ontouchstart="dmStartRecording()"
+                                ontouchstart="event.preventDefault(); dmStartRecording()"
                                 onmouseup="dmStopRecording()"
+                                onmouseleave="dmStopRecording()"
                                 ontouchend="dmStopRecording()">
                             <i class="fas fa-microphone"></i>
                         </button>
@@ -958,6 +959,27 @@ window.logout = function() {
 'use strict';
 document.addEventListener('DOMContentLoaded', function() {
     if (typeof dmInit === 'function') dmInit();
+
+    // Check mic permission state so the voice button shows the right tooltip
+    if (navigator.permissions) {
+        navigator.permissions.query({ name: 'microphone' }).then(result => {
+            const btn = document.getElementById('dmVoiceBtn');
+            if (!btn) return;
+            if (result.state === 'denied') {
+                btn.title = 'Microphone blocked — click your browser address bar 🔒 to allow access';
+                btn.style.opacity = '0.45';
+            }
+            result.onchange = () => {
+                if (result.state === 'granted') {
+                    btn.title = 'Hold to record voice message';
+                    btn.style.opacity = '';
+                } else if (result.state === 'denied') {
+                    btn.title = 'Microphone blocked — click your browser address bar 🔒 to allow access';
+                    btn.style.opacity = '0.45';
+                }
+            };
+        }).catch(() => { /* permissions API not available — silent */ });
+    }
 
     const p = new URLSearchParams(window.location.search);
     const convId = p.get('conv');

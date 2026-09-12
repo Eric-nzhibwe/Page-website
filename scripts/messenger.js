@@ -448,13 +448,46 @@ async function dmStartRecording() {
     if (_rec.mediaRecorder && _rec.mediaRecorder.state !== 'inactive') return;
 
     // Reset abort flag for this new recording attempt
-    _rec.aborted  = false;
-    _rec.stream   = null;
+    _rec.aborted = false;
+    _rec.stream  = null;
+
+    // ── Pre-flight checks ─────────────────────────────────────────────────
+    // getUserMedia requires a secure context (HTTPS or localhost)
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        const isInsecure = location.protocol !== 'https:' &&
+                           location.hostname !== 'localhost' &&
+                           location.hostname !== '127.0.0.1';
+        const msg = isInsecure
+            ? 'Voice messages require HTTPS. Please use the secure version of this site.'
+            : 'Your browser does not support audio recording.';
+        if (typeof showToast === 'function') showToast(msg, 'error');
+        return;
+    }
+
+    // Check if any audio input devices exist before asking for permission
+    try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const hasAudio = devices.some(d => d.kind === 'audioinput');
+        if (!hasAudio) {
+            if (typeof showToast === 'function') {
+                showToast('No microphone detected. Please connect one and try again.', 'error');
+            }
+            return;
+        }
+    } catch (_) {
+        // enumerateDevices can fail in some contexts — proceed anyway
+    }
 
     try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const stream = await navigator.mediaDevices.getUserMedia({
+            audio: {
+                echoCancellation: true,
+                noiseSuppression: true,
+                sampleRate: 44100,
+            }
+        });
 
-        // If stop was called while we were waiting for permission, clean up and bail
+        // If stop was called while waiting for permission, release and bail
         if (_rec.aborted) {
             stream.getTracks().forEach(t => t.stop());
             return;
@@ -462,11 +495,14 @@ async function dmStartRecording() {
 
         _rec.stream = stream;
 
+        // Pick the best supported MIME type
         const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
             ? 'audio/webm;codecs=opus'
             : MediaRecorder.isTypeSupported('audio/webm')
                 ? 'audio/webm'
-                : 'audio/ogg';
+                : MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')
+                    ? 'audio/ogg;codecs=opus'
+                    : 'audio/ogg';
 
         _rec.chunks        = [];
         _rec.startTime     = Date.now();
@@ -477,11 +513,9 @@ async function dmStartRecording() {
         };
 
         _rec.mediaRecorder.onstop = () => {
-            // Always release the mic
             stream.getTracks().forEach(t => t.stop());
             _rec.stream = null;
 
-            // If aborted or too short, discard
             if (_rec.aborted || _rec.chunks.length === 0) {
                 _dmStopRecordingUI();
                 return;
@@ -492,7 +526,7 @@ async function dmStartRecording() {
 
             if (durationSec < 1) {
                 _dmStopRecordingUI();
-                if (typeof showToast === 'function') showToast('Hold longer to record.', 'info');
+                if (typeof showToast === 'function') showToast('Hold the button longer to record.', 'info');
                 return;
             }
 
@@ -506,34 +540,32 @@ async function dmStartRecording() {
 
         _rec.mediaRecorder.start(100);
 
-        // ── Update UI ──────────────────────────────────────────────────────
-        const btn = document.getElementById('dmVoiceBtn');
-        if (btn) btn.classList.add('recording');
-
-        const timer = document.getElementById('dmRecTimer');
-        if (timer) timer.classList.add('visible');
-
-        // Hide text input, show live waveform canvas
+        // ── Update UI ─────────────────────────────────────────────────────
+        document.getElementById('dmVoiceBtn')?.classList.add('recording');
+        document.getElementById('dmRecTimer')?.classList.add('visible');
+        const liveWave = document.getElementById('dmLiveWave');
+        if (liveWave) liveWave.classList.add('visible');
         const textInput = document.getElementById('dmTextInput');
-        const liveWave  = document.getElementById('dmLiveWave');
         if (textInput) textInput.style.display = 'none';
-        if (liveWave)  liveWave.classList.add('visible');
 
-        // ── Web Audio visualiser ────────────────────────────────────────────
+        // ── Web Audio visualiser ──────────────────────────────────────────
         try {
-            _rec.audioCtx  = new (window.AudioContext || window.webkitAudioContext)();
-            const source   = _rec.audioCtx.createMediaStreamSource(stream);
-            _rec.analyser  = _rec.audioCtx.createAnalyser();
-            _rec.analyser.fftSize       = 128;
-            _rec.analyser.smoothingTimeConstant = 0.6;
+            _rec.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            // Resume in case the context started in suspended state (browser autoplay policy)
+            if (_rec.audioCtx.state === 'suspended') await _rec.audioCtx.resume();
+            const source  = _rec.audioCtx.createMediaStreamSource(stream);
+            _rec.analyser = _rec.audioCtx.createAnalyser();
+            _rec.analyser.fftSize              = 128;
+            _rec.analyser.smoothingTimeConstant = 0.65;
             source.connect(_rec.analyser);
             _dmDrawLiveWave();
         } catch (audioErr) {
-            // AudioContext unavailable — waveform just shows static bars
             console.warn('AudioContext unavailable:', audioErr.message);
+            // Still draw animated fallback bars
+            _dmDrawLiveWave();
         }
 
-        // ── Live timer ──────────────────────────────────────────────────────
+        // ── Live timer ────────────────────────────────────────────────────
         _rec.timerInterval = setInterval(() => {
             const elapsed = Math.round((Date.now() - _rec.startTime) / 1000);
             const el = document.getElementById('dmRecTimerVal');
@@ -541,14 +573,39 @@ async function dmStartRecording() {
         }, 500);
 
     } catch (err) {
-        _rec.aborted = false; // reset so next attempt works
-        if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-            if (typeof showToast === 'function') showToast('Microphone permission denied.', 'error');
-        } else if (err.name === 'NotFoundError') {
-            if (typeof showToast === 'function') showToast('No microphone found.', 'error');
-        } else {
-            console.error('Recording error:', err);
+        _rec.aborted = false; // always reset so next attempt isn't blocked
+
+        let msg;
+        switch (err.name) {
+            case 'NotAllowedError':
+            case 'PermissionDeniedError':
+                msg = 'Microphone access denied. Click the 🔒 lock icon in your browser address bar → Site settings → Microphone → Allow, then refresh.';
+                break;
+            case 'NotFoundError':
+            case 'DevicesNotFoundError':
+                msg = 'No microphone found. Please connect a microphone and try again.';
+                break;
+            case 'NotReadableError':
+            case 'TrackStartError':
+                msg = 'Microphone is in use by another app. Close it and try again.';
+                break;
+            case 'OverconstrainedError':
+                // Retry without constraints if the enhanced constraints were rejected
+                console.warn('Audio constraints rejected, retrying with basic audio...');
+                navigator.mediaDevices.getUserMedia({ audio: true })
+                    .then(s => { _rec.aborted = false; /* restart would be complex — just inform */ s.getTracks().forEach(t => t.stop()); })
+                    .catch(() => {});
+                msg = 'Microphone settings not supported. Please try again.';
+                break;
+            case 'SecurityError':
+                msg = 'Microphone blocked by browser security policy. Make sure the page is served over HTTPS.';
+                break;
+            default:
+                msg = `Could not access microphone: ${err.message || err.name}`;
+                console.error('getUserMedia error:', err);
         }
+        if (typeof showToast === 'function') showToast(msg, 'error');
+        _dmStopRecordingUI(); // make sure UI is reset
     }
 }
 
