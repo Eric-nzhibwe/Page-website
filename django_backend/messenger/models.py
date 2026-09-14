@@ -49,6 +49,11 @@ class Message(models.Model):
     media_thumbnail = models.ImageField(upload_to=message_media_path, blank=True, null=True)
     media_duration = models.IntegerField(blank=True, null=True, help_text="Duration in seconds for audio/video")
     
+    # Firebase Storage URL — set when the client uploads directly to Firebase Storage
+    # instead of uploading through Django.  Takes precedence over media_file.url
+    # in serializers when present.
+    firebase_media_url = models.URLField(max_length=1024, blank=True, null=True)
+    
     timestamp = models.DateTimeField(auto_now_add=True)
     read = models.BooleanField(default=False)
     

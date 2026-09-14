@@ -243,7 +243,7 @@ function dmRenderMessages(msgs, currentUserId) {
     let lastDate   = '';
 
     msgs.forEach(msg => {
-        const isMine    = String(msg.sender?.id || msg.sender) === String(currentUserId);
+        const isMine    = String(msg.sender?.id || msg.sender_id || msg.sender) === String(currentUserId);
         const side      = isMine ? 'mine' : 'theirs';
         const timeStr   = _dmFormatTime(msg.timestamp);
         const dateStr   = _dmFormatDate(msg.timestamp);
@@ -447,12 +447,10 @@ async function dmStartRecording() {
     // Don't start a new recording if one is already active
     if (_rec.mediaRecorder && _rec.mediaRecorder.state !== 'inactive') return;
 
-    // Reset abort flag for this new recording attempt
     _rec.aborted = false;
     _rec.stream  = null;
 
-    // ── Pre-flight checks ─────────────────────────────────────────────────
-    // getUserMedia requires a secure context (HTTPS or localhost)
+    // ── Pre-flight: check API availability ───────────────────────────────
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         const isInsecure = location.protocol !== 'https:' &&
                            location.hostname !== 'localhost' &&
@@ -464,7 +462,17 @@ async function dmStartRecording() {
         return;
     }
 
-    // Check if any audio input devices exist before asking for permission
+    // ── Create AudioContext NOW, inside the user-gesture event ───────────
+    // iOS Safari requires AudioContext to be constructed synchronously
+    // during a touchstart/mousedown — it will be suspended if created
+    // after an await (getUserMedia).  We resume it once the stream arrives.
+    try {
+        if (!_rec.audioCtx || _rec.audioCtx.state === 'closed') {
+            _rec.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+    } catch (_) { _rec.audioCtx = null; }
+
+    // Check for audio input devices before prompting
     try {
         const devices = await navigator.mediaDevices.enumerateDevices();
         const hasAudio = devices.some(d => d.kind === 'audioinput');
@@ -474,9 +482,7 @@ async function dmStartRecording() {
             }
             return;
         }
-    } catch (_) {
-        // enumerateDevices can fail in some contexts — proceed anyway
-    }
+    } catch (_) { /* enumerateDevices failed — try anyway */ }
 
     try {
         const stream = await navigator.mediaDevices.getUserMedia({
@@ -487,22 +493,30 @@ async function dmStartRecording() {
             }
         });
 
-        // If stop was called while waiting for permission, release and bail
         if (_rec.aborted) {
             stream.getTracks().forEach(t => t.stop());
+            if (_rec.audioCtx) { _rec.audioCtx.close().catch(() => {}); _rec.audioCtx = null; }
             return;
         }
 
         _rec.stream = stream;
 
-        // Pick the best supported MIME type
+        // iOS Safari only supports audio/mp4; use it when webm isn't available
         const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
             ? 'audio/webm;codecs=opus'
             : MediaRecorder.isTypeSupported('audio/webm')
                 ? 'audio/webm'
                 : MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')
                     ? 'audio/ogg;codecs=opus'
-                    : 'audio/ogg';
+                    : MediaRecorder.isTypeSupported('audio/mp4')
+                        ? 'audio/mp4'
+                        : '';
+
+        if (!mimeType) {
+            if (typeof showToast === 'function') showToast('Your browser does not support voice recording.', 'error');
+            stream.getTracks().forEach(t => t.stop());
+            return;
+        }
 
         _rec.chunks        = [];
         _rec.startTime     = Date.now();
@@ -530,7 +544,10 @@ async function dmStartRecording() {
                 return;
             }
 
-            const ext  = mimeType.includes('ogg') ? 'ogg' : 'webm';
+            // Use correct extension for the recorded format
+            const ext = mimeType.includes('mp4')  ? 'm4a'
+                      : mimeType.includes('ogg')  ? 'ogg'
+                      : 'webm';
             const file = new File([blob], `voice-${Date.now()}.${ext}`, { type: mimeType });
             _dm.pendingMedia = { file, type: 'audio', dataUrl: null, duration: durationSec };
 
@@ -540,30 +557,31 @@ async function dmStartRecording() {
 
         _rec.mediaRecorder.start(100);
 
-        // ── Update UI ─────────────────────────────────────────────────────
+        // ── UI ────────────────────────────────────────────────────────────
         document.getElementById('dmVoiceBtn')?.classList.add('recording');
         document.getElementById('dmRecTimer')?.classList.add('visible');
-        const liveWave = document.getElementById('dmLiveWave');
-        if (liveWave) liveWave.classList.add('visible');
+        document.getElementById('dmLiveWave')?.classList.add('visible');
         const textInput = document.getElementById('dmTextInput');
         if (textInput) textInput.style.display = 'none';
 
-        // ── Web Audio visualiser ──────────────────────────────────────────
+        // ── Wire AudioContext to the stream (now we have it) ──────────────
         try {
-            _rec.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            // Resume in case the context started in suspended state (browser autoplay policy)
-            if (_rec.audioCtx.state === 'suspended') await _rec.audioCtx.resume();
-            const source  = _rec.audioCtx.createMediaStreamSource(stream);
-            _rec.analyser = _rec.audioCtx.createAnalyser();
-            _rec.analyser.fftSize              = 128;
-            _rec.analyser.smoothingTimeConstant = 0.65;
-            source.connect(_rec.analyser);
-            _dmDrawLiveWave();
+            if (_rec.audioCtx) {
+                // Resume if suspended (iOS requires this after the await)
+                if (_rec.audioCtx.state === 'suspended') await _rec.audioCtx.resume();
+                const source  = _rec.audioCtx.createMediaStreamSource(stream);
+                _rec.analyser = _rec.audioCtx.createAnalyser();
+                _rec.analyser.fftSize               = 128;
+                _rec.analyser.smoothingTimeConstant = 0.65;
+                source.connect(_rec.analyser);
+            }
         } catch (audioErr) {
-            console.warn('AudioContext unavailable:', audioErr.message);
-            // Still draw animated fallback bars
-            _dmDrawLiveWave();
+            console.warn('AudioContext connect failed:', audioErr.message);
+            _rec.analyser = null;
         }
+
+        // Start waveform animation regardless (falls back to random bars)
+        _dmDrawLiveWave();
 
         // ── Live timer ────────────────────────────────────────────────────
         _rec.timerInterval = setInterval(() => {
@@ -573,13 +591,14 @@ async function dmStartRecording() {
         }, 500);
 
     } catch (err) {
-        _rec.aborted = false; // always reset so next attempt isn't blocked
+        _rec.aborted = false;
+        if (_rec.audioCtx) { _rec.audioCtx.close().catch(() => {}); _rec.audioCtx = null; }
 
         let msg;
         switch (err.name) {
             case 'NotAllowedError':
             case 'PermissionDeniedError':
-                msg = 'Microphone access denied. Click the 🔒 lock icon in your browser address bar → Site settings → Microphone → Allow, then refresh.';
+                msg = 'Microphone access denied. Tap the 🔒 lock in your browser address bar → Site settings → Microphone → Allow, then refresh.';
                 break;
             case 'NotFoundError':
             case 'DevicesNotFoundError':
@@ -590,22 +609,22 @@ async function dmStartRecording() {
                 msg = 'Microphone is in use by another app. Close it and try again.';
                 break;
             case 'OverconstrainedError':
-                // Retry without constraints if the enhanced constraints were rejected
-                console.warn('Audio constraints rejected, retrying with basic audio...');
-                navigator.mediaDevices.getUserMedia({ audio: true })
-                    .then(s => { _rec.aborted = false; /* restart would be complex — just inform */ s.getTracks().forEach(t => t.stop()); })
-                    .catch(() => {});
+                // Retry without audio constraints (some older Android devices)
+                console.warn('Audio constraints rejected — retrying with basic constraints');
+                navigator.mediaDevices.getUserMedia({ audio: true }).then(s => {
+                    s.getTracks().forEach(t => t.stop());
+                }).catch(() => {});
                 msg = 'Microphone settings not supported. Please try again.';
                 break;
             case 'SecurityError':
-                msg = 'Microphone blocked by browser security policy. Make sure the page is served over HTTPS.';
+                msg = 'Microphone blocked by security policy. Make sure you are on the HTTPS version of this site.';
                 break;
             default:
                 msg = `Could not access microphone: ${err.message || err.name}`;
                 console.error('getUserMedia error:', err);
         }
         if (typeof showToast === 'function') showToast(msg, 'error');
-        _dmStopRecordingUI(); // make sure UI is reset
+        _dmStopRecordingUI();
     }
 }
 

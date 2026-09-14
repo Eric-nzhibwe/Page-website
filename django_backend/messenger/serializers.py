@@ -48,6 +48,9 @@ class MessageSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'timestamp', 'read']
 
     def get_media_url(self, obj):
+        # Firebase Storage URL takes precedence over Django-served media
+        if obj.firebase_media_url:
+            return obj.firebase_media_url
         if not obj.media_file:
             return None
         request = self.context.get('request')

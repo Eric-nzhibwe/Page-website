@@ -52,6 +52,92 @@ CONV_COLL      = 'messenger_conversations'
 #  Public API — called by signals
 # ─────────────────────────────────────────────────────────────────────────────
 
+def mirror_message_with_url(message, firebase_media_url: str) -> bool:
+    """
+    Write a new message document to Firestore using an explicit Firebase Storage
+    URL instead of a Django-served media URL.
+
+    Used when the client uploads audio directly to Firebase Storage and passes
+    the download URL to the backend.  The message document is written to Firestore
+    immediately so the recipient's onSnapshot listener fires in real time.
+    """
+    db = get_firestore()
+    if db is None:
+        return False
+
+    try:
+        conv        = message.conversation
+        conv_id     = str(conv.id)
+        msg_id      = str(message.id)
+        sender      = message.sender
+        from datetime import datetime, timezone as tz
+        now         = datetime.now(tz=tz.utc)
+
+        msg_doc = {
+            'id':               msg_id,
+            'conversation_id':  conv_id,
+            'sender_id':        str(sender.id),
+            'sender_username':  sender.username,
+            'sender_avatar':    _avatar_url(sender),
+            'message_type':     message.message_type,
+            'text':             message.text,
+            'media_url':        firebase_media_url,   # ← Firebase Storage URL
+            'timestamp':        message.timestamp or now,
+            'read':             message.read,
+        }
+
+        conv_ref = db.collection(CONV_COLL).document(conv_id)
+        conv_ref.collection('messages').document(msg_id).set(msg_doc)
+
+        # Update conversation summary
+        participants = list(conv.participants.select_related())
+        p_ids        = [str(p.id) for p in participants]
+        p_data       = {
+            str(p.id): {
+                'username':     p.username,
+                'display_name': p.display_name or p.username,
+                'avatar':       _avatar_url(p),
+                'access_tier':  p.access_tier,
+            }
+            for p in participants
+        }
+
+        last_msg_summary = {
+            'id':           msg_id,
+            'message_type': message.message_type,
+            'text':         message.text,
+            'sender_id':    str(sender.id),
+            'timestamp':    message.timestamp or now,
+            'read':         message.read,
+        }
+
+        snap = conv_ref.get()
+        existing_unread = {}
+        if snap.exists:
+            existing_unread = snap.to_dict().get('unread_counts', {})
+
+        new_unread = dict(existing_unread)
+        for p in participants:
+            uid = str(p.id)
+            if uid != str(sender.id):
+                new_unread[uid] = new_unread.get(uid, 0) + 1
+
+        conv_ref.set({
+            'id':               conv_id,
+            'participant_ids':  p_ids,
+            'participant_data': p_data,
+            'last_message':     last_msg_summary,
+            'unread_counts':    new_unread,
+            'updated_at':       now,
+        }, merge=True)
+
+        return True
+
+    except Exception as exc:
+        logger.error(f'Firestore mirror_message_with_url error for msg {message.id}: {exc}')
+        return False
+
+
 def mirror_message(message) -> bool:
     """
     Write a new message document to Firestore and update the parent

@@ -23,7 +23,25 @@ def mirror_message_to_firestore(sender, instance, created, **kwargs):
         from artx_platform.firebase_client import firebase_enabled
         if not firebase_enabled():
             return
-        from .firestore_messenger_service import mirror_message
+        from .firestore_messenger_service import mirror_message, CONV_COLL, get_firestore
+
+        # If mirror_message_with_url already wrote this document (Firebase Storage
+        # audio upload path), skip the signal mirror so we don't overwrite the
+        # correct media_url with a potentially-None Django media URL.
+        db = get_firestore()
+        if db is not None:
+            conv_id = str(instance.conversation_id)
+            msg_id  = str(instance.id)
+            existing = (
+                db.collection(CONV_COLL)
+                  .document(conv_id)
+                  .collection('messages')
+                  .document(msg_id)
+                  .get()
+            )
+            if existing.exists:
+                return  # already mirrored with a Firebase Storage URL
+
         mirror_message(instance)
     except Exception as exc:
         # Never crash the request if Firestore is unavailable
