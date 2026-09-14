@@ -46,22 +46,40 @@ class APIService {
      */
     async request(endpoint, options = {}) {
         const url = `${this.baseURL}${endpoint}`;
-        const config = {
-            headers: options.headers !== undefined
-                ? options.headers
-                : this.getHeaders(options.auth !== false),
-            ...options,
-        };
+
+        // Always read the freshest token from storage — the constructor may have
+        // run before login completed, and stale null tokens cause silent 401s.
+        this.token = localStorage.getItem('djangoAuthToken')
+                  || localStorage.getItem('authToken')
+                  || this.token
+                  || null;
+
+        // Build headers first, then spread options so we don't accidentally
+        // overwrite the headers we just computed.
+        const { headers: optHeaders, ...restOptions } = options;
+        const headers = optHeaders !== undefined
+            ? optHeaders
+            : this.getHeaders(options.auth !== false);
+
+        const config = { headers, ...restOptions };
 
         try {
             const response = await fetch(url, config);
 
             if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.detail || error.message || `HTTP ${response.status}`);
+                let errorMsg = `HTTP ${response.status}`;
+                try {
+                    const error = await response.json();
+                    errorMsg = error.detail || error.message || errorMsg;
+                } catch (_) { /* response had no JSON body */ }
+                throw new Error(errorMsg);
             }
 
-            return await response.json();
+            // 204 No Content — nothing to parse
+            if (response.status === 204) return null;
+
+            const text = await response.text();
+            return text ? JSON.parse(text) : null;
         } catch (error) {
             console.error(`API Error: ${endpoint}`, error);
             throw error;
