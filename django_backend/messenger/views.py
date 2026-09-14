@@ -111,12 +111,11 @@ class ConversationViewSet(viewsets.ModelViewSet):
         """
         Send a text or media message in a conversation.
 
-        Supports two upload modes:
-          1. Direct file upload — media_file is a multipart file (legacy / fallback).
-          2. Firebase Storage URL — client uploads the file to Firebase Storage directly
-             and passes the public download URL via `firebase_media_url`.  In this mode
-             no file is uploaded to Django; the URL is stored in the message and mirrored
-             to Firestore so the recipient can play it immediately.
+        Accepts multipart/form-data with:
+          - message_type  : 'text' | 'image' | 'video' | 'audio' | 'file'
+          - text          : message body (required for text messages)
+          - media_file    : uploaded file (required for media messages)
+          - duration      : integer seconds (optional, for audio)
         """
         conversation = self.get_object()
 
@@ -124,22 +123,18 @@ class ConversationViewSet(viewsets.ModelViewSet):
             return Response({'error': 'Not a participant'},
                             status=status.HTTP_403_FORBIDDEN)
 
-        message_type      = request.data.get('message_type', 'text')
-        text              = request.data.get('text', '').strip()
-        media_file        = request.FILES.get('media_file')
-        firebase_media_url = request.data.get('firebase_media_url', '').strip()
-        duration          = request.data.get('duration')  # seconds, sent by client for audio
+        message_type = request.data.get('message_type', 'text')
+        text         = request.data.get('text', '').strip()
+        media_file   = request.FILES.get('media_file')
+        duration     = request.data.get('duration')
 
-        # Validate text messages
         if message_type == 'text' and not text:
             return Response({'error': 'Message text cannot be empty'},
                             status=status.HTTP_400_BAD_REQUEST)
 
-        # For media messages we need either a file upload OR a Firebase Storage URL
-        if message_type in ('image', 'video', 'audio', 'file'):
-            if not media_file and not firebase_media_url:
-                return Response({'error': f'{message_type} file or firebase_media_url is required'},
-                                status=status.HTTP_400_BAD_REQUEST)
+        if message_type in ('image', 'video', 'audio', 'file') and not media_file:
+            return Response({'error': f'{message_type} file is required'},
+                            status=status.HTTP_400_BAD_REQUEST)
 
         if media_file and media_file.size > 10 * 1024 * 1024:
             return Response({'error': 'File too large (max 10 MB)'},
@@ -153,8 +148,8 @@ class ConversationViewSet(viewsets.ModelViewSet):
                     'audio/mpeg', 'audio/ogg', 'audio/wav', 'audio/webm',
                     'audio/webm;codecs=opus',
                     'audio/ogg;codecs=opus',
-                    'audio/mp4',   # iOS Safari / Chrome on iOS
-                    'audio/x-m4a', # alternate iOS MIME
+                    'audio/mp4',
+                    'audio/x-m4a',
                     'audio/m4a',
                 ],
             }
@@ -162,40 +157,22 @@ class ConversationViewSet(viewsets.ModelViewSet):
                 return Response({'error': f'Invalid file type for {message_type}'},
                                 status=status.HTTP_400_BAD_REQUEST)
 
+        # Bump updated_at BEFORE the Firestore mirror so the conversation list
+        # sort order is correct when the onSnapshot listener fires.
+        conversation.save()
+
         message = Message.objects.create(
             conversation=conversation,
             sender=request.user,
             message_type=message_type,
             text=text or None,
             media_file=media_file or None,
-            # Store Firebase Storage URL when no file is uploaded locally
-            firebase_media_url=firebase_media_url or None,
             media_duration=int(duration) if duration and str(duration).isdigit() else None,
         )
+        # post_save signal in signals.py calls mirror_message() → Firestore
 
-        # FIX Bug 5: bump updated_at BEFORE mirroring to Firestore so the
-        # conversation list sort order is correct when the listener fires.
-        conversation.save()  # bumps updated_at for sidebar ordering
-
-        # If the audio/media came from Firebase Storage, mirror to Firestore immediately.
-        # The post_save signal will skip re-writing since the doc will already exist.
-        if firebase_media_url and not media_file:
-            try:
-                from artx_platform.firebase_client import firebase_enabled
-                if firebase_enabled():
-                    from messenger.firestore_messenger_service import mirror_message_with_url
-                    mirror_message_with_url(message, firebase_media_url)
-            except Exception:
-                pass
-
-        # Build the response payload — include firebase_media_url so the sender's
-        # UI can render the voice player immediately without a round-trip.
         serializer = MessageSerializer(message, context={'request': request})
-        data = serializer.data
-        if firebase_media_url and not data.get('media_url'):
-            data = dict(data)
-            data['media_url'] = firebase_media_url
-        return Response(data, status=status.HTTP_201_CREATED)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
 @api_view(['GET'])
