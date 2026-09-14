@@ -3,7 +3,7 @@ from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.pagination import PageNumberPagination
-from django.db.models import Q, Max
+from django.db.models import Q
 from django.utils import timezone
 from .models import Conversation, Message
 from .serializers import ConversationListSerializer, ConversationDetailSerializer, MessageSerializer
@@ -86,22 +86,25 @@ class ConversationViewSet(viewsets.ModelViewSet):
 
         msgs = conversation.messages.all().order_by('timestamp')
 
-        # Mark incoming messages as read
+        # Mark incoming messages as read in PostgreSQL
         unread = msgs.filter(read=False).exclude(sender=request.user)
         unread_count = unread.count()
         if unread_count:
             unread.update(read=True)
+            # FIX Bug 4: mirror the zeroed unread count to Firestore so the
+            # sender's badge updates immediately when the recipient opens the chat.
+            try:
+                from artx_platform.firebase_client import firebase_enabled
+                if firebase_enabled():
+                    from .firestore_messenger_service import mark_read_in_firestore
+                    mark_read_in_firestore(conversation.id, str(request.user.id))
+            except Exception:
+                pass
 
         paginator = MessagePagination()
         page = paginator.paginate_queryset(msgs, request)
-        if page is not None:
-            serializer = MessageSerializer(page, many=True,
-                                           context={'request': request})
-            return paginator.get_paginated_response(serializer.data)
-
-        serializer = MessageSerializer(msgs, many=True,
-                                        context={'request': request})
-        return Response(serializer.data)
+        serializer = MessageSerializer(page, many=True, context={'request': request})
+        return paginator.get_paginated_response(serializer.data)
 
     @action(detail=True, methods=['post'])
     def send_message(self, request, pk=None):
@@ -170,6 +173,10 @@ class ConversationViewSet(viewsets.ModelViewSet):
             media_duration=int(duration) if duration and str(duration).isdigit() else None,
         )
 
+        # FIX Bug 5: bump updated_at BEFORE mirroring to Firestore so the
+        # conversation list sort order is correct when the listener fires.
+        conversation.save()  # bumps updated_at for sidebar ordering
+
         # If the audio/media came from Firebase Storage, mirror to Firestore immediately.
         # The post_save signal will skip re-writing since the doc will already exist.
         if firebase_media_url and not media_file:
@@ -180,8 +187,6 @@ class ConversationViewSet(viewsets.ModelViewSet):
                     mirror_message_with_url(message, firebase_media_url)
             except Exception:
                 pass
-
-        conversation.save()  # bumps updated_at for sidebar ordering
 
         # Build the response payload — include firebase_media_url so the sender's
         # UI can render the voice player immediately without a round-trip.

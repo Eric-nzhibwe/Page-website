@@ -23,25 +23,22 @@ def mirror_message_to_firestore(sender, instance, created, **kwargs):
         from artx_platform.firebase_client import firebase_enabled
         if not firebase_enabled():
             return
-        from .firestore_messenger_service import mirror_message, CONV_COLL, get_firestore
 
-        # If mirror_message_with_url already wrote this document (Firebase Storage
-        # audio upload path), skip the signal mirror so we don't overwrite the
-        # correct media_url with a potentially-None Django media URL.
-        db = get_firestore()
-        if db is not None:
-            conv_id = str(instance.conversation_id)
-            msg_id  = str(instance.id)
-            existing = (
-                db.collection(CONV_COLL)
-                  .document(conv_id)
-                  .collection('messages')
-                  .document(msg_id)
-                  .get()
-            )
-            if existing.exists:
-                return  # already mirrored with a Firebase Storage URL
+        # FIX Bug 1 + Bug 6: Do NOT do a blocking Firestore READ here.
+        # The old approach read the doc to check if it already existed (to skip
+        # re-mirroring voice notes uploaded via Firebase Storage).  That caused:
+        #   • A synchronous Firestore round-trip on every single message save
+        #   • A race: the tempId written by the client ≠ str(message.id), so
+        #     the check never matched and a second doc with media_url=None was
+        #     always written, overwriting the correct Firebase Storage URL.
+        #
+        # New approach: check the model field instead — no network call needed.
+        # If firebase_media_url is set, mirror_message_with_url() already ran
+        # (called directly from the view), so we skip here to avoid overwrite.
+        if instance.firebase_media_url:
+            return  # already mirrored by the view with the correct Storage URL
 
+        from .firestore_messenger_service import mirror_message
         mirror_message(instance)
     except Exception as exc:
         # Never crash the request if Firestore is unavailable

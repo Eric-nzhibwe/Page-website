@@ -101,7 +101,7 @@ async function _fbFetchConfig() {
 
 function _fbLoadSDK() {
     return new Promise((resolve, reject) => {
-        // Check if all needed SDKs are already loaded
+        // All needed SDKs already loaded?
         if (window.firebase && window.firebase.firestore && window.firebase.storage) {
             resolve();
             return;
@@ -119,17 +119,24 @@ function _fbLoadSDK() {
 
         if (!needed.length) { resolve(); return; }
 
+        // FIX Bug 8: the old code incremented `loaded` for already-present scripts
+        // but returned early, meaning the counter could never reach needed.length
+        // for remaining scripts. New approach: filter out already-injected scripts
+        // upfront so `needed` only contains scripts that actually need loading.
+        const toLoad = needed.filter(src => !document.querySelector(`script[src="${src}"]`));
+
+        if (!toLoad.length) {
+            // All scripts already injected — wait one tick for them to execute
+            setTimeout(resolve, 0);
+            return;
+        }
+
         let loaded = 0;
-        needed.forEach(src => {
-            // Don't load a script that's already in the page
-            if (document.querySelector(`script[src="${src}"]`)) {
-                if (++loaded === needed.length) resolve();
-                return;
-            }
-            const el   = document.createElement('script');
-            el.src     = src;
-            el.async   = false;
-            el.onload  = () => { if (++loaded === needed.length) resolve(); };
+        toLoad.forEach(src => {
+            const el = document.createElement('script');
+            el.src   = src;
+            el.async = false;
+            el.onload  = () => { if (++loaded === toLoad.length) resolve(); };
             el.onerror = () => reject(new Error(`Failed to load ${src}`));
             document.head.appendChild(el);
         });
@@ -228,11 +235,7 @@ async function _fbWriteVoiceMessageToFirestore(convId, senderInfo, mediaUrl, dur
     };
 
     try {
-        const convRef = _fb.db.collection(CONV_COLL).document
-            ? _fb.db.collection(CONV_COLL).doc(String(convId))  // compat SDK uses .doc()
-            : null;
-
-        // compat SDK path
+        // FIX Bug 7: removed dead `convRef` variable that was computed but never used.
         const db = _fb.db;
         await db.collection(CONV_COLL)
             .doc(String(convId))

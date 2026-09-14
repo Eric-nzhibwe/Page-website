@@ -56,10 +56,6 @@ def mirror_message_with_url(message, firebase_media_url: str) -> bool:
     """
     Write a new message document to Firestore using an explicit Firebase Storage
     URL instead of a Django-served media URL.
-
-    Used when the client uploads audio directly to Firebase Storage and passes
-    the download URL to the backend.  The message document is written to Firestore
-    immediately so the recipient's onSnapshot listener fires in real time.
     """
     db = get_firestore()
     if db is None:
@@ -71,6 +67,7 @@ def mirror_message_with_url(message, firebase_media_url: str) -> bool:
         msg_id      = str(message.id)
         sender      = message.sender
         from datetime import datetime, timezone as tz
+        from google.cloud.firestore_v1 import Increment
         now         = datetime.now(tz=tz.utc)
 
         msg_doc = {
@@ -81,15 +78,11 @@ def mirror_message_with_url(message, firebase_media_url: str) -> bool:
             'sender_avatar':    _avatar_url(sender),
             'message_type':     message.message_type,
             'text':             message.text,
-            'media_url':        firebase_media_url,   # ← Firebase Storage URL
+            'media_url':        firebase_media_url,
             'timestamp':        message.timestamp or now,
             'read':             message.read,
         }
 
-        conv_ref = db.collection(CONV_COLL).document(conv_id)
-        conv_ref.collection('messages').document(msg_id).set(msg_doc)
-
-        # Update conversation summary
         participants = list(conv.participants.select_related())
         p_ids        = [str(p.id) for p in participants]
         p_data       = {
@@ -111,25 +104,26 @@ def mirror_message_with_url(message, firebase_media_url: str) -> bool:
             'read':         message.read,
         }
 
-        snap = conv_ref.get()
-        existing_unread = {}
-        if snap.exists:
-            existing_unread = snap.to_dict().get('unread_counts', {})
+        # FIX Bug 2: use atomic Increment instead of read-then-write
+        unread_increments = {
+            f'unread_counts.{str(p.id)}': Increment(1)
+            for p in participants
+            if str(p.id) != str(sender.id)
+        }
 
-        new_unread = dict(existing_unread)
-        for p in participants:
-            uid = str(p.id)
-            if uid != str(sender.id):
-                new_unread[uid] = new_unread.get(uid, 0) + 1
-
-        conv_ref.set({
-            'id':               conv_id,
-            'participant_ids':  p_ids,
-            'participant_data': p_data,
-            'last_message':     last_msg_summary,
-            'unread_counts':    new_unread,
-            'updated_at':       now,
-        }, merge=True)
+        conv_ref = db.collection(CONV_COLL).document(conv_id)
+        conv_ref.collection('messages').document(msg_id).set(msg_doc)
+        conv_ref.set(
+            {
+                'id':               conv_id,
+                'participant_ids':  p_ids,
+                'participant_data': p_data,
+                'last_message':     last_msg_summary,
+                'updated_at':       now,
+                **unread_increments,
+            },
+            merge=True,
+        )
 
         return True
 
@@ -141,7 +135,7 @@ def mirror_message_with_url(message, firebase_media_url: str) -> bool:
 def mirror_message(message) -> bool:
     """
     Write a new message document to Firestore and update the parent
-    conversation document's last_message + unread_counts.
+    conversation document's last_message + unread_counts atomically.
     Called from Message post_save signal (created=True only).
     Returns True on success.
     """
@@ -150,21 +144,23 @@ def mirror_message(message) -> bool:
         return False
 
     try:
+        from google.cloud.firestore_v1 import Increment
         conv        = message.conversation
         conv_id     = str(conv.id)
         msg_id      = str(message.id)
         sender      = message.sender
         now         = datetime.now(tz=timezone.utc)
 
-        # ── Resolve media URL (may be None on Render ephemeral disk) ─────────
+        # Resolve media URL — prefer firebase_media_url, then Django file URL
         media_url = None
         try:
-            if message.media_file:
+            if message.firebase_media_url:
+                media_url = message.firebase_media_url
+            elif message.media_file:
                 media_url = message.media_file.url
         except Exception:
             pass
 
-        # ── Build message document ────────────────────────────────────────────
         msg_doc = {
             'id':               msg_id,
             'conversation_id':  conv_id,
@@ -178,12 +174,6 @@ def mirror_message(message) -> bool:
             'read':             message.read,
         }
 
-        conv_ref = db.collection(CONV_COLL).document(conv_id)
-
-        # Write the message to the sub-collection
-        conv_ref.collection('messages').document(msg_id).set(msg_doc)
-
-        # ── Update / create the conversation summary document ─────────────────
         participants = list(conv.participants.select_related())
         p_ids        = [str(p.id) for p in participants]
         p_data       = {
@@ -205,26 +195,28 @@ def mirror_message(message) -> bool:
             'read':         message.read,
         }
 
-        # Increment unread count for every participant who isn't the sender
-        snap = conv_ref.get()
-        existing_unread = {}
-        if snap.exists:
-            existing_unread = snap.to_dict().get('unread_counts', {})
+        # FIX Bug 2: use atomic Increment for unread counts — eliminates
+        # the read-then-write race that could undercount when two messages
+        # arrive concurrently.
+        unread_increments = {
+            f'unread_counts.{str(p.id)}': Increment(1)
+            for p in participants
+            if str(p.id) != str(sender.id)
+        }
 
-        new_unread = dict(existing_unread)
-        for p in participants:
-            uid = str(p.id)
-            if uid != str(sender.id):
-                new_unread[uid] = new_unread.get(uid, 0) + 1
-
-        conv_ref.set({
-            'id':               conv_id,
-            'participant_ids':  p_ids,
-            'participant_data': p_data,
-            'last_message':     last_msg_summary,
-            'unread_counts':    new_unread,
-            'updated_at':       now,
-        }, merge=True)
+        conv_ref = db.collection(CONV_COLL).document(conv_id)
+        conv_ref.collection('messages').document(msg_id).set(msg_doc)
+        conv_ref.set(
+            {
+                'id':               conv_id,
+                'participant_ids':  p_ids,
+                'participant_data': p_data,
+                'last_message':     last_msg_summary,
+                'updated_at':       now,
+                **unread_increments,
+            },
+            merge=True,
+        )
 
         return True
 
