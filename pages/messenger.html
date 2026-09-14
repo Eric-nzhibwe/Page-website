@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Messages — ARTX</title>
     <link rel="icon" type="image/jpeg" href="../images/ARTX.jpg">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
@@ -1460,7 +1460,66 @@
         /* ══════════════════════════════════════════
            RESPONSIVE — MOBILE
         ══════════════════════════════════════════ */
+
+        /* ── Shared safe-area support (notch / home indicator) ── */
+        @supports (padding-bottom: env(safe-area-inset-bottom)) {
+            .dm-compose {
+                padding-bottom: calc(12px + env(safe-area-inset-bottom));
+            }
+        }
+
         @media (max-width: 640px) {
+
+            /* ── App shell ───────────────────────────────────────────── */
+            html, body {
+                height: 100%;
+                /* CRITICAL: Remove overflow:hidden — it clips the compose bar
+                   when the iOS/Android keyboard shrinks the viewport */
+                overflow: visible;
+                -webkit-text-size-adjust: 100%;
+            }
+
+            .dm-app {
+                /* dvh = dynamic viewport height — shrinks when keyboard opens.
+                   This keeps the compose bar above the keyboard automatically. */
+                height: 100dvh;
+                height: 100svh;
+                /* Fallback for older iOS Safari */
+                min-height: -webkit-fill-available;
+                overflow: hidden;
+            }
+
+            .dm-body {
+                position: relative;
+                flex: 1;
+                min-height: 0;
+                /* CRITICAL: Do NOT set overflow:hidden here — it clips
+                   the compose bar when the keyboard resizes the viewport */
+                overflow: visible;
+            }
+
+            /* ── Top bar ─────────────────────────────────────────────── */
+            .dm-topbar {
+                height: 52px;
+                padding: 0 12px;
+                gap: 8px;
+            }
+
+            .dm-topbar-logo {
+                font-size: 17px;
+            }
+
+            .dm-topbar-title {
+                font-size: 15px;
+            }
+
+            .dm-topbar-btn {
+                width: 34px;
+                height: 34px;
+                font-size: 15px;
+            }
+
+            /* ── Sidebar — full-screen panel, slides in/out ──────────── */
             .dm-sidebar {
                 position: absolute;
                 top: 0;
@@ -1476,55 +1535,272 @@
                 transform: translateX(-100%);
             }
 
+            .dm-sidebar-header {
+                padding: 14px 14px 8px;
+            }
+
+            .dm-sidebar-title {
+                font-size: 16px;
+            }
+
+            /* Slightly taller tap targets */
+            .dm-conv-item {
+                padding: 12px 10px;
+            }
+
+            .dm-conv-avatar {
+                width: 48px;
+                height: 48px;
+                font-size: 19px;
+            }
+
+            .dm-conv-name {
+                font-size: 14px;
+            }
+
+            .dm-conv-preview {
+                font-size: 12px;
+            }
+
+            /* ── Chat area — KEY FIX ─────────────────────────────────────
+               inset:0 pins the element to its parent's box at load-time and
+               does NOT update when the keyboard opens on iOS/Android.
+               Replace with explicit top/left/width/height so the element
+               still fills the parent but the browser can resize it properly.
+            ──────────────────────────────────────────────────────────────── */
             .dm-chat-area {
                 position: absolute;
-                inset: 0;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
                 z-index: 9;
                 transform: translateX(100%);
                 transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+                display: flex;
+                flex-direction: column;
+                overflow: hidden;
             }
 
             .dm-chat-area.visible {
                 transform: translateX(0);
             }
 
+            /* ── Back button ─────────────────────────────────────────── */
             .dm-back-btn {
                 display: flex;
-            }
-
-            .dm-msg-row {
-                max-width: 88%;
-            }
-
-            .dm-body {
-                position: relative;
-            }
-
-            /* Compose bar — ensure all buttons stay visible on small screens */
-            .dm-compose {
-                padding: 8px 10px 10px;
-            }
-
-            .dm-compose-row {
-                gap: 5px;
-            }
-
-            .dm-text-input {
-                padding: 9px 12px;
-                font-size: 13px;
-            }
-
-            .dm-compose-action,
-            .dm-voice-btn,
-            .dm-send-btn {
                 width: 36px;
                 height: 36px;
+            }
+
+            /* ── Chat header ─────────────────────────────────────────── */
+            .dm-chat-header {
+                padding: 10px 12px;
+                gap: 10px;
+                /* Prevent header from shrinking on short screens */
                 flex-shrink: 0;
             }
 
+            .dm-chat-avatar {
+                width: 36px;
+                height: 36px;
+                font-size: 16px;
+            }
+
+            .dm-chat-name {
+                font-size: 14px;
+            }
+
+            .dm-chat-status {
+                font-size: 10px;
+            }
+
+            .dm-header-action-btn {
+                width: 32px;
+                height: 32px;
+                font-size: 13px;
+            }
+
+            /* ── Messages area ───────────────────────────────────────── */
+            .dm-messages {
+                flex: 1;
+                min-height: 0;
+                padding: 12px 12px 8px;
+                /* Smooth overscroll on iOS */
+                -webkit-overflow-scrolling: touch;
+                overscroll-behavior-y: contain;
+            }
+
+            .dm-msg-row {
+                max-width: 86%;
+            }
+
+            .dm-bubble {
+                font-size: 14px;
+                padding: 9px 13px;
+            }
+
+            /* Slightly smaller images so they never overflow narrow screens */
+            .dm-bubble img {
+                max-width: min(200px, 65vw);
+                max-height: 200px;
+            }
+
+            .dm-bubble video {
+                max-width: min(200px, 65vw);
+            }
+
+            /* Voice bubble min-width trimmed so it fits on 320 px phones */
+            .dm-voice-bubble {
+                min-width: 140px;
+                padding: 8px 10px;
+                gap: 8px;
+            }
+
+            /* ── Compose bar ─────────────────────────────────────────── */
+            .dm-chat-inner {
+                display: flex;
+                flex-direction: column;
+                flex: 1;
+                min-height: 0;
+                /* overflow:visible lets the compose bar stay accessible
+                   when the keyboard pushes content up */
+                overflow: visible;
+            }
+
+            .dm-compose {
+                padding: 8px 10px;
+                padding-bottom: max(10px, env(safe-area-inset-bottom, 10px));
+                background: #fff;
+                border-top: 1px solid rgba(85, 107, 47, 0.12);
+                flex-shrink: 0;
+                /* GPU compositing layer — removes 1 px gap on iOS */
+                -webkit-transform: translateZ(0);
+                transform: translateZ(0);
+                /* No z-index needed — natural flex order keeps it at bottom */
+            }
+
+            .dm-compose-row {
+                gap: 6px;
+                align-items: center;
+            }
+
+            /* Attach button */
+            .dm-compose-action {
+                width: 38px;
+                height: 38px;
+                border-radius: 12px;
+                flex-shrink: 0;
+            }
+
+            /* Text input — MUST be font-size ≥ 16px to prevent iOS zoom.
+               When font-size < 16px, iOS auto-zooms on focus which scrolls
+               the compose bar off-screen — the #1 reason users can't type. */
+            .dm-text-input {
+                flex: 1;
+                min-width: 0;
+                height: 38px;
+                padding: 0 14px;
+                font-size: 16px;
+                border-radius: 19px;
+                -webkit-appearance: none;
+                appearance: none;
+            }
+
+            /* Voice + send buttons */
+            .dm-voice-btn,
+            .dm-send-btn {
+                width: 38px;
+                height: 38px;
+                flex-shrink: 0;
+            }
+
+            .dm-send-btn {
+                border-radius: 12px;
+            }
+
+            /* Live waveform fills the remaining space */
             .dm-live-wave {
                 flex: 1;
                 min-width: 0;
+                height: 38px;
+            }
+
+            /* Preview strip */
+            .dm-compose-preview.visible {
+                display: flex;
+                align-items: center;
+            }
+
+            /* ── New chat modal — full-screen sheet on mobile ────────── */
+            .dm-modal-backdrop {
+                align-items: flex-end;
+                padding: 0;
+            }
+
+            .dm-modal {
+                border-radius: 20px 20px 0 0;
+                max-height: 88vh;
+                max-height: 88dvh;
+                width: 100%;
+                /* Sheet slides up */
+                animation: dmSheetUp 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+            }
+
+            @keyframes dmSheetUp {
+                from { transform: translateY(100%); }
+                to   { transform: translateY(0);    }
+            }
+
+            .dm-modal-header {
+                padding: 14px 16px 10px;
+            }
+
+            /* Drag handle pill */
+            .dm-modal::before {
+                content: '';
+                display: block;
+                width: 36px;
+                height: 4px;
+                background: rgba(0, 0, 0, 0.12);
+                border-radius: 2px;
+                margin: 10px auto 0;
+                flex-shrink: 0;
+            }
+
+            /* Larger tap targets in user results */
+            .dm-user-result-item {
+                padding: 12px 16px;
+            }
+
+            .dm-user-result-avatar {
+                width: 44px;
+                height: 44px;
+            }
+        }
+
+        /* ── Tiny screens (< 360 px — cheap Android handsets) ──────── */
+        @media (max-width: 360px) {
+            .dm-topbar-logo span,
+            .dm-topbar-title {
+                display: none;  /* hide text labels, keep icon + nav */
+            }
+
+            .dm-compose-action {
+                width: 34px;
+                height: 34px;
+            }
+
+            .dm-voice-btn,
+            .dm-send-btn {
+                width: 34px;
+                height: 34px;
+            }
+
+            .dm-text-input {
+                height: 34px;
+                padding: 0 10px;
+                font-size: 16px; /* keep ≥ 16 px — prevents iOS zoom */
             }
         }
 
@@ -1561,7 +1837,12 @@
         .dark-mode .dm-sidebar,
         .dark-mode .dm-chat-header,
         .dark-mode .dm-compose,
-        .dark-mode .dm-modal {
+        .dark-mode .dm-modal,
+        [data-theme="dark"] .dm-topbar,
+        [data-theme="dark"] .dm-sidebar,
+        [data-theme="dark"] .dm-chat-header,
+        [data-theme="dark"] .dm-compose,
+        [data-theme="dark"] .dm-modal {
             background: #141810;
             border-color: rgba(139, 195, 74, 0.1);
         }
@@ -1569,27 +1850,78 @@
         .dark-mode .dm-conv-name,
         .dark-mode .dm-chat-name,
         .dark-mode .dm-person-name,
-        .dark-mode .dm-user-result-name {
+        .dark-mode .dm-user-result-name,
+        [data-theme="dark"] .dm-conv-name,
+        [data-theme="dark"] .dm-chat-name,
+        [data-theme="dark"] .dm-person-name,
+        [data-theme="dark"] .dm-user-result-name {
             color: #e8f0d8;
         }
 
-        .dark-mode .dm-text-input {
+        .dark-mode .dm-text-input,
+        [data-theme="dark"] .dm-text-input {
             background: #1c2214;
             color: #e8f0d8;
+            border-color: transparent;
         }
 
-        .dark-mode .dm-msg-row.theirs .dm-bubble {
+        .dark-mode .dm-text-input::placeholder,
+        [data-theme="dark"] .dm-text-input::placeholder {
+            color: #5a7040;
+        }
+
+        .dark-mode .dm-msg-row.theirs .dm-bubble,
+        [data-theme="dark"] .dm-msg-row.theirs .dm-bubble {
             background: #1c2214;
             color: #e8f0d8;
+            border-color: rgba(139, 195, 74, 0.1);
         }
 
         .dark-mode .dm-search-wrap,
-        .dark-mode .dm-tabs {
+        .dark-mode .dm-tabs,
+        [data-theme="dark"] .dm-search-wrap,
+        [data-theme="dark"] .dm-tabs {
             background: #1c2214;
         }
 
-        .dark-mode .dm-app {
+        .dark-mode .dm-app,
+        [data-theme="dark"] .dm-app {
             background: #0d0f0a;
+        }
+
+        .dark-mode .dm-compose-action,
+        .dark-mode .dm-voice-btn,
+        [data-theme="dark"] .dm-compose-action,
+        [data-theme="dark"] .dm-voice-btn {
+            background: #1c2214;
+            color: #7a9e5a;
+        }
+
+        .dark-mode .dm-chat-area,
+        [data-theme="dark"] .dm-chat-area {
+            background: #0d0f0a;
+        }
+
+        .dark-mode .dm-modal::before,
+        [data-theme="dark"] .dm-modal::before {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .dark-mode .dm-date-sep,
+        [data-theme="dark"] .dm-date-sep {
+            background: rgba(20, 24, 16, 0.85);
+            border-color: rgba(139, 195, 74, 0.12);
+            color: #6a8a4a;
+        }
+
+        .dark-mode .dm-conv-preview,
+        [data-theme="dark"] .dm-conv-preview {
+            color: #5a7040;
+        }
+
+        .dark-mode .dm-conv-time,
+        [data-theme="dark"] .dm-conv-time {
+            color: #4a6030;
         }
     </style>
 </head>
@@ -1731,8 +2063,14 @@
                             </label>
 
                             <!-- Text input -->
-                            <input type="text" id="dmTextInput" class="dm-text-input" placeholder="Type a message…"
-                                autocomplete="off">
+                            <input type="text" id="dmTextInput" class="dm-text-input"
+                                placeholder="Type a message…"
+                                autocomplete="off"
+                                autocorrect="on"
+                                autocapitalize="sentences"
+                                spellcheck="true"
+                                inputmode="text"
+                                enterkeyhint="send">
 
                             <!-- Live recording waveform (shown while recording, hides text input) -->
                             <div class="dm-live-wave" id="dmLiveWave" style="display:none;">
@@ -1860,6 +2198,52 @@
             if (userId) {
                 sessionStorage.removeItem('dmStartUserId');
                 setTimeout(async () => dmStartConversation && await dmStartConversation(userId), 700);
+            }
+
+            // ── Mobile keyboard scroll fix ────────────────────────────────────
+            // On iOS Safari and some Android browsers, focusing the text input
+            // raises the keyboard but the compose bar stays hidden beneath it.
+            // We listen for focus and scroll the compose bar into view explicitly.
+            // Also handles the VisualViewport resize event for modern iOS.
+            const textInput = document.getElementById('dmTextInput');
+            const compose   = document.getElementById('dmComposeForm');
+
+            if (textInput && compose) {
+                // Scroll compose into view when input receives focus (works on Android)
+                textInput.addEventListener('focus', () => {
+                    // Small delay lets the keyboard finish animating before we scroll
+                    setTimeout(() => {
+                        compose.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    }, 300);
+                });
+
+                // VisualViewport API — fires when the keyboard resizes the visible area
+                // Supported on Chrome 61+, Safari 13+, Firefox 91+
+                if (window.visualViewport) {
+                    const onViewportResize = () => {
+                        // If the visual viewport shrank vertically (keyboard appeared)
+                        // pin the compose bar to the bottom of the visible viewport
+                        const gap = window.innerHeight - window.visualViewport.height
+                                    - window.visualViewport.offsetTop;
+                        if (gap > 100 && compose) {
+                            // Keyboard is open — scroll the compose bar into view
+                            compose.scrollIntoView({ block: 'nearest' });
+                        }
+                    };
+                    window.visualViewport.addEventListener('resize', onViewportResize);
+                    window.visualViewport.addEventListener('scroll', onViewportResize);
+                }
+            }
+
+            // Handle Enter key in the text input — submit the form
+            if (textInput) {
+                textInput.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        const form = document.getElementById('dmComposeForm');
+                        if (form) form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+                    }
+                });
             }
         });
     </script>
