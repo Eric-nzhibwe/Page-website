@@ -1730,15 +1730,6 @@
                                     onchange="dmHandleMedia(event)">
                             </label>
 
-<<<<<<< HEAD
-                        <!-- Voice record button -->
-                        <button type="button" class="dm-voice-btn" id="dmVoiceBtn"
-                                title="Hold to record voice message"
-                                onmousedown="dmStartRecording()"
-                                ontouchstart="event.preventDefault(); dmStartRecording()"
-                                onmouseup="dmStopRecording()"
-                                onmouseleave="dmStopRecording()"
-=======
                             <!-- Text input -->
                             <input type="text" id="dmTextInput" class="dm-text-input" placeholder="Type a message…"
                                 autocomplete="off">
@@ -1756,9 +1747,11 @@
 
                             <!-- Voice record button -->
                             <button type="button" class="dm-voice-btn" id="dmVoiceBtn"
-                                title="Hold to record voice message" onmousedown="dmStartRecording()"
-                                ontouchstart="dmStartRecording()" onmouseup="dmStopRecording()"
->>>>>>> a27a686 (typing input for mobile screens added)
+                                title="Hold to record voice message"
+                                onmousedown="dmStartRecording()"
+                                ontouchstart="event.preventDefault(); dmStartRecording()"
+                                onmouseup="dmStopRecording()"
+                                onmouseleave="dmStopRecording()"
                                 ontouchend="dmStopRecording()">
                                 <i class="fas fa-microphone"></i>
                             </button>
@@ -1836,36 +1829,30 @@
         document.addEventListener('DOMContentLoaded', function () {
             if (typeof dmInit === 'function') dmInit();
 
-<<<<<<< HEAD
-    // Check mic permission state so the voice button shows the right tooltip
-    if (navigator.permissions) {
-        navigator.permissions.query({ name: 'microphone' }).then(result => {
-            const btn = document.getElementById('dmVoiceBtn');
-            if (!btn) return;
-            if (result.state === 'denied') {
-                btn.title = 'Microphone blocked — click your browser address bar 🔒 to allow access';
-                btn.style.opacity = '0.45';
+            // Check mic permission state so the voice button shows the right tooltip
+            if (navigator.permissions) {
+                navigator.permissions.query({ name: 'microphone' }).then(result => {
+                    const btn = document.getElementById('dmVoiceBtn');
+                    if (!btn) return;
+                    if (result.state === 'denied') {
+                        btn.title = 'Microphone blocked — click your browser address bar 🔒 to allow access';
+                        btn.style.opacity = '0.45';
+                    }
+                    result.onchange = () => {
+                        if (result.state === 'granted') {
+                            btn.title = 'Hold to record voice message';
+                            btn.style.opacity = '';
+                        } else if (result.state === 'denied') {
+                            btn.title = 'Microphone blocked — click your browser address bar 🔒 to allow access';
+                            btn.style.opacity = '0.45';
+                        }
+                    };
+                }).catch(() => { /* permissions API not available — silent */ });
             }
-            result.onchange = () => {
-                if (result.state === 'granted') {
-                    btn.title = 'Hold to record voice message';
-                    btn.style.opacity = '';
-                } else if (result.state === 'denied') {
-                    btn.title = 'Microphone blocked — click your browser address bar 🔒 to allow access';
-                    btn.style.opacity = '0.45';
-                }
-            };
-        }).catch(() => { /* permissions API not available — silent */ });
-    }
 
-    const p = new URLSearchParams(window.location.search);
-    const convId = p.get('conv');
-    const userId = p.get('user') || sessionStorage.getItem('dmStartUserId');
-=======
             const p = new URLSearchParams(window.location.search);
             const convId = p.get('conv');
             const userId = p.get('user') || sessionStorage.getItem('dmStartUserId');
->>>>>>> a27a686 (typing input for mobile screens added)
 
             if (convId) {
                 setTimeout(() => dmOpenConversation && dmOpenConversation(convId), 700);
