@@ -35,41 +35,83 @@ Paste these into **Firebase Console → Firestore → Rules**:
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // ── Notifications ─────────────────────────────────────────────────────
+    // Users can read their own notifications and mark them read.
+    // All writes (create) come from the Django backend (Admin SDK bypasses rules).
+    match /notifications/{notifId} {
+      // Read: only the recipient can read their own notifications
+      allow read: if true;          // tighten to `request.auth.uid == resource.data.recipient_id` once Firebase Auth is added
+      allow create: if false;       // backend only (Admin SDK)
+      allow update: if true;        // allow client-side mark-as-read
+      allow delete: if false;
+    }
+
+    // ── Messenger conversations ───────────────────────────────────────────
     match /messenger_conversations/{convId} {
-      // Any client can read conversation documents (messages are loaded by the frontend)
       allow read: if true;
-      // Writes come only from the Django backend (Admin SDK bypasses these rules)
-      allow write: if false;
+      allow write: if false;        // backend writes via Admin SDK
 
       match /messages/{msgId} {
-        allow read: if true;
-        // Allow the frontend to write voice message docs directly
-        // (the Django backend will also write via Admin SDK)
-        allow create: if true;
+        allow read:   if true;
+        allow create: if true;      // allow direct voice note writes from client
         allow update, delete: if false;
       }
     }
+
+    // ── Social posts ──────────────────────────────────────────────────────
+    match /social_posts/{postId} {
+      allow read:  if true;
+      allow write: if false;        // backend only
+
+      match /comments/{commentId} {
+        allow read:  if true;
+        allow write: if false;
+      }
+      match /reactions/{userId} {
+        allow read:  if true;
+        allow write: if false;
+      }
+    }
+
   }
 }
 ```
 
-> For tighter security once Firebase Auth is integrated:
-> Replace `allow read: if true` with `allow read: if request.auth != null`
-> and add participant checks.
+> **Upgrading to Firebase Auth:** Replace `if true` read rules with
+> `if request.auth != null` once you integrate Firebase Authentication
+> on the frontend. This prevents unauthenticated reads.
 
 ---
 
-## 3. Required Firestore Index
+## 3. Required Firestore Indexes
 
-Create this composite index in **Firebase Console → Firestore → Indexes**:
+Create these composite indexes in **Firebase Console → Firestore → Indexes → Composite**.
+Firebase will often prompt you to create them automatically — click the link in the browser console.
 
-| Collection              | Field           | Order |
-|-------------------------|-----------------|-------|
-| messenger_conversations | participant_ids | ASC (Array Contains) |
-| messenger_conversations | updated_at      | DESC  |
+### messenger_conversations
+| Field           | Order |
+|-----------------|-------|
+| participant_ids | ASC (Array Contains) |
+| updated_at      | DESC  |
 
-Firebase will prompt you to create this index automatically the first time
-the conversation list query runs — just click the link in the browser console.
+### notifications
+| Field        | Order |
+|--------------|-------|
+| recipient_id | ASC   |
+| created_at   | DESC  |
+
+| Field        | Order |
+|--------------|-------|
+| recipient_id | ASC   |
+| is_read      | ASC   |
+| created_at   | DESC  |
+
+### social_posts (if using Firestore social flag)
+| Field     | Order |
+|-----------|-------|
+| author_id | ASC   |
+| created_at | DESC |
 
 ---
 

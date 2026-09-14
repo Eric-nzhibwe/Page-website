@@ -21,6 +21,10 @@ def create_notification(recipient, notif_type, title, message, actor=None, link=
     """
     Create an in-app notification and push it to the recipient's WebSocket.
     Routes to Firestore or PostgreSQL based on the feature flag.
+
+    When Firebase is configured, the notification is ALWAYS mirrored to
+    Firestore regardless of the FIRESTORE_COLLECTIONS flag so that the
+    frontend's onSnapshot listeners fire in real time for every user.
     """
     if recipient == actor:
         return None  # never notify yourself
@@ -41,7 +45,20 @@ def create_notification(recipient, notif_type, title, message, actor=None, link=
             message=message,
             link=link,
         )
-        _push_websocket(recipient, _serialize_pg_notif(notif))
+        serialized = _serialize_pg_notif(notif)
+        _push_websocket(recipient, serialized)
+
+        # Mirror to Firestore for real-time delivery even when PostgreSQL is
+        # the authoritative store — this lets the JS onSnapshot listeners fire
+        # without requiring the FIRESTORE_COLLECTIONS['notifications'] flag.
+        try:
+            from artx_platform.firebase_client import firebase_enabled
+            if firebase_enabled():
+                from .firestore_service import create_notification as fs_create
+                fs_create(recipient, notif_type, title, message, actor=actor, link=link)
+        except Exception:
+            pass  # Never let a Firebase write failure break the request
+
         return notif
 
 
