@@ -283,14 +283,16 @@ function dmRenderMessages(msgs, currentUserId) {
             const msgId = `vm_${msg.id || Date.now()}_${Math.random().toString(36).slice(2,6)}`;
             // Use saved duration immediately; onloadedmetadata refines it if the
             // browser can read the remote file's metadata (not guaranteed).
-            const savedDur = msg.media_duration ? _dmFmtDuration(msg.media_duration) : null;
+            const savedDur = (msg.media_duration > 0) ? _dmFmtDuration(msg.media_duration) : null;
             if (src) {
                 bubbleContent = `
                 <audio id="audio_${msgId}" src="${_escHtml(src)}" preload="metadata"
                        onloadedmetadata="(function(a){
                            const el=document.getElementById('dur_${msgId}');
-                           if(el&&a.duration&&isFinite(a.duration)&&a.duration>0)
+                           if(el&&a.duration&&isFinite(a.duration)&&a.duration>0){
                                el.textContent=window._dmFmtDuration(Math.round(a.duration));
+                               el.dataset.resolved='1';
+                           }
                        })(this)"
                        onended="(function(){
                            const btn=document.getElementById('play_${msgId}');
@@ -300,7 +302,7 @@ function dmRenderMessages(msgs, currentUserId) {
                 </audio>
                 <div class="dm-voice-bubble">
                     <button class="dm-voice-play" id="play_${msgId}"
-                            onclick="_dmToggleVoice('audio_${msgId}','play_${msgId}')"
+                            onclick="_dmToggleVoice('audio_${msgId}','play_${msgId}','dur_${msgId}')"
                             type="button" title="Play voice message">
                         <i class="fas fa-play"></i>
                     </button>
@@ -1302,9 +1304,10 @@ window.dmStopRecording     = dmStopRecording;
 window._dmFmtDuration      = _dmFmtDuration;
 
 /** Toggle play/pause on a voice message */
-window._dmToggleVoice = function(audioId, btnId) {
-    const audio = document.getElementById(audioId);
-    const btn   = document.getElementById(btnId);
+window._dmToggleVoice = function(audioId, btnId, durId) {
+    const audio  = document.getElementById(audioId);
+    const btn    = document.getElementById(btnId);
+    const durEl  = durId ? document.getElementById(durId) : null;
     if (!audio) return;
 
     // Pause all other playing audios first
@@ -1324,6 +1327,25 @@ window._dmToggleVoice = function(audioId, btnId) {
         });
         const icon = btn?.querySelector('i');
         if (icon) icon.className = 'fas fa-pause';
+
+        // ── Play-time duration capture (last-resort fallback) ─────────────
+        // If onloadedmetadata never fired (no Accept-Ranges from server, or
+        // the element was hidden at load time), the duration becomes available
+        // once the browser buffers enough of the stream to know the length.
+        // We check on canplay and on timeupdate until it resolves.
+        if (durEl && !durEl.dataset.resolved) {
+            const resolveDur = () => {
+                if (audio.duration && isFinite(audio.duration) && audio.duration > 0) {
+                    durEl.textContent    = window._dmFmtDuration(Math.round(audio.duration));
+                    durEl.dataset.resolved = '1';
+                    audio.removeEventListener('canplay',    resolveDur);
+                    audio.removeEventListener('timeupdate', resolveDur);
+                }
+            };
+            audio.addEventListener('canplay',    resolveDur);
+            audio.addEventListener('timeupdate', resolveDur);
+        }
+
         // Animate waveform bars while playing
         const waveId = audioId.replace('audio_', 'wave_');
         _dmAnimateWaveform(waveId, audio);

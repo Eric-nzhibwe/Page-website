@@ -10,6 +10,21 @@ from .serializers import ConversationListSerializer, ConversationDetailSerialize
 from users.models import User
 
 
+def _parse_duration(value):
+    """
+    Safely parse an audio duration value sent from the browser.
+    Accepts integers, floats, and their string representations.
+    Returns a positive integer (seconds) or None if unparseable / zero.
+    """
+    if value is None:
+        return None
+    try:
+        secs = round(float(value))
+        return secs if secs > 0 else None
+    except (ValueError, TypeError):
+        return None
+
+
 class MessagePagination(PageNumberPagination):
     """Pagination for messages"""
     page_size = 50
@@ -167,7 +182,7 @@ class ConversationViewSet(viewsets.ModelViewSet):
             message_type=message_type,
             text=text or None,
             media_file=media_file or None,
-            media_duration=int(duration) if duration and str(duration).isdigit() else None,
+            media_duration=_parse_duration(duration),
         )
         # post_save signal in signals.py calls mirror_message() → Firestore
 
