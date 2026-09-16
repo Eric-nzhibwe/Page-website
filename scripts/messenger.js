@@ -223,6 +223,12 @@ async function dmLoadMessages(convId, silent = false) {
 
         container.innerHTML = dmRenderMessages(msgs, currentUserId);
 
+        // Probe metadata on all voice messages so onloadedmetadata fires and
+        // duration labels populate — browsers won't load hidden audio eagerly.
+        container.querySelectorAll('audio[preload="metadata"]').forEach(a => {
+            if (!a.duration || !isFinite(a.duration)) a.load();
+        });
+
         // Auto-scroll only if already at bottom (don't hijack mid-scroll)
         if (!silent || wasScrolledToBottom) {
             container.scrollTop = container.scrollHeight;
