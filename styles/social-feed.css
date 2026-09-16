@@ -2067,6 +2067,17 @@
 .voice-discard-btn:hover { opacity: 0.75; }
 .voice-post-btn:hover    { opacity: 0.85; }
 
+/* Live waveform canvas inside the recording bar */
+#voiceWaveCanvas {
+    height: 32px;
+    flex-shrink: 0;
+    border-radius: 8px;
+    background: rgba(239, 68, 68, 0.06);
+    /* Width is set by JS to match offsetWidth; this gives a sensible default */
+    width: 120px;
+    max-width: 40vw;
+}
+
 /* Voice note in the feed */
 .voice-note-player {
     width: 100%;

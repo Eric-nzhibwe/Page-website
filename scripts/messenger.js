@@ -275,13 +275,15 @@ function dmRenderMessages(msgs, currentUserId) {
             // Rich voice message player with waveform
             const src = msg.media_url || msg.media_file;
             const msgId = `vm_${msg.id || Date.now()}_${Math.random().toString(36).slice(2,6)}`;
-            const dur = msg.media_duration ? _dmFmtDuration(msg.media_duration) : '';
+            // Use saved duration immediately; onloadedmetadata refines it if the
+            // browser can read the remote file's metadata (not guaranteed).
+            const savedDur = msg.media_duration ? _dmFmtDuration(msg.media_duration) : null;
             if (src) {
                 bubbleContent = `
                 <audio id="audio_${msgId}" src="${_escHtml(src)}" preload="metadata"
                        onloadedmetadata="(function(a){
                            const el=document.getElementById('dur_${msgId}');
-                           if(el&&a.duration&&isFinite(a.duration))
+                           if(el&&a.duration&&isFinite(a.duration)&&a.duration>0)
                                el.textContent=window._dmFmtDuration(Math.round(a.duration));
                        })(this)"
                        onended="(function(){
@@ -297,7 +299,7 @@ function dmRenderMessages(msgs, currentUserId) {
                         <i class="fas fa-play"></i>
                     </button>
                     <div class="dm-voice-waveform" id="wave_${msgId}">${_dmVoiceWaveform(18)}</div>
-                    <span class="dm-voice-dur" id="dur_${msgId}">${dur || '0:00'}</span>
+                    <span class="dm-voice-dur" id="dur_${msgId}">${savedDur || '—'}</span>
                 </div>`;
             } else {
                 bubbleContent = `<span style="display:inline-flex;align-items:center;gap:5px;">
@@ -496,6 +498,7 @@ async function dmStartRecording() {
         if (_rec.aborted) {
             stream.getTracks().forEach(t => t.stop());
             if (_rec.audioCtx) { _rec.audioCtx.close().catch(() => {}); _rec.audioCtx = null; }
+            _dmStopRecordingUI(); // reset UI if button was released before getUserMedia resolved
             return;
         }
 
@@ -640,6 +643,11 @@ function dmStopRecording() {
         // getUserMedia resolved but MediaRecorder not started yet — kill the stream
         _rec.stream.getTracks().forEach(t => t.stop());
         _rec.stream = null;
+        _dmStopRecordingUI();
+    } else {
+        // getUserMedia still pending — UI reset will happen in the aborted check
+        // above once the promise resolves, but reset immediately here too so the
+        // button never stays stuck if getUserMedia rejects or takes too long.
         _dmStopRecordingUI();
     }
 

@@ -260,8 +260,11 @@
                         </div>
                         <!-- Voice recording status bar -->
                         <div class="voice-recording-bar" id="voiceRecordingBar" style="display:none;">
-                            <span class="voice-rec-dot"></span>
-                            <span class="voice-rec-label">Recording… <span id="voiceRecTimer">0:00</span></span>
+                            <span class="voice-rec-dot" id="voiceRecDot"></span>
+                            <span class="voice-rec-label" id="voiceRecLabel">Recording… <span id="voiceRecTimer">0:00</span></span>
+                            <!-- Live waveform canvas (shown while recording) -->
+                            <canvas id="voiceWaveCanvas" width="120" height="32"
+                                style="display:none;border-radius:8px;background:rgba(239,68,68,0.06);flex-shrink:0;"></canvas>
                             <audio id="voicePreviewPlayer" controls style="display:none;"></audio>
                             <div class="voice-rec-actions">
                                 <button class="voice-discard-btn" onclick="discardVoiceRecording()"><i class="fas fa-trash"></i> Discard</button>

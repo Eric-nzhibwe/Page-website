@@ -81,6 +81,9 @@ let _voiceTimerInterval = null;
 let _voiceSeconds       = 0;
 let _voiceIsRecording   = false;
 let _voiceDiscarding    = false;   // guard: ignore onstop when discarding
+let _voiceAudioCtx      = null;    // Web Audio context for live waveform
+let _voiceAnalyser      = null;    // AnalyserNode reading mic levels
+let _voiceAnimFrame     = null;    // requestAnimationFrame handle
 
 function toggleVoiceRecording(e) {
     e.stopPropagation();
@@ -97,8 +100,17 @@ function _startVoiceRecording() {
         _feedToast('Microphone not supported in this browser.', 'error');
         return;
     }
-    navigator.mediaDevices.getUserMedia({ audio: true })
-        .then(stream => {
+
+    // Build AudioContext synchronously during the user-gesture event so iOS
+    // Safari doesn't block it after the async getUserMedia call below.
+    try {
+        if (!_voiceAudioCtx || _voiceAudioCtx.state === 'closed') {
+            _voiceAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+    } catch (_) { _voiceAudioCtx = null; }
+
+    navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } })
+        .then(async stream => {
             _voiceChunks      = [];
             _voiceBlob        = null;
             _voiceIsRecording = true;
@@ -114,14 +126,21 @@ function _startVoiceRecording() {
             };
 
             _voiceMediaRecorder.onstop = () => {
-                // Stop all mic tracks regardless
+                // Stop all mic tracks and clean up Web Audio
                 stream.getTracks().forEach(t => t.stop());
+                _voiceStopWaveform();
 
                 // If the user hit Discard, don't show the preview
                 if (_voiceDiscarding) return;
 
                 if (!_voiceChunks.length) {
                     _feedToast('No audio captured — check your microphone.', 'error');
+                    _resetVoiceUI();
+                    return;
+                }
+
+                if (_voiceSeconds < 1) {
+                    _feedToast('Hold the button a moment longer to record.', 'info');
                     _resetVoiceUI();
                     return;
                 }
@@ -134,22 +153,48 @@ function _startVoiceRecording() {
                 if (player) {
                     if (player._prevUrl) URL.revokeObjectURL(player._prevUrl);
                     player._prevUrl      = url;
-                    player.src           = url;   // assign once, cleanly
+                    player.src           = url;
                     player.style.display = 'block';
                 }
 
-                // Swap UI to "ready" state
-                const dot   = document.querySelector('.voice-rec-dot');
-                const label = document.querySelector('.voice-rec-label');
+                // Hide live waveform canvas, show "ready" state
+                const canvas = document.getElementById('voiceWaveCanvas');
+                if (canvas) canvas.style.display = 'none';
+                const dot   = document.getElementById('voiceRecDot');
+                const label = document.getElementById('voiceRecLabel');
                 if (dot)   dot.style.display = 'none';
-                if (label) label.textContent = 'Voice message ready — preview below';
+                if (label) {
+                    const m = Math.floor(_voiceSeconds / 60);
+                    const s = String(_voiceSeconds % 60).padStart(2, '0');
+                    label.textContent = `Voice message ready (${m}:${s}) — preview below`;
+                }
                 document.getElementById('voicePostBtn').style.display = 'inline-flex';
             };
 
-            // collect chunks every 250 ms so audio data isn't lost
+            // Collect chunks every 250 ms so audio data isn't lost on short recordings
             _voiceMediaRecorder.start(250);
 
-            // Timer
+            // ── Wire up Web Audio for real-time waveform ──────────────────
+            try {
+                if (_voiceAudioCtx) {
+                    if (_voiceAudioCtx.state === 'suspended') await _voiceAudioCtx.resume();
+                    const source   = _voiceAudioCtx.createMediaStreamSource(stream);
+                    _voiceAnalyser = _voiceAudioCtx.createAnalyser();
+                    _voiceAnalyser.fftSize               = 128;
+                    _voiceAnalyser.smoothingTimeConstant = 0.65;
+                    source.connect(_voiceAnalyser);
+                }
+            } catch (audioErr) {
+                console.warn('Voice waveform AudioContext failed:', audioErr.message);
+                _voiceAnalyser = null;
+            }
+
+            // Show live waveform canvas and kick off animation
+            const canvas = document.getElementById('voiceWaveCanvas');
+            if (canvas) canvas.style.display = 'block';
+            _voiceDrawWaveform();
+
+            // Timer (1 s resolution is fine for display)
             _voiceSeconds = 0;
             _voiceTimerInterval = setInterval(() => {
                 _voiceSeconds++;
@@ -169,8 +214,85 @@ function _startVoiceRecording() {
         })
         .catch(err => {
             console.error('Voice recording error:', err);
-            _feedToast('Microphone access denied or unavailable.', 'error');
+            if (_voiceAudioCtx) { _voiceAudioCtx.close().catch(() => {}); _voiceAudioCtx = null; }
+            const msg = err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError'
+                ? 'Microphone access denied. Allow it in your browser settings and try again.'
+                : 'Microphone unavailable. Please check your device and try again.';
+            _feedToast(msg, 'error');
         });
+}
+
+/** Draw real-time microphone waveform onto the canvas during recording. */
+function _voiceDrawWaveform() {
+    const canvas = document.getElementById('voiceWaveCanvas');
+    if (!canvas) return;
+
+    const ctx      = canvas.getContext('2d');
+    const W        = canvas.offsetWidth  || 120;
+    const H        = canvas.offsetHeight || 32;
+    canvas.width   = W;
+    canvas.height  = H;
+
+    const BAR_COUNT = 22;
+    const BAR_GAP   = 2;
+    const BAR_W     = Math.floor((W - (BAR_COUNT - 1) * BAR_GAP) / BAR_COUNT);
+    const CLR_HI    = '#ef4444';
+    const CLR_LO    = 'rgba(239,68,68,0.3)';
+
+    function draw() {
+        if (!_voiceMediaRecorder || _voiceMediaRecorder.state === 'inactive') return;
+        _voiceAnimFrame = requestAnimationFrame(draw);
+        ctx.clearRect(0, 0, W, H);
+
+        let levels;
+        if (_voiceAnalyser) {
+            const data = new Uint8Array(_voiceAnalyser.frequencyBinCount);
+            _voiceAnalyser.getByteFrequencyData(data);
+            const voiceBins = Math.floor(data.length * 0.6);
+            levels = Array.from({ length: BAR_COUNT }, (_, i) => {
+                const start = Math.floor(i * voiceBins / BAR_COUNT);
+                const end   = Math.floor((i + 1) * voiceBins / BAR_COUNT);
+                let sum = 0;
+                for (let j = start; j < end; j++) sum += data[j];
+                return sum / Math.max(end - start, 1);
+            });
+        } else {
+            // Fallback: animated random bars if AudioContext unavailable
+            levels = Array.from({ length: BAR_COUNT }, () => Math.random() * 180 + 20);
+        }
+
+        levels.forEach((level, i) => {
+            const barH = Math.max(3, (level / 255) * (H - 4));
+            const x    = i * (BAR_W + BAR_GAP);
+            const y    = (H - barH) / 2;
+            ctx.fillStyle = level > 80 ? CLR_HI : CLR_LO;
+            ctx.beginPath();
+            if (ctx.roundRect) ctx.roundRect(x, y, BAR_W, barH, 2);
+            else ctx.rect(x, y, BAR_W, barH);
+            ctx.fill();
+        });
+    }
+
+    draw();
+}
+
+/** Stop the waveform animation and release AudioContext resources. */
+function _voiceStopWaveform() {
+    if (_voiceAnimFrame) {
+        cancelAnimationFrame(_voiceAnimFrame);
+        _voiceAnimFrame = null;
+    }
+    if (_voiceAudioCtx) {
+        _voiceAudioCtx.close().catch(() => {});
+        _voiceAudioCtx = null;
+        _voiceAnalyser = null;
+    }
+    // Clear canvas
+    const canvas = document.getElementById('voiceWaveCanvas');
+    if (canvas) {
+        const ctx = canvas.getContext('2d');
+        ctx?.clearRect(0, 0, canvas.width, canvas.height);
+    }
 }
 
 function _stopVoiceRecording() {
@@ -186,20 +308,24 @@ function _stopVoiceRecording() {
 }
 
 function _resetVoiceUI() {
+    _voiceStopWaveform();
+
     const bar    = document.getElementById('voiceRecordingBar');
     const player = document.getElementById('voicePreviewPlayer');
     const btn    = document.getElementById('voiceRecordBtn');
     const icon   = document.getElementById('voiceRecordIcon');
-    const dot    = document.querySelector('.voice-rec-dot');
-    const label  = document.querySelector('.voice-rec-label');
+    const dot    = document.getElementById('voiceRecDot');
+    const label  = document.getElementById('voiceRecLabel');
+    const canvas = document.getElementById('voiceWaveCanvas');
 
     if (player?._prevUrl) { URL.revokeObjectURL(player._prevUrl); player._prevUrl = null; }
     if (bar)    bar.style.display    = 'none';
     if (player) { player.src = ''; player.style.display = 'none'; }
     if (btn)    btn.classList.remove('recording');
     if (icon)   { icon.classList.remove('fa-stop'); icon.classList.add('fa-microphone'); }
-    if (dot)    dot.style.display    = '';
-    if (label)  label.innerHTML      = 'Recording\u2026 <span id="voiceRecTimer">0:00</span>';
+    if (dot)    { dot.style.display = ''; }
+    if (label)  label.innerHTML = 'Recording\u2026 <span id="voiceRecTimer">0:00</span>';
+    if (canvas) canvas.style.display = 'none';
     const postBtn = document.getElementById('voicePostBtn');
     if (postBtn) postBtn.style.display = 'none';
 }
@@ -215,6 +341,7 @@ function discardVoiceRecording() {
 
     _voiceBlob   = null;
     _voiceChunks = [];
+    _voiceStopWaveform();
     _resetVoiceUI();
 }
 
