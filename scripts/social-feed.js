@@ -348,25 +348,31 @@ function discardVoiceRecording() {
 function postVoiceRecording() {
     if (!_voiceBlob) return;
 
-    const player = document.getElementById('voicePreviewPlayer');
-    const url    = player?._prevUrl || URL.createObjectURL(_voiceBlob);
+    const token = localStorage.getItem('djangoAuthToken');
     const m = Math.floor(_voiceSeconds / 60);
     const s = String(_voiceSeconds % 60).padStart(2, '0');
+    const durLabel = `${m}:${s}`;
 
-    // Hand off URL — prevent discard from revoking it
-    if (player) player._prevUrl = null;
+    // Build a File from the blob so we have a proper name + type
+    const ext  = _voiceBlob.type.includes('mp4') ? 'm4a'
+               : _voiceBlob.type.includes('ogg') ? 'ogg'
+               : 'webm';
+    const file = new File([_voiceBlob], `voice-${Date.now()}.${ext}`, { type: _voiceBlob.type });
 
+    // Optimistic local card shown immediately
+    const localUrl = URL.createObjectURL(_voiceBlob);
     const local = {
         id:             `local-voice-${Date.now()}`,
         content:        '',
         post_type:      'voice',
-        _voiceUrl:      url,
-        _voiceDur:      `${m}:${s}`,
+        _voiceUrl:      localUrl,
+        _voiceDur:      durLabel,
         author:         { username: _currentUsername() },
         created_at:     new Date().toISOString(),
-        reaction_count: 0, comment_count: 0, share_count: 0
+        reaction_count: 0, comment_count: 0, share_count: 0,
     };
 
+    // Clean up recording state before the async upload
     _voiceBlob   = null;
     _voiceChunks = [];
     _voiceDiscarding = true;
@@ -374,9 +380,43 @@ function postVoiceRecording() {
     if (_voiceMediaRecorder && _voiceMediaRecorder.state !== 'inactive') _voiceMediaRecorder.stop();
     _resetVoiceUI();
 
-    _saveLocalPost(local);
     _insertPostCard(local);
     _feedToast('Voice message posted! 🎤', 'success');
+
+    // ── Upload to API ──────────────────────────────────────────────────────
+    if (!token) return; // no token — stays as local preview only
+
+    const fd = new FormData();
+    fd.append('post_type',       'voice');
+    fd.append('content',         '');
+    fd.append('voice_file',      file, file.name);
+    fd.append('voice_duration',  String(_voiceSeconds));
+    fd.append('media_type',      'audio');
+
+    fetch(_POST_API, {
+        method:  'POST',
+        headers: { 'Authorization': `Token ${token}` },
+        body:    fd,
+    })
+    .then(r => r.ok ? r.json() : r.json().then(d => Promise.reject(d)))
+    .then(apiPost => {
+        // Swap local card's id and voice URL to the real API-served ones
+        const localCard = document.querySelector(`[data-post-id="${local.id}"]`);
+        if (localCard) {
+            localCard.setAttribute('data-post-id', apiPost.id);
+            // Update audio src to the persistent URL
+            const audio = localCard.querySelector('audio.voice-note-player');
+            const realUrl = apiPost.resolved_media_url || apiPost.media_url;
+            if (audio && realUrl) {
+                URL.revokeObjectURL(localUrl); // free the blob URL
+                audio.src = realUrl;
+            }
+        }
+    })
+    .catch(err => {
+        console.warn('Voice post API save failed:', err);
+        // Card stays visible for the session via the blob URL
+    });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -495,7 +535,7 @@ function addLocation() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  PUBLISH POST  (API-first, localStorage fallback)
+//  PUBLISH POST  (multipart/form-data — supports media + voice file uploads)
 // ─────────────────────────────────────────────────────────────────────────────
 const _POST_API = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
     ? 'http://localhost:8000/api/social/posts/'
@@ -511,60 +551,66 @@ function publishPost() {
     const btn = document.querySelector('#createPostModal .btn-post');
     if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Posting…'; }
 
-    // Collect local media previews
-    const mediaItems = document.querySelectorAll('#mediaPreviewContent .media-preview-item');
-    const mediaData  = [];
-    mediaItems.forEach(item => {
-        const img   = item.querySelector('img');
-        const video = item.querySelector('video');
-        if (img)   mediaData.push({ type: 'image', src: img.src });
-        if (video) mediaData.push({ type: 'video', src: video.src });
-    });
-    if (_selectedMediaType === 'achievement' && !mediaItems.length) {
-        mediaData.push({ type: 'achievement' });
-    }
-
-    const post_type = mediaData[0]?.type === 'achievement' ? 'achievement'
-                    : mediaData.length ? 'media' : 'text';
     const token = localStorage.getItem('djangoAuthToken');
 
-        const privacy = document.querySelector('#createPostModal .post-privacy')?.value || 'public';
+    // Determine post type
+    const isAchievement = _selectedMediaType === 'achievement';
+    const post_type = isAchievement ? 'achievement'
+                    : _selectedMedia ? 'media'
+                    : 'text';
 
-        const doPost = token
+    const privacy = document.querySelector('#createPostModal .post-privacy')?.value || 'public';
+
+    // Always use FormData so we can attach files
+    const fd = new FormData();
+    fd.append('content',   content);
+    fd.append('post_type', post_type);
+    fd.append('privacy',   privacy);
+    if (_selectedMedia && !isAchievement) {
+        fd.append('media_file', _selectedMedia, _selectedMedia.name);
+        fd.append('media_type', _selectedMediaType === 'video' ? 'video' : 'image');
+    }
+
+    const doPost = token
         ? fetch(_POST_API, {
             method:  'POST',
-            headers: { 'Authorization': `Token ${token}`, 'Content-Type': 'application/json' },
-                        body:    JSON.stringify({ content, post_type, privacy })
-          }).then(r => r.ok ? r.json() : Promise.reject(r.status))
+            headers: { 'Authorization': `Token ${token}` }, // NO Content-Type — browser sets boundary
+            body:    fd,
+          }).then(r => r.ok ? r.json() : r.json().then(d => Promise.reject(d)))
         : Promise.reject('no_token');
 
     doPost
         .then(apiPost => {
-            if (mediaData.length) apiPost._localMedia = mediaData;
             _insertPostCard(apiPost);
-            // persist created post id so it can be reloaded on page refresh
-            try {
-                const ids = JSON.parse(localStorage.getItem('myCreatedPostIds') || '[]');
-                ids.unshift(apiPost.id);
-                localStorage.setItem('myCreatedPostIds', JSON.stringify(Array.from(new Set(ids)).slice(0, 100)));
-            } catch(e) {}
             closeCreatePostModal();
             _feedToast('Post published! 🎉', 'success');
         })
-        .catch(() => {
-            // Offline / no token — save locally, show immediately
+        .catch(err => {
+            console.warn('publishPost API failed:', err);
+            // Offline / no token — show locally, it won't survive a reload
+            // but the user gets immediate feedback
+            const mediaItems = document.querySelectorAll('#mediaPreviewContent .media-preview-item');
+            const mediaData  = [];
+            mediaItems.forEach(item => {
+                const img   = item.querySelector('img');
+                const video = item.querySelector('video');
+                if (img)   mediaData.push({ type: 'image', src: img.src });
+                if (video) mediaData.push({ type: 'video', src: video.src });
+            });
+            if (isAchievement) mediaData.push({ type: 'achievement' });
+
             const local = {
                 id: `local-${Date.now()}`,
                 content, post_type,
                 _localMedia: mediaData,
                 author:      { username: _currentUsername() },
                 created_at:  new Date().toISOString(),
-                reaction_count: 0, comment_count: 0, share_count: 0
+                reaction_count: 0, comment_count: 0, share_count: 0,
             };
             _saveLocalPost(local);
             _insertPostCard(local);
             closeCreatePostModal();
-            _feedToast('Post saved locally — will sync when online.', 'info');
+            _feedToast('Saved locally — sign in to persist your post.', 'info');
         })
         .finally(() => {
             if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-paper-plane"></i> Post'; }
@@ -588,10 +634,13 @@ function _insertPostCard(post) {
             : `<i class="fas fa-user-circle"></i>`);
 
     let mediaHTML = '';
-    if (post._voiceUrl) {
+    if (post._voiceUrl || (post.post_type === 'voice' && (post.resolved_media_url || post.media_url))) {
+        const voiceSrc = post._voiceUrl || post.resolved_media_url || post.media_url;
+        const dur      = post._voiceDur
+            || (post.voice_duration ? `${Math.floor(post.voice_duration/60)}:${String(post.voice_duration%60).padStart(2,'0')}` : '');
         mediaHTML = `<div class="post-media">
-            <audio class="voice-note-player" controls src="${_esc(post._voiceUrl)}"></audio>
-            <span style="font-size:12px;color:#888;display:block;margin-top:4px;"><i class="fas fa-microphone"></i> Voice message · ${_esc(post._voiceDur || '')}</span>
+            <audio class="voice-note-player" controls src="${_esc(voiceSrc)}"></audio>
+            <span style="font-size:12px;color:#888;display:block;margin-top:4px;"><i class="fas fa-microphone"></i> Voice message${dur ? ' · ' + _esc(dur) : ''}</span>
         </div>`;
     } else if (media[0]?.type === 'achievement') {
         mediaHTML = `<div class="post-media"><div class="achievement-badge-large">
@@ -606,10 +655,11 @@ function _insertPostCard(post) {
                 mediaHTML += `<div class="post-media-item video-item"><video src="${_esc(m.src)}" controls></video></div>`;
         });
         mediaHTML += '</div></div>';
-    } else if (post.media_url) {
-        mediaHTML = post.media_type === 'video'
-            ? `<div class="post-media"><video controls><source src="${_esc(post.media_url)}"></video></div>`
-            : `<div class="post-media"><img src="${_esc(post.media_url)}" alt="Post media" loading="lazy"></div>`;
+    } else if (post.media_url || post.resolved_media_url) {
+        const src = post.resolved_media_url || post.media_url;
+        mediaHTML = (post.media_type === 'video')
+            ? `<div class="post-media"><video controls><source src="${_esc(src)}"></video></div>`
+            : `<div class="post-media"><img src="${_esc(src)}" alt="Post media" loading="lazy"></div>`;
     }
 
     const card = document.createElement('div');

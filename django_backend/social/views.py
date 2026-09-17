@@ -39,6 +39,11 @@ class PostViewSet(viewsets.ModelViewSet):
     authentication_classes = [TokenAuthentication, SessionAuthentication]
     pagination_class = StandardResultsSetPagination
 
+    def get_parsers(self):
+        """Accept both JSON and multipart/form-data (file uploads)."""
+        from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
+        return [MultiPartParser(), FormParser(), JSONParser()]
+
     def get_queryset(self):
         user = self.request.user
         followed_users = user.following.values_list('following', flat=True)
@@ -62,9 +67,12 @@ class PostViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         if _use_fs_social():
             return self._create_firestore(request)
-        return super().create(request, *args, **kwargs)
-
-    def _create_firestore(self, request):
+        # Use standard DRF create — serializer.create() handles file fields
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
         from .firestore_social_service import create_post
         from django.core.files.storage import default_storage
         from django.core.files.base import ContentFile

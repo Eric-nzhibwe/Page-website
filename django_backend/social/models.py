@@ -16,18 +16,22 @@ class Post(models.Model):
         ('achievement', 'Achievement'),
         ('challenge', 'Challenge'),
         ('media', 'Media'),
+        ('voice', 'Voice'),
     ]
     
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     author = models.ForeignKey(User, on_delete=models.CASCADE, related_name='posts')
     
     # Content
-    content = models.TextField(max_length=5000)
+    content = models.TextField(max_length=5000, blank=True)
     post_type = models.CharField(max_length=20, choices=POST_TYPE_CHOICES, default='text')
     
-    # Media
+    # Media — URL (legacy / external) or uploaded file (preferred)
     media_url = models.URLField(blank=True, null=True)
-    media_type = models.CharField(max_length=20, choices=[('image', 'Image'), ('video', 'Video')], blank=True)
+    media_type = models.CharField(max_length=20, choices=[('image', 'Image'), ('video', 'Video'), ('audio', 'Audio')], blank=True)
+    media_file = models.FileField(upload_to='posts/media/', blank=True, null=True)
+    voice_file = models.FileField(upload_to='posts/voice/', blank=True, null=True)
+    voice_duration = models.IntegerField(blank=True, null=True, help_text='Duration in seconds for voice posts')
     
     # Metadata
     achievement_badge = models.JSONField(default=dict, blank=True)  # For achievement posts

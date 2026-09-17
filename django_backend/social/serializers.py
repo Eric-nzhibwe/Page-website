@@ -70,30 +70,59 @@ class PostSerializer(serializers.ModelSerializer):
     shares = PostShareSerializer(many=True, read_only=True)
     user_reaction = serializers.SerializerMethodField()
     user_has_shared = serializers.SerializerMethodField()
-    
+    # Write-only upload fields
+    media_file  = serializers.FileField(write_only=True, required=False, allow_null=True)
+    voice_file  = serializers.FileField(write_only=True, required=False, allow_null=True)
+    # Resolved URL the frontend should use to display the media
+    resolved_media_url = serializers.SerializerMethodField()
+
     class Meta:
         model = Post
         fields = [
             'id', 'author', 'content', 'post_type', 'media_url', 'media_type',
+            'media_file', 'voice_file', 'voice_duration',
+            'resolved_media_url',
             'achievement_badge', 'challenge_id', 'reaction_count', 'comment_count',
             'share_count', 'created_at', 'updated_at', 'comments', 'reactions',
-            'shares', 'user_reaction', 'user_has_shared'
+            'shares', 'user_reaction', 'user_has_shared',
         ]
-    
+
+    def get_resolved_media_url(self, obj):
+        """Return the best available media URL — uploaded file takes priority."""
+        request = self.context.get('request')
+        for field in ('voice_file', 'media_file'):
+            f = getattr(obj, field, None)
+            if f:
+                try:
+                    return request.build_absolute_uri(f.url) if request else f.url
+                except Exception:
+                    pass
+        return obj.media_url or None
+
     def get_user_reaction(self, obj):
-        """Check if current user has reacted"""
         request = self.context.get('request')
         if request and request.user.is_authenticated:
             reaction = obj.reactions.filter(user=request.user).first()
             return reaction.reaction_type if reaction else None
         return None
-    
+
     def get_user_has_shared(self, obj):
-        """Check if current user has shared"""
         request = self.context.get('request')
         if request and request.user.is_authenticated:
             return obj.shares.filter(user=request.user).exists()
         return False
+
+    def create(self, validated_data):
+        media_file  = validated_data.pop('media_file', None)
+        voice_file  = validated_data.pop('voice_file', None)
+        post = super().create(validated_data)
+        if media_file:
+            post.media_file = media_file
+            post.save(update_fields=['media_file'])
+        if voice_file:
+            post.voice_file = voice_file
+            post.save(update_fields=['voice_file'])
+        return post
 
 
 class FollowSerializer(serializers.ModelSerializer):
