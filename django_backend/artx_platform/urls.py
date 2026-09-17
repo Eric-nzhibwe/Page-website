@@ -16,6 +16,20 @@ def health_check(request):
     return JsonResponse({'status': 'ok'})
 
 
+def ws_status(request):
+    """
+    Tells the frontend whether WebSocket connections are supported.
+    WebSockets require Redis (CHANNEL_LAYERS backend = RedisChannelLayer).
+    Without Redis (free tier / local dev without Redis), ws_supported = false
+    and the frontend falls back to REST polling instead of trying to connect.
+    """
+    from django.conf import settings as _s
+    layers  = _s.CHANNEL_LAYERS.get('default', {})
+    backend = layers.get('BACKEND', '')
+    supported = 'redis' in backend.lower()
+    return JsonResponse({'ws_supported': supported})
+
+
 @require_GET
 def serve_media_file(request, file_path):
     """
@@ -47,6 +61,8 @@ def serve_media_file(request, file_path):
 urlpatterns = [
     # Health check — used by UptimeRobot / self-ping to prevent Render cold starts
     path('health/', health_check, name='health'),
+    # WebSocket capability probe — frontend checks this before connecting
+    path('api/ws-status/', ws_status, name='ws_status'),
 
     # Media files — served in both dev and production
     # Must come before the catch-all frontend routes

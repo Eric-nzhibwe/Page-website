@@ -726,12 +726,24 @@ async function _pollNotifications() {
 // ─────────────────────────────────────────────────────────────────────────────
 //  INIT
 // ─────────────────────────────────────────────────────────────────────────────
-function _initRealtimeUpdates() {
+async function _initRealtimeUpdates() {
     const token = localStorage.getItem('djangoAuthToken');
     if (!token) return; // Not logged in — nothing to do
 
-    // ── 1. WebSocket feed connection ──────────────────────────────────────────
-    wsClient.connectFeed();
+    // ── 1. Check whether the server supports WebSockets before connecting ─────
+    // On Render free tier without Redis, WS connections 404 immediately.
+    // The ws-status endpoint tells us upfront so we don't spam the logs.
+    let wsSupported = false;
+    try {
+        const wsCheck = await fetch(`${_RT_BASE}/ws-status/`);
+        if (wsCheck.ok) {
+            const wsData = await wsCheck.json();
+            wsSupported = wsData.ws_supported === true;
+        }
+    } catch { /* if the check fails, stay with polling */ }
+
+    if (wsSupported) {
+        wsClient.connectFeed();
 
     // When we get the feed snapshot, replace static sample posts
     wsClient.on('feed', 'snapshot', ({ posts }) => {
@@ -804,6 +816,8 @@ function _initRealtimeUpdates() {
             });
         }
     });
+
+    } // end if (wsSupported)
 
     // ── 3. Load who we're following first so follow buttons render correctly ──
     _loadFollowingSet().then(() => {
