@@ -73,6 +73,8 @@ class PostViewSet(viewsets.ModelViewSet):
         self.perform_create(serializer)
         headers = self.get_success_headers(serializer.data)
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+    def _create_firestore(self, request):
         from .firestore_social_service import create_post
         from django.core.files.storage import default_storage
         from django.core.files.base import ContentFile

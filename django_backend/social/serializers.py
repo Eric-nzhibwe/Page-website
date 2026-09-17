@@ -116,12 +116,15 @@ class PostSerializer(serializers.ModelSerializer):
         media_file  = validated_data.pop('media_file', None)
         voice_file  = validated_data.pop('voice_file', None)
         post = super().create(validated_data)
+        # Use queryset update to avoid double-triggering any post save logic
+        update_fields = {}
         if media_file:
-            post.media_file = media_file
-            post.save(update_fields=['media_file'])
+            update_fields['media_file'] = media_file
         if voice_file:
-            post.voice_file = voice_file
-            post.save(update_fields=['voice_file'])
+            update_fields['voice_file'] = voice_file
+        if update_fields:
+            Post.objects.filter(pk=post.pk).update(**update_fields)
+            post.refresh_from_db(fields=list(update_fields.keys()))
         return post
 
 
@@ -194,8 +197,11 @@ class StorySerializer(serializers.ModelSerializer):
         media_file = validated_data.pop('media_file', None)
         story = super().create(validated_data)
         if media_file:
-            story.media_file = media_file
-            story.save(update_fields=['media_file'])
+            # Assign via queryset update to avoid triggering Story.save() again
+            # (Story.save() re-checks expires_at; update_fields skips that logic
+            # and writes only the specified column directly to the DB)
+            Story.objects.filter(pk=story.pk).update(media_file=media_file)
+            story.refresh_from_db(fields=['media_file'])
         return story
 
     def get_user_has_viewed(self, obj):
