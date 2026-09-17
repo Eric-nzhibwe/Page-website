@@ -156,11 +156,12 @@ function loadUserSettings() {
     _smVal('settingsLocation',    user.location);
     _smVal('settingsWebsite',     user.website);
 
-    // Avatar preview
+    // Avatar preview — prefer profile_image_url (server-verified absolute URL)
     const avPrev = document.getElementById('settingsAvatarPreview');
     if (avPrev) {
-        if (user.profile_image) {
-            avPrev.innerHTML = `<img src="${user.profile_image}" alt="Avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+        const imgUrl = user.profile_image_url || user.profile_image || null;
+        if (imgUrl) {
+            avPrev.innerHTML = `<img src="${imgUrl}" alt="Avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
         } else {
             avPrev.innerHTML = '<i class="fas fa-user-circle"></i>';
         }
@@ -702,29 +703,73 @@ async function _smUploadAvatar(e) {
     try {
         const res  = await fetch(`${_SM_API}/auth/avatar/`, {
             method:  'POST',
-            headers: { 'Authorization': `Token ${_smToken()}` }, // no Content-Type — let browser set multipart
+            headers: { 'Authorization': `Token ${_smToken()}` },
             body:    form,
         });
         const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data.detail || 'Upload failed');
+        if (!res.ok) throw new Error(data.detail || data.error || 'Upload failed');
 
-        const imgUrl = data.profile_image || data.avatar_url || data.url;
-        if (imgUrl) {
-            const prev = document.getElementById('settingsAvatarPreview');
-            if (prev) prev.innerHTML = `<img src="${imgUrl}" alt="Avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+        // Server returns the absolute URL — prefer profile_image_url, fall back to avatar_url
+        const imgUrl = data.profile_image_url || data.profile_image || data.avatar_url || null;
+        if (!imgUrl) throw new Error('Server did not return an image URL');
 
-            // Also update profile page avatar if present
-            const av = document.getElementById('avatarDisplay') || document.getElementById('smAvatarImg');
-            if (av) { av.innerHTML = `<img src="${imgUrl}" alt="Avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`; }
+        // ── 1. Persist into localStorage so every page reload shows it ──────
+        try {
+            const stored = JSON.parse(localStorage.getItem('artxUser') || '{}');
+            stored.profile_image     = imgUrl;
+            stored.profile_image_url = imgUrl;
+            localStorage.setItem('artxUser', JSON.stringify(stored));
+            localStorage.setItem('user',     JSON.stringify(stored));
+        } catch (_) { /* non-critical */ }
 
-            if (typeof currentUser !== 'undefined' && currentUser) currentUser.profile_image = imgUrl;
+        // ── 2. Sync the in-memory currentUser object if it exists ────────────
+        if (typeof currentUser !== 'undefined' && currentUser) {
+            currentUser.profile_image     = imgUrl;
+            currentUser.profile_image_url = imgUrl;
         }
-        showToast('Profile photo updated', 'success');
+
+        // ── 3. Update every avatar slot on the page right now ────────────────
+        _applyAvatarEverywhere(imgUrl);
+
+        // ── 4. Broadcast so other scripts (realtime-updates, etc.) can react ─
+        window.dispatchEvent(new CustomEvent('artx:avatarChanged', { detail: { url: imgUrl } }));
+
+        showToast('Profile photo updated ✓', 'success');
     } catch (err) {
         showToast(err.message, 'error');
     }
-    // reset so same file can be re-selected
     e.target.value = '';
+}
+
+/**
+ * Update every known avatar element on the current page with a new image URL.
+ * Called immediately after a successful upload and also on the artx:avatarChanged event.
+ */
+function _applyAvatarEverywhere(imgUrl) {
+    if (!imgUrl) return;
+
+    const imgTag = `<img src="${imgUrl}" alt="Avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+
+    // Settings preview
+    const prev = document.getElementById('settingsAvatarPreview');
+    if (prev) prev.innerHTML = imgTag;
+
+    // Profile page avatar
+    ['avatarDisplay', 'smAvatarImg', 'heroAvatar', 'profileAvatar'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.innerHTML = imgTag;
+    });
+
+    // Nav bar / header avatar (common patterns)
+    document.querySelectorAll(
+        '.user-avatar, .nav-avatar, .header-avatar, ' +
+        '[data-avatar="current-user"], .current-user-avatar'
+    ).forEach(el => { el.innerHTML = imgTag; });
+
+    // index.html post-bar avatar (the circle next to "What's on your mind?")
+    document.querySelectorAll('.post-avatar.current-user, .post-creator-avatar').forEach(el => {
+        el.innerHTML = imgTag;
+    });
 }
 
 // ── Danger zone ───────────────────────────────────────────────────────────────

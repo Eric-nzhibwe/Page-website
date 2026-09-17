@@ -516,14 +516,25 @@ def upload_avatar_view(request):
         return Response({'error': 'File too large. Max 5 MB.'}, status=status.HTTP_400_BAD_REQUEST)
 
     user = request.user
-    user.profile_image = file
-    user.save()
 
-    request.build_absolute_uri(user.profile_image.url) if user.profile_image else None
+    # Delete the old file before replacing it (keeps storage clean)
+    if user.profile_image:
+        try:
+            user.profile_image.delete(save=False)
+        except Exception:
+            pass
+
+    user.profile_image = file
+    user.save(update_fields=['profile_image'])
+
+    absolute_url = request.build_absolute_uri(user.profile_image.url)
 
     return Response({
         'message': 'Avatar updated successfully.',
-        'avatar_url': request.build_absolute_uri(user.profile_image.url),
+        # Both keys returned so all frontend code paths find one of them
+        'avatar_url':        absolute_url,
+        'profile_image_url': absolute_url,
+        'profile_image':     absolute_url,
     })
 
 

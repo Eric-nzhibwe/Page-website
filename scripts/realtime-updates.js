@@ -478,8 +478,9 @@ function _buildPostCard(post) {
     const when     = _rtTimeAgo(post.created_at);
     const content  = _rtEsc(post.content || '');
 
-    const avatarHTML = author.profile_image
-        ? `<img src="${_rtEsc(author.profile_image)}" alt="${name}" class="artx-user-avatar-img">`
+    const avatarHTML = (author.profile_image_url || author.profile_image)
+        ? `<img src="${_rtEsc(author.profile_image_url || author.profile_image)}" alt="${name}" class="artx-user-avatar-img"
+               onerror="this.style.display='none'">`
         : `<i class="fas fa-user-circle"></i>`;
 
     // Prefer resolved_media_url (server file) over legacy media_url
@@ -887,6 +888,68 @@ function _appendStoryCard(story) {
 
 document.addEventListener('DOMContentLoaded', _initRealtimeUpdates);
 
+// ─────────────────────────────────────────────────────────────────────────────
+//  CURRENT USER AVATAR — stamp on load + live update on upload
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Apply the current user's avatar URL to every avatar slot for the logged-in
+ * user that exists on the current page.
+ *
+ * Called:
+ *  • on DOMContentLoaded (shows the stored URL immediately, no API call needed)
+ *  • when the artx:avatarChanged event fires (after a successful upload)
+ */
+function _stampCurrentUserAvatar(imgUrl) {
+    if (!imgUrl) return;
+
+    const imgTag = `<img src="${imgUrl}" alt="Your avatar"
+        style="width:100%;height:100%;object-fit:cover;border-radius:50%;"
+        onerror="this.parentElement.innerHTML='<i class=\\'fas fa-user-circle\\'></i>'"
+    >`;
+
+    // Nav bar top-right avatar button
+    const navBtn = document.querySelector('.user-avatar-btn');
+    if (navBtn) navBtn.innerHTML = imgTag;
+
+    // Sidebar profile mini-avatar
+    const sidebarAvatar = document.querySelector('.user-profile-mini .profile-avatar');
+    if (sidebarAvatar) sidebarAvatar.innerHTML = imgTag;
+
+    // "What's on your mind" post bar avatar
+    document.querySelectorAll('.create-post-header .post-avatar, .create-post-card .post-avatar')
+        .forEach(el => { el.innerHTML = imgTag; });
+
+    // Create post modal avatar
+    document.querySelectorAll('.post-creator-header .post-avatar')
+        .forEach(el => { el.innerHTML = imgTag; });
+
+    // Settings modal preview (if open)
+    const settingsPrev = document.getElementById('settingsAvatarPreview');
+    if (settingsPrev) settingsPrev.innerHTML = imgTag;
+
+    // Any element with data-current-user-avatar attribute (extensible hook)
+    document.querySelectorAll('[data-current-user-avatar]')
+        .forEach(el => { el.innerHTML = imgTag; });
+}
+
+// Boot: stamp avatar from localStorage as soon as DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+    try {
+        const user = JSON.parse(localStorage.getItem('artxUser') || '{}');
+        const url  = user.profile_image_url || user.profile_image || null;
+        if (url) _stampCurrentUserAvatar(url);
+    } catch (_) { /* non-critical */ }
+});
+
+// Live update: fired by settings.js _smUploadAvatar after a successful upload
+window.addEventListener('artx:avatarChanged', e => {
+    const url = e.detail?.url;
+    if (url) _stampCurrentUserAvatar(url);
+});
+
+window._stampCurrentUserAvatar = _stampCurrentUserAvatar;
+
 window.addEventListener('beforeunload', () => {
     clearInterval(_feedPollTimer);
     clearInterval(_notifTimer);
@@ -957,21 +1020,29 @@ async function _pollUserStats() {
             }
         });
 
-        // Update cached user object in localStorage
+        // Update cached user object in localStorage — include avatar URLs so
+        // every page load immediately shows the correct profile picture
         try {
             const stored = JSON.parse(localStorage.getItem('artxUser') || '{}');
             const updated = {
                 ...stored,
-                prestige_points:  u.prestige_points,
-                current_streak:   u.current_streak,
-                access_tier:      u.access_tier,
-                level:            u.level,
-                tournament_wins:  u.tournament_wins,
-                total_earnings:   u.total_earnings,
-                followers_count:  u.followers_count,
-                following_count:  u.following_count,
+                prestige_points:   u.prestige_points,
+                current_streak:    u.current_streak,
+                access_tier:       u.access_tier,
+                level:             u.level,
+                tournament_wins:   u.tournament_wins,
+                total_earnings:    u.total_earnings,
+                followers_count:   u.followers_count,
+                following_count:   u.following_count,
+                // Always refresh the avatar URL from the server
+                profile_image_url: u.profile_image_url || stored.profile_image_url || null,
+                profile_image:     u.profile_image_url || u.profile_image || stored.profile_image || null,
             };
             localStorage.setItem('artxUser', JSON.stringify(updated));
+
+            // Re-stamp avatar if the server returned one (handles first load after upload)
+            const freshUrl = updated.profile_image_url || updated.profile_image;
+            if (freshUrl) _stampCurrentUserAvatar(freshUrl);
         } catch (_) { /* non-critical */ }
 
     } catch (_) { /* silent — don't disrupt the UI */ }
