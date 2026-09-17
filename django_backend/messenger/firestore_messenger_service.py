@@ -79,6 +79,7 @@ def mirror_message_with_url(message, firebase_media_url: str) -> bool:
             'message_type':     message.message_type,
             'text':             message.text,
             'media_url':        firebase_media_url,
+            'media_duration':   message.media_duration,
             'timestamp':        message.timestamp or now,
             'read':             message.read,
         }
@@ -170,6 +171,7 @@ def mirror_message(message) -> bool:
             'message_type':     message.message_type,
             'text':             message.text,
             'media_url':        media_url,
+            'media_duration':   message.media_duration,
             'timestamp':        message.timestamp or now,
             'read':             message.read,
         }
