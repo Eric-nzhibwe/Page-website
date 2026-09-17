@@ -1131,13 +1131,33 @@ function _appendPostCard(post, container) {
             ? `<img src="${_esc(author.profile_image)}" alt="${name}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`
             : `<i class="fas fa-user-circle"></i>`);
 
+    // Prefer resolved_media_url (uploaded file) over legacy media_url
+    const mediaSrc = post.resolved_media_url || post.media_url || null;
+
     let mediaHTML = '';
-    if (post.media_url) {
+    if (post.post_type === 'voice' && mediaSrc) {
+        const dur = post.voice_duration
+            ? ` · ${Math.floor(post.voice_duration / 60)}:${String(post.voice_duration % 60).padStart(2, '0')}`
+            : '';
+        mediaHTML = `<div class="post-media">
+            <audio class="voice-note-player" controls src="${_esc(mediaSrc)}"></audio>
+            <span style="font-size:12px;color:#888;display:block;margin-top:4px;">
+                <i class="fas fa-microphone"></i> Voice message${dur}
+            </span>
+        </div>`;
+    } else if (mediaSrc) {
         mediaHTML = post.media_type === 'video'
             ? `<div class="post-media"><video controls>
-                   <source src="${_esc(post.media_url)}"></video></div>`
+                   <source src="${_esc(mediaSrc)}"></video></div>`
             : `<div class="post-media">
-                   <img src="${_esc(post.media_url)}" alt="Post media" loading="lazy"></div>`;
+                   <img src="${_esc(mediaSrc)}" alt="Post media" loading="lazy"></div>`;
+    } else if (post.achievement_badge?.title) {
+        const ab = post.achievement_badge;
+        mediaHTML = `<div class="post-media"><div class="achievement-badge-large">
+            <i class="fas fa-trophy"></i>
+            <h3>${_esc(ab.title)}</h3>
+            <p>${_esc(ab.description || '')}</p>
+        </div></div>`;
     }
 
     const card = document.createElement('div');
@@ -1217,16 +1237,22 @@ async function loadRealStories() {
             const card   = document.createElement('div');
             card.className = 'story-card flex-shrink-0';
 
-            const avatarStyle = author.profile_image
-                ? `background:url('${_esc(author.profile_image)}') center/cover`
-                : `background:linear-gradient(135deg,#6c63ff,#3b2dbf)`;
+            // Use the most recent story's media as the card thumbnail
+            const latestStory = authorStories[0];
+            const mediaSrc    = latestStory.resolved_media_url || latestStory.media_url || null;
+            const isVideo     = latestStory.media_type === 'video';
 
-            const avatarContent = author.profile_image
-                ? '' : `<i class="fas fa-user"></i>`;
+            const bgStyle = (mediaSrc && !isVideo)
+                ? `background-image:url('${_esc(mediaSrc)}');background-size:cover;background-position:center`
+                : (author.profile_image
+                    ? `background:url('${_esc(author.profile_image)}') center/cover`
+                    : `background:linear-gradient(135deg,#556b2f,#8bc34a)`);
 
             card.innerHTML = `
-                <div class="story-image" style="${avatarStyle}">
-                    ${avatarContent}
+                <div class="story-image" style="${bgStyle}">
+                    ${isVideo && mediaSrc
+                        ? `<video src="${_esc(mediaSrc)}" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;" muted playsinline></video>`
+                        : ''}
                     <div class="story-ring"></div>
                 </div>
                 <span class="story-name">${name}</span>`;

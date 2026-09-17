@@ -59,14 +59,14 @@ def _chat_firestore(request, message, conversation_id):
             return Response({'error': 'Could not create conversation.'}, status=500)
         conversation_id = conv['id']
 
-    # ── Save user message ─────────────────────────────────────────────────
-    user_msg = save_message(user, conversation_id, role='user', content=message)
-
-    # ── Build history for AI ──────────────────────────────────────────────
+    # ── Build history BEFORE saving the current message ──────────────────
     history = [
         {'role': m['role'], 'content': m['content']}
         for m in get_messages(user, conversation_id, limit=20)
     ]
+
+    # ── Save user message ─────────────────────────────────────────────────
+    user_msg = save_message(user, conversation_id, role='user', content=message)
 
     # ── Call AI ───────────────────────────────────────────────────────────
     ai_response, ai_source = _call_ai(message, history, request.user)
@@ -87,23 +87,34 @@ def _chat_postgres(request, message, conversation_id):
     user = request.user
 
     if conversation_id:
-        conversation = get_object_or_404(ChatConversation, id=conversation_id, user=user)
+        try:
+            conversation = get_object_or_404(ChatConversation, id=int(conversation_id), user=user)
+        except (ValueError, TypeError):
+            return Response({'error': 'Invalid conversation_id.'}, status=status.HTTP_400_BAD_REQUEST)
     else:
         title        = message[:50] + '…' if len(message) > 50 else message
         conversation = ChatConversation.objects.create(user=user, title=title)
 
+    # ── Build history BEFORE saving the current message ──────────────────
+    # Saving first then querying caused the current user message to appear
+    # in history, producing consecutive user turns that Groq rejects (400).
+    prior = ChatMessage.objects.filter(
+        conversation=conversation
+    ).order_by('created_at')[:20]
+    history = [
+        {'role': m.role if m.role == 'user' else 'assistant', 'content': m.content}
+        for m in prior
+    ]
+
+    # ── Now save user message ─────────────────────────────────────────────
     user_message = ChatMessage.objects.create(
         conversation=conversation, role='user', content=message
     )
 
-    prior = ChatMessage.objects.filter(
-        conversation=conversation
-    ).order_by('created_at')[:20]
-    history = [{'role': m.role if m.role == 'user' else 'assistant', 'content': m.content}
-               for m in prior]
-
+    # ── Call AI ───────────────────────────────────────────────────────────
     ai_response, ai_source = _call_ai(message, history, user)
 
+    # ── Save AI reply ─────────────────────────────────────────────────────
     ai_message = ChatMessage.objects.create(
         conversation=conversation, role='assistant', content=ai_response
     )

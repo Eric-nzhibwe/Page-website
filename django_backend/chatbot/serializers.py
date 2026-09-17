@@ -31,4 +31,5 @@ class ChatConversationSerializer(serializers.ModelSerializer):
 class ChatRequestSerializer(serializers.Serializer):
     """Chat request serializer"""
     message = serializers.CharField(max_length=2000)
-    conversation_id = serializers.IntegerField(required=False, allow_null=True)
+    # Accept both int (Postgres auto-id) and str (Firestore UUID)
+    conversation_id = serializers.CharField(required=False, allow_null=True, allow_blank=True)

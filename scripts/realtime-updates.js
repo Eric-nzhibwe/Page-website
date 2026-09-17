@@ -482,11 +482,25 @@ function _buildPostCard(post) {
         ? `<img src="${_rtEsc(author.profile_image)}" alt="${name}" class="artx-user-avatar-img">`
         : `<i class="fas fa-user-circle"></i>`;
 
+    // Prefer resolved_media_url (server file) over legacy media_url
+    const mediaSrc = post.resolved_media_url || post.media_url || null;
+
     let mediaHTML = '';
-    if (post.media_url) {
+    if (post.post_type === 'voice' && (post.resolved_media_url || post.media_url)) {
+        const src = post.resolved_media_url || post.media_url;
+        const dur = post.voice_duration
+            ? ` · ${Math.floor(post.voice_duration / 60)}:${String(post.voice_duration % 60).padStart(2, '0')}`
+            : '';
+        mediaHTML = `<div class="post-media">
+            <audio class="voice-note-player" controls src="${_rtEsc(src)}"></audio>
+            <span style="font-size:12px;color:#888;display:block;margin-top:4px;">
+                <i class="fas fa-microphone"></i> Voice message${dur}
+            </span>
+        </div>`;
+    } else if (mediaSrc) {
         mediaHTML = post.media_type === 'video'
-            ? `<div class="post-media"><video controls><source src="${_rtEsc(post.media_url)}"></video></div>`
-            : `<div class="post-media"><img src="${_rtEsc(post.media_url)}" alt="Post media" loading="lazy"></div>`;
+            ? `<div class="post-media"><video controls><source src="${_rtEsc(mediaSrc)}"></video></div>`
+            : `<div class="post-media"><img src="${_rtEsc(mediaSrc)}" alt="Post media" loading="lazy"></div>`;
     }
     if (post.achievement_badge && post.achievement_badge.title) {
         const ab = post.achievement_badge;
@@ -822,22 +836,21 @@ function _buildStoryCard(story) {
     card.className = 'story-card';
     card.dataset.storyId = story.id;
 
-    const author = story.author || {};
-    const name   = author.display_name || author.username || 'User';
-    const bgGrad = ['linear-gradient(135deg,#667eea,#764ba2)',
-                     'linear-gradient(135deg,#f093fb,#f5576c)',
-                     'linear-gradient(135deg,#4facfe,#00f2fe)',
-                     'linear-gradient(135deg,#43e97b,#38f9d7)',
-                     'linear-gradient(135deg,#fa709a,#fee140)'];
-    const grad = bgGrad[Math.floor(Math.random() * bgGrad.length)];
+    const author   = story.author || {};
+    const name     = author.display_name || author.username || 'User';
+    // Prefer resolved_media_url (uploaded file) over legacy media_url
+    const mediaSrc = story.resolved_media_url || story.media_url || null;
+    const isVideo  = story.media_type === 'video';
+
+    const bgStyle  = (mediaSrc && !isVideo)
+        ? `background-image:url('${_rtEsc(mediaSrc)}');background-size:cover;background-position:center`
+        : `background:linear-gradient(135deg,#556b2f,#8bc34a)`;
 
     card.innerHTML = `
-        <div class="story-image" style="background:${grad}">
-            ${story.media_url
-                ? (story.media_type === 'video'
-                    ? `<video src="${_rtEsc(story.media_url)}" style="width:100%;height:100%;object-fit:cover"></video>`
-                    : `<img src="${_rtEsc(story.media_url)}" style="width:100%;height:100%;object-fit:cover" alt="">`)
-                : `<i class="fas fa-user"></i>`}
+        <div class="story-image" style="${bgStyle}">
+            ${isVideo && mediaSrc
+                ? `<video src="${_rtEsc(mediaSrc)}" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;" muted playsinline></video>`
+                : (!mediaSrc ? `<i class="fas fa-user"></i>` : '')}
         </div>
         <span class="story-name">${_rtEsc(name)}</span>`;
 
