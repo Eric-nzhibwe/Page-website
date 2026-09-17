@@ -1,1 +1,1 @@
-web: python manage.py migrate --no-input && uvicorn artx_platform.asgi:application --host 0.0.0.0 --port $PORT --workers 2 --lifespan off
+web: bash start.sh
