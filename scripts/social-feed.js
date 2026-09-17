@@ -166,7 +166,14 @@ function _startVoiceRecording() {
                 if (label) {
                     const m = Math.floor(_voiceSeconds / 60);
                     const s = String(_voiceSeconds % 60).padStart(2, '0');
-                    label.textContent = `Voice message ready (${m}:${s}) — preview below`;
+                    label.textContent = `Voice message ready (${m}:${s})`;
+                }
+                // Show the caption input now that recording is done
+                const captionInput = document.getElementById('voiceCaption');
+                if (captionInput) {
+                    captionInput.style.display = 'block';
+                    captionInput.value = '';
+                    captionInput.focus();
                 }
                 document.getElementById('voicePostBtn').style.display = 'inline-flex';
             };
@@ -328,6 +335,8 @@ function _resetVoiceUI() {
     if (canvas) canvas.style.display = 'none';
     const postBtn = document.getElementById('voicePostBtn');
     if (postBtn) postBtn.style.display = 'none';
+    const captionInput = document.getElementById('voiceCaption');
+    if (captionInput) { captionInput.style.display = 'none'; captionInput.value = ''; }
 }
 
 function discardVoiceRecording() {
@@ -348,22 +357,29 @@ function discardVoiceRecording() {
 function postVoiceRecording() {
     if (!_voiceBlob) return;
 
-    const token = localStorage.getItem('djangoAuthToken');
+    const token   = localStorage.getItem('djangoAuthToken');
+    const caption = (document.getElementById('voiceCaption')?.value || '').trim();
     const m = Math.floor(_voiceSeconds / 60);
     const s = String(_voiceSeconds % 60).padStart(2, '0');
     const durLabel = `${m}:${s}`;
 
-    // Build a File from the blob so we have a proper name + type
+    if (!token) {
+        _feedToast('Sign in to post a voice message.', 'error');
+        return;
+    }
+
+    // Build a File from the blob
     const ext  = _voiceBlob.type.includes('mp4') ? 'm4a'
                : _voiceBlob.type.includes('ogg') ? 'ogg'
                : 'webm';
     const file = new File([_voiceBlob], `voice-${Date.now()}.${ext}`, { type: _voiceBlob.type });
 
-    // Optimistic local card shown immediately
+    // Optimistic local card (uses blob URL — swapped for server URL on success)
     const localUrl = URL.createObjectURL(_voiceBlob);
-    const local = {
-        id:             `local-voice-${Date.now()}`,
-        content:        '',
+    const tempId   = `local-voice-${Date.now()}`;
+    const local    = {
+        id:             tempId,
+        content:        caption,
         post_type:      'voice',
         _voiceUrl:      localUrl,
         _voiceDur:      durLabel,
@@ -372,26 +388,24 @@ function postVoiceRecording() {
         reaction_count: 0, comment_count: 0, share_count: 0,
     };
 
-    // Clean up recording state before the async upload
-    _voiceBlob   = null;
-    _voiceChunks = [];
+    // Clean up recording state before async upload
+    _voiceBlob       = null;
+    _voiceChunks     = [];
     _voiceDiscarding = true;
     clearInterval(_voiceTimerInterval);
     if (_voiceMediaRecorder && _voiceMediaRecorder.state !== 'inactive') _voiceMediaRecorder.stop();
     _resetVoiceUI();
 
+    // Show optimistic card immediately
     _insertPostCard(local);
-    _feedToast('Voice message posted! 🎤', 'success');
-
-    // ── Upload to API ──────────────────────────────────────────────────────
-    if (!token) return; // no token — stays as local preview only
+    _feedToast('Posting voice message… 🎤', 'info');
 
     const fd = new FormData();
-    fd.append('post_type',       'voice');
-    fd.append('content',         '');
-    fd.append('voice_file',      file, file.name);
-    fd.append('voice_duration',  String(_voiceSeconds));
-    fd.append('media_type',      'audio');
+    fd.append('post_type',      'voice');
+    fd.append('content',        caption);
+    fd.append('voice_file',     file, file.name);
+    fd.append('voice_duration', String(_voiceSeconds));
+    fd.append('media_type',     'audio');
 
     fetch(_POST_API, {
         method:  'POST',
@@ -400,22 +414,26 @@ function postVoiceRecording() {
     })
     .then(r => r.ok ? r.json() : r.json().then(d => Promise.reject(d)))
     .then(apiPost => {
-        // Swap local card's id and voice URL to the real API-served ones
-        const localCard = document.querySelector(`[data-post-id="${local.id}"]`);
-        if (localCard) {
-            localCard.setAttribute('data-post-id', apiPost.id);
-            // Update audio src to the persistent URL
-            const audio = localCard.querySelector('audio.voice-note-player');
+        // Swap temp card to the real persisted post
+        const tempCard = document.querySelector(`[data-post-id="${tempId}"]`);
+        if (tempCard) {
+            tempCard.setAttribute('data-post-id', apiPost.id);
+            const audio  = tempCard.querySelector('audio.voice-note-player');
             const realUrl = apiPost.resolved_media_url || apiPost.media_url;
             if (audio && realUrl) {
-                URL.revokeObjectURL(localUrl); // free the blob URL
+                URL.revokeObjectURL(localUrl);
                 audio.src = realUrl;
             }
         }
+        _feedToast('Voice message posted! 🎤', 'success');
     })
     .catch(err => {
-        console.warn('Voice post API save failed:', err);
-        // Card stays visible for the session via the blob URL
+        console.error('Voice post failed:', err);
+        // Remove the optimistic card — upload failed, nothing was saved
+        const tempCard = document.querySelector(`[data-post-id="${tempId}"]`);
+        if (tempCard) tempCard.remove();
+        URL.revokeObjectURL(localUrl);
+        _feedToast('Could not post voice message — please try again.', 'error');
     });
 }
 
@@ -586,31 +604,8 @@ function publishPost() {
             _feedToast('Post published! 🎉', 'success');
         })
         .catch(err => {
-            console.warn('publishPost API failed:', err);
-            // Offline / no token — show locally, it won't survive a reload
-            // but the user gets immediate feedback
-            const mediaItems = document.querySelectorAll('#mediaPreviewContent .media-preview-item');
-            const mediaData  = [];
-            mediaItems.forEach(item => {
-                const img   = item.querySelector('img');
-                const video = item.querySelector('video');
-                if (img)   mediaData.push({ type: 'image', src: img.src });
-                if (video) mediaData.push({ type: 'video', src: video.src });
-            });
-            if (isAchievement) mediaData.push({ type: 'achievement' });
-
-            const local = {
-                id: `local-${Date.now()}`,
-                content, post_type,
-                _localMedia: mediaData,
-                author:      { username: _currentUsername() },
-                created_at:  new Date().toISOString(),
-                reaction_count: 0, comment_count: 0, share_count: 0,
-            };
-            _saveLocalPost(local);
-            _insertPostCard(local);
-            closeCreatePostModal();
-            _feedToast('Saved locally — sign in to persist your post.', 'info');
+            console.error('publishPost API failed:', err);
+            _feedToast('Could not publish post — please try again.', 'error');
         })
         .finally(() => {
             if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-paper-plane"></i> Post'; }
@@ -705,49 +700,19 @@ function _insertPostCard(post) {
 
 // Sync any created posts saved in localStorage by fetching them from the API
 async function _syncCreatedPosts() {
-    const ids = JSON.parse(localStorage.getItem('myCreatedPostIds') || '[]');
-    if (!ids.length) return;
-    const token = localStorage.getItem('djangoAuthToken');
-    if (!token) return;
-    for (const id of ids.slice()) {
-        try {
-            const res = await fetch(`${_POST_API}${id}/`, { headers: { 'Authorization': `Token ${token}` } });
-            if (!res.ok) continue;
-            const post = await res.json();
-            // insert if not already present
-            const container = document.getElementById('feedPosts');
-            if (container && !container.querySelector(`[data-post-id="${post.id}"]`)) {
-                _insertPostCard(post);
-            }
-            // remove id from storage
-            const newIds = JSON.parse(localStorage.getItem('myCreatedPostIds') || '[]').filter(x => String(x) !== String(id));
-            localStorage.setItem('myCreatedPostIds', JSON.stringify(newIds));
-        } catch (e) {
-            // ignore network errors, try next time
-        }
-    }
+    // No-op — posts are now always persisted via the API, never localStorage.
+    // Kept as a stub so any existing references don't throw.
 }
 
 document.addEventListener('DOMContentLoaded', _syncCreatedPosts);
 
-function _saveLocalPost(post) {
-    const posts = JSON.parse(localStorage.getItem('userPosts') || '[]');
-    posts.unshift(post);
-    localStorage.setItem('userPosts', JSON.stringify(posts.slice(0, 50)));
+function _saveLocalPost(_post) {
+    // No-op — localStorage post saving removed. Posts persist via Django API.
 }
 
-/** Load any locally-saved posts on startup (shown until API posts arrive) */
+/** Load any locally-saved posts on startup */
 function _loadLocalPosts() {
-    const posts     = JSON.parse(localStorage.getItem('userPosts') || '[]');
-    const container = document.getElementById('feedPosts');
-    if (!container || !posts.length) return;
-
-    // Only show local posts that aren't already rendered (e.g. from API poll)
-    posts.forEach(p => {
-        if (!container.querySelector(`[data-post-id="${p.id}"]`)) {
-            _insertPostCard(p);
-        }
-    });
+    // No-op — localStorage post saving removed. loadRealFeed() handles everything.
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -785,12 +750,6 @@ function showPostMenu(postId, event) {
 function deletePost(postId) {
     if (!confirm('Delete this post?')) return;
 
-    // Remove from local storage
-    const posts = JSON.parse(localStorage.getItem('userPosts') || '[]')
-        .filter(p => String(p.id) !== String(postId));
-    localStorage.setItem('userPosts', JSON.stringify(posts));
-
-    // Try API delete
     const token = localStorage.getItem('djangoAuthToken');
     const API   = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
         ? 'http://localhost:8000/api' : `${window.location.origin}/api`;
@@ -1112,8 +1071,11 @@ async function loadRealFeed(page = 1) {
 
     } catch (err) {
         console.warn('Feed load error:', err);
-        // Show locally saved posts as fallback
-        _loadLocalPosts();
+        if (page === 1) {
+            const container = document.getElementById('feedPosts');
+            const spinner = container?.querySelector('.feed-loading');
+            if (spinner) spinner.remove();
+        }
     } finally {
         _feedLoading = false;
     }

@@ -205,17 +205,39 @@ STATICFILES_DIRS = [
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
-# Auto-create required media subdirectories on startup
-# so a fresh clone never 404s on missing upload folders
-for _media_dir in ['profiles', 'posts', 'messages']:
-    (BASE_DIR / 'media' / _media_dir).mkdir(parents=True, exist_ok=True)
+# ── Cloud media storage (Cloudinary) ──────────────────────────────────────────
+# When CLOUDINARY_URL is set (production on Render), all uploaded files go to
+# Cloudinary's CDN instead of local disk.  Local dev keeps using MEDIA_ROOT.
+#
+# Setup (free, 25 GB):
+#   1. Create a free account at https://cloudinary.com
+#   2. Copy your API Environment variable from the dashboard — it looks like:
+#      cloudinary://API_KEY:API_SECRET@CLOUD_NAME
+#   3. Add CLOUDINARY_URL=cloudinary://... to your Render environment variables
+#
+_cloudinary_url = config('CLOUDINARY_URL', default='')
+if _cloudinary_url:
+    import cloudinary
+    cloudinary.config(cloudinary_url=_cloudinary_url)
+
+    INSTALLED_APPS += ['cloudinary_storage', 'cloudinary']  # noqa: F821
+
+    DEFAULT_FILE_STORAGE  = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+    # Keep MEDIA_URL pointing to Cloudinary's base — the storage backend
+    # builds full URLs automatically so this value is rarely used directly.
+    MEDIA_URL = f'https://res.cloudinary.com/{cloudinary.config().cloud_name}/'
+
+# Auto-create required media subdirectories on startup (local dev only)
+if not _cloudinary_url:
+    for _media_dir in ['profiles', 'posts', 'stories', 'messages']:
+        (BASE_DIR / 'media' / _media_dir).mkdir(parents=True, exist_ok=True)
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# Cap request sizes to protect free-tier RAM (5 MB body, 3 MB per file)
-DATA_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024   # 5 MB
-FILE_UPLOAD_MAX_MEMORY_SIZE = 3 * 1024 * 1024   # 3 MB
+# Cap request sizes — generous enough for voice + video posts to Cloudinary
+DATA_UPLOAD_MAX_MEMORY_SIZE = 20 * 1024 * 1024   # 20 MB body
+FILE_UPLOAD_MAX_MEMORY_SIZE = 15 * 1024 * 1024   # 15 MB per file
 
 # Custom User Model
 AUTH_USER_MODEL = 'users.User'
