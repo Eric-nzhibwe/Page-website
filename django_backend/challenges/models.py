@@ -443,3 +443,196 @@ class ImageInterpretationSubmission(models.Model):
                 )
             except Exception:
                 pass
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  NEW: Poll / Debate / Q&A Challenges + XPoints Ledger
+# ─────────────────────────────────────────────────────────────────────────────
+
+XPOINTS_ENTRY_COST = 1.5   # xP charged to participate
+XPOINTS_EARN       = 0.5   # xP earned on completion
+
+
+class XPointsLedger(models.Model):
+    """
+    Tracks each user's xPoints balance.
+    One row per user — created on first interaction.
+    """
+    user    = models.OneToOneField(User, on_delete=models.CASCADE, related_name='xpoints_ledger')
+    balance = models.FloatField(default=10.0)          # start with 10 free xP
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'xpoints_ledger'
+
+    def __str__(self):
+        return f'{self.user.username} — {self.balance} xP'
+
+    @classmethod
+    def get_or_create_for(cls, user):
+        obj, _ = cls.objects.get_or_create(user=user)
+        return obj
+
+    def can_spend(self, amount: float) -> bool:
+        return self.balance >= amount
+
+    def spend(self, amount: float) -> bool:
+        if not self.can_spend(amount):
+            return False
+        self.balance = round(self.balance - amount, 2)
+        self.save(update_fields=['balance', 'updated_at'])
+        return True
+
+    def earn(self, amount: float):
+        self.balance = round(self.balance + amount, 2)
+        self.save(update_fields=['balance', 'updated_at'])
+
+
+class PollChallenge(models.Model):
+    """A poll-type challenge with up to 4 options."""
+    id         = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='poll_challenges')
+    title      = models.CharField(max_length=255)
+    description = models.TextField(blank=True)
+    prize_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    difficulty  = models.CharField(max_length=20, default='easy')
+    duration_days = models.IntegerField(default=7)
+    options     = models.JSONField(default=list, help_text='List of option strings, max 4')
+    is_active   = models.BooleanField(default=True)
+    created_at  = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table   = 'poll_challenges'
+        ordering   = ['-created_at']
+
+    def __str__(self):
+        return self.title
+
+    def vote_counts(self):
+        """Return {option_index: count} for all options."""
+        from django.db.models import Count
+        return dict(
+            PollVote.objects
+            .filter(poll=self)
+            .values('option_index')
+            .annotate(count=Count('id'))
+            .values_list('option_index', 'count')
+        )
+
+    def total_votes(self):
+        return PollVote.objects.filter(poll=self).count()
+
+
+class PollVote(models.Model):
+    """One vote per user per poll."""
+    id           = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    poll         = models.ForeignKey(PollChallenge, on_delete=models.CASCADE, related_name='votes')
+    user         = models.ForeignKey(User, on_delete=models.CASCADE, related_name='poll_votes')
+    option_index = models.PositiveSmallIntegerField()
+    voted_at     = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table       = 'poll_votes'
+        unique_together = [('poll', 'user')]
+
+    def __str__(self):
+        return f'{self.user.username} voted {self.option_index} on {self.poll.title}'
+
+
+class DebateChallenge(models.Model):
+    """A debate with two sides and a live comment stream."""
+    id          = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    created_by  = models.ForeignKey(User, on_delete=models.CASCADE, related_name='debate_challenges')
+    title       = models.CharField(max_length=255)
+    description = models.TextField(blank=True)
+    image_url   = models.URLField(max_length=500, blank=True)
+    side_a      = models.CharField(max_length=100)
+    side_b      = models.CharField(max_length=100)
+    prize_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    difficulty  = models.CharField(max_length=20, default='medium')
+    duration_days = models.IntegerField(default=7)
+    is_active   = models.BooleanField(default=True)
+    created_at  = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'debate_challenges'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return self.title
+
+    def participant_counts(self):
+        return {
+            'a': DebateParticipant.objects.filter(debate=self, side='a').count(),
+            'b': DebateParticipant.objects.filter(debate=self, side='b').count(),
+        }
+
+
+class DebateParticipant(models.Model):
+    """Records which side a user joined in a debate."""
+    id      = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    debate  = models.ForeignKey(DebateChallenge, on_delete=models.CASCADE, related_name='participants')
+    user    = models.ForeignKey(User, on_delete=models.CASCADE, related_name='debate_participations')
+    side    = models.CharField(max_length=1, choices=[('a', 'Side A'), ('b', 'Side B')])
+    joined_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table       = 'debate_participants'
+        unique_together = [('debate', 'user')]
+
+    def __str__(self):
+        return f'{self.user.username} → {self.debate.title} (side {self.side})'
+
+
+class DebateComment(models.Model):
+    """Live comment on a debate — broadcast via WebSocket."""
+    id        = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    debate    = models.ForeignKey(DebateChallenge, on_delete=models.CASCADE, related_name='comments')
+    user      = models.ForeignKey(User, on_delete=models.CASCADE, related_name='debate_comments')
+    text      = models.CharField(max_length=500)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'debate_comments'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.user.username}: {self.text[:50]}'
+
+
+class QAChallenge(models.Model):
+    """A Q&A challenge — creator posts a question, users answer."""
+    id          = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    created_by  = models.ForeignKey(User, on_delete=models.CASCADE, related_name='qa_challenges')
+    title       = models.CharField(max_length=255, help_text='The question')
+    description = models.TextField(blank=True)
+    image_url   = models.URLField(max_length=500, blank=True)
+    prize_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    difficulty  = models.CharField(max_length=20, default='easy')
+    duration_days = models.IntegerField(default=7)
+    is_active   = models.BooleanField(default=True)
+    created_at  = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'qa_challenges'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return self.title
+
+
+class QAAnswer(models.Model):
+    """An answer submitted to a Q&A challenge."""
+    id         = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    qa         = models.ForeignKey(QAChallenge, on_delete=models.CASCADE, related_name='answers')
+    user       = models.ForeignKey(User, on_delete=models.CASCADE, related_name='qa_answers')
+    text       = models.CharField(max_length=1000)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'qa_answers'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.user.username} on {self.qa.title}'

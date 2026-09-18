@@ -72,3 +72,63 @@ class ChallengeConsumer(AsyncWebsocketConsumer):
             "type":    "activity",
             "payload": event.get("payload", {}),
         }))
+
+
+class DebateConsumer(AsyncWebsocketConsumer):
+    """
+    Real-time comment stream for a debate.
+    ws://<host>/ws/debate/<debate_id>/
+    """
+
+    async def connect(self):
+        self.debate_id  = self.scope['url_route']['kwargs']['debate_id']
+        self.group_name = f'debate_{self.debate_id}'
+        await self.channel_layer.group_add(self.group_name, self.channel_name)
+        await self.accept()
+
+    async def disconnect(self, close_code):
+        await self.channel_layer.group_discard(self.group_name, self.channel_name)
+
+    async def receive(self, text_data):
+        try:
+            data = json.loads(text_data)
+        except (json.JSONDecodeError, TypeError):
+            return
+        if data.get('action') == 'ping':
+            await self.send(text_data=json.dumps({'type': 'pong'}))
+
+    async def debate_comment(self, event):
+        await self.send(text_data=json.dumps({
+            'type':    'debate_comment',
+            'payload': event.get('payload', {}),
+        }))
+
+
+class QAConsumer(AsyncWebsocketConsumer):
+    """
+    Real-time answer stream for a Q&A challenge.
+    ws://<host>/ws/qa/<qa_id>/
+    """
+
+    async def connect(self):
+        self.qa_id      = self.scope['url_route']['kwargs']['qa_id']
+        self.group_name = f'qa_{self.qa_id}'
+        await self.channel_layer.group_add(self.group_name, self.channel_name)
+        await self.accept()
+
+    async def disconnect(self, close_code):
+        await self.channel_layer.group_discard(self.group_name, self.channel_name)
+
+    async def receive(self, text_data):
+        try:
+            data = json.loads(text_data)
+        except (json.JSONDecodeError, TypeError):
+            return
+        if data.get('action') == 'ping':
+            await self.send(text_data=json.dumps({'type': 'pong'}))
+
+    async def qa_answer(self, event):
+        await self.send(text_data=json.dumps({
+            'type':    'qa_answer',
+            'payload': event.get('payload', {}),
+        }))

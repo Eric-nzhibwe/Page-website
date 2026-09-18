@@ -1,7 +1,64 @@
-// Enhanced Challenges with Money Rewards
+// Enhanced Challenges — DB-backed, real-time via WebSocket
+// All xPoints, votes, comments and answers are persisted to the backend.
 
 let currentChallengeId = null;
-let submissionFiles = [];
+let submissionFiles    = [];
+
+// ─── API helpers ────────────────────────────────────────────────────────────
+const API = '/api/challenges';
+
+function authHeaders() {
+    const token = localStorage.getItem('authToken') || localStorage.getItem('token') || '';
+    return {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Token ${token}` } : {}),
+    };
+}
+
+async function apiGet(url) {
+    const r = await fetch(url, { headers: authHeaders() });
+    return r.ok ? r.json() : null;
+}
+
+async function apiPost(url, body) {
+    const r = await fetch(url, {
+        method:  'POST',
+        headers: authHeaders(),
+        body:    JSON.stringify(body),
+    });
+    const data = await r.json().catch(() => ({}));
+    return { ok: r.ok, status: r.status, data };
+}
+
+// ─── xPoints — DB-backed ────────────────────────────────────────────────────
+const XPOINTS_EARN_PER_CHALLENGE = 0.5;
+const XPOINTS_ENTRY_COST         = 1.5;
+
+async function refreshXPoints() {
+    const data = await apiGet(`${API}/xpoints/`);
+    if (data) renderXPointsBanner(data.balance);
+}
+
+function renderXPointsBanner(balance) {
+    const el = document.getElementById('xpointsBannerBalance');
+    if (el && balance !== undefined) el.textContent = parseFloat(balance).toFixed(1);
+}
+
+// Optimistic UI helper — backend handles real deduction
+function showNotification(msg) {
+    let n = document.getElementById('challengeNotification');
+    if (!n) {
+        n = document.createElement('div');
+        n.id = 'challengeNotification';
+        n.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#1c1e21;color:#fff;padding:10px 20px;border-radius:20px;z-index:9999;font-size:14px;pointer-events:none;';
+        document.body.appendChild(n);
+    }
+    n.textContent = msg;
+    n.style.opacity = '1';
+    clearTimeout(n._t);
+    n._t = setTimeout(() => { n.style.opacity = '0'; }, 3000);
+}
+// ────────────────────────────────────────────────────────────────────────────
 
 // Filter challenges
 function filterChallenges(filter) {
@@ -35,24 +92,10 @@ function filterChallenges(filter) {
     });
 }
 
-// Handle category change in create challenge modal
-function handleCategoryChange() {
-    const category = document.getElementById('challengeCategory').value;
-    const imageGroup = document.getElementById('challengeImageGroup');
-    const challengeImage = document.getElementById('challengeImage');
-    const answerGroup = document.getElementById('challengeAnswerNumbersGroup');
-    
-    if (category === 'image-interpretation') {
-        imageGroup.style.display = 'block';
-        challengeImage.required = true;
-        answerGroup.style.display = 'block';
-    } else {
-        imageGroup.style.display = 'none';
-        challengeImage.required = false;
-        document.getElementById('challengeImagePreview').innerHTML = '';
-        answerGroup.style.display = 'none';
-    }
-}
+// Handle category change in create challenge modal (legacy - no longer used)
+function handleCategoryChange() {}
+
+
 
 // Handle challenge image upload
 let challengeImageData = null;
@@ -103,8 +146,40 @@ function removeChallengeImage() {
 function openCreateChallengeModal() {
     const modal = document.getElementById('createChallengeModal');
     if (modal) {
+        // Always start on step 1
+        document.getElementById('createChallengeStep1').style.display = 'block';
+        document.getElementById('createChallengeStep2').style.display = 'none';
         modal.style.display = 'block';
     }
+}
+
+// Select a category and move to step 2
+function selectChallengeCategory(category) {
+    document.getElementById('challengeCategory').value = category;
+
+    // Hide all category-specific fields first
+    document.getElementById('challengeImageGroup').style.display = 'none';
+    document.getElementById('pollOptionsGroup').style.display = 'none';
+    document.getElementById('debateSidesGroup').style.display = 'none';
+
+    // Show relevant fields based on category
+    if (category === 'qa') {
+        document.getElementById('challengeImageGroup').style.display = 'block';
+    } else if (category === 'polls') {
+        document.getElementById('pollOptionsGroup').style.display = 'block';
+    } else if (category === 'debates') {
+        document.getElementById('debateSidesGroup').style.display = 'block';
+    }
+
+    // Transition to step 2
+    document.getElementById('createChallengeStep1').style.display = 'none';
+    document.getElementById('createChallengeStep2').style.display = 'block';
+}
+
+// Go back to category picker
+function backToCategoryPicker() {
+    document.getElementById('createChallengeStep2').style.display = 'none';
+    document.getElementById('createChallengeStep1').style.display = 'block';
 }
 
 // Close create challenge modal
@@ -113,155 +188,333 @@ function closeCreateChallengeModal() {
     if (modal) {
         modal.style.display = 'none';
         document.getElementById('createChallengeForm').reset();
-        // Also clear image state
+        // Reset category hidden field
+        document.getElementById('challengeCategory').value = '';
+        // Clear image state
         challengeImageData = null;
         document.getElementById('challengeImagePreview').innerHTML = '';
         document.getElementById('challengeImageGroup').style.display = 'none';
-        document.getElementById('challengeAnswerNumbersGroup').style.display = 'none';
+        document.getElementById('pollOptionsGroup').style.display = 'none';
+        document.getElementById('debateSidesGroup').style.display = 'none';
     }
 }
 
-// Publish challenge
-function publishChallenge(event) {
+// Publish challenge — saves to backend DB
+async function publishChallenge(event) {
     event.preventDefault();
-    
-    const title = document.getElementById('challengeTitle').value;
-    const category = document.getElementById('challengeCategory').value;
-    const difficulty = document.getElementById('challengeDifficulty').value;
-    const prize = parseFloat(document.getElementById('challengePrize').value);
-    const duration = document.getElementById('challengeDuration').value;
+
+    const title       = document.getElementById('challengeTitle').value;
+    const category    = document.getElementById('challengeCategory').value;
+    const difficulty  = document.getElementById('challengeDifficulty').value;
+    const prize       = parseFloat(document.getElementById('challengePrize').value);
+    const duration    = parseInt(document.getElementById('challengeDuration').value);
     const description = document.getElementById('challengeDescription').value;
-    const requirements = document.getElementById('challengeRequirements').value;
-    const verification = document.getElementById('challengeVerification').checked;
-    
-    // Get username
-    const username = document.getElementById('username')?.textContent || 'You';
-    
-    // Get category icon
-    const categoryIcons = {
-        'coding': 'fa-code',
-        'gaming': 'fa-gamepad',
-        'trivia': 'fa-brain',
-        'creative': 'fa-palette',
-        'image-interpretation': 'fa-image',
-        'fitness': 'fa-dumbbell',
-        'other': 'fa-star'
-    };
-    
-    const icon = categoryIcons[category] || 'fa-trophy';
-    
-    // Create challenge card with image if it's an image interpretation challenge
-    let challengeImageHTML = '';
-    if (category === 'image-interpretation' && challengeImageData) {
-        challengeImageHTML = `
-            <div class="challenge-image">
-                <img src="${challengeImageData}" alt="${title}" style="width: 100%; border-radius: 8px; margin: 12px 0;">
-            </div>
-        `;
-    }
-    
-    // Create challenge card
-    const challengeCard = document.createElement('div');
-    challengeCard.className = 'challenge-card';
-    challengeCard.setAttribute('data-status', 'active');
-    challengeCard.setAttribute('data-category', category);
-    challengeCard.style.animation = 'fadeIn 0.5s';
-    
-    // For image-interpretation: entry fee = 10% of prize, image is blurred on card
-    const isImgInterp = category === 'image-interpretation';
-    const entryFee = isImgInterp ? Math.max(10, prize * 0.10) : 0;
-    const cardId = Date.now();
 
-    challengeCard.setAttribute('data-id', cardId);
-    if (challengeImageData) {
-        challengeCard.setAttribute('data-image', challengeImageData);
-    }
-    if (isImgInterp) {
-        challengeCard.setAttribute('data-prize', prize.toFixed(2));
-        challengeCard.setAttribute('data-entry-fee', entryFee.toFixed(2));
-        challengeCard.setAttribute('data-difficulty', difficulty);
-        challengeCard.setAttribute('data-participants', '0');
-        const answerNumbers = document.getElementById('challengeAnswerNumbers')?.value.trim() || '';
-        if (answerNumbers) {
-            challengeCard.setAttribute('data-answer-numbers', answerNumbers);
-        }
+    const submitBtn = event.target.querySelector('[type="submit"]');
+    if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Creating…'; }
+
+    let endpoint, body;
+
+    if (category === 'polls') {
+        const options = [
+            document.getElementById('pollOption1').value,
+            document.getElementById('pollOption2').value,
+            document.getElementById('pollOption3').value,
+            document.getElementById('pollOption4').value,
+        ].filter(o => o.trim());
+        endpoint = `${API}/polls/create/`;
+        body = { title, description, prize_amount: prize, difficulty, duration_days: duration, options };
+
+    } else if (category === 'debates') {
+        const side_a = document.getElementById('debateSideA').value || 'For';
+        const side_b = document.getElementById('debateSideB').value || 'Against';
+        endpoint = `${API}/debates/create/`;
+        body = { title, description, side_a, side_b, prize_amount: prize, difficulty, duration_days: duration };
+
+    } else if (category === 'qa') {
+        endpoint = `${API}/qa/create/`;
+        body = { title, description, prize_amount: prize, difficulty, duration_days: duration };
     }
 
-    challengeCard.innerHTML = `
-        <div class="challenge-badge prize">K${prize.toFixed(2)} Prize</div>
-        ${isImgInterp ? `<div class="challenge-badge entry-fee-badge">K${entryFee.toFixed(2)} Entry</div>` : ''}
-        <div class="challenge-header">
-            <div class="challenge-icon">
-                <i class="fas ${icon}"></i>
-            </div>
-            <div class="challenge-creator">
-                <span>Created by <strong>${username}</strong></span>
-                <span class="challenge-time">Just now</span>
-            </div>
-        </div>
-        <h3 class="challenge-title">${title}</h3>
-        <p class="challenge-description">${description}</p>
-        ${isImgInterp && challengeImageData ? `
-            <div class="challenge-image-blurred-wrap">
-                <img src="${challengeImageData}" alt="${title}" class="challenge-card-img img-blurred-card">
-                <div class="blurred-img-overlay">
-                    <i class="fas fa-lock"></i>
-                    <span>Pay to reveal</span>
-                </div>
-            </div>
-        ` : challengeImageHTML}
-        <div class="challenge-details">
-            <div class="challenge-detail">
-                <i class="fas fa-clock"></i>
-                <span>${isImgInterp ? '30s reveal' : duration + ' days left'}</span>
-            </div>
-            <div class="challenge-detail">
-                <i class="fas fa-users"></i>
-                <span>0 participants</span>
-            </div>
-            <div class="challenge-detail">
-                <i class="fas fa-signal"></i>
-                <span>${difficulty.charAt(0).toUpperCase() + difficulty.slice(1)}</span>
-            </div>
-        </div>
-        <div class="challenge-footer">
-            <button class="btn-primary" onclick="${isImgInterp ? `openImgInterpDetails('${cardId}')` : `attemptChallenge('${cardId}')`}">
-                <i class="fas fa-${isImgInterp ? 'gamepad' : 'play'}"></i> ${isImgInterp ? 'Play' : 'Attempt'}
-            </button>
-            <button class="btn-secondary" onclick="${isImgInterp ? `openImgInterpDetails('${cardId}')` : `viewChallengeDetails('${cardId}')`}">
-                <i class="fas fa-info-circle"></i> Details
-            </button>
-        </div>
-    `;
-    
-    // Add to grid
-    const grid = document.getElementById('challengesGrid');
-    grid.insertBefore(challengeCard, grid.firstChild);
-    
-    // Close modal
+    const { ok, data } = await apiPost(endpoint, body);
+
+    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Create Challenge'; }
+
+    if (!ok) {
+        showNotification(data.error || 'Failed to create challenge.');
+        return;
+    }
+
     closeCreateChallengeModal();
-    
-    // Clear image data
-    challengeImageData = null;
-    
-    // Show success
-    showNotification('Challenge created successfully! 🏆');
-    
-    // Update stats
-    updateChallengeStats();
-    
-    // In real app, would send to backend
-    console.log('Challenge created:', {
-        title,
-        category,
-        difficulty,
-        prize,
-        duration,
-        description,
-        requirements,
-        verification
-    });
+    showNotification('Challenge created! 🏆');
+
+    // Re-fetch and render the live list
+    await loadAndRenderChallenges();
 }
+
+
+/* ── Card builders ── */
+
+function buildDebateCard(id, title, description, sideA, sideB, prize, duration, difficulty, imgSrc) {
+    const img = imgSrc
+        ? `<img src="${imgSrc}" alt="${title}">`
+        : `<div style="width:100%;height:100%;background:linear-gradient(135deg,#1a1a2e,#16213e);display:flex;align-items:center;justify-content:center;"><i class="fas fa-gavel" style="font-size:48px;color:rgba(255,255,255,0.15);"></i></div>`;
+
+    const seedComments = [
+        { user: 'Alex', text: `${sideA} is the clear winner here 🔥` },
+        { user: 'Mia',  text: `No way! ${sideB} all the way 💪` },
+        { user: 'Jay',  text: 'This is a great debate topic!' },
+    ];
+    const commentsHTML = seedComments.map(c => `
+        <div class="debate-comment">
+            <span class="comment-user">${c.user}</span>
+            <span class="comment-text">${c.text}</span>
+        </div>`).join('');
+
+    return `
+        <div class="debate-card-header">
+            <span class="debate-type-label"><i class="fas fa-gavel"></i> Debate</span>
+            <span style="font-size:11px;color:#aaa;">${duration} days · ${difficulty}</span>
+        </div>
+        <p class="debate-card-title" style="padding:0 16px 10px;margin:0;">${title.toUpperCase()}</p>
+        <div class="debate-arena">
+            <div class="debate-image-wrap">
+                ${img}
+                <span class="debate-image-caption">${description.slice(0,40)}${description.length>40?'…':''}</span>
+            </div>
+            <div class="debate-live-comments" id="debateComments_${id}">
+                <div class="debate-live-header">
+                    <div class="live-dot"></div>
+                    <span class="live-label">Live</span>
+                </div>
+                ${commentsHTML}
+            </div>
+        </div>
+        <div class="debate-teams">
+            <div class="debate-team team-a">
+                <span class="debate-team-label">Team A</span>
+                <span class="debate-team-desc">${sideA}</span>
+                <span class="debate-team-count"><i class="fas fa-user-friends"></i> 0 joined</span>
+            </div>
+            <div class="debate-team team-b">
+                <span class="debate-team-label">Team B</span>
+                <span class="debate-team-desc">${sideB}</span>
+                <span class="debate-team-count"><i class="fas fa-user-friends"></i> 0 joined</span>
+            </div>
+        </div>
+        <div class="debate-card-footer">
+            <div class="debate-meta">
+                <span class="debate-meta-item"><i class="fas fa-trophy"></i> K${prize.toFixed(2)}</span>
+                <span class="debate-meta-item"><i class="fas fa-clock"></i> ${duration}d</span>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;">
+                <button class="share-challenge-btn" onclick="shareChallenge('${title.replace(/'/g,"\\'")}','${id}','debate')" title="Share">
+                    <i class="fas fa-share-alt"></i>
+                </button>
+                <button class="xpoints-cost" onclick="joinDebate('${id}', event)">
+                    <i class="fas fa-bolt"></i> 1.5 xP to Join
+                </button>
+            </div>
+        </div>`;
+}
+
+function buildPollCard(id, title, description, options, prize, duration, difficulty) {
+    const username = document.getElementById('username')?.textContent || 'You';
+    const avatarInitial = username[0].toUpperCase();
+
+    const optionsHTML = options.map((opt, i) => `
+        <button class="poll-vote-btn" onclick="castPollVote('${id}', ${i}, this)">
+            <div class="poll-vote-bar" style="width:0%"></div>
+            <span class="poll-option-label">${opt}</span>
+            <span class="poll-vote-pct" style="display:none">0%</span>
+        </button>`).join('');
+
+    return `
+        <div class="poll-header-bar">
+            <div class="poll-avatar">
+                <span class="poll-avatar-placeholder">${avatarInitial}</span>
+            </div>
+            <h3 class="poll-title">${title}</h3>
+        </div>
+        <div class="poll-options-list">${optionsHTML}</div>
+        <div class="poll-card-footer">
+            <div class="poll-meta">
+                <span><i class="fas fa-users"></i> 0 votes</span>
+                <span><i class="fas fa-clock"></i> ${duration}d left</span>
+                <span><i class="fas fa-bolt"></i> 1.5 xP</span>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;">
+                <button class="share-challenge-btn" onclick="shareChallenge('${title.replace(/'/g,"\\'")}','${id}','poll')" title="Share">
+                    <i class="fas fa-share-alt"></i>
+                </button>
+                <span class="poll-prize-badge">K${prize.toFixed(2)}</span>
+            </div>
+        </div>`;
+}
+
+function buildQACard(id, title, description, imgSrc, prize, duration, difficulty) {
+    const username = document.getElementById('username')?.textContent || 'You';
+    const initial = username[0].toUpperCase();
+
+    // Seed comments — shows the Q&A already has engagement
+    const seed = [
+        { user: 'Bright',   text: 'Definitely Gunna, no debate 🔥' },
+        { user: 'Mia',      text: 'Dave has better bars though 🎤' },
+    ];
+    const seedHTML = seed.map(c => `
+        <div class="qa-live-msg">
+            <div class="qa-live-avatar">${c.user[0]}</div>
+            <div class="qa-live-bubble">
+                <span class="qa-live-user">${c.user}</span>
+                <span class="qa-live-text">${c.text}</span>
+            </div>
+        </div>`).join('');
+
+    return `
+        <div class="qa-creator-avatar-wrap">
+            <div class="qa-creator-avatar">${initial}</div>
+        </div>
+        <p class="qa-question">${title}</p>
+        <div class="qa-live-pane" id="qaLive_${id}">
+            ${seedHTML}
+        </div>
+        <div class="qa-input-row">
+            <input class="qa-type-input" placeholder="Type something..." id="qaInput_${id}"
+                onkeydown="if(event.key==='Enter') submitQAAnswer('${id}')">
+            <button class="qa-send-btn" onclick="submitQAAnswer('${id}')">
+                <i class="fas fa-paper-plane"></i>
+            </button>
+        </div>
+        <div class="qa-card-footer">
+            <div class="qa-meta">
+                <span><i class="fas fa-clock"></i> ${duration}d left</span>
+                <span><i class="fas fa-bolt"></i> 1.5 xP</span>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;">
+                <button class="share-challenge-btn" onclick="shareChallenge('${title.replace(/'/g,"\\'")}','${id}','Q&A')" title="Share">
+                    <i class="fas fa-share-alt"></i>
+                </button>
+                <span class="qa-prize-badge">K${prize.toFixed(2)}</span>
+            </div>
+        </div>`;
+}
+
+/* ── Interaction handlers — all DB-backed ── */
+
+async function joinDebate(challengeId, e) {
+    const btn = e.currentTarget;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+    const { ok, data } = await apiPost(`${API}/debates/${challengeId}/join/`, { side: 'a' });
+
+    if (!ok) {
+        showNotification(data.error || 'Could not join debate.');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-bolt"></i> 1.5 xP to Join';
+        return;
+    }
+
+    btn.innerHTML = '<i class="fas fa-check"></i> Joined!';
+    btn.style.background = '#1b7f3a';
+
+    // Update participant counts on the card
+    const card = btn.closest('.challenge-card');
+    if (card && data.participants) {
+        const aEl = card.querySelector('.team-a .debate-team-count');
+        const bEl = card.querySelector('.team-b .debate-team-count');
+        if (aEl) aEl.innerHTML = `<i class="fas fa-user-friends"></i> ${data.participants.a} joined`;
+        if (bEl) bEl.innerHTML = `<i class="fas fa-user-friends"></i> ${data.participants.b} joined`;
+    }
+
+    renderXPointsBanner(data.balance);
+    showNotification('+0.5 xP earned for joining! 🔥');
+    setTimeout(() => addLiveDebateComment(challengeId, 'You', 'Just joined the debate! 🔥'), 300);
+}
+
+function addLiveDebateComment(challengeId, user, text) {
+    const pane = document.getElementById(`debateComments_${challengeId}`);
+    if (!pane) return;
+    const el = document.createElement('div');
+    el.className = 'debate-comment';
+    el.innerHTML = `<span class="comment-user">${user}</span><span class="comment-text">${text}</span>`;
+    pane.appendChild(el);
+    pane.scrollTop = pane.scrollHeight;
+    const comments = pane.querySelectorAll('.debate-comment');
+    if (comments.length > 8) comments[0].remove();
+}
+
+async function castPollVote(challengeId, optionIndex, btn) {
+    const list    = btn.closest('.poll-options-list');
+    const allBtns = list.querySelectorAll('.poll-vote-btn');
+    allBtns.forEach(b => b.disabled = true);
+
+    const { ok, data } = await apiPost(`${API}/polls/${challengeId}/vote/`, { option_index: optionIndex });
+
+    if (!ok) {
+        showNotification(data.error || 'Could not cast vote.');
+        allBtns.forEach(b => b.disabled = false);
+        return;
+    }
+
+    // Render real vote distribution from DB
+    const total = data.total_votes || 1;
+    allBtns.forEach((b, i) => {
+        const count = data.vote_counts?.[i] || 0;
+        const pct   = Math.round((count / total) * 100);
+        const bar   = b.querySelector('.poll-vote-bar');
+        const pctEl = b.querySelector('.poll-vote-pct');
+        if (pctEl) { pctEl.style.display = 'inline'; pctEl.textContent = `${pct}%`; }
+        setTimeout(() => { if (bar) bar.style.width = `${pct}%`; }, 50);
+        if (i === optionIndex) b.classList.add('voted');
+    });
+
+    const footer = btn.closest('.challenge-card').querySelector('.poll-card-footer .poll-meta');
+    if (footer) {
+        const votesEl = footer.querySelector('span:first-child');
+        if (votesEl) votesEl.innerHTML = '<i class="fas fa-check-circle" style="color:#1b7f3a"></i> Voted! +0.5 xP';
+    }
+
+    renderXPointsBanner(data.balance);
+    showNotification('+0.5 xP earned for voting! 📊');
+}
+
+async function submitQAAnswer(challengeId) {
+    const input = document.getElementById(`qaInput_${challengeId}`);
+    const text  = input?.value.trim();
+    if (!text) return;
+
+    const { ok, data } = await apiPost(`${API}/qa/${challengeId}/answer/`, { text });
+
+    if (!ok) {
+        showNotification(data.error || 'Could not submit answer.');
+        return;
+    }
+
+    // Add own bubble immediately
+    const pane = document.getElementById(`qaLive_${challengeId}`);
+    if (pane) {
+        const username = data.user || 'You';
+        const el = document.createElement('div');
+        el.className = 'qa-live-msg own';
+        el.innerHTML = `
+            <div class="qa-live-avatar">${username[0].toUpperCase()}</div>
+            <div class="qa-live-bubble">
+                <span class="qa-live-user">${username}</span>
+                <span class="qa-live-text">${text}</span>
+            </div>`;
+        pane.appendChild(el);
+        pane.scrollTop = pane.scrollHeight;
+        const msgs = pane.querySelectorAll('.qa-live-msg');
+        if (msgs.length > 12) msgs[0].remove();
+    }
+
+    input.value = '';
+    renderXPointsBanner(data.balance);
+    showNotification('+0.5 xP earned for answering! 💬');
+}
+
+
 
 // Attempt challenge
 function attemptChallenge(challengeId) {
@@ -728,24 +981,278 @@ function viewChallengeDetails(challengeId) {
 }
 
 // Initialize
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
     // Load wallet balance from localStorage
     const savedBalance = localStorage.getItem('walletBalance');
     if (savedBalance) {
         const balanceElement = document.getElementById('walletBalance');
-        if (balanceElement) {
-            balanceElement.textContent = `K${parseFloat(savedBalance).toFixed(2)}`;
-        }
-        
+        if (balanceElement) balanceElement.textContent = `K${parseFloat(savedBalance).toFixed(2)}`;
         const walletBadge = document.getElementById('walletBalanceBadge');
-        if (walletBadge) {
-            walletBadge.style.display = 'flex';
-        }
+        if (walletBadge) walletBadge.style.display = 'flex';
     }
-    
-    // Update stats
+
+    // Load real xPoints from DB
+    await refreshXPoints();
+
+    // Load and render live challenges from DB
+    await loadAndRenderChallenges();
+
+    // Start live demo tickers on static sample cards (fallback when not logged in)
+    startDebateLiveComments('5');
+    startQALiveTicker('7');
+
     updateChallengeStats();
 });
+
+/* ── Load challenges from DB and render cards ── */
+async function loadAndRenderChallenges() {
+    const grid = document.getElementById('challengesGrid');
+    if (!grid) return;
+
+    // Fetch all three types in parallel
+    const [debates, polls, qas] = await Promise.all([
+        apiGet(`${API}/debates/`),
+        apiGet(`${API}/polls/`),
+        apiGet(`${API}/qa/`),
+    ]);
+
+    // Remove previously injected DB cards (keep the static samples)
+    grid.querySelectorAll('.challenge-card[data-from-db="1"]').forEach(c => c.remove());
+
+    const fragment = document.createDocumentFragment();
+
+    // Render debates
+    (debates || []).forEach(d => {
+        const card = document.createElement('div');
+        card.className = 'challenge-card';
+        card.setAttribute('data-status', 'active');
+        card.setAttribute('data-category', 'debates');
+        card.setAttribute('data-id', d.id);
+        card.setAttribute('data-from-db', '1');
+        card.innerHTML = buildDebateCard(d.id, d.title, d.description, d.side_a, d.side_b,
+            parseFloat(d.prize_amount), d.duration_days, d.difficulty, d.image_url || null);
+        // Seed existing comments
+        setTimeout(() => {
+            (d.comments || []).slice(-5).forEach(c => addLiveDebateComment(d.id, c.user, c.text));
+            openDebateWS(d.id);
+        }, 100);
+        fragment.appendChild(card);
+    });
+
+    // Render polls
+    (polls || []).forEach(p => {
+        const card = document.createElement('div');
+        card.className = 'challenge-card';
+        card.setAttribute('data-status', 'active');
+        card.setAttribute('data-category', 'polls');
+        card.setAttribute('data-id', p.id);
+        card.setAttribute('data-from-db', '1');
+        card.innerHTML = buildPollCard(p.id, p.title, p.description, p.options,
+            parseFloat(p.prize_amount), p.duration_days, p.difficulty);
+        // Show real counts if user already voted
+        if (p.user_voted) {
+            setTimeout(() => restorePollState(card, p), 100);
+        }
+        fragment.appendChild(card);
+    });
+
+    // Render Q&As
+    (qas || []).forEach(q => {
+        const card = document.createElement('div');
+        card.className = 'challenge-card';
+        card.setAttribute('data-status', 'active');
+        card.setAttribute('data-category', 'qa');
+        card.setAttribute('data-id', q.id);
+        card.setAttribute('data-from-db', '1');
+        card.innerHTML = buildQACard(q.id, q.title, q.description, q.image_url || null,
+            parseFloat(q.prize_amount), q.duration_days, q.difficulty);
+        // Seed existing answers
+        setTimeout(() => {
+            const pane = document.getElementById(`qaLive_${q.id}`);
+            if (pane) {
+                pane.innerHTML = '';
+                (q.answers || []).slice(-8).forEach(a => {
+                    const el = document.createElement('div');
+                    el.className = 'qa-live-msg';
+                    el.innerHTML = `
+                        <div class="qa-live-avatar">${a.user[0].toUpperCase()}</div>
+                        <div class="qa-live-bubble">
+                            <span class="qa-live-user">${a.user}</span>
+                            <span class="qa-live-text">${a.text}</span>
+                        </div>`;
+                    pane.appendChild(el);
+                });
+                pane.scrollTop = pane.scrollHeight;
+            }
+            openQAWS(q.id);
+        }, 100);
+        fragment.appendChild(card);
+    });
+
+    // Prepend DB cards before the static sample cards
+    grid.insertBefore(fragment, grid.firstChild);
+    updateChallengeStats();
+}
+
+function restorePollState(card, pollData) {
+    const allBtns = card.querySelectorAll('.poll-vote-btn');
+    const total   = pollData.total_votes || 1;
+    allBtns.forEach((b, i) => {
+        const count = pollData.vote_counts?.[i] || 0;
+        const pct   = Math.round((count / total) * 100);
+        const bar   = b.querySelector('.poll-vote-bar');
+        const pctEl = b.querySelector('.poll-vote-pct');
+        if (pctEl) { pctEl.style.display = 'inline'; pctEl.textContent = `${pct}%`; }
+        if (bar)   bar.style.width = `${pct}%`;
+        b.disabled = true;
+    });
+}
+
+/* ── WebSocket connections for live comments ── */
+const _wsSockets = {};
+
+function openDebateWS(debateId) {
+    if (_wsSockets[`debate_${debateId}`]) return;
+    const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+    const ws    = new WebSocket(`${proto}://${location.host}/ws/debate/${debateId}/`);
+    ws.onmessage = (e) => {
+        try {
+            const msg = JSON.parse(e.data);
+            if (msg.type === 'debate_comment' && msg.payload) {
+                addLiveDebateComment(debateId, msg.payload.user, msg.payload.text);
+            }
+        } catch (_) {}
+    };
+    ws.onclose = () => {
+        delete _wsSockets[`debate_${debateId}`];
+        // Reconnect after 3s
+        setTimeout(() => openDebateWS(debateId), 3000);
+    };
+    _wsSockets[`debate_${debateId}`] = ws;
+}
+
+function openQAWS(qaId) {
+    if (_wsSockets[`qa_${qaId}`]) return;
+    const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+    const ws    = new WebSocket(`${proto}://${location.host}/ws/qa/${qaId}/`);
+    ws.onmessage = (e) => {
+        try {
+            const msg = JSON.parse(e.data);
+            if (msg.type === 'qa_answer' && msg.payload) {
+                const pane = document.getElementById(`qaLive_${qaId}`);
+                if (!pane) return;
+                const el = document.createElement('div');
+                el.className = 'qa-live-msg';
+                el.innerHTML = `
+                    <div class="qa-live-avatar">${msg.payload.user[0].toUpperCase()}</div>
+                    <div class="qa-live-bubble">
+                        <span class="qa-live-user">${msg.payload.user}</span>
+                        <span class="qa-live-text">${msg.payload.text}</span>
+                    </div>`;
+                pane.appendChild(el);
+                pane.scrollTop = pane.scrollHeight;
+                const msgs = pane.querySelectorAll('.qa-live-msg');
+                if (msgs.length > 12) msgs[0].remove();
+            }
+        } catch (_) {}
+    };
+    ws.onclose = () => {
+        delete _wsSockets[`qa_${qaId}`];
+        setTimeout(() => openQAWS(qaId), 3000);
+    };
+    _wsSockets[`qa_${qaId}`] = ws;
+}
+
+/* ── Share Challenge ── */
+function shareChallenge(title, id, category) {
+    const url  = `${location.origin}${location.pathname}#challenge-${id}`;
+    const text = `Check out this ${category} challenge on ArtX: "${title}"`;
+
+    if (navigator.share) {
+        navigator.share({ title: `ArtX — ${title}`, text, url }).catch(() => {});
+        return;
+    }
+
+    // Fallback: show mini share menu
+    const existing = document.getElementById('shareMenu');
+    if (existing) existing.remove();
+
+    const menu = document.createElement('div');
+    menu.id = 'shareMenu';
+    menu.style.cssText = 'position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:#fff;border:1px solid #e4e6ea;border-radius:16px;padding:16px 20px;z-index:9999;box-shadow:0 8px 24px rgba(0,0,0,0.15);min-width:260px;';
+    menu.innerHTML = `
+        <p style="margin:0 0 12px;font-weight:700;font-size:14px;color:#1c1e21;">Share Challenge</p>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;">
+            <a href="https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}" target="_blank" class="share-btn" style="background:#1DA1F2;">
+                <i class="fab fa-twitter"></i> Twitter
+            </a>
+            <a href="https://wa.me/?text=${encodeURIComponent(text + ' ' + url)}" target="_blank" class="share-btn" style="background:#25D366;">
+                <i class="fab fa-whatsapp"></i> WhatsApp
+            </a>
+            <a href="https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}" target="_blank" class="share-btn" style="background:#1877F2;">
+                <i class="fab fa-facebook"></i> Facebook
+            </a>
+            <button onclick="navigator.clipboard.writeText('${url}').then(()=>showNotification('Link copied! 📋')); document.getElementById('shareMenu').remove();" class="share-btn" style="background:#555;border:none;cursor:pointer;">
+                <i class="fas fa-link"></i> Copy Link
+            </button>
+        </div>
+        <button onclick="document.getElementById('shareMenu').remove()" style="position:absolute;top:10px;right:12px;background:none;border:none;font-size:18px;cursor:pointer;color:#888;">×</button>`;
+    document.body.appendChild(menu);
+    setTimeout(() => { if (document.getElementById('shareMenu')) document.getElementById('shareMenu').remove(); }, 6000);
+}
+
+
+/* Simulate live comments flowing in on a debate card */
+const DEMO_COMMENTS = [
+    { user: 'Bright',   text: 'Team A is dominating right now 🏆' },
+    { user: 'Chileshe', text: 'Nah Team B has the better argument 🤔' },
+    { user: 'Mumba',    text: 'This is heating up 🔥' },
+    { user: 'Zed',      text: 'I voted Team A, let\'s go!' },
+    { user: 'Ludo',     text: 'Team B making valid points tbh' },
+    { user: 'Grace',    text: 'Both sides are strong wow' },
+    { user: 'Neo',      text: 'Already earned my 0.5 xP 💪' },
+];
+let _commentIdx = 0;
+
+function startDebateLiveComments(cardId) {
+    setInterval(() => {
+        const c = DEMO_COMMENTS[_commentIdx % DEMO_COMMENTS.length];
+        addLiveDebateComment(cardId, c.user, c.text);
+        _commentIdx++;
+    }, 4000);
+}
+
+const QA_DEMO_RESPONSES = [
+    { user: 'Mumba',    text: 'Gunna dropped too many hits to ignore 🎶' },
+    { user: 'Ludo',     text: 'Dave spits facts every verse, no cap 🧠' },
+    { user: 'Grace',    text: 'Both legends but Gunna in a different lane' },
+    { user: 'Neo',      text: 'Dave is poetry, Gunna is energy. Different ✨' },
+    { user: 'Chileshe', text: 'Can I say neither? 😂 jk Dave wins' },
+    { user: 'Zuba',     text: 'Gunna brought the melody game to a whole level' },
+];
+let _qaIdx = 0;
+
+function startQALiveTicker(cardId) {
+    setInterval(() => {
+        const pane = document.getElementById(`qaLive_${cardId}`);
+        if (!pane) return;
+        const c = QA_DEMO_RESPONSES[_qaIdx % QA_DEMO_RESPONSES.length];
+        const el = document.createElement('div');
+        el.className = 'qa-live-msg';
+        el.innerHTML = `
+            <div class="qa-live-avatar">${c.user[0]}</div>
+            <div class="qa-live-bubble">
+                <span class="qa-live-user">${c.user}</span>
+                <span class="qa-live-text">${c.text}</span>
+            </div>`;
+        pane.appendChild(el);
+        pane.scrollTop = pane.scrollHeight;
+        const msgs = pane.querySelectorAll('.qa-live-msg');
+        if (msgs.length > 12) msgs[0].remove();
+        _qaIdx++;
+    }, 5000);
+}
+
 
 // Close modals when clicking outside
 window.addEventListener('click', function(event) {

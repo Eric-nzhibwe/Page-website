@@ -411,6 +411,24 @@
                     </button>
                 </div>
 
+                <!-- xPoints Banner -->
+                <div class="xpoints-banner">
+                    <div class="xpoints-info">
+                        <div class="xpoints-icon"><i class="fas fa-bolt"></i></div>
+                        <div class="xpoints-balance-wrap">
+                            <h4>Your xPoints</h4>
+                            <div class="xpoints-balance">
+                                <strong id="xpointsBannerBalance">10.0</strong>
+                                <span>xP</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="xpoints-rules">
+                        <span class="xpoints-rule"><i class="fas fa-arrow-down"></i> <strong>1.5 xP</strong> entry to participate</span>
+                        <span class="xpoints-rule"><i class="fas fa-arrow-up"></i> <strong>+0.5 xP</strong> earned per challenge</span>
+                    </div>
+                </div>
+
                 <!-- Challenge Filters -->
                 <div class="challenge-filters">
                     <button class="filter-btn active" onclick="filterChallenges('all')">
@@ -429,6 +447,161 @@
 
                 <!-- Challenges Grid -->
                 <div class="challenges-grid" id="challengesGrid">
+                    <!-- Sample Debate Challenge -->
+                    <div class="challenge-card" data-status="active" data-category="debates" data-id="5">
+                        <div class="debate-card-header">
+                            <span class="debate-type-label"><i class="fas fa-gavel"></i> Debate</span>
+                            <span style="font-size:11px;color:#aaa;">7 days · Medium</span>
+                        </div>
+                        <p class="debate-card-title" style="padding:0 16px 10px;margin:0;">IS THIS HAIR STYLE?</p>
+                        <div class="debate-arena">
+                            <div class="debate-image-wrap">
+                                <img src="https://picsum.photos/seed/debate5/300/220" alt="Debate image">
+                                <span class="debate-image-caption">Is this a hair style?</span>
+                            </div>
+                            <div class="debate-live-comments" id="debateComments_5">
+                                <div class="debate-live-header">
+                                    <div class="live-dot"></div>
+                                    <span class="live-label">Live</span>
+                                </div>
+                                <div class="debate-comment">
+                                    <span class="comment-user">Alex</span>
+                                    <span class="comment-text">Team A is winning this 🔥</span>
+                                </div>
+                                <div class="debate-comment">
+                                    <span class="comment-user">Mia</span>
+                                    <span class="comment-text">No way! Team B all day 💪</span>
+                                </div>
+                                <div class="debate-comment">
+                                    <span class="comment-user">Jay</span>
+                                    <span class="comment-text">This is so controversial 😂</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="debate-teams">
+                            <div class="debate-team team-a">
+                                <span class="debate-team-label">Team A</span>
+                                <span class="debate-team-desc">Yes, it's a style</span>
+                                <span class="debate-team-count"><i class="fas fa-user-friends"></i> 14 joined</span>
+                            </div>
+                            <div class="debate-team team-b">
+                                <span class="debate-team-label">Team B</span>
+                                <span class="debate-team-desc">No, it's just hair</span>
+                                <span class="debate-team-count"><i class="fas fa-user-friends"></i> 9 joined</span>
+                            </div>
+                        </div>
+                        <div class="debate-card-footer">
+                            <div class="debate-meta">
+                                <span class="debate-meta-item"><i class="fas fa-trophy"></i> K300</span>
+                                <span class="debate-meta-item"><i class="fas fa-clock"></i> 7d</span>
+                            </div>
+                            <div style="display:flex;gap:8px;align-items:center;">
+                                <button class="share-challenge-btn" onclick="shareChallenge('IS THIS HAIR STYLE?','5','debate')" title="Share">
+                                    <i class="fas fa-share-alt"></i>
+                                </button>
+                                <button class="xpoints-cost" onclick="joinDebate('5', event)">
+                                    <i class="fas fa-bolt"></i> 1.5 xP to Join
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Sample Poll Challenge -->
+                    <div class="challenge-card" data-status="active" data-category="polls" data-id="6">
+                        <div class="poll-header-bar">
+                            <div class="poll-avatar">
+                                <span class="poll-avatar-placeholder">G</span>
+                            </div>
+                            <h3 class="poll-title">Best Programming Language in 2026?</h3>
+                        </div>
+                        <div class="poll-options-list">
+                            <button class="poll-vote-btn" onclick="castPollVote('6', 0, this)">
+                                <div class="poll-vote-bar" style="width:0%"></div>
+                                <span class="poll-option-label">Python</span>
+                                <span class="poll-vote-pct" style="display:none">0%</span>
+                            </button>
+                            <button class="poll-vote-btn" onclick="castPollVote('6', 1, this)">
+                                <div class="poll-vote-bar" style="width:0%"></div>
+                                <span class="poll-option-label">JavaScript</span>
+                                <span class="poll-vote-pct" style="display:none">0%</span>
+                            </button>
+                            <button class="poll-vote-btn" onclick="castPollVote('6', 2, this)">
+                                <div class="poll-vote-bar" style="width:0%"></div>
+                                <span class="poll-option-label">Rust</span>
+                                <span class="poll-vote-pct" style="display:none">0%</span>
+                            </button>
+                            <button class="poll-vote-btn" onclick="castPollVote('6', 3, this)">
+                                <div class="poll-vote-bar" style="width:0%"></div>
+                                <span class="poll-option-label">Go</span>
+                                <span class="poll-vote-pct" style="display:none">0%</span>
+                            </button>
+                        </div>
+                        <div class="poll-card-footer">
+                            <div class="poll-meta">
+                                <span><i class="fas fa-users"></i> 42 votes</span>
+                                <span><i class="fas fa-clock"></i> 5d left</span>
+                                <span><i class="fas fa-bolt"></i> 1.5 xP</span>
+                            </div>
+                            <div style="display:flex;gap:8px;align-items:center;">
+                                <button class="share-challenge-btn" onclick="shareChallenge('Best Programming Language in 2026?','6','poll')" title="Share">
+                                    <i class="fas fa-share-alt"></i>
+                                </button>
+                                <span class="poll-prize-badge">K200</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Sample Q&A Challenge -->
+                    <div class="challenge-card" data-status="active" data-category="qa" data-id="7">
+                        <div class="qa-creator-avatar-wrap">
+                            <div class="qa-creator-avatar">G</div>
+                        </div>
+                        <p class="qa-question">Gunna or Dave?</p>
+                        <div class="qa-live-pane" id="qaLive_7">
+                            <div class="qa-live-msg">
+                                <div class="qa-live-avatar">B</div>
+                                <div class="qa-live-bubble">
+                                    <span class="qa-live-user">Bright</span>
+                                    <span class="qa-live-text">Gunna for sure, the vibes are different 🔥</span>
+                                </div>
+                            </div>
+                            <div class="qa-live-msg">
+                                <div class="qa-live-avatar">K</div>
+                                <div class="qa-live-bubble">
+                                    <span class="qa-live-user">Kalu</span>
+                                    <span class="qa-live-text">Dave's lyricism is unmatched bro 🎤</span>
+                                </div>
+                            </div>
+                            <div class="qa-live-msg">
+                                <div class="qa-live-avatar">Z</div>
+                                <div class="qa-live-bubble">
+                                    <span class="qa-live-user">Zed</span>
+                                    <span class="qa-live-text">Both but if I had to pick... Dave 💯</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="qa-input-row">
+                            <input class="qa-type-input" placeholder="Type something..."
+                                id="qaInput_7"
+                                onkeydown="if(event.key==='Enter') submitQAAnswer('7')">
+                            <button class="qa-send-btn" onclick="submitQAAnswer('7')">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </div>
+                        <div class="qa-card-footer">
+                            <div class="qa-meta">
+                                <span><i class="fas fa-clock"></i> 3d left</span>
+                                <span><i class="fas fa-bolt"></i> 1.5 xP</span>
+                            </div>
+                            <div style="display:flex;gap:8px;align-items:center;">
+                                <button class="share-challenge-btn" onclick="shareChallenge('Gunna or Dave?','7','Q&A')" title="Share">
+                                    <i class="fas fa-share-alt"></i>
+                                </button>
+                                <span class="qa-prize-badge">K150</span>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Sample Challenge 1 -->
                     <div class="challenge-card" data-status="active" data-id="1">
                         <div class="challenge-badge prize">K500 Prize</div>
@@ -1068,54 +1241,45 @@
         </div>
     </div>
 
-    <!-- Create Challenge Modal -->
+    <!-- Create Challenge Modal (Step 1: Category Picker) -->
     <div id="createChallengeModal" class="modal">
         <div class="modal-content create-challenge-modal">
             <div class="modal-header">
                 <h2><i class="fas fa-trophy"></i> Create Challenge</h2>
                 <span class="close" onclick="closeCreateChallengeModal()">&times;</span>
             </div>
-            <div class="modal-body">
+            <div class="modal-body" id="createChallengeStep1">
+                <p class="category-picker-label">Select a challenge type to get started:</p>
+                <div class="challenge-category-grid">
+                    <button class="challenge-category-card" onclick="selectChallengeCategory('polls')">
+                        <span class="category-card-icon">📊</span>
+                        <span class="category-card-name">Polls</span>
+                        <span class="category-card-desc">Let the community vote on a question</span>
+                    </button>
+                    <button class="challenge-category-card" onclick="selectChallengeCategory('qa')">
+                        <span class="category-card-icon">💬</span>
+                        <span class="category-card-name">Q &amp; A</span>
+                        <span class="category-card-desc">Ask questions, share answers &amp; pictures</span>
+                    </button>
+                    <button class="challenge-category-card" onclick="selectChallengeCategory('debates')">
+                        <span class="category-card-icon">⚔️</span>
+                        <span class="category-card-name">Debates</span>
+                        <span class="category-card-desc">Pick a side and argue your position</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Step 2: Challenge Form (hidden until category is chosen) -->
+            <div class="modal-body" id="createChallengeStep2" style="display: none;">
+                <button class="back-btn" onclick="backToCategoryPicker()">
+                    <i class="fas fa-arrow-left"></i> Back
+                </button>
                 <form id="createChallengeForm" onsubmit="publishChallenge(event)">
+                    <input type="hidden" id="challengeCategory">
+
                     <div class="form-group">
                         <label>Challenge Title <span class="required">*</span></label>
-                        <input type="text" id="challengeTitle" class="modal-input" placeholder="e.g., Build a Todo App"
-                            required>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Category <span class="required">*</span></label>
-                        <select id="challengeCategory" class="modal-input" required onchange="handleCategoryChange()">
-                            <option value="">Select category</option>
-                            <option value="coding">💻 Coding</option>
-                            <option value="gaming">🎮 Gaming</option>
-                            <option value="trivia">🧠 Trivia</option>
-                            <option value="creative">🎨 Creative</option>
-                            <option value="image-interpretation">🖼️ Image Interpretation</option>
-                            <option value="fitness">💪 Fitness</option>
-                            <option value="other">📦 Other</option>
-                        </select>
-                    </div>
-
-                    <!-- Image Upload for Image Interpretation Challenges -->
-                    <div class="form-group" id="challengeImageGroup" style="display: none;">
-                        <label>Challenge Image <span class="required">*</span></label>
-                        <div class="image-upload-area" onclick="document.getElementById('challengeImage').click()">
-                            <i class="fas fa-cloud-upload-alt"></i>
-                            <p>Upload the image to be interpreted</p>
-                            <small>JPG, PNG, or GIF (Max 5MB)</small>
-                        </div>
-                        <input type="file" id="challengeImage" accept="image/*" style="display: none;"
-                            onchange="handleChallengeImage(event)">
-                        <div id="challengeImagePreview" class="image-preview-single"></div>
-                    </div>
-
-                    <!-- Hidden Numbers for Image Interpretation -->
-                    <div class="form-group" id="challengeAnswerNumbersGroup" style="display: none;">
-                        <label>Hidden Numbers / Points <span class="required">*</span></label>
-                        <input type="text" id="challengeAnswerNumbers" class="modal-input"
-                            placeholder="e.g. 7, 13, 42  (comma-separated)">
-                        <small>Players must spot these numbers in your image to win. Keep this secret!</small>
+                        <input type="text" id="challengeTitle" class="modal-input" placeholder="e.g., Best programming language?" required>
                     </div>
 
                     <div class="form-group">
@@ -1130,28 +1294,46 @@
 
                     <div class="form-group">
                         <label>Prize Money (ZMW) <span class="required">*</span></label>
-                        <input type="number" id="challengePrize" class="modal-input" placeholder="e.g., 500" step="0.01"
-                            min="50" required>
+                        <input type="number" id="challengePrize" class="modal-input" placeholder="e.g., 500" step="0.01" min="50" required>
                         <small>Minimum: K50.00</small>
                     </div>
 
                     <div class="form-group">
                         <label>Duration (Days) <span class="required">*</span></label>
-                        <input type="number" id="challengeDuration" class="modal-input" placeholder="e.g., 7" min="1"
-                            max="30" required>
+                        <input type="number" id="challengeDuration" class="modal-input" placeholder="e.g., 7" min="1" max="30" required>
                     </div>
 
                     <div class="form-group">
                         <label>Description <span class="required">*</span></label>
-                        <textarea id="challengeDescription" class="modal-textarea"
-                            placeholder="Describe the challenge requirements..." rows="4" required></textarea>
+                        <textarea id="challengeDescription" class="modal-textarea" placeholder="Describe the challenge..." rows="4" required></textarea>
                     </div>
 
-                    <div class="form-group">
-                        <label>Submission Requirements</label>
-                        <textarea id="challengeRequirements" class="modal-textarea"
-                            placeholder="What should participants submit? (e.g., code, video, screenshot)"
-                            rows="3"></textarea>
+                    <!-- Q&A: optional image upload -->
+                    <div class="form-group" id="challengeImageGroup" style="display: none;">
+                        <label>Attach Image <span class="optional">(optional)</span></label>
+                        <div class="image-upload-area" onclick="document.getElementById('challengeImage').click()">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                            <p>Upload an image for your Q&amp;A</p>
+                            <small>JPG, PNG, or GIF (Max 5MB)</small>
+                        </div>
+                        <input type="file" id="challengeImage" accept="image/*" style="display: none;" onchange="handleChallengeImage(event)">
+                        <div id="challengeImagePreview" class="image-preview-single"></div>
+                    </div>
+
+                    <!-- Polls: options input -->
+                    <div class="form-group" id="pollOptionsGroup" style="display: none;">
+                        <label>Poll Options <span class="required">*</span></label>
+                        <input type="text" id="pollOption1" class="modal-input mb-2" placeholder="Option 1">
+                        <input type="text" id="pollOption2" class="modal-input mb-2" placeholder="Option 2">
+                        <input type="text" id="pollOption3" class="modal-input mb-2" placeholder="Option 3 (optional)">
+                        <input type="text" id="pollOption4" class="modal-input" placeholder="Option 4 (optional)">
+                    </div>
+
+                    <!-- Debates: two sides -->
+                    <div class="form-group" id="debateSidesGroup" style="display: none;">
+                        <label>Debate Sides <span class="required">*</span></label>
+                        <input type="text" id="debateSideA" class="modal-input mb-2" placeholder="Side A (e.g., For)">
+                        <input type="text" id="debateSideB" class="modal-input" placeholder="Side B (e.g., Against)">
                     </div>
 
                     <div class="form-group">
