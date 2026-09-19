@@ -7,12 +7,32 @@ let submissionFiles    = [];
 // ─── API helpers ────────────────────────────────────────────────────────────
 const API = '/api/challenges';
 
+// Read token using the same key auth.js writes — 'djangoAuthToken'
+function getAuthToken() {
+    return localStorage.getItem('djangoAuthToken')
+        || localStorage.getItem('authToken')
+        || localStorage.getItem('token')
+        || '';
+}
+
+function isLoggedIn() {
+    return !!getAuthToken();
+}
+
 function authHeaders() {
-    const token = localStorage.getItem('authToken') || localStorage.getItem('token') || '';
+    const token = getAuthToken();
     return {
         'Content-Type': 'application/json',
         ...(token ? { 'Authorization': `Token ${token}` } : {}),
     };
+}
+
+// Redirect to auth page if not logged in, with a message
+function requireAuth(action = 'do that') {
+    if (isLoggedIn()) return true;
+    showNotification(`Please log in to ${action}.`);
+    setTimeout(() => { window.location.href = 'pages/auth.html'; }, 1200);
+    return false;
 }
 
 async function apiGet(url) {
@@ -144,9 +164,9 @@ function removeChallengeImage() {
 }
 // Open create challenge modal
 function openCreateChallengeModal() {
+    if (!requireAuth('create a challenge')) return;
     const modal = document.getElementById('createChallengeModal');
     if (modal) {
-        // Always start on step 1
         document.getElementById('createChallengeStep1').style.display = 'block';
         document.getElementById('createChallengeStep2').style.display = 'none';
         modal.style.display = 'block';
@@ -199,19 +219,22 @@ function closeCreateChallengeModal() {
     }
 }
 
-// Publish challenge — saves to backend DB
+// Publish challenge — saves to backend DB, then instantly renders the new card
 async function publishChallenge(event) {
     event.preventDefault();
+    if (!requireAuth('create a challenge')) return;
 
-    const title       = document.getElementById('challengeTitle').value;
+    const title       = document.getElementById('challengeTitle').value.trim();
     const category    = document.getElementById('challengeCategory').value;
     const difficulty  = document.getElementById('challengeDifficulty').value;
     const prize       = parseFloat(document.getElementById('challengePrize').value);
     const duration    = parseInt(document.getElementById('challengeDuration').value);
-    const description = document.getElementById('challengeDescription').value;
+    const description = document.getElementById('challengeDescription').value.trim();
+
+    if (!title) { showNotification('Please enter a title.'); return; }
 
     const submitBtn = event.target.querySelector('[type="submit"]');
-    if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Creating…'; }
+    if (submitBtn) { submitBtn.disabled = true; submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating…'; }
 
     let endpoint, body;
 
@@ -222,12 +245,17 @@ async function publishChallenge(event) {
             document.getElementById('pollOption3').value,
             document.getElementById('pollOption4').value,
         ].filter(o => o.trim());
+        if (options.length < 2) {
+            showNotification('Add at least 2 poll options.');
+            if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = '<i class="fas fa-check"></i> Create Challenge'; }
+            return;
+        }
         endpoint = `${API}/polls/create/`;
         body = { title, description, prize_amount: prize, difficulty, duration_days: duration, options };
 
     } else if (category === 'debates') {
-        const side_a = document.getElementById('debateSideA').value || 'For';
-        const side_b = document.getElementById('debateSideB').value || 'Against';
+        const side_a = document.getElementById('debateSideA').value.trim() || 'For';
+        const side_b = document.getElementById('debateSideB').value.trim() || 'Against';
         endpoint = `${API}/debates/create/`;
         body = { title, description, side_a, side_b, prize_amount: prize, difficulty, duration_days: duration };
 
@@ -238,20 +266,59 @@ async function publishChallenge(event) {
 
     const { ok, data } = await apiPost(endpoint, body);
 
-    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Create Challenge'; }
+    if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = '<i class="fas fa-check"></i> Create Challenge'; }
 
     if (!ok) {
-        showNotification(data.error || 'Failed to create challenge.');
+        showNotification(data.error || 'Failed to create challenge. Are you logged in?');
         return;
     }
 
     closeCreateChallengeModal();
     showNotification('Challenge created! 🏆');
 
-    // Re-fetch and render the live list
-    await loadAndRenderChallenges();
+    // Immediately inject the new card at the top of the grid using the
+    // ID returned by the API — no full page reload needed.
+    _injectNewCard(category, data, title, description, prize, duration, difficulty, body);
 }
 
+
+/* ─── Inject a newly created card instantly at the top of the grid ─── */
+function _injectNewCard(category, apiResponse, title, description, prize, duration, difficulty, body) {
+    const grid = document.getElementById('challengesGrid');
+    if (!grid) return;
+
+    const id   = apiResponse.id;
+    const card = document.createElement('div');
+    card.className = 'challenge-card';
+    card.setAttribute('data-status', 'active');
+    card.setAttribute('data-category', category);
+    card.setAttribute('data-id', id);
+    card.setAttribute('data-from-db', '1');
+    card.style.animation = 'fadeIn 0.45s ease';
+
+    if (category === 'debates') {
+        card.innerHTML = buildDebateCard(
+            id, title, description,
+            body.side_a, body.side_b,
+            prize, duration, difficulty, null
+        );
+        // Open live WebSocket for this debate immediately
+        setTimeout(() => openDebateWS(id), 200);
+
+    } else if (category === 'polls') {
+        card.innerHTML = buildPollCard(id, title, description, body.options, prize, duration, difficulty);
+
+    } else if (category === 'qa') {
+        card.innerHTML = buildQACard(id, title, description, null, prize, duration, difficulty);
+        // Open live WebSocket for this Q&A immediately
+        setTimeout(() => openQAWS(id), 200);
+    }
+
+    // Prepend — newest challenge appears first
+    grid.insertBefore(card, grid.firstChild);
+    card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    updateChallengeStats();
+}
 
 /* ── Card builders ── */
 
@@ -402,6 +469,7 @@ function buildQACard(id, title, description, imgSrc, prize, duration, difficulty
 /* ── Interaction handlers — all DB-backed ── */
 
 async function joinDebate(challengeId, e) {
+    if (!requireAuth('join a debate')) return;
     const btn = e.currentTarget;
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
@@ -445,6 +513,7 @@ function addLiveDebateComment(challengeId, user, text) {
 }
 
 async function castPollVote(challengeId, optionIndex, btn) {
+    if (!requireAuth('vote on a poll')) return;
     const list    = btn.closest('.poll-options-list');
     const allBtns = list.querySelectorAll('.poll-vote-btn');
     allBtns.forEach(b => b.disabled = true);
@@ -480,6 +549,7 @@ async function castPollVote(challengeId, optionIndex, btn) {
 }
 
 async function submitQAAnswer(challengeId) {
+    if (!requireAuth('answer a question')) return;
     const input = document.getElementById(`qaInput_${challengeId}`);
     const text  = input?.value.trim();
     if (!text) return;
@@ -994,10 +1064,19 @@ document.addEventListener('DOMContentLoaded', async function() {
     // Load real xPoints from DB
     await refreshXPoints();
 
-    // Load and render live challenges from DB
+    // Load DB challenges immediately (challenges section is visible by default on some views)
     await loadAndRenderChallenges();
 
-    // Start live demo tickers on static sample cards (fallback when not logged in)
+    // Hook into switchView so challenges reload fresh whenever the tab is opened
+    const _originalSwitchView = window.switchView;
+    window.switchView = function(viewName) {
+        if (_originalSwitchView) _originalSwitchView(viewName);
+        if (viewName === 'challenges') {
+            loadAndRenderChallenges();
+        }
+    };
+
+    // Start live demo tickers on static sample cards (fallback for logged-out visitors)
     startDebateLiveComments('5');
     startQALiveTicker('7');
 
@@ -1009,6 +1088,16 @@ async function loadAndRenderChallenges() {
     const grid = document.getElementById('challengesGrid');
     if (!grid) return;
 
+    // Show a loading indicator while fetching — only if there are no DB cards yet
+    const hasExisting = grid.querySelector('[data-from-db="1"]');
+    if (!hasExisting) {
+        const spinner = document.createElement('div');
+        spinner.id = 'challengesLoadingSpinner';
+        spinner.style.cssText = 'grid-column:1/-1;text-align:center;padding:40px;color:#aaa;font-size:14px;';
+        spinner.innerHTML = '<i class="fas fa-spinner fa-spin" style="font-size:24px;margin-bottom:10px;display:block;"></i>Loading challenges…';
+        grid.insertBefore(spinner, grid.firstChild);
+    }
+
     // Fetch all three types in parallel
     const [debates, polls, qas] = await Promise.all([
         apiGet(`${API}/debates/`),
@@ -1016,8 +1105,15 @@ async function loadAndRenderChallenges() {
         apiGet(`${API}/qa/`),
     ]);
 
-    // Remove previously injected DB cards (keep the static samples)
+    // Remove spinner and previously injected DB cards (keep the static samples)
+    document.getElementById('challengesLoadingSpinner')?.remove();
     grid.querySelectorAll('.challenge-card[data-from-db="1"]').forEach(c => c.remove());
+
+    // Nothing from DB yet — nothing extra to render
+    if (!debates?.length && !polls?.length && !qas?.length) {
+        updateChallengeStats();
+        return;
+    }
 
     const fragment = document.createDocumentFragment();
 
@@ -1031,7 +1127,6 @@ async function loadAndRenderChallenges() {
         card.setAttribute('data-from-db', '1');
         card.innerHTML = buildDebateCard(d.id, d.title, d.description, d.side_a, d.side_b,
             parseFloat(d.prize_amount), d.duration_days, d.difficulty, d.image_url || null);
-        // Seed existing comments
         setTimeout(() => {
             (d.comments || []).slice(-5).forEach(c => addLiveDebateComment(d.id, c.user, c.text));
             openDebateWS(d.id);
@@ -1049,7 +1144,6 @@ async function loadAndRenderChallenges() {
         card.setAttribute('data-from-db', '1');
         card.innerHTML = buildPollCard(p.id, p.title, p.description, p.options,
             parseFloat(p.prize_amount), p.duration_days, p.difficulty);
-        // Show real counts if user already voted
         if (p.user_voted) {
             setTimeout(() => restorePollState(card, p), 100);
         }
@@ -1066,7 +1160,6 @@ async function loadAndRenderChallenges() {
         card.setAttribute('data-from-db', '1');
         card.innerHTML = buildQACard(q.id, q.title, q.description, q.image_url || null,
             parseFloat(q.prize_amount), q.duration_days, q.difficulty);
-        // Seed existing answers
         setTimeout(() => {
             const pane = document.getElementById(`qaLive_${q.id}`);
             if (pane) {
@@ -1089,7 +1182,7 @@ async function loadAndRenderChallenges() {
         fragment.appendChild(card);
     });
 
-    // Prepend DB cards before the static sample cards
+    // Prepend DB cards — newest at the top, static samples stay below
     grid.insertBefore(fragment, grid.firstChild);
     updateChallengeStats();
 }
