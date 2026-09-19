@@ -1202,58 +1202,182 @@ function restorePollState(card, pollData) {
 }
 
 /* ── WebSocket connections for live comments ── */
-const _wsSockets = {};
+const _wsSockets   = {};
+let   _wsSupported = null;   // null = unknown, true/false after first probe
+
+async function _checkWsSupport() {
+    if (_wsSupported !== null) return _wsSupported;
+
+    // Check sessionStorage cache first (avoids repeated network calls)
+    const cached = sessionStorage.getItem('ws_supported');
+    if (cached !== null) {
+        _wsSupported = cached === 'true';
+        return _wsSupported;
+    }
+
+    try {
+        const r = await fetch('/api/ws-status/');
+        const d = await r.json();
+        _wsSupported = !!d.ws_supported;
+    } catch (_) {
+        _wsSupported = false;
+    }
+
+    sessionStorage.setItem('ws_supported', String(_wsSupported));
+    console.info(`[ArtX] WebSocket mode: ${_wsSupported ? 'Real-time (Redis)' : 'Polling fallback'}`);
+    return _wsSupported;
+}
 
 function openDebateWS(debateId) {
+    // Don't open WS for static sample IDs (non-UUID single chars)
+    if (!debateId || debateId.length < 10) return;
     if (_wsSockets[`debate_${debateId}`]) return;
-    const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-    const ws    = new WebSocket(`${proto}://${location.host}/ws/debate/${debateId}/`);
-    ws.onmessage = (e) => {
-        try {
-            const msg = JSON.parse(e.data);
-            if (msg.type === 'debate_comment' && msg.payload) {
-                addLiveDebateComment(debateId, msg.payload.user, msg.payload.text);
+
+    _checkWsSupport().then(supported => {
+        if (!supported) {
+            // Render free tier — poll for new comments every 8s instead
+            _pollDebateComments(debateId);
+            return;
+        }
+        const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+        const ws    = new WebSocket(`${proto}://${location.host}/ws/debate/${debateId}/`);
+
+        ws.onmessage = (e) => {
+            try {
+                const msg = JSON.parse(e.data);
+                if (msg.type === 'debate_comment' && msg.payload) {
+                    addLiveDebateComment(debateId, msg.payload.user, msg.payload.text);
+                }
+            } catch (_) {}
+        };
+
+        ws.onerror = () => {
+            // WS failed — fall back to polling silently
+            _wsSupported = false;
+            delete _wsSockets[`debate_${debateId}`];
+            _pollDebateComments(debateId);
+        };
+
+        ws.onclose = () => {
+            delete _wsSockets[`debate_${debateId}`];
+            // Only reconnect if WS is still supported
+            if (_wsSupported) {
+                setTimeout(() => openDebateWS(debateId), 5000);
             }
-        } catch (_) {}
-    };
-    ws.onclose = () => {
-        delete _wsSockets[`debate_${debateId}`];
-        // Reconnect after 3s
-        setTimeout(() => openDebateWS(debateId), 3000);
-    };
-    _wsSockets[`debate_${debateId}`] = ws;
+        };
+
+        _wsSockets[`debate_${debateId}`] = ws;
+    });
 }
 
 function openQAWS(qaId) {
+    if (!qaId || qaId.length < 10) return;
     if (_wsSockets[`qa_${qaId}`]) return;
-    const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-    const ws    = new WebSocket(`${proto}://${location.host}/ws/qa/${qaId}/`);
-    ws.onmessage = (e) => {
-        try {
-            const msg = JSON.parse(e.data);
-            if (msg.type === 'qa_answer' && msg.payload) {
-                const pane = document.getElementById(`qaLive_${qaId}`);
-                if (!pane) return;
+
+    _checkWsSupport().then(supported => {
+        if (!supported) {
+            _pollQAAnswers(qaId);
+            return;
+        }
+        const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+        const ws    = new WebSocket(`${proto}://${location.host}/ws/qa/${qaId}/`);
+
+        ws.onmessage = (e) => {
+            try {
+                const msg = JSON.parse(e.data);
+                if (msg.type === 'qa_answer' && msg.payload) {
+                    const pane = document.getElementById(`qaLive_${qaId}`);
+                    if (!pane) return;
+                    const el = document.createElement('div');
+                    el.className = 'qa-live-msg';
+                    el.innerHTML = `
+                        <div class="qa-live-avatar">${msg.payload.user[0].toUpperCase()}</div>
+                        <div class="qa-live-bubble">
+                            <span class="qa-live-user">${msg.payload.user}</span>
+                            <span class="qa-live-text">${msg.payload.text}</span>
+                        </div>`;
+                    pane.appendChild(el);
+                    pane.scrollTop = pane.scrollHeight;
+                    const msgs = pane.querySelectorAll('.qa-live-msg');
+                    if (msgs.length > 12) msgs[0].remove();
+                }
+            } catch (_) {}
+        };
+
+        ws.onerror = () => {
+            _wsSupported = false;
+            delete _wsSockets[`qa_${qaId}`];
+            _pollQAAnswers(qaId);
+        };
+
+        ws.onclose = () => {
+            delete _wsSockets[`qa_${qaId}`];
+            if (_wsSupported) setTimeout(() => openQAWS(qaId), 5000);
+        };
+
+        _wsSockets[`qa_${qaId}`] = ws;
+    });
+}
+
+/* ── HTTP polling fallback (used when WebSockets aren't available) ── */
+const _pollIntervals = {};
+
+function _pollDebateComments(debateId) {
+    if (_pollIntervals[`debate_${debateId}`]) return;
+    let lastCount = 0;
+
+    _pollIntervals[`debate_${debateId}`] = setInterval(async () => {
+        const pane = document.getElementById(`debateComments_${debateId}`);
+        if (!pane) {
+            clearInterval(_pollIntervals[`debate_${debateId}`]);
+            delete _pollIntervals[`debate_${debateId}`];
+            return;
+        }
+        const data = await apiGet(`${API}/debates/`);
+        const debate = (data || []).find(d => d.id === debateId);
+        if (!debate) return;
+        const comments = debate.comments || [];
+        if (comments.length > lastCount) {
+            // Add only the new ones
+            comments.slice(lastCount).forEach(c => addLiveDebateComment(debateId, c.user, c.text));
+            lastCount = comments.length;
+        }
+    }, 8000);
+}
+
+function _pollQAAnswers(qaId) {
+    if (_pollIntervals[`qa_${qaId}`]) return;
+    let lastCount = 0;
+
+    _pollIntervals[`qa_${qaId}`] = setInterval(async () => {
+        const pane = document.getElementById(`qaLive_${qaId}`);
+        if (!pane) {
+            clearInterval(_pollIntervals[`qa_${qaId}`]);
+            delete _pollIntervals[`qa_${qaId}`];
+            return;
+        }
+        const data = await apiGet(`${API}/qa/`);
+        const qa = (data || []).find(q => q.id === qaId);
+        if (!qa) return;
+        const answers = qa.answers || [];
+        if (answers.length > lastCount) {
+            answers.slice(lastCount).forEach(a => {
                 const el = document.createElement('div');
                 el.className = 'qa-live-msg';
                 el.innerHTML = `
-                    <div class="qa-live-avatar">${msg.payload.user[0].toUpperCase()}</div>
+                    <div class="qa-live-avatar">${a.user[0].toUpperCase()}</div>
                     <div class="qa-live-bubble">
-                        <span class="qa-live-user">${msg.payload.user}</span>
-                        <span class="qa-live-text">${msg.payload.text}</span>
+                        <span class="qa-live-user">${a.user}</span>
+                        <span class="qa-live-text">${a.text}</span>
                     </div>`;
                 pane.appendChild(el);
                 pane.scrollTop = pane.scrollHeight;
                 const msgs = pane.querySelectorAll('.qa-live-msg');
                 if (msgs.length > 12) msgs[0].remove();
-            }
-        } catch (_) {}
-    };
-    ws.onclose = () => {
-        delete _wsSockets[`qa_${qaId}`];
-        setTimeout(() => openQAWS(qaId), 3000);
-    };
-    _wsSockets[`qa_${qaId}`] = ws;
+            });
+            lastCount = answers.length;
+        }
+    }, 8000);
 }
 
 /* ── Share Challenge ── */

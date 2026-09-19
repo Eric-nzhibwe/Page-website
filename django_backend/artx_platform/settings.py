@@ -98,25 +98,38 @@ ASGI_APPLICATION = 'artx_platform.asgi.application'
 REDIS_URL = config('REDIS_URL', default='')
 
 if REDIS_URL:
-    # Production with Redis (recommended for multi-worker deployments)
+    # ── Upstash Redis or any Redis URL ────────────────────────────────────────
+    # Upstash uses TLS: URLs start with rediss:// (double-s).
+    # channels_redis needs ssl=True passed explicitly for TLS connections.
+    _redis_use_ssl = REDIS_URL.startswith('rediss://')
+
+    if _redis_use_ssl:
+        # channels_redis accepts a dict with 'address' + 'ssl' for TLS
+        _redis_host_config = {
+            'address': REDIS_URL,
+            'ssl': True,
+        }
+    else:
+        _redis_host_config = REDIS_URL
+
     CHANNEL_LAYERS = {
         'default': {
             'BACKEND': 'channels_redis.core.RedisChannelLayer',
             'CONFIG': {
-                'hosts': [REDIS_URL],
-                'capacity': 100,        # max messages per channel
-                'expiry':   10,         # seconds before message expires
+                'hosts':    [_redis_host_config],
+                'capacity': 500,   # max messages per channel
+                'expiry':   60,    # seconds before unread messages expire
             },
         },
     }
 else:
-    # No Redis -- InMemoryChannelLayer with a capped capacity to prevent
-    # unbounded RAM growth on Render's free tier.
+    # No Redis — InMemoryChannelLayer fallback (single-process only).
+    # Works on Render free tier but WebSocket messages don't cross workers.
     CHANNEL_LAYERS = {
         'default': {
             'BACKEND': 'channels.layers.InMemoryChannelLayer',
             'CONFIG': {
-                'capacity': 50,   # drop oldest messages when full
+                'capacity': 50,
                 'expiry':   10,
             },
         },

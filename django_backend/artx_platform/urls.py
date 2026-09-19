@@ -19,15 +19,24 @@ def health_check(request):
 def ws_status(request):
     """
     Tells the frontend whether WebSocket connections are supported.
-    WebSockets require Redis (CHANNEL_LAYERS backend = RedisChannelLayer).
-    Without Redis (free tier / local dev without Redis), ws_supported = false
-    and the frontend falls back to REST polling instead of trying to connect.
+    Returns ws_supported: true only when Redis is configured AND reachable.
     """
     from django.conf import settings as _s
     layers  = _s.CHANNEL_LAYERS.get('default', {})
     backend = layers.get('BACKEND', '')
-    supported = 'redis' in backend.lower()
-    return JsonResponse({'ws_supported': supported})
+    has_redis_backend = 'redis' in backend.lower()
+
+    if not has_redis_backend:
+        return JsonResponse({'ws_supported': False, 'reason': 'no_redis_configured'})
+
+    # Quick connectivity check — try to ping Redis
+    try:
+        import redis as _redis
+        r = _redis.from_url(_s.REDIS_URL, socket_connect_timeout=2, ssl_cert_reqs=None)
+        r.ping()
+        return JsonResponse({'ws_supported': True})
+    except Exception as e:
+        return JsonResponse({'ws_supported': False, 'reason': f'redis_unreachable: {e}'})
 
 
 @require_GET

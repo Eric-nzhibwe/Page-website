@@ -26,6 +26,16 @@ for i in $(seq 1 $MAX_RETRIES); do
 done
 
 echo "==> Starting uvicorn..."
+# Log channel layer backend so it's visible in Render logs
+python -c "
+import os, django
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'artx_platform.settings')
+django.setup()
+from django.conf import settings
+backend = settings.CHANNEL_LAYERS.get('default', {}).get('BACKEND', 'unknown')
+ws_mode = 'Redis (real-time WebSockets enabled)' if 'redis' in backend.lower() else 'InMemoryChannelLayer (polling fallback)'
+print(f'==> Channel layer: {ws_mode}')
+" 2>/dev/null || true
 exec uvicorn artx_platform.asgi:application \
     --host 0.0.0.0 \
     --port "${PORT:-8000}" \

@@ -27,6 +27,34 @@ python manage.py collectstatic --no-input
 # via a release/start command that executes at runtime, where the network is
 # available. See the Render dashboard Start Command.
 
+echo "==> Verifying Redis / WebSocket configuration"
+python - <<'PYEOF'
+import os, sys
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'artx_platform.settings')
+
+import django
+django.setup()
+
+from django.conf import settings
+
+redis_url = getattr(settings, 'REDIS_URL', '')
+if not redis_url:
+    print("   REDIS_URL not set — WebSockets will use InMemoryChannelLayer (no cross-worker broadcast).")
+    print("   Set REDIS_URL in Render env vars to enable real-time WebSockets.")
+else:
+    masked = redis_url[:20] + '...' + redis_url[-10:]
+    print(f"   REDIS_URL = {masked}")
+    try:
+        import redis as _redis
+        r = _redis.from_url(redis_url, socket_connect_timeout=5, ssl_cert_reqs=None)
+        r.ping()
+        print("   Redis connection: OK ✓")
+    except Exception as e:
+        print(f"   ERROR: Cannot connect to Redis: {e}")
+        print("   Check REDIS_URL value in Render dashboard.")
+        sys.exit(1)
+PYEOF
+
 echo "==> Verifying email configuration"
 python - <<'PYEOF'
 import os, sys
