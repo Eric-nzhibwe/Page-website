@@ -37,22 +37,30 @@ django.setup()
 
 from django.conf import settings
 
-redis_url = getattr(settings, 'REDIS_URL', '')
+# Strip any accidental surrounding quotes or whitespace
+redis_url = getattr(settings, 'REDIS_URL', '') or ''
+redis_url = redis_url.strip().strip('"').strip("'").strip()
+
 if not redis_url:
-    print("   REDIS_URL not set — WebSockets will use InMemoryChannelLayer (no cross-worker broadcast).")
-    print("   Set REDIS_URL in Render env vars to enable real-time WebSockets.")
+    print("   REDIS_URL not set — using InMemoryChannelLayer (polling fallback). OK.")
 else:
-    masked = redis_url[:20] + '...' + redis_url[-10:]
-    print(f"   REDIS_URL = {masked}")
-    try:
-        import redis as _redis
-        r = _redis.from_url(redis_url, socket_connect_timeout=5, ssl_cert_reqs=None)
-        r.ping()
-        print("   Redis connection: OK ✓")
-    except Exception as e:
-        print(f"   ERROR: Cannot connect to Redis: {e}")
-        print("   Check REDIS_URL value in Render dashboard.")
-        sys.exit(1)
+    # Validate scheme
+    if not any(redis_url.startswith(s) for s in ('redis://', 'rediss://', 'unix://')):
+        print(f"   WARNING: REDIS_URL has an invalid scheme after stripping quotes.")
+        print(f"   Raw value starts with: {redis_url[:30]!r}")
+        print("   Skipping Redis check — will fall back to InMemoryChannelLayer at runtime.")
+    else:
+        masked = redis_url[:20] + '...' + redis_url[-10:]
+        print(f"   REDIS_URL = {masked}")
+        try:
+            import redis as _redis
+            r = _redis.from_url(redis_url, socket_connect_timeout=5, ssl_cert_reqs=None)
+            r.ping()
+            print("   Redis connection: OK ✓")
+        except Exception as e:
+            print(f"   WARNING: Cannot connect to Redis: {e}")
+            print("   App will start but WebSockets will use polling fallback.")
+            # Non-fatal — don't sys.exit(1) here, let the app start anyway
 PYEOF
 
 echo "==> Verifying email configuration"

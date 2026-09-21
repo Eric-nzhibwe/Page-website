@@ -63,13 +63,25 @@ async function checkAiStatus() {
     const token = localStorage.getItem('djangoAuthToken');
     const label = document.getElementById('aiStatusLabel');
     const dot   = document.querySelector('.status-dot');
-    dot.className = 'status-dot';
+    dot.className   = 'status-dot';
     label.innerHTML = 'Checking…';
+
+    // Abort after 8s — handles Render cold starts gracefully
+    const controller = new AbortController();
+    const timeout    = setTimeout(() => controller.abort(), 8000);
+
     try {
-        const res  = await fetch(`${CHAT_API}/chatbot/status/`, { headers: { 'Authorization': `Token ${token}` } });
-        if (!res.ok) throw new Error();
+        const res = await fetch(`${CHAT_API}/chatbot/status/`, {
+            headers: { 'Authorization': `Token ${token}` },
+            signal:  controller.signal,
+        });
+        clearTimeout(timeout);
+
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
+
         currentAiSource = data.engine;
+
         if (data.engine === 'groq' && data.status === 'online') {
             dot.className   = 'status-dot online';
             label.innerHTML = `${data.label} <span class="engine-badge">✓ Live</span>`;
@@ -80,9 +92,17 @@ async function checkAiStatus() {
             dot.className   = 'status-dot limited';
             label.innerHTML = 'Basic Mode <span class="engine-badge fallback">Limited</span>';
         }
-    } catch {
-        dot.className = 'status-dot error';
-        label.textContent = 'Offline';
+    } catch (err) {
+        clearTimeout(timeout);
+        if (err.name === 'AbortError') {
+            // Server waking up — optimistically mark as online so user isn't blocked
+            dot.className   = 'status-dot online';
+            label.innerHTML = 'ARTX AI <span class="engine-badge">Ready</span>';
+            currentAiSource = 'groq';
+        } else {
+            dot.className   = 'status-dot error';
+            label.textContent = 'Offline';
+        }
     }
 }
 

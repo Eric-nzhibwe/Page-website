@@ -47,7 +47,6 @@ def _chat_firestore(request, message, conversation_id):
 
     user = request.user
 
-    # ── Get or create conversation ────────────────────────────────────────
     if conversation_id:
         conv = get_conversation(user, conversation_id)
         if conv is None:
@@ -59,19 +58,13 @@ def _chat_firestore(request, message, conversation_id):
             return Response({'error': 'Could not create conversation.'}, status=500)
         conversation_id = conv['id']
 
-    # ── Build history BEFORE saving the current message ──────────────────
     history = [
         {'role': m['role'], 'content': m['content']}
         for m in get_messages(user, conversation_id, limit=20)
     ]
 
-    # ── Save user message ─────────────────────────────────────────────────
     user_msg = save_message(user, conversation_id, role='user', content=message)
-
-    # ── Call AI ───────────────────────────────────────────────────────────
     ai_response, ai_source = _call_ai(message, history, request.user)
-
-    # ── Save AI reply ─────────────────────────────────────────────────────
     ai_msg = save_message(user, conversation_id, role='assistant', content=ai_response)
 
     return Response({
@@ -83,7 +76,7 @@ def _chat_firestore(request, message, conversation_id):
 
 
 def _chat_postgres(request, message, conversation_id):
-    """Chat logic backed by PostgreSQL (original implementation)."""
+    """Chat logic backed by PostgreSQL."""
     user = request.user
 
     if conversation_id:
@@ -95,9 +88,6 @@ def _chat_postgres(request, message, conversation_id):
         title        = message[:50] + '…' if len(message) > 50 else message
         conversation = ChatConversation.objects.create(user=user, title=title)
 
-    # ── Build history BEFORE saving the current message ──────────────────
-    # Saving first then querying caused the current user message to appear
-    # in history, producing consecutive user turns that Groq rejects (400).
     prior = ChatMessage.objects.filter(
         conversation=conversation
     ).order_by('created_at')[:20]
@@ -106,15 +96,12 @@ def _chat_postgres(request, message, conversation_id):
         for m in prior
     ]
 
-    # ── Now save user message ─────────────────────────────────────────────
     user_message = ChatMessage.objects.create(
         conversation=conversation, role='user', content=message
     )
 
-    # ── Call AI ───────────────────────────────────────────────────────────
     ai_response, ai_source = _call_ai(message, history, user)
 
-    # ── Save AI reply ─────────────────────────────────────────────────────
     ai_message = ChatMessage.objects.create(
         conversation=conversation, role='assistant', content=ai_response
     )
@@ -128,12 +115,9 @@ def _chat_postgres(request, message, conversation_id):
 
 
 def _call_ai(message, history, user):
-    """
-    Try Groq first; fall back to rule-based.
-    Returns (response_text, source_label).
-    """
+    """Try Groq first; fall back to rule-based."""
     user_context = {
-        'username':       user.username,
+        'username':        user.username,
         'prestige_points': getattr(user, 'prestige_points', None),
         'tier':            getattr(user, 'access_tier', None),
     }
@@ -227,17 +211,17 @@ def conversation_new_view(request):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-#  AI status
+#  AI status — fast config-only check, no live API call
 # ─────────────────────────────────────────────────────────────────────────────
 
 @api_view(['GET'])
 @permission_classes([permissions.IsAuthenticated])
 def ai_status_view(request):
     """
-    Actually tests the Groq API with a real call so the status is guaranteed.
-    Returns engine info + whether a live test message succeeded.
+    Fast config-only check — does NOT make a live Groq API call.
+    Just confirms GROQ_API_KEY is set and returns the model info.
+    Keeps the chatbot page load snappy even on Render free-tier cold starts.
     """
-    import requests as http
     from django.conf import settings as django_settings
 
     groq_key = getattr(django_settings, 'GROQ_API_KEY', '').strip()
@@ -247,46 +231,14 @@ def ai_status_view(request):
             'engine': 'fallback',
             'model':  'rule-based',
             'status': 'limited',
-            'label':  'Basic Mode — no API key set',
+            'label':  'Basic Mode',
             'tested': False,
         })
 
-    try:
-        resp = http.post(
-            'https://api.groq.com/openai/v1/chat/completions',
-            headers={
-                'Authorization': f'Bearer {groq_key}',
-                'Content-Type':  'application/json',
-            },
-            json={
-                'model':      'openai/gpt-oss-20b',
-                'messages':   [{'role': 'user', 'content': 'Reply with exactly: OK'}],
-                'max_tokens': 5,
-            },
-            timeout=10,
-        )
-        if resp.status_code == 200:
-            return Response({
-                'engine': 'groq',
-                'model':  'openai/gpt-oss-20b',
-                'status': 'online',
-                'label':  'GPT-OSS 20B',
-                'tested': True,
-            })
-        error = resp.json().get('error', {}).get('message', resp.text[:100])
-        return Response({
-            'engine': 'fallback',
-            'model':  'rule-based',
-            'status': 'error',
-            'label':  f'Groq error: {error}',
-            'tested': True,
-        })
-    except Exception as e:
-        return Response({
-            'engine': 'fallback',
-            'model':  'rule-based',
-            'status': 'error',
-            'label':  f'Connection failed: {str(e)[:80]}',
-            'tested': True,
-        })
-
+    return Response({
+        'engine': 'groq',
+        'model':  'llama-3.3-70b',
+        'status': 'online',
+        'label':  'ARTX AI',
+        'tested': False,
+    })

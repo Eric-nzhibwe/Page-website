@@ -96,15 +96,14 @@ ASGI_APPLICATION = 'artx_platform.asgi.application'
 
 # Channels configuration
 REDIS_URL = config('REDIS_URL', default='')
+# Strip any accidental surrounding quotes that can sneak in via Render's env UI
+REDIS_URL = REDIS_URL.strip().strip('"').strip("'").strip()
 
-if REDIS_URL:
+if REDIS_URL and any(REDIS_URL.startswith(s) for s in ('redis://', 'rediss://', 'unix://')):
     # ── Upstash Redis or any Redis URL ────────────────────────────────────────
-    # Upstash uses TLS: URLs start with rediss:// (double-s).
-    # channels_redis needs ssl=True passed explicitly for TLS connections.
     _redis_use_ssl = REDIS_URL.startswith('rediss://')
 
     if _redis_use_ssl:
-        # channels_redis accepts a dict with 'address' + 'ssl' for TLS
         _redis_host_config = {
             'address': REDIS_URL,
             'ssl': True,
@@ -117,14 +116,21 @@ if REDIS_URL:
             'BACKEND': 'channels_redis.core.RedisChannelLayer',
             'CONFIG': {
                 'hosts':    [_redis_host_config],
-                'capacity': 500,   # max messages per channel
-                'expiry':   60,    # seconds before unread messages expire
+                'capacity': 500,
+                'expiry':   60,
             },
         },
     }
 else:
-    # No Redis — InMemoryChannelLayer fallback (single-process only).
-    # Works on Render free tier but WebSocket messages don't cross workers.
+    # No Redis (or malformed URL) — InMemoryChannelLayer fallback
+    if REDIS_URL:
+        import logging as _logging
+        _logging.getLogger(__name__).warning(
+            f'REDIS_URL is set but has an unrecognised scheme — falling back to InMemoryChannelLayer. '
+            f'Value starts with: {REDIS_URL[:30]!r}'
+        )
+        REDIS_URL = ''   # Clear so ws_status endpoint reports correctly
+
     CHANNEL_LAYERS = {
         'default': {
             'BACKEND': 'channels.layers.InMemoryChannelLayer',
