@@ -91,14 +91,29 @@
     <!-- ── INPUT BAR ── -->
     <footer class="chat-input-bar">
         <form id="chatForm" onsubmit="sendMessage(event)">
+            <!-- Media preview strip (shown when a file/image is attached) -->
+            <div class="chat-attachment-preview" id="attachmentPreview" style="display:none;"></div>
+
             <div class="chat-input-wrap" id="inputWrap">
+                <!-- Attach file button -->
+                <button type="button" class="chat-media-btn" id="attachBtn" title="Attach image or file" onclick="document.getElementById('fileInput').click()">
+                    <i class="fas fa-paperclip"></i>
+                </button>
+                <input type="file" id="fileInput" accept="image/*,.pdf,.txt,.csv,.md" style="display:none" onchange="handleFileAttach(event)">
+
                 <textarea
                     id="messageInput"
                     placeholder="Message ARTX AI…"
                     rows="1"
-                    maxlength="1000"
+                    maxlength="2000"
                     aria-label="Message input"
                 ></textarea>
+
+                <!-- Voice record button (replaces send btn while recording) -->
+                <button type="button" class="chat-voice-btn" id="voiceBtn" title="Hold to record voice message" onmousedown="startRecording()" onmouseup="stopRecording()" ontouchstart="startRecording()" ontouchend="stopRecording()">
+                    <i class="fas fa-microphone"></i>
+                </button>
+
                 <button type="submit" class="chat-send-btn" id="sendBtn" disabled title="Send">
                     <i class="fas fa-arrow-up"></i>
                 </button>

@@ -18,3 +18,11 @@ urlpatterns = [
     path('conversations/<int:conversation_id>/delete/', views.conversation_delete_view, name='conversation_delete'),
 ]
 
+
+# Voice transcription + media chat
+from . import media_views  # noqa — imported here to keep url registration clean
+
+urlpatterns += [
+    path('transcribe/', media_views.transcribe_voice, name='transcribe'),
+    path('media-chat/', media_views.media_chat, name='media_chat'),
+]
