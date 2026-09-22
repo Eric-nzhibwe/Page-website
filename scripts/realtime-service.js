@@ -47,23 +47,38 @@ class RealtimeService {
 
     /**
      * Connect to the challenge WebSocket.
-     * Falls back to polling if the connection cannot be established.
+     * Falls back to polling if Redis/WS isn't available or connection fails.
      * @param {string} challengeId
      * @returns {Promise<void>}
      */
-    connect(challengeId) {
-        // If already connected to this challenge, do nothing
+    async connect(challengeId) {
         if (this.isConnected && this.subscribedChallengeId === challengeId) {
-            return Promise.resolve();
+            return;
         }
 
-        // Close any existing connection first
         this._closeWs();
 
         if (!challengeId) {
-            // No challenge yet — start generic polling
             this._startPolling();
-            return Promise.resolve();
+            return;
+        }
+
+        // Check if WS is supported before attempting connection
+        const cached = sessionStorage.getItem('ws_supported');
+        if (cached === 'false') {
+            this._startPolling();
+            return;
+        }
+        if (cached === null) {
+            try {
+                const r = await fetch('/api/ws-status/');
+                const d = await r.json();
+                sessionStorage.setItem('ws_supported', String(!!d.ws_supported));
+                if (!d.ws_supported) { this._startPolling(); return; }
+            } catch (_) {
+                this._startPolling();
+                return;
+            }
         }
 
         return new Promise((resolve) => {
@@ -72,9 +87,7 @@ class RealtimeService {
                 this.ws = new WebSocket(url);
 
                 const connectTimeout = setTimeout(() => {
-                    // If WebSocket hasn't opened within 4 s, use polling
                     if (!this.isConnected) {
-                        console.warn('⚠️ WebSocket timeout — falling back to polling');
                         this._closeWs();
                         this._startPolling();
                         resolve();
@@ -87,22 +100,17 @@ class RealtimeService {
                     this.usingPolling  = false;
                     this.reconnectAttempts = 0;
                     this.subscribedChallengeId = challengeId;
-                    console.log(`✅ WebSocket connected → challenge ${challengeId}`);
                     this.emit('connected');
                     resolve();
                 };
 
                 this.ws.onmessage = (event) => {
-                    try {
-                        this._handleMessage(JSON.parse(event.data));
-                    } catch (e) {
-                        console.warn('WS message parse error', e);
-                    }
+                    try { this._handleMessage(JSON.parse(event.data)); }
+                    catch (e) { /* ignore */ }
                 };
 
-                this.ws.onerror = (err) => {
+                this.ws.onerror = () => {
                     clearTimeout(connectTimeout);
-                    console.warn('WebSocket error — using polling fallback', err);
                     this._closeWs();
                     this._startPolling();
                     resolve();
@@ -110,13 +118,15 @@ class RealtimeService {
 
                 this.ws.onclose = (ev) => {
                     if (this.isConnected) {
-                        console.log('WebSocket closed, attempting reconnect…');
                         this.isConnected = false;
-                        this._attemptReconnect(challengeId);
+                        if (this.reconnectAttempts < this.maxReconnectAttempts) {
+                            this._attemptReconnect(challengeId);
+                        } else {
+                            this._startPolling();
+                        }
                     }
                 };
             } catch (err) {
-                console.warn('WebSocket not supported — using polling', err);
                 this._startPolling();
                 resolve();
             }

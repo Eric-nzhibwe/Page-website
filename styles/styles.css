@@ -9,9 +9,54 @@
     --artx-accent:      #90ee90;
     --artx-glow:        rgba(85,107,47,0.18);
     --artx-text-on-primary: #ffffff;
-    /* These two are set by theme.js per palette; fallback to olive green */
     --artx-bg-grad:     linear-gradient(to left, #ffffff, #f4f7f0);
     --artx-header-grad: linear-gradient(to right, #f5f5f5, #556b2f);
+
+    /* ── Light mode (default) ── */
+    --theme-bg:           #f4f6f9;
+    --theme-surface:      #ffffff;
+    --theme-surface2:     #f0f2f5;
+    --theme-border:       #e4e6ea;
+    --theme-text:         #1c1e21;
+    --theme-text-muted:   #65676b;
+    --theme-text-inverse: #ffffff;
+    --theme-input-bg:     #f0f2f5;
+    --theme-card-shadow:  0 2px 8px rgba(0,0,0,0.10);
+    --theme-overlay:      rgba(0,0,0,0.45);
+}
+
+/* ── Dark mode ── */
+[data-theme="dark"] {
+    --theme-bg:           #18191a;
+    --theme-surface:      #242526;
+    --theme-surface2:     #3a3b3c;
+    --theme-border:       #3a3b3c;
+    --theme-text:         #e4e6eb;
+    --theme-text-muted:   #b0b3b8;
+    --theme-text-inverse: #18191a;
+    --theme-input-bg:     #3a3b3c;
+    --theme-card-shadow:  0 2px 8px rgba(0,0,0,0.40);
+    --theme-overlay:      rgba(0,0,0,0.70);
+    --artx-bg-grad:       linear-gradient(to left, #18191a, #242526);
+    --artx-header-grad:   linear-gradient(to right, #18191a, #1e3a0f);
+}
+
+/* ── Auto mode — follow OS preference ── */
+@media (prefers-color-scheme: dark) {
+    [data-theme="auto"] {
+        --theme-bg:           #18191a;
+        --theme-surface:      #242526;
+        --theme-surface2:     #3a3b3c;
+        --theme-border:       #3a3b3c;
+        --theme-text:         #e4e6eb;
+        --theme-text-muted:   #b0b3b8;
+        --theme-text-inverse: #18191a;
+        --theme-input-bg:     #3a3b3c;
+        --theme-card-shadow:  0 2px 8px rgba(0,0,0,0.40);
+        --theme-overlay:      rgba(0,0,0,0.70);
+        --artx-bg-grad:       linear-gradient(to left, #18191a, #242526);
+        --artx-header-grad:   linear-gradient(to right, #18191a, #1e3a0f);
+    }
 }
 
 * {
@@ -22,10 +67,10 @@
 
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: var(--artx-bg-grad);
-    color: black;
+    background: var(--theme-bg, var(--artx-bg-grad));
+    color: var(--theme-text, #1c1e21);
     min-height: 100vh;
-    transition: background .4s ease;
+    transition: background .35s ease, color .35s ease;
 }
 
 .container {
@@ -2265,5 +2310,251 @@ body {
     
     .splash-icon i {
         font-size: 50px;
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   DARK / LIGHT THEME TOKEN OVERRIDES
+   Applied globally via [data-theme] on <html>.
+   These cascade on top of every existing rule.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Core surfaces ── */
+[data-theme="dark"] body,
+[data-theme="auto"] body {
+    background-color: var(--theme-bg);
+    color: var(--theme-text);
+}
+
+/* Header */
+[data-theme="dark"] .header,
+[data-theme="auto"] .header {
+    background: var(--artx-header-grad);
+    border-bottom: 1px solid var(--theme-border);
+}
+
+[data-theme="dark"] .header *,
+[data-theme="auto"] .header * {
+    color: var(--theme-text);
+}
+
+/* Cards */
+[data-theme="dark"] .challenge-card,
+[data-theme="dark"] .post-card,
+[data-theme="dark"] .user-card,
+[data-theme="dark"] .stat-card,
+[data-theme="dark"] .action-card,
+[data-theme="dark"] .challenge-stat-card,
+[data-theme="dark"] .alliance-card,
+[data-theme="dark"] .notification-item {
+    background: var(--theme-surface) !important;
+    color: var(--theme-text) !important;
+    border-color: var(--theme-border) !important;
+    box-shadow: var(--theme-card-shadow) !important;
+}
+
+/* Sidebar, panels */
+[data-theme="dark"] .sidebar,
+[data-theme="dark"] .left-sidebar,
+[data-theme="dark"] .right-sidebar,
+[data-theme="dark"] .nav-panel,
+[data-theme="dark"] aside {
+    background: var(--theme-surface) !important;
+    border-color: var(--theme-border) !important;
+    color: var(--theme-text) !important;
+}
+
+/* Modals */
+[data-theme="dark"] .modal-content,
+[data-theme="dark"] .settings-modal-content,
+[data-theme="dark"] .create-challenge-modal,
+[data-theme="dark"] .attempt-challenge-modal {
+    background: var(--theme-surface) !important;
+    color: var(--theme-text) !important;
+    border-color: var(--theme-border) !important;
+}
+
+[data-theme="dark"] .modal-header,
+[data-theme="dark"] .settings-header {
+    background: var(--theme-surface2) !important;
+    border-bottom-color: var(--theme-border) !important;
+    color: var(--theme-text) !important;
+}
+
+/* Inputs and selects */
+[data-theme="dark"] input,
+[data-theme="dark"] textarea,
+[data-theme="dark"] select,
+[data-theme="dark"] .modal-input,
+[data-theme="dark"] .modal-textarea,
+[data-theme="dark"] .settings-input,
+[data-theme="dark"] .settings-select,
+[data-theme="dark"] .answer-input {
+    background: var(--theme-input-bg) !important;
+    color: var(--theme-text) !important;
+    border-color: var(--theme-border) !important;
+}
+
+[data-theme="dark"] input::placeholder,
+[data-theme="dark"] textarea::placeholder { color: var(--theme-text-muted) !important; }
+
+/* Nav buttons, menu items */
+[data-theme="dark"] .settings-nav-btn,
+[data-theme="dark"] .nav-link,
+[data-theme="dark"] .menu-item,
+[data-theme="dark"] .quick-menu-item {
+    color: var(--theme-text) !important;
+}
+
+[data-theme="dark"] .settings-nav-btn:hover,
+[data-theme="dark"] .nav-link:hover,
+[data-theme="dark"] .menu-item:hover {
+    background: var(--theme-surface2) !important;
+}
+
+[data-theme="dark"] .settings-nav-btn.active {
+    background: rgba(255,255,255,0.08) !important;
+    color: var(--artx-accent) !important;
+}
+
+/* Typography */
+[data-theme="dark"] h1, [data-theme="dark"] h2,
+[data-theme="dark"] h3, [data-theme="dark"] h4,
+[data-theme="dark"] h5, [data-theme="dark"] p,
+[data-theme="dark"] span, [data-theme="dark"] label,
+[data-theme="dark"] li, [data-theme="dark"] td,
+[data-theme="dark"] th {
+    color: var(--theme-text);
+}
+
+[data-theme="dark"] .text-muted,
+[data-theme="dark"] .challenge-time,
+[data-theme="dark"] .challenge-creator span,
+[data-theme="dark"] .setting-row p {
+    color: var(--theme-text-muted) !important;
+}
+
+/* Dropdown menus */
+[data-theme="dark"] .dropdown-menu,
+[data-theme="dark"] .user-menu-dropdown,
+[data-theme="dark"] #userMenuDropdown,
+[data-theme="dark"] #quickMenuDropdown {
+    background: var(--theme-surface) !important;
+    border-color: var(--theme-border) !important;
+    box-shadow: var(--theme-card-shadow) !important;
+}
+
+[data-theme="dark"] .dropdown-item,
+[data-theme="dark"] .user-menu-item {
+    color: var(--theme-text) !important;
+}
+
+[data-theme="dark"] .dropdown-item:hover,
+[data-theme="dark"] .user-menu-item:hover {
+    background: var(--theme-surface2) !important;
+}
+
+/* Borders and dividers */
+[data-theme="dark"] hr,
+[data-theme="dark"] .divider,
+[data-theme="dark"] .settings-divider {
+    border-color: var(--theme-border) !important;
+}
+
+/* Settings modal sidebar */
+[data-theme="dark"] .settings-sidebar,
+[data-theme="dark"] .settings-nav {
+    background: var(--theme-surface2) !important;
+    border-right-color: var(--theme-border) !important;
+}
+
+/* Settings cards */
+[data-theme="dark"] .settings-card {
+    background: var(--theme-surface2) !important;
+    border-color: var(--theme-border) !important;
+}
+
+[data-theme="dark"] .settings-card-title {
+    color: var(--artx-accent) !important;
+    border-bottom-color: var(--theme-border) !important;
+}
+
+[data-theme="dark"] .setting-row {
+    border-bottom-color: var(--theme-border) !important;
+}
+
+/* Poll / Debate / QA cards */
+[data-theme="dark"] .poll-header-bar {
+    background: #0a0a0a !important;
+}
+
+[data-theme="dark"] .poll-vote-btn {
+    background: var(--theme-surface2) !important;
+    color: var(--theme-text) !important;
+    border-color: var(--theme-border) !important;
+}
+
+[data-theme="dark"] .poll-card-footer,
+[data-theme="dark"] .qa-card-footer,
+[data-theme="dark"] .debate-card-footer {
+    background: var(--theme-surface2) !important;
+    border-top-color: var(--theme-border) !important;
+}
+
+[data-theme="dark"] .debate-teams {
+    border-top-color: var(--theme-border) !important;
+}
+
+[data-theme="dark"] .debate-team {
+    border-right-color: var(--theme-border) !important;
+}
+
+/* Bottom mobile nav */
+[data-theme="dark"] .mobile-bottom-nav {
+    background: var(--theme-surface) !important;
+    border-top-color: var(--theme-border) !important;
+}
+
+[data-theme="dark"] .icon-nav-btn {
+    color: var(--theme-text-muted) !important;
+}
+
+[data-theme="dark"] .icon-nav-btn.active,
+[data-theme="dark"] .icon-nav-btn:hover {
+    color: var(--artx-accent) !important;
+}
+
+/* xPoints banner stays dark regardless */
+[data-theme="dark"] .xpoints-banner,
+[data-theme="light"] .xpoints-banner { /* already dark background, no change needed */ }
+
+/* Filters */
+[data-theme="dark"] .challenge-filters,
+[data-theme="dark"] .filter-btn {
+    background: var(--theme-surface2) !important;
+    color: var(--theme-text-muted) !important;
+    border-color: var(--theme-border) !important;
+}
+
+[data-theme="dark"] .filter-btn.active {
+    background: var(--artx-primary) !important;
+    color: #fff !important;
+}
+
+/* Auto mode copies dark rules */
+@media (prefers-color-scheme: dark) {
+    [data-theme="auto"] .challenge-card,
+    [data-theme="auto"] .post-card,
+    [data-theme="auto"] .modal-content,
+    [data-theme="auto"] .settings-modal-content,
+    [data-theme="auto"] .settings-card,
+    [data-theme="auto"] .sidebar,
+    [data-theme="auto"] aside,
+    [data-theme="auto"] input,
+    [data-theme="auto"] textarea,
+    [data-theme="auto"] select {
+        background: var(--theme-surface) !important;
+        color: var(--theme-text) !important;
+        border-color: var(--theme-border) !important;
     }
 }

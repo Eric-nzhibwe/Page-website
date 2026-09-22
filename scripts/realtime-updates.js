@@ -555,8 +555,9 @@ function _buildPostCard(post) {
 // ─────────────────────────────────────────────────────────────────────────────
 let _notifWs        = null;
 let _notifWsRetries = 0;
+let _notifWsDisabled = false;   // true when WS not supported — use polling only
 const _seenNotifIds = new Set();
-let   _notifTimer   = null;          // fallback poll timer
+let   _notifTimer   = null;
 
 function _wsBase() {
     const proto = window.location.protocol === 'https:' ? 'wss' : 'ws';
@@ -566,34 +567,72 @@ function _wsBase() {
     return `${proto}://${host}`;
 }
 
-function _connectNotifWs() {
+async function _connectNotifWs() {
     const token = localStorage.getItem('djangoAuthToken');
-    if (!token) return;
+    if (!token || _notifWsDisabled) return;
 
     if (_notifWs && (_notifWs.readyState === WebSocket.OPEN || _notifWs.readyState === WebSocket.CONNECTING)) return;
+
+    // Check Redis/WS support — reuse the cached result from ws-status probe
+    const cached = sessionStorage.getItem('ws_supported');
+    if (cached === 'false') {
+        _notifWsDisabled = true;
+        if (!_notifTimer) _startNotifPoller();
+        return;
+    }
+    if (cached === null) {
+        // Haven't probed yet — do it now
+        try {
+            const r = await fetch('/api/ws-status/');
+            const d = await r.json();
+            const supported = !!d.ws_supported;
+            sessionStorage.setItem('ws_supported', String(supported));
+            if (!supported) {
+                _notifWsDisabled = true;
+                if (!_notifTimer) _startNotifPoller();
+                return;
+            }
+        } catch (_) {
+            _notifWsDisabled = true;
+            if (!_notifTimer) _startNotifPoller();
+            return;
+        }
+    }
 
     _notifWs = new WebSocket(`${_wsBase()}/ws/notifications/?token=${token}`);
 
     _notifWs.onopen = () => {
         _notifWsRetries = 0;
-        // Cancel fallback poll — WS is live
         if (_notifTimer) { clearInterval(_notifTimer); _notifTimer = null; }
     };
 
     _notifWs.onmessage = (e) => {
-        try {
-            const msg = JSON.parse(e.data);
-            _handleNotifMessage(msg);
-        } catch { /* ignore malformed */ }
+        try { _handleNotifMessage(JSON.parse(e.data)); } catch { /* ignore */ }
     };
 
-    _notifWs.onclose = () => {
+    _notifWs.onclose = (ev) => {
         _notifWs = null;
-        // Exponential back-off reconnect (max 30 s)
-        const delay = Math.min(1000 * 2 ** _notifWsRetries, 30_000);
+        if (_notifWsDisabled) return;
+
+        // If connection was refused immediately (code 1006 on first try),
+        // treat as "WS not supported" and switch to polling permanently
+        if (ev.code === 1006 && _notifWsRetries === 0) {
+            _notifWsDisabled = true;
+            sessionStorage.setItem('ws_supported', 'false');
+            if (!_notifTimer) _startNotifPoller();
+            return;
+        }
+
+        if (_notifWsRetries >= 5) {
+            // Give up after 5 attempts — fall back to polling
+            _notifWsDisabled = true;
+            if (!_notifTimer) _startNotifPoller();
+            return;
+        }
+
+        const delay = Math.min(2000 * Math.pow(2, _notifWsRetries), 30_000);
         _notifWsRetries++;
         setTimeout(_connectNotifWs, delay);
-        // Start fallback polling while disconnected
         if (!_notifTimer) _startNotifPoller();
     };
 

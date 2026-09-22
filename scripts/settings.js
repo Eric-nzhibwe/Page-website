@@ -191,6 +191,10 @@ function loadUserSettings() {
     _smChk('enableAnimations', p.enableAnimations !== false);
     _smChk('compactMode',      p.compactMode === true);
 
+    // Apply the current saved theme immediately so the select reflects reality
+    const currentTheme = document.documentElement.getAttribute('data-theme') || p.theme || 'dark';
+    _smSel('themeSelect', currentTheme);
+
     if (p.accentColor) {
         document.querySelectorAll('.color-swatch').forEach(s => {
             s.classList.toggle('active', s.dataset.color === p.accentColor);
@@ -379,13 +383,57 @@ async function _smSavePrefs(prefs) {
 
 function changeTheme() {
     const theme = _smGetSel('themeSelect');
+    // Apply immediately
     document.documentElement.setAttribute('data-theme', theme);
+    // Persist immediately to localStorage so reload keeps it
+    try {
+        const prefs = JSON.parse(localStorage.getItem('userPreferences') || '{}');
+        prefs.theme = theme;
+        localStorage.setItem('userPreferences', JSON.stringify(prefs));
+    } catch (e) { /* ignore */ }
+    // Silently sync to backend (best-effort, same pattern as accent color)
+    const token = _smToken();
+    if (token) {
+        fetch(`${_SM_API}/auth/preferences/`, {
+            method:  'PATCH',
+            headers: _smHeaders(),
+            body:    JSON.stringify({ theme }),
+        }).catch(() => {});
+    }
 }
 
 function changeFontSize() {
     const size = _smGetSel('fontSize');
     const map  = { small: '13px', medium: '15px', large: '17px' };
-    document.documentElement.style.fontSize = map[size] || '15px';
+    const px   = map[size] || '15px';
+    // Apply immediately
+    document.documentElement.style.fontSize = px;
+    // Persist immediately
+    try {
+        const prefs = JSON.parse(localStorage.getItem('userPreferences') || '{}');
+        prefs.fontSize = size;
+        localStorage.setItem('userPreferences', JSON.stringify(prefs));
+    } catch (e) { /* ignore */ }
+}
+
+function toggleAnimationsSetting(checkbox) {
+    const enabled = checkbox.checked;
+    document.documentElement.classList.toggle('no-animations', !enabled);
+    try {
+        const prefs = JSON.parse(localStorage.getItem('userPreferences') || '{}');
+        prefs.enableAnimations = enabled;
+        localStorage.setItem('userPreferences', JSON.stringify(prefs));
+    } catch (e) {}
+}
+
+function toggleCompactModeSetting(checkbox) {
+    const compact = checkbox.checked;
+    document.documentElement.classList.toggle('compact-mode', compact);
+    try {
+        const prefs = JSON.parse(localStorage.getItem('userPreferences') || '{}');
+        prefs.compactMode = compact;
+        localStorage.setItem('userPreferences', JSON.stringify(prefs));
+    } catch (e) {}
 }
 
 // ── Accent color palette ──────────────────────────────────────────────────────
