@@ -69,6 +69,7 @@ def _chat_firestore(request, message, conversation_id):
 
     return Response({
         'conversation_id': conversation_id,
+        'reply':           ai_response,          # top-level shortcut for mobile
         'user_message':    user_msg,
         'ai_message':      ai_msg,
         'ai_source':       ai_source,
@@ -108,6 +109,7 @@ def _chat_postgres(request, message, conversation_id):
 
     return Response({
         'conversation_id': conversation.id,
+        'reply':           ai_response,          # top-level shortcut for mobile
         'user_message':    ChatMessageSerializer(user_message).data,
         'ai_message':      ChatMessageSerializer(ai_message).data,
         'ai_source':       ai_source,

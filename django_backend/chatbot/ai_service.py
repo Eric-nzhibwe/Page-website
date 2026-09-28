@@ -1,5 +1,5 @@
 """
-PAGE AI Service — powered by Groq (openai/gpt-oss-20b)
+PAGE AI Service — powered by Groq (llama-3.3-70b-versatile)
 ================================================
 Primary:  Groq REST API — called directly with `requests` (no extra SDK needed)
 Fallback: Smart rule-based responses
@@ -15,7 +15,7 @@ from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
-GROQ_MODEL   = "openai/gpt-oss-20b"
+GROQ_MODEL   = "llama-3.3-70b-versatile"
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 
 # ── System prompt ─────────────────────────────────────────────────────────────
