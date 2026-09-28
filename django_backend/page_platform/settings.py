@@ -251,6 +251,20 @@ FS_ALLIANCES = config('FS_ALLIANCES', default=False, cast=bool)
 FS_USERS = config('FS_USERS', default=False, cast=bool)
 FS_PAYMENTS = config('FS_PAYMENTS', default=False, cast=bool)
 
+# Dict consumed by views/services via settings.FIRESTORE_COLLECTIONS.get(...)
+FIRESTORE_COLLECTIONS = {
+    'notifications':        FS_NOTIFICATIONS,
+    'activities':           FS_ACTIVITIES,
+    'chatbot':              FS_CHATBOT,
+    'challenges':           FS_CHALLENGES,
+    'challenge_activities': FS_CHALLENGES,   # shares the challenges flag
+    'submissions':          FS_SUBMISSIONS,
+    'social':               FS_SOCIAL,
+    'alliances':            FS_ALLIANCES,
+    'users':                FS_USERS,
+    'payments':             FS_PAYMENTS,
+}
+
 # ─── Logging ──────────────────────────────────────────────────────────────────
 LOGGING = {
     'version': 1,

@@ -39,6 +39,10 @@ def get_firestore_client():
         return None
 
 
+# Alias used by all service modules
+get_firestore = get_firestore_client
+
+
 def _ensure_initialised():
     """Idempotent initialisation — safe to call multiple times."""
     global _firebase_app, _initialised
