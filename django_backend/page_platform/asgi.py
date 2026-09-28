@@ -7,7 +7,6 @@ import os
 from django.core.asgi import get_asgi_application
 from channels.routing import ProtocolTypeRouter, URLRouter
 from channels.auth import AuthMiddlewareStack
-from django.urls import re_path
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'page_platform.settings')
 
@@ -20,18 +19,13 @@ from notifications.routing import websocket_urlpatterns as notifications_ws
 from social.routing import websocket_urlpatterns as social_ws
 from challenges.routing import websocket_urlpatterns as challenges_ws
 
-# Import messenger consumer directly (no routing.py in that app)
-from messenger.consumers import MessengerConsumer
-
-messenger_ws = [
-    re_path(r'^ws/messenger/(?P<conversation_id>\d+)/$', MessengerConsumer.as_asgi()),
-]
+# Messenger uses Firestore real-time listeners instead of Django Channels WebSockets
+# so it has no consumers.py or routing.py
 
 all_websocket_urlpatterns = (
     notifications_ws
     + social_ws
     + challenges_ws
-    + messenger_ws
 )
 
 application = ProtocolTypeRouter({
