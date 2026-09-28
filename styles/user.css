@@ -37,7 +37,7 @@ body {
 
 .cover-art {
     height: 200px;
-    background-image: url(../images/PAGE.jpg);
+    background-image: url(../images/Page.jpeg);
     position: relative;
     overflow: hidden;
     transition: background 0.6s ease;
