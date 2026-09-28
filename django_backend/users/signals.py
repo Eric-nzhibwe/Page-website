@@ -15,7 +15,7 @@ def _should_sync():
     """Return True if Firestore user sync is enabled."""
     try:
         from django.conf import settings
-        from artx_platform.firebase_client import firebase_enabled
+        from page_platform.firebase_client import firebase_enabled
         return (
             settings.FIRESTORE_COLLECTIONS.get('users', False)
             and firebase_enabled()

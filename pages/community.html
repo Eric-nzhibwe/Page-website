@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="ARTX Community — posts, top creators, and rewards">
-    <title>ARTX — Community</title>
-    <link rel="icon" type="image/jpeg" href="../images/ARTX.jpg">
+    <meta name="description" content="PAGE Community — posts, top creators, and rewards">
+    <title>Community</title>
+    <link rel="icon" type="image/jpeg" href="../images/Page.jpeg">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
     <link rel="stylesheet" href="../styles/styles.css">
@@ -20,11 +20,11 @@
 <header class="header w-100">
     <div class="header-left d-flex align-items-center">
         <div class="logo" onclick="window.location.href='../index.html'" style="cursor:pointer">
-            <i class="fas fa-fire-flame-curved"></i>ARTX
+            <i class="fas fa-fire-flame-curved"></i>PAGE
         </div>
         <div class="search-bar d-none d-md-flex align-items-center">
             <i class="fas fa-magnifying-glass"></i>
-            <input type="text" placeholder="Search ARTX..." id="headerSearch">
+            <input type="text" placeholder="Search PAGE..." id="headerSearch">
         </div>
     </div>
 
@@ -73,7 +73,7 @@
                 <i class="fas fa-wallet"></i><span>Wallet</span>
             </a>
             <a href="chatbot.html" class="quick-menu-item">
-                <i class="fas fa-robot"></i><span>AI Assistant</span>
+                <i class="fas fa-robot"></i><span>PAGE AI</span>
             </a>
             <a href="influencers.html" class="quick-menu-item">
                 <i class="fas fa-star"></i><span>Influencers</span>
@@ -107,7 +107,7 @@
         <div class="user-menu-links">
             <a href="user.html"><i class="fas fa-id-card"></i> View Profile</a>
             <a href="payment.html"><i class="fas fa-wallet"></i> My Wallet</a>
-            <a href="chatbot.html"><i class="fas fa-robot"></i> AI Assistant</a>
+            <a href="chatbot.html"><i class="fas fa-robot"></i> PAGE AI</a>
             <a href="#" onclick="logout(); return false;" class="logout-link"><i class="fas fa-right-from-bracket"></i> Logout</a>
         </div>
     </div>
@@ -134,7 +134,7 @@
         <div class="comm-section-head">
             <div>
                 <h2>Community Feed</h2>
-                <p class="comm-sub">Posts from your fellow ARTX members</p>
+                <p class="comm-sub">Posts from your fellow PAGE members</p>
             </div>
             <button class="btn-new-post" onclick="openNewPostModal()">
                 <i class="fas fa-plus"></i> New Post
@@ -168,7 +168,7 @@
         <div class="comm-section-head">
             <div>
                 <h2>Top Members</h2>
-                <p class="comm-sub">The highest-ranked ARTX community members</p>
+                <p class="comm-sub">The highest-ranked PAGE community members</p>
             </div>
             <div class="top-filters">
                 <button class="top-filter-btn active" onclick="loadTopMembers('prestige', this)">Prestige</button>
@@ -296,7 +296,7 @@
             <button class="ptype-btn" data-type="achievement" onclick="setPostType('achievement', this)"><i class="fas fa-trophy"></i> Achievement</button>
             <button class="ptype-btn" data-type="media" onclick="setPostType('media', this)"><i class="fas fa-image"></i> Media</button>
         </div>
-        <textarea id="newPostContent" placeholder="What's on your mind? Share your ARTX journey…" maxlength="2000" rows="5"></textarea>
+        <textarea id="newPostContent" placeholder="What's on your mind? Share your PAGE journey…" maxlength="2000" rows="5"></textarea>
         <div id="mediaUrlGroup" style="display:none">
             <input type="url" id="newPostMediaUrl" placeholder="Media URL (image or video)">
         </div>

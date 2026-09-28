@@ -1,5 +1,5 @@
 /**
- * ARTX AI Chatbot
+ * PAGE AI Chatbot
  * Talks to the Django backend which calls Groq.
  * Supports: text, voice recording (Whisper transcription), image & file upload.
  */
@@ -97,7 +97,7 @@ async function checkAiStatus() {
         if (err.name === 'AbortError') {
             // Server waking up — optimistically mark as online so user isn't blocked
             dot.className   = 'status-dot online';
-            label.innerHTML = 'ARTX AI <span class="engine-badge">Ready</span>';
+            label.innerHTML = 'PAGE AI <span class="engine-badge">Ready</span>';
             currentAiSource = 'groq';
         } else {
             dot.className   = 'status-dot error';
@@ -474,14 +474,14 @@ function clearConversation() {
     feed.innerHTML = `
         <div class="welcome-screen" id="welcomeScreen">
             <div class="welcome-orb"><i class="fas fa-microchip"></i></div>
-            <h2>ARTX AI Assistant</h2>
+            <h2>PAGE AI Assistant</h2>
             <p>Powered by Groq. Ask me anything — or send a voice message or image.</p>
             <div class="starter-grid">
                 <button class="starter-card" onclick="sendQuickMessage('How do I deposit funds into my wallet?')"><i class="fas fa-wallet"></i><span>Deposit funds</span></button>
-                <button class="starter-card" onclick="sendQuickMessage('How do I earn money on ARTX?')"><i class="fas fa-coins"></i><span>Earn money</span></button>
+                <button class="starter-card" onclick="sendQuickMessage('How do I earn money on PAGE?')"><i class="fas fa-coins"></i><span>Earn money</span></button>
                 <button class="starter-card" onclick="sendQuickMessage('How do tournaments work?')"><i class="fas fa-trophy"></i><span>Tournaments</span></button>
                 <button class="starter-card" onclick="sendQuickMessage('Explain the prestige tier system')"><i class="fas fa-star"></i><span>Prestige tiers</span></button>
-                <button class="starter-card" onclick="sendQuickMessage('What payment methods does ARTX support?')"><i class="fas fa-credit-card"></i><span>Payments</span></button>
+                <button class="starter-card" onclick="sendQuickMessage('What payment methods does PAGE support?')"><i class="fas fa-credit-card"></i><span>Payments</span></button>
                 <button class="starter-card" onclick="sendQuickMessage('How do alliances work?')"><i class="fas fa-users"></i><span>Alliances</span></button>
             </div>
         </div>`;
@@ -798,13 +798,13 @@ function clearConversation() {
     feed.innerHTML = `
         <div class="welcome-screen" id="welcomeScreen">
             <div class="welcome-orb"><i class="fas fa-robot"></i></div>
-            <h2>ARTX AI Assistant</h2>
+            <h2>PAGE AI Assistant</h2>
             <p>Powered by Google Gemini. Ask me anything about the platform — or anything at all.</p>
             <div class="starter-grid">
                 <button class="starter-card" onclick="sendQuickMessage('How do I deposit funds into my wallet?')">
                     <i class="fas fa-wallet"></i><span>Deposit funds</span>
                 </button>
-                <button class="starter-card" onclick="sendQuickMessage('How do I earn money on ARTX?')">
+                <button class="starter-card" onclick="sendQuickMessage('How do I earn money on PAGE?')">
                     <i class="fas fa-coins"></i><span>Earn money</span>
                 </button>
                 <button class="starter-card" onclick="sendQuickMessage('How do tournaments work?')">
@@ -813,7 +813,7 @@ function clearConversation() {
                 <button class="starter-card" onclick="sendQuickMessage('Explain the prestige tier system')">
                     <i class="fas fa-star"></i><span>Prestige tiers</span>
                 </button>
-                <button class="starter-card" onclick="sendQuickMessage('What payment methods does ARTX support?')">
+                <button class="starter-card" onclick="sendQuickMessage('What payment methods does PAGE support?')">
                     <i class="fas fa-credit-card"></i><span>Payments</span>
                 </button>
                 <button class="starter-card" onclick="sendQuickMessage('How do alliances work?')">

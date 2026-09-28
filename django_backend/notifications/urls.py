@@ -1,5 +1,5 @@
 """
-Notifications URLs for ARTX Platform
+Notifications URLs for PAGE
 """
 from django.urls import path
 from . import views

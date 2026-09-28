@@ -1,5 +1,5 @@
 """
-Messenger serializers for ARTX Platform
+Messenger serializers for PAGE Platform
 """
 from rest_framework import serializers
 from .models import Conversation, Message

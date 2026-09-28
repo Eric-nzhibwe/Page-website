@@ -1,16 +1,16 @@
 /* ═══════════════════════════════════════════════════════════════
-   ARTX Settings Modal — Complete Styles
+   PAGE Settings Modal — Complete Styles
    Palette: olive (#556b2f) + lightgreen (#90ee90)
    ═══════════════════════════════════════════════════════════════ */
 
 /* ── Variables ──────────────────────────────────────────────── */
 :root {
-  /* Settings-modal vars — mirror the global artx tokens so they
-     update automatically when JS changes --artx-* */
-  --sg-primary:     var(--artx-primary,    #556b2f);
-  --sg-primary-lt:  var(--artx-primary-lt, #6b8a3a);
-  --sg-primary-dk:  var(--artx-primary-dk, #3d4f22);
-  --sg-accent:      var(--artx-accent,     #90ee90);
+  /* Settings-modal vars — mirror the global page tokens so they
+     update automatically when JS changes --page-* */
+  --sg-primary:     var(--page-primary,    #556b2f);
+  --sg-primary-lt:  var(--page-primary-lt, #6b8a3a);
+  --sg-primary-dk:  var(--page-primary-dk, #3d4f22);
+  --sg-accent:      var(--page-accent,     #90ee90);
   --sg-accent-glow: rgba(144,238,144,0.35);
   --sg-bg:          #ffffff;
   --sg-surface:     #f7f9f4;
@@ -26,7 +26,7 @@
   --sg-radius-sm:   9px;
   --sg-shadow:      0 2px 14px rgba(85,107,47,0.08);
   --sg-shadow-lg:   0 8px 32px rgba(85,107,47,0.14);
-  --sg-glow:        var(--artx-glow, 0 0 0 3px rgba(85,107,47,0.18));
+  --sg-glow:        var(--page-glow, 0 0 0 3px rgba(85,107,47,0.18));
   --sg-transition:  0.2s ease;
 }
 
@@ -893,7 +893,7 @@
 }
 
 /* ── Toast ───────────────────────────────────────────────────── */
-.artx-toast {
+.page-toast {
   position: fixed;
   top: 20px;
   right: 20px;
@@ -912,26 +912,26 @@
   transform: translateX(calc(100% + 32px));
   transition: transform 0.36s cubic-bezier(0.34,1.35,0.64,1);
 }
-.artx-toast.visible { transform: translateX(0); }
-.artx-toast i { font-size: 15px; flex-shrink: 0; }
-.artx-toast span { flex: 1; font-size: 13px; color: #333; line-height: 1.45; }
+.page-toast.visible { transform: translateX(0); }
+.page-toast i { font-size: 15px; flex-shrink: 0; }
+.page-toast span { flex: 1; font-size: 13px; color: #333; line-height: 1.45; }
 .sm-toast-close {
   background: none; border: none; color: #bbb;
   font-size: 16px; cursor: pointer; padding: 0 0 0 4px; line-height: 1;
   transition: color var(--sg-transition);
 }
 .sm-toast-close:hover { color: #555; }
-.artx-toast-success { border-left: 4px solid #43a047; }
-.artx-toast-success i { color: #43a047; }
-.artx-toast-error { border-left: 4px solid var(--sg-danger); }
-.artx-toast-error i { color: var(--sg-danger); }
-.artx-toast-info { border-left: 4px solid var(--sg-primary); }
-.artx-toast-info i { color: var(--sg-primary); }
-.artx-toast-warning { border-left: 4px solid #e6a817; }
-.artx-toast-warning i { color: #e6a817; }
+.page-toast-success { border-left: 4px solid #43a047; }
+.page-toast-success i { color: #43a047; }
+.page-toast-error { border-left: 4px solid var(--sg-danger); }
+.page-toast-error i { color: var(--sg-danger); }
+.page-toast-info { border-left: 4px solid var(--sg-primary); }
+.page-toast-info i { color: var(--sg-primary); }
+.page-toast-warning { border-left: 4px solid #e6a817; }
+.page-toast-warning i { color: #e6a817; }
 
 /* ── Global accent override layer ────────────────────────────
-   When JS sets --artx-primary / --artx-accent on :root,
+   When JS sets --page-primary / --page-accent on :root,
    these rules remap the site's hardcoded darkolivegreen tokens.
    ─────────────────────────────────────────────────────────── */
 
@@ -963,19 +963,19 @@
   background: linear-gradient(135deg,
     var(--sg-primary,    #556b2f) 0%,
     var(--sg-primary-lt, #6b8a3a) 100%);
-  box-shadow: 0 3px 12px var(--artx-glow, rgba(85,107,47,0.28));
+  box-shadow: 0 3px 12px var(--page-glow, rgba(85,107,47,0.28));
 }
 .btn-settings-save:hover {
   background: linear-gradient(135deg,
     var(--sg-primary-lt, #6b8a3a) 0%,
     var(--sg-primary,    #556b2f) 100%);
-  box-shadow: 0 6px 20px var(--artx-glow, rgba(85,107,47,0.36));
+  box-shadow: 0 6px 20px var(--page-glow, rgba(85,107,47,0.36));
 }
 
 /* Toggle checked state */
 .toggle-switch input:checked + .toggle-slider {
   background: var(--sg-primary, #556b2f);
-  box-shadow: 0 0 0 3px var(--artx-glow, rgba(85,107,47,0.14));
+  box-shadow: 0 0 0 3px var(--page-glow, rgba(85,107,47,0.14));
 }
 
 /* Active nav btn indicator */
@@ -1110,7 +1110,7 @@
   .modal-input,
   .modal-textarea,
   .settings-select { font-size: 16px; } /* prevent iOS zoom */
-  .artx-toast { min-width: unset; width: calc(100vw - 28px); right: 14px; }
+  .page-toast { min-width: unset; width: calc(100vw - 28px); right: 14px; }
   .danger-actions { flex-direction: column; }
   .btn-danger-outline,
   .btn-danger-solid { width: 100%; justify-content: center; }

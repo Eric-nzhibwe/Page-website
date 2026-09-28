@@ -11,7 +11,7 @@ Usage:
     python manage.py migrate_activities_to_firestore --type submission
 """
 from django.core.management.base import BaseCommand
-from artx_platform.firebase_client import firebase_enabled
+from page_platform.firebase_client import firebase_enabled
 
 
 class Command(BaseCommand):

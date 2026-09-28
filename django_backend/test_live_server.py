@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Test live Django server for ARTX Platform
+Test live Django server for PAGE Platform
 """
 import requests
 import time
@@ -16,7 +16,7 @@ def test_live_server():
         ('/', 'index.html'),
         ('/styles/styles.css', 'CSS file'),
         ('/scripts/app.js', 'JavaScript file'),
-        ('/images/ARTX.jpg', 'Image file'),
+        ('/images/PAGE.jpg', 'Image file'),
         ('/favicon.ico', 'Favicon'),
     ]
     

@@ -1,5 +1,5 @@
 """
-Payment Service Layer — ARTX Platform
+Payment Service Layer — PAGE
 
 All payment business logic lives here.
 Views are thin HTTP wrappers that call these functions.
@@ -98,7 +98,7 @@ def initiate_stripe_deposit(payment: Payment, request):
                 'payment_id': str(payment.id),
                 'user_id':    str(payment.user.id),
                 'user_email': payment.user.email,
-                'platform':   'artx',
+                'platform':   'page',
             },
         )
         payment.payment_intent_id = intent.id
@@ -131,7 +131,7 @@ def initiate_stripe_deposit(payment: Payment, request):
 
 def initiate_paystack_deposit(payment: Payment, request):
     """Initialize Paystack transaction. Returns (data_dict, error_str)."""
-    reference = f'artx_{payment.id}_{int(timezone.now().timestamp())}'
+    reference = f'page_{payment.id}_{int(timezone.now().timestamp())}'
     headers   = {
         'Authorization': f'Bearer {settings.PAYSTACK_SECRET_KEY}',
         'Content-Type':  'application/json',
@@ -146,7 +146,7 @@ def initiate_paystack_deposit(payment: Payment, request):
             'payment_id': str(payment.id),
             'user_id':    str(payment.user.id),
             'custom_fields': [
-                {'display_name': 'Platform', 'variable_name': 'platform', 'value': 'ARTX'},
+                {'display_name': 'Platform', 'variable_name': 'platform', 'value': 'PAGE'},
                 {'display_name': 'User', 'variable_name': 'username', 'value': payment.user.username},
             ],
         },
@@ -210,7 +210,7 @@ def _pawapay_description(amount: Decimal, currency: str) -> str:
     - Contains only alphanumeric chars and spaces (PawaPay requirement)
     - Is at most 22 characters long
     """
-    desc = f'ARTX {amount:.0f} {currency}'
+    desc = f'PAGE {amount:.0f} {currency}'
     return desc[:22]
 
 
@@ -233,7 +233,7 @@ def initiate_pawapay_deposit(payment: Payment, phone_number: str,
     if payment.amount < MIN_DEPOSIT_AMOUNT:
         return None, f'Minimum deposit is {MIN_DEPOSIT_AMOUNT} {payment.currency}.'
 
-    deposit_id = f'artxd{payment.id}{uuid.uuid4().hex[:6]}'
+    deposit_id = f'paged{payment.id}{uuid.uuid4().hex[:6]}'
     # PawaPay depositId: alphanumeric only, max 36 chars
     deposit_id = re.sub(r'[^a-zA-Z0-9]', '', deposit_id)[:36]
 
@@ -356,7 +356,7 @@ def initiate_pawapay_payout(withdrawal: Withdrawal):
     if err:
         raise ValueError(err)
 
-    payout_id = f'artxp{withdrawal.id}{uuid.uuid4().hex[:6]}'
+    payout_id = f'pagep{withdrawal.id}{uuid.uuid4().hex[:6]}'
     payout_id = re.sub(r'[^a-zA-Z0-9]', '', payout_id)[:36]
 
     payload = {

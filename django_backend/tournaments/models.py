@@ -1,5 +1,5 @@
 """
-Tournament models for ARTX Platform
+Tournament models for PAGE
 """
 from django.db import models
 from django.conf import settings

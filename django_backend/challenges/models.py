@@ -1,5 +1,5 @@
 """
-Challenge models for ARTX Platform
+Challenge models for PAGE Platform
 """
 from django.db import models
 from django.utils import timezone

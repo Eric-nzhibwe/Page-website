@@ -55,7 +55,7 @@ Firestore Payment Mirror Service — Phase 9
 import logging
 from datetime import datetime, timezone
 
-from artx_platform.firebase_client import get_firestore
+from page_platform.firebase_client import get_firestore
 
 logger        = logging.getLogger(__name__)
 WALLET_COLL   = 'wallet_transactions'

@@ -2,7 +2,7 @@
 import os
 import django
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'artx_platform.settings')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'page_platform.settings')
 django.setup()
 
 from django.template.loader import render_to_string

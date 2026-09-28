@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-Test and preview email templates for ARTX Platform
+Test and preview email templates for PAGE Platform
 """
 import os
 import django
 
 # Setup Django
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'artx_platform.settings')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'page_platform.settings')
 django.setup()
 
 from django.template.loader import render_to_string
@@ -42,7 +42,7 @@ def create_test_data():
         defaults={
             'tag': 'ELITE',
             'leader': test_user,
-            'description': 'The most elite gaming alliance on ARTX - Victory Through Unity',
+            'description': 'The most elite gaming alliance on PAGE - Victory Through Unity',
             'max_members': 50,
             'is_public': True,
             'total_prestige': 15000,
@@ -234,7 +234,7 @@ def test_email_sending():
 
 def main():
     """Main function"""
-    print("🎮 ARTX EMAIL TEMPLATE TESTER")
+    print("🎮 PAGE EMAIL TEMPLATE TESTER")
     print("=" * 50)
     
     # Preview all templates

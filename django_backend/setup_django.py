@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Django ARTX Platform Setup Script
+Django PAGE Platform Setup Script
 =================================
 
 Quick setup script to get your Django backend running.
@@ -57,7 +57,7 @@ def setup_database():
     print("🗄️ Setting up database...")
     
     # Set Django settings
-    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'artx_platform.settings')
+    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'page_platform.settings')
     django.setup()
     
     # Make migrations
@@ -83,8 +83,8 @@ def create_sample_data():
     sample_users = [
         {
             'username': 'admin',
-            'email': 'admin@artx.com',
-            'display_name': 'ARTX Admin',
+            'email': 'admin@page.com',
+            'display_name': 'PAGE Admin',
             'prestige_points': 10000,
             'is_staff': True,
             'is_superuser': True
@@ -132,7 +132,7 @@ def create_sample_data():
 
 def show_next_steps():
     """Show next steps"""
-    print("\n🎉 Django ARTX Platform Setup Complete!")
+    print("\n🎉 Django PAGE Platform Setup Complete!")
     print("=" * 50)
     print()
     print("🚀 Next Steps:")
@@ -150,7 +150,7 @@ def show_next_steps():
     print("   👤 Profile: GET /api/auth/profile/")
     print()
     print("4. Sample Users Created:")
-    print("   👑 admin@artx.com (password: password123)")
+    print("   👑 admin@page.com (password: password123)")
     print("   ⚔️  elite@example.com (password: password123)")
     print("   🎮 pro@example.com (password: password123)")
     print("   🏆 skill@example.com (password: password123)")
@@ -159,7 +159,7 @@ def show_next_steps():
 
 def main():
     """Main setup function"""
-    print("🎮 ARTX Platform Django Setup")
+    print("🎮 PAGE Platform Django Setup")
     print("=" * 50)
     
     # Check if we're in the right directory

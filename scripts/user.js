@@ -1,4 +1,4 @@
-// ARTX — Profile  ·  user.js
+// PAGE — Profile  ·  user.js
 
 const PROFILE_API = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
     ? 'http://localhost:8000/api'
@@ -103,7 +103,7 @@ function renderOtherProfile(u) {
     const avatarUrl = u.profile_image_url || (u.profile_image && !u.profile_image.startsWith('/media/') ? u.profile_image : null);
     if (avatarUrl) setAvatarImg(avatarUrl);
     if (window.applyTierPalette) applyTierPalette(u.access_tier);
-    document.title = `ARTX — ${u.display_name || u.username}`;
+    document.title = `PAGE — ${u.display_name || u.username}`;
 }
 
 // ── Load and display follow counts ───────────────────────────

@@ -1,5 +1,5 @@
 /**
- * ARTX Real-time Updates & Social Graph
+ * PAGE Real-time Updates & Social Graph
  * ─────────────────────────────────────
  * • Smart polling (feed, notifications, online users)
  * • Full follow / unfollow with optimistic UI
@@ -31,7 +31,7 @@ function _rtHeaders() {
 function _rtToast(msg, type = 'info') {
     if (typeof socialToast === 'function') { socialToast(msg, type); return; }
     if (typeof showToast   === 'function') { showToast(msg, type);   return; }
-    console.info(`[ARTX] ${type.toUpperCase()}: ${msg}`);
+    console.info(`[PAGE] ${type.toUpperCase()}: ${msg}`);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -112,13 +112,13 @@ async function toggleFollow(userId, btnEl) {
 /** Kept for backward compat — old code calls followUser(id) */
 async function followUser(userId) {
     if (_followingSet.has(String(userId))) return; // already following
-    const btn = document.querySelector(`[data-user-id="${userId}"] .artx-follow-btn`);
+    const btn = document.querySelector(`[data-user-id="${userId}"] .page-follow-btn`);
     await toggleFollow(userId, btn);
 }
 
 async function unfollowUser(userId) {
     if (!_followingSet.has(String(userId))) return; // not following
-    const btn = document.querySelector(`[data-user-id="${userId}"] .artx-follow-btn`);
+    const btn = document.querySelector(`[data-user-id="${userId}"] .page-follow-btn`);
     await toggleFollow(userId, btn);
 }
 
@@ -135,16 +135,16 @@ function _styleFollowBtn(btn, following) {
     btn.dataset.following = following ? '1' : '0';
     if (following) {
         btn.innerHTML     = '<i class="fas fa-check"></i> Following';
-        btn.classList.add('artx-follow-btn--following');
+        btn.classList.add('page-follow-btn--following');
     } else {
         btn.innerHTML     = '<i class="fas fa-user-plus"></i> Follow';
-        btn.classList.remove('artx-follow-btn--following');
+        btn.classList.remove('page-follow-btn--following');
     }
 }
 
 function _updateAllFollowButtons(userId) {
     const following = _followingSet.has(String(userId));
-    document.querySelectorAll(`.artx-follow-btn[data-uid="${userId}"]`)
+    document.querySelectorAll(`.page-follow-btn[data-uid="${userId}"]`)
         .forEach(btn => _styleFollowBtn(btn, following));
 }
 
@@ -167,7 +167,7 @@ async function _refreshFollowCounts(userId) {
 /** Build a follow button element */
 function _makeFollowBtn(userId, isFollowing) {
     const btn = document.createElement('button');
-    btn.className     = `artx-follow-btn${isFollowing ? ' artx-follow-btn--following' : ''}`;
+    btn.className     = `page-follow-btn${isFollowing ? ' page-follow-btn--following' : ''}`;
     btn.dataset.uid   = userId;
     btn.setAttribute('aria-label', isFollowing ? 'Unfollow' : 'Follow');
     btn.innerHTML     = isFollowing
@@ -212,7 +212,7 @@ async function loadDiscoverUsers() {
         if (container) _renderDiscoverList(container, users, 'discover');
         if (mobileContainer) _renderDiscoverList(mobileContainer, users, 'discover');
     } catch {
-        const err = '<p class="artx-no-users">Could not load users.</p>';
+        const err = '<p class="page-no-users">Could not load users.</p>';
         if (container) container.innerHTML = err;
         if (mobileContainer) mobileContainer.innerHTML = err;
     }
@@ -233,7 +233,7 @@ async function loadSuggestedUsers() {
         if (container) _renderDiscoverList(container, users.slice(0, 6), 'suggested');
         if (mobileContainer) _renderDiscoverList(mobileContainer, users.slice(0, 6), 'suggested');
     } catch {
-        const err = '<p class="artx-no-users">Could not load suggestions.</p>';
+        const err = '<p class="page-no-users">Could not load suggestions.</p>';
         if (container) container.innerHTML = err;
         if (mobileContainer) mobileContainer.innerHTML = err;
     }
@@ -259,7 +259,7 @@ async function searchUsers(query) {
         });
         if (!res.ok) throw new Error('API error');
         const users = await res.json();
-        const noResult = `<p class="artx-no-users">No users found for "<strong>${_rtEsc(query)}</strong>"</p>`;
+        const noResult = `<p class="page-no-users">No users found for "<strong>${_rtEsc(query)}</strong>"</p>`;
         if (users.length === 0) {
             if (container) container.innerHTML = noResult;
             if (mobileContainer) mobileContainer.innerHTML = noResult;
@@ -268,7 +268,7 @@ async function searchUsers(query) {
             if (mobileContainer) _renderDiscoverList(mobileContainer, users, 'search');
         }
     } catch {
-        const err = '<p class="artx-no-users">Search failed. Please try again.</p>';
+        const err = '<p class="page-no-users">Search failed. Please try again.</p>';
         if (container) container.innerHTML = err;
         if (mobileContainer) mobileContainer.innerHTML = err;
     }
@@ -276,7 +276,7 @@ async function searchUsers(query) {
 
 function _renderDiscoverList(container, users, mode) {
     if (!users || users.length === 0) {
-        container.innerHTML = '<p class="artx-no-users">No users to show right now.</p>';
+        container.innerHTML = '<p class="page-no-users">No users to show right now.</p>';
         return;
     }
 
@@ -284,18 +284,18 @@ function _renderDiscoverList(container, users, mode) {
     users.forEach(u => {
         const isFollowing = _followingSet.has(String(u.id));
         const item = document.createElement('div');
-        item.className       = 'artx-user-item';
+        item.className       = 'page-user-item';
         item.dataset.userId  = u.id;
 
         const avatarHTML = u.profile_image
-            ? `<img src="${_rtEsc(u.profile_image)}" alt="${_rtEsc(u.display_name)}" class="artx-user-avatar-img">`
+            ? `<img src="${_rtEsc(u.profile_image)}" alt="${_rtEsc(u.display_name)}" class="page-user-avatar-img">`
             : `<i class="fas fa-user-circle"></i>`;
 
         item.innerHTML = `
-          <div class="artx-user-avatar">${avatarHTML}</div>
-          <div class="artx-user-info">
-            <strong class="artx-user-name">${_rtEsc(u.display_name || u.username)}</strong>
-            <span class="artx-user-tier artx-tier--${(u.access_tier||'bronze').toLowerCase()}">
+          <div class="page-user-avatar">${avatarHTML}</div>
+          <div class="page-user-info">
+            <strong class="page-user-name">${_rtEsc(u.display_name || u.username)}</strong>
+            <span class="page-user-tier page-tier--${(u.access_tier||'bronze').toLowerCase()}">
               ${_rtEsc(u.access_tier || 'Bronze')}
             </span>
           </div>`;
@@ -308,11 +308,11 @@ function _renderDiscoverList(container, users, mode) {
 
 function _showUserSkeleton(container, count) {
     container.innerHTML = Array.from({ length: count }, () => `
-      <div class="artx-user-skel">
-        <div class="artx-skel-circle"></div>
-        <div class="artx-skel-lines">
-          <div class="artx-skel-line artx-skel-line--70"></div>
-          <div class="artx-skel-line artx-skel-line--40"></div>
+      <div class="page-user-skel">
+        <div class="page-skel-circle"></div>
+        <div class="page-skel-lines">
+          <div class="page-skel-line page-skel-line--70"></div>
+          <div class="page-skel-line page-skel-line--40"></div>
         </div>
       </div>`).join('');
 }
@@ -343,7 +343,7 @@ function _renderOnlineUsers(users) {
     const container = document.getElementById('onlineUsers');
     const mobileContainer = document.getElementById('onlineUsersMobile');
 
-    const noUsers = '<p class="artx-no-users">No users online right now.</p>';
+    const noUsers = '<p class="page-no-users">No users online right now.</p>';
     const noUsersMobile = '<p class="people-loading">No users online right now.</p>';
 
     if (!users || users.length === 0) {
@@ -358,22 +358,22 @@ function _renderOnlineUsers(users) {
         users.forEach(u => {
             const isFollowing = _followingSet.has(String(u.id));
             const item = document.createElement('div');
-            item.className = 'artx-online-item';
+            item.className = 'page-online-item';
             item.dataset.userId = u.id;
             const avatarHTML = u.profile_image
-                ? `<img src="${_rtEsc(u.profile_image)}" alt="${_rtEsc(u.display_name)}" class="artx-user-avatar-img">`
+                ? `<img src="${_rtEsc(u.profile_image)}" alt="${_rtEsc(u.display_name)}" class="page-user-avatar-img">`
                 : `<i class="fas fa-user-circle"></i>`;
             item.innerHTML = `
-              <div class="artx-online-avatar">
+              <div class="page-online-avatar">
                 ${avatarHTML}
-                <span class="artx-online-dot" title="Online"></span>
+                <span class="page-online-dot" title="Online"></span>
               </div>
-              <div class="artx-user-info">
-                <strong class="artx-user-name">${_rtEsc(u.display_name || u.username)}</strong>
-                <span class="artx-online-label">Active</span>
+              <div class="page-user-info">
+                <strong class="page-user-name">${_rtEsc(u.display_name || u.username)}</strong>
+                <span class="page-online-label">Active</span>
               </div>`;
             const btn = _makeFollowBtn(u.id, isFollowing);
-            btn.classList.add('artx-follow-btn--sm');
+            btn.classList.add('page-follow-btn--sm');
             item.appendChild(btn);
             container.appendChild(item);
         });
@@ -479,7 +479,7 @@ function _buildPostCard(post) {
     const content  = _rtEsc(post.content || '');
 
     const avatarHTML = (author.profile_image_url || author.profile_image)
-        ? `<img src="${_rtEsc(author.profile_image_url || author.profile_image)}" alt="${name}" class="artx-user-avatar-img"
+        ? `<img src="${_rtEsc(author.profile_image_url || author.profile_image)}" alt="${name}" class="page-user-avatar-img"
                onerror="this.style.display='none'">`
         : `<i class="fas fa-user-circle"></i>`;
 
@@ -937,7 +937,7 @@ document.addEventListener('DOMContentLoaded', _initRealtimeUpdates);
  *
  * Called:
  *  • on DOMContentLoaded (shows the stored URL immediately, no API call needed)
- *  • when the artx:avatarChanged event fires (after a successful upload)
+ *  • when the page:avatarChanged event fires (after a successful upload)
  */
 function _stampCurrentUserAvatar(imgUrl) {
     if (!imgUrl) return;
@@ -975,14 +975,14 @@ function _stampCurrentUserAvatar(imgUrl) {
 // Boot: stamp avatar from localStorage as soon as DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
     try {
-        const user = JSON.parse(localStorage.getItem('artxUser') || '{}');
+        const user = JSON.parse(localStorage.getItem('pageUser') || '{}');
         const url  = user.profile_image_url || user.profile_image || null;
         if (url) _stampCurrentUserAvatar(url);
     } catch (_) { /* non-critical */ }
 });
 
 // Live update: fired by settings.js _smUploadAvatar after a successful upload
-window.addEventListener('artx:avatarChanged', e => {
+window.addEventListener('page:avatarChanged', e => {
     const url = e.detail?.url;
     if (url) _stampCurrentUserAvatar(url);
 });
@@ -1062,7 +1062,7 @@ async function _pollUserStats() {
         // Update cached user object in localStorage — include avatar URLs so
         // every page load immediately shows the correct profile picture
         try {
-            const stored = JSON.parse(localStorage.getItem('artxUser') || '{}');
+            const stored = JSON.parse(localStorage.getItem('pageUser') || '{}');
             const updated = {
                 ...stored,
                 prestige_points:   u.prestige_points,
@@ -1077,7 +1077,7 @@ async function _pollUserStats() {
                 profile_image_url: u.profile_image_url || stored.profile_image_url || null,
                 profile_image:     u.profile_image_url || u.profile_image || stored.profile_image || null,
             };
-            localStorage.setItem('artxUser', JSON.stringify(updated));
+            localStorage.setItem('pageUser', JSON.stringify(updated));
 
             // Re-stamp avatar if the server returned one (handles first load after upload)
             const freshUrl = updated.profile_image_url || updated.profile_image;

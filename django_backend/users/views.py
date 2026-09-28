@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-User views for ARTX Platform API
+User views for PAGE Platform API
 """
 from rest_framework import generics, status, permissions
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
@@ -51,7 +51,7 @@ class UserRegistrationView(generics.CreateAPIView):
         return Response({
             'user': UserProfileSerializer(user).data,
             'token': token.key,
-            'message': 'Registration successful! Welcome to ARTX!'
+            'message': 'Account creation successful! Welcome to PAGE!'
         }, status=status.HTTP_201_CREATED)
 
 
@@ -640,7 +640,7 @@ def firebase_token_login_view(request):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-    from artx_platform.firebase_client import firebase_enabled
+    from page_platform.firebase_client import firebase_enabled
     if not firebase_enabled():
         return Response(
             {'error': 'Firebase Auth is not configured on this server.'},

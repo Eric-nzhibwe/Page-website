@@ -53,7 +53,7 @@ import uuid
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 
-from artx_platform.firebase_client import get_firestore
+from page_platform.firebase_client import get_firestore
 
 logger     = logging.getLogger(__name__)
 COLLECTION = 'challenges'

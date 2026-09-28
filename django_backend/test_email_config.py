@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-Test email configuration for ARTX Platform
+Test email configuration for PAGE Platform
 """
 import os
 import django
 
 # Setup Django
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'artx_platform.settings')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'page_platform.settings')
 django.setup()
 
 from django.core.mail import send_mail
@@ -41,8 +41,8 @@ def test_email_config():
             # Try to send a test email
             print("\n📤 Attempting to send test email...")
             send_mail(
-                subject='ARTX Platform - Email Test',
-                message='This is a test email from your ARTX Platform Django backend.',
+                subject='PAGE Platform - Email Test',
+                message='This is a test email from your PAGE Platform Django backend.',
                 from_email=settings.DEFAULT_FROM_EMAIL,
                 recipient_list=[settings.EMAIL_HOST_USER],  # Send to yourself
                 fail_silently=False,

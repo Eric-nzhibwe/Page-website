@@ -1,5 +1,5 @@
 /**
- * Challenges Page — ARTX Platform
+ * Challenges Page — PAGE Platform
  */
 
 // ── State ─────────────────────────────────────────────────────────────────────
@@ -79,8 +79,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 // ── Auth ──────────────────────────────────────────────────────────────────────
 function checkAuth() {
     const token = localStorage.getItem('djangoAuthToken') || localStorage.getItem('authToken');
-    // Support both old artCurrentUser key and the current artxUser object
-    const userRaw = localStorage.getItem('artxUser') || localStorage.getItem('artCurrentUser');
+    // Support both old pageUser key and the current pageUser object
+    const userRaw = localStorage.getItem('pageUser') || localStorage.getItem('pageUser');
     currentUserId = userRaw ? (JSON.parse(userRaw)?.id || userRaw) : null;
     if (token) apiService.setToken(token);
     return currentUserId !== null && token !== null;
@@ -88,7 +88,7 @@ function checkAuth() {
 
 function loadPlayerData() {
     if (!currentUserId) return;
-    const saved = localStorage.getItem(`artPlayer_${currentUserId}`);
+    const saved = localStorage.getItem(`pagePlayer_${currentUserId}`);
     if (saved) { player = JSON.parse(saved); updateHeaderUI(); }
 }
 
@@ -108,8 +108,8 @@ function logout() {
     if (confirm('Logout?')) {
         localStorage.removeItem('djangoAuthToken');
         localStorage.removeItem('authToken');
-        localStorage.removeItem('artxUser');
-        localStorage.removeItem('artCurrentUser');
+        localStorage.removeItem('pageUser');
+        localStorage.removeItem('pageUser');
         window.location.href = 'auth.html';
     }
 }
@@ -180,7 +180,7 @@ function renderChallenges() {
     setHero('statActiveChallenges', challenges.length);
     setHero('statTotalPlayers', challenges.reduce((s, c) => s + (c.submission_count || 0), 0).toLocaleString());
     setHero('statMySubmissions', mySubmissions.length);
-    const raw = localStorage.getItem('artxUser') || localStorage.getItem('artCurrentUser');
+    const raw = localStorage.getItem('pageUser') || localStorage.getItem('pageUser');
     try { const u = JSON.parse(raw || '{}'); setHero('statMyPrestige', (u.prestige_points ?? 0).toLocaleString()); } catch { /* silent */ }
 
     if (filtered.length === 0) {
@@ -358,7 +358,7 @@ async function openChallengeWithFeeCheck(challengeId, type) {
     // Try to get live wallet balance
     let balance = 0;
     try {
-        const raw = localStorage.getItem('artxUser') || localStorage.getItem('artCurrentUser');
+        const raw = localStorage.getItem('pageUser') || localStorage.getItem('pageUser');
         const u   = raw ? JSON.parse(raw) : {};
         balance   = parseFloat(u.wallet_balance || 0);
     } catch { /* fallback to 0 */ }
@@ -399,10 +399,10 @@ async function confirmFeeAndEnter() {
 
         // Update local wallet balance
         try {
-            const raw = localStorage.getItem('artxUser') || localStorage.getItem('artCurrentUser');
+            const raw = localStorage.getItem('pageUser') || localStorage.getItem('pageUser');
             const u   = raw ? JSON.parse(raw) : {};
             u.wallet_balance = Math.max(0, (parseFloat(u.wallet_balance || 0) - entryFee));
-            const key = localStorage.getItem('artxUser') ? 'artxUser' : 'artCurrentUser';
+            const key = localStorage.getItem('pageUser') ? 'pageUser' : 'pageUser';
             localStorage.setItem(key, JSON.stringify(u));
             const balEl = document.getElementById('walletBalance');
             if (balEl) balEl.textContent = `K${u.wallet_balance.toFixed(2)}`;

@@ -1,4 +1,4 @@
-// ARTX Platform - Core Logic - Django Backend Integration
+// PAGE Platform - Core Logic - Django Backend Integration
 
 // API Base URL
 const API_BASE_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
@@ -57,7 +57,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Initialize app
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log('🎮 ARTX Platform initializing...');
+    console.log('🎮 PAGE Platform initializing...');
     
     // Clear old localStorage data
     clearOldLocalStorageData();
@@ -144,7 +144,7 @@ async function loadCurrentUser() {
 function initializeApp() {
     if (!currentUser) return;
     
-    console.log('🚀 Initializing ARTX Platform for user:', currentUser.username);
+    console.log('🚀 Initializing PAGE Platform for user:', currentUser.username);
     
     // Update UI with user data
     updateUserInterface();
@@ -161,7 +161,7 @@ function initializeApp() {
     // Initialize event listeners
     initializeEventListeners();
     
-    console.log('🎮 ARTX Platform initialized successfully!');
+    console.log('🎮 PAGE Platform initialized successfully!');
 }
 
 // Update user interface with current user data

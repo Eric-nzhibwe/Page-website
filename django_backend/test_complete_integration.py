@@ -7,7 +7,7 @@ import django
 import sys
 
 # Setup Django
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'artx_platform.settings')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'page_platform.settings')
 django.setup()
 
 from django.test import Client
@@ -15,7 +15,7 @@ from users.models import User
 from notifications.models import NotificationLog
 import json
 
-print("🧪 ARTX Platform Integration Test (No Celery)")
+print("🧪 PAGE Platform Integration Test (No Celery)")
 print("=" * 70)
 
 # Create test client

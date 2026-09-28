@@ -30,8 +30,8 @@ def test_live_index():
                 print(f"   Content-Length: {content_length} bytes")
                 
                 # Check if it's actually HTML content
-                if 'ARTX' in response.text:
-                    print(f"   ✅ Contains ARTX branding - correct content!")
+                if 'PAGE' in response.text:
+                    print(f"   ✅ Contains PAGE branding - correct content!")
                 else:
                     print(f"   ⚠️  Content might be incorrect")
             else:

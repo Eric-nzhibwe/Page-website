@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Test frontend file serving for ARTX Platform
+Test frontend file serving for PAGE Platform
 """
 import os
 import django
@@ -8,7 +8,7 @@ from django.test import Client
 from django.conf import settings
 
 # Setup Django
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'artx_platform.settings')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'page_platform.settings')
 django.setup()
 
 def test_frontend_serving():

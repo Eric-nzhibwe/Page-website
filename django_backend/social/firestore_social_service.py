@@ -59,7 +59,7 @@ import logging
 import uuid
 from datetime import datetime, timezone
 
-from artx_platform.firebase_client import get_firestore
+from page_platform.firebase_client import get_firestore
 
 logger          = logging.getLogger(__name__)
 POSTS_COLL      = 'social_posts'

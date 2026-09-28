@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 def _should_mirror():
     try:
         from django.conf import settings
-        from artx_platform.firebase_client import firebase_enabled
+        from page_platform.firebase_client import firebase_enabled
         return (
             settings.FIRESTORE_COLLECTIONS.get('payments', False)
             and firebase_enabled()

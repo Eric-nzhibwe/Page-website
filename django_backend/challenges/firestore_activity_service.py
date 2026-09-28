@@ -29,7 +29,7 @@ Required Firestore composite indexes
 import logging
 from datetime import datetime, timezone
 
-from artx_platform.firebase_client import get_firestore
+from page_platform.firebase_client import get_firestore
 
 logger    = logging.getLogger(__name__)
 COLLECTION = 'challenge_activities'

@@ -1,13 +1,13 @@
 /* =====================================================================
-   ARTX Messenger — Direct Message UI
-   Matches the ARTX theme: olive green (#556b2f) accents, light backgrounds,
+   PAGE Messenger — Direct Message UI
+   Matches the PAGE theme: olive green (#556b2f) accents, light backgrounds,
    clean card surfaces, soft shadows, rounded geometry.
    ===================================================================== */
 
 /* ── CSS token overrides for messenger scope ── */
 .dm-shell {
-    --dm-accent:        var(--artx-primary, #556b2f);
-    --dm-accent-lt:     var(--artx-primary-lt, #6b8a3a);
+    --dm-accent:        var(--page-primary, #556b2f);
+    --dm-accent-lt:     var(--page-primary-lt, #6b8a3a);
     --dm-accent-glow:   rgba(85,107,47,0.15);
     --dm-bg:            #f4f7f0;
     --dm-surface:       #ffffff;
@@ -1168,8 +1168,8 @@
     transform: scale(1.05);
 }
 
-/* Re-skin the existing artx-follow-btn for compact use inside messenger */
-.dm-person-actions .artx-follow-btn {
+/* Re-skin the existing page-follow-btn for compact use inside messenger */
+.dm-person-actions .page-follow-btn {
     padding: 5px 10px;
     font-size: 11px;
     border-radius: var(--dm-radius-pill);
@@ -1183,12 +1183,12 @@
     display: flex; align-items: center; gap: 4px;
     white-space: nowrap;
 }
-.dm-person-actions .artx-follow-btn:hover {
+.dm-person-actions .page-follow-btn:hover {
     background: var(--dm-accent-glow);
     border-color: var(--dm-accent);
     color: var(--dm-accent);
 }
-.dm-person-actions .artx-follow-btn.artx-follow-btn--following {
+.dm-person-actions .page-follow-btn.page-follow-btn--following {
     background: var(--dm-accent-glow);
     border-color: var(--dm-accent);
     color: var(--dm-accent);

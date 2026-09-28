@@ -1,5 +1,5 @@
 """
-ARTX AI Service — powered by Groq (openai/gpt-oss-20b)
+PAGE AI Service — powered by Groq (openai/gpt-oss-20b)
 ================================================
 Primary:  Groq REST API — called directly with `requests` (no extra SDK needed)
 Fallback: Smart rule-based responses
@@ -19,7 +19,7 @@ GROQ_MODEL   = "openai/gpt-oss-20b"
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 
 # ── System prompt ─────────────────────────────────────────────────────────────
-SYSTEM_PROMPT = """You are ARTX AI, the smart assistant built into the ARTX competitive gaming platform.
+SYSTEM_PROMPT = """You are PAGE AI, the smart assistant built into the PAGE competitive gaming platform.
 
 ## Your personality
 - Friendly, conversational, and helpful — like talking to a knowledgeable friend
@@ -28,7 +28,7 @@ SYSTEM_PROMPT = """You are ARTX AI, the smart assistant built into the ARTX comp
 - Use 1–2 emojis per reply to stay lively, not overwhelming
 - Be honest when you don't know something
 
-## About ARTX
+## About PAGE
 - Competitive gaming and challenges platform based in Zambia
 - Currency: Zambian Kwacha (ZMW, shown as "K")
 - Payment methods: PawaPay mobile money (MTN Zambia, Airtel Money), Stripe card, Paystack
@@ -137,7 +137,7 @@ def _rule_based_response(message: str, user_context: dict | None) -> str:
 
     if any(w in m for w in ["hi", "hello", "hey", "howdy", "sup", "good morning", "good evening"]):
         name = ctx.get("username", "there")
-        return f"Hey {name}! 👋 I'm ARTX AI. Ask me about your wallet, challenges, tiers — or anything else!"
+        return f"Hey {name}! 👋 I'm PAGE AI. Ask me about your wallet, challenges, tiers — or anything else!"
 
     if any(w in m for w in ["how are you", "how r u", "you okay"]):
         return "Doing great, thanks! How can I help you today? 😊"
@@ -180,7 +180,7 @@ def _rule_based_response(message: str, user_context: dict | None) -> str:
         )
 
     if any(w in m for w in ["challenge", "play", "compete", "game", "quiz"]):
-        return "Challenges are ARTX's core feature — answer correctly to earn prestige and cash. Browse the **Challenges** tab to get started!"
+        return "Challenges are PAGE's core feature — answer correctly to earn prestige and cash. Browse the **Challenges** tab to get started!"
 
     if any(w in m for w in ["tournament", "competition", "event", "contest"]):
         return "Tournaments are timed events with prize pools. Top scorers share the winnings. Check the **Challenges** section for live events."
@@ -193,7 +193,7 @@ def _rule_based_response(message: str, user_context: dict | None) -> str:
 
     if any(w in m for w in ["payment", "mtn", "airtel", "mpesa", "stripe", "paystack", "mobile money"]):
         return (
-            "ARTX supports:\n"
+            "PAGE supports:\n"
             "📱 **Mobile Money** via PawaPay — MTN, Airtel, M-Pesa\n"
             "💳 **Card payments** via Stripe\n"
             "🏦 **Paystack** — card and bank\n\n"
@@ -216,7 +216,7 @@ def _rule_based_response(message: str, user_context: dict | None) -> str:
     return (
         "I'm running in basic mode and can't answer that right now.\n\n"
         "Add **GROQ_API_KEY** to your `.env` to unlock full AI (free at console.groq.com/keys). "
-        "In the meantime, ask me about wallets, challenges, tiers, or anything ARTX-related!"
+        "In the meantime, ask me about wallets, challenges, tiers, or anything PAGE-related!"
     )
 
 

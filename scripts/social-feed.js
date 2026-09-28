@@ -1,5 +1,5 @@
 /**
- * ARTX Social Feed
+ * PAGE Social Feed
  * Handles: create post modal, publish post (API-first), story creation,
  * post menu, delete, sidebar, stories scroll, dashboard nav.
  *
@@ -39,7 +39,7 @@ function _timeAgo(iso) {
 }
 
 function _currentUsername() {
-    try { return JSON.parse(localStorage.getItem('artxUser') || '{}').username || 'You'; }
+    try { return JSON.parse(localStorage.getItem('pageUser') || '{}').username || 'You'; }
     catch { return 'You'; }
 }
 
@@ -782,7 +782,7 @@ function copyPostLink(postId) {
 // ─────────────────────────────────────────────────────────────────────────────
 function updateSocialSidebar() {
     try {
-        const user = JSON.parse(localStorage.getItem('artxUser') || '{}');
+        const user = JSON.parse(localStorage.getItem('pageUser') || '{}');
         const set  = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
         set('sidebarUsername', user.username || 'Player');
         set('sidebarTier',     (user.access_tier || 'Bronze') + ' Tier');

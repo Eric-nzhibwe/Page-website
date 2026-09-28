@@ -54,7 +54,7 @@ Required Firestore indexes:
 import logging
 from datetime import datetime, timezone
 
-from artx_platform.firebase_client import get_firestore
+from page_platform.firebase_client import get_firestore
 
 logger     = logging.getLogger(__name__)
 COLLECTION = 'user_profiles'

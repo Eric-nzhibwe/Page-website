@@ -30,7 +30,7 @@ python manage.py collectstatic --no-input
 echo "==> Verifying Redis / WebSocket configuration"
 python - <<'PYEOF'
 import os, sys
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'artx_platform.settings')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'page_platform.settings')
 
 import django
 django.setup()
@@ -66,7 +66,7 @@ PYEOF
 echo "==> Verifying email configuration"
 python - <<'PYEOF'
 import os, sys
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'artx_platform.settings')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'page_platform.settings')
 
 import django
 django.setup()

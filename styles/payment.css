@@ -1,16 +1,16 @@
 /* ═══════════════════════════════════════════════
-   ARTX · Payment · payment.css
+   PAGE · Payment · payment.css
    All theme colors use --pay-* which mirrors
-   --artx-* set by theme.js on every page load.
+   --page-* set by theme.js on every page load.
    ═══════════════════════════════════════════════ */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-    /* theme.js sets --artx-* at boot; these are fallbacks */
-    --pay-primary:    var(--artx-primary,    #556b2f);
-    --pay-primary-lt: var(--artx-primary-lt, #6b8a3a);
-    --pay-accent:     var(--artx-accent,     #90ee90);
-    --pay-glow:       var(--artx-glow,       rgba(85,107,47,0.20));
+    /* theme.js sets --page-* at boot; these are fallbacks */
+    --pay-primary:    var(--page-primary,    #556b2f);
+    --pay-primary-lt: var(--page-primary-lt, #6b8a3a);
+    --pay-accent:     var(--page-accent,     #90ee90);
+    --pay-glow:       var(--page-glow,       rgba(85,107,47,0.20));
 
     /* static tokens */
     --pay-red:    #e53935;
@@ -43,9 +43,9 @@ body {
 ══════════════════════════════════════ */
 .p-hero {
     background: linear-gradient(135deg,
-        var(--artx-primary-dk, #3d4f22) 0%,
+        var(--page-primary-dk, #3d4f22) 0%,
         var(--pay-primary)              55%,
-        var(--artx-primary-lt, #6b8a3a) 100%);
+        var(--page-primary-lt, #6b8a3a) 100%);
     border-radius: 24px;
     padding: 30px 28px 0;
     margin-bottom: 16px;

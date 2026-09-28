@@ -11,7 +11,7 @@ Firestore collection layout
     {alliance_id}/
       id                : str
       name              : str   — unique enforced client-side + Firestore rule
-      tag               : str   — short tag e.g. ARTX
+      tag               : str   — short tag e.g. PAGE
       description       : str
       logo_url          : str | null
       leader_id         : str
@@ -78,7 +78,7 @@ import logging
 import uuid
 from datetime import datetime, timezone, timedelta
 
-from artx_platform.firebase_client import get_firestore
+from page_platform.firebase_client import get_firestore
 
 logger       = logging.getLogger(__name__)
 ALLIANCES    = 'alliances'

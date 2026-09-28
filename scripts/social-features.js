@@ -1,5 +1,5 @@
 /**
- * ARTX Social Features — Comments & Shares
+ * PAGE Social Features — Comments & Shares
  * Professional, animated, API-first with localStorage fallback.
  */
 
@@ -26,10 +26,10 @@ function authHeaders() {
 // ─────────────────────────────────────────────────────────────
 function socialToast(message, type = 'success') {
     if (typeof showToast === 'function') { showToast(message, type); return; }
-    let box = document.getElementById('artxToastBox');
+    let box = document.getElementById('pageToastBox');
     if (!box) {
         box = document.createElement('div');
-        box.id = 'artxToastBox';
+        box.id = 'pageToastBox';
         box.style.cssText = 'position:fixed;bottom:80px;right:20px;z-index:99999;display:flex;flex-direction:column;gap:8px';
         document.body.appendChild(box);
     }
@@ -128,25 +128,25 @@ function openCommentModal(postId) {
     _commentPostId = postId;
     _commentPage   = 1;
 
-    let modal = document.getElementById('artxCommentModal');
+    let modal = document.getElementById('pageCommentModal');
     if (!modal) modal = _buildCommentModal();
 
     document.body.classList.add('modal-open');
     modal.style.display = 'flex';
     requestAnimationFrame(() => {
         modal.classList.add('modal--visible');
-        modal.querySelector('.artx-modal-box').classList.add('modal-box--visible');
+        modal.querySelector('.page-modal-box').classList.add('modal-box--visible');
     });
 
     _loadComments(postId, true);
-    modal.querySelector('#artxCommentInput').focus();
+    modal.querySelector('#pageCommentInput').focus();
 }
 
 function closeCommentModal() {
-    const modal = document.getElementById('artxCommentModal');
+    const modal = document.getElementById('pageCommentModal');
     if (!modal) return;
     modal.classList.remove('modal--visible');
-    modal.querySelector('.artx-modal-box').classList.remove('modal-box--visible');
+    modal.querySelector('.page-modal-box').classList.remove('modal-box--visible');
     setTimeout(() => {
         modal.style.display = 'none';
         document.body.classList.remove('modal-open');
@@ -156,27 +156,27 @@ function closeCommentModal() {
 
 function _buildCommentModal() {
     const el = document.createElement('div');
-    el.id        = 'artxCommentModal';
-    el.className = 'artx-modal-overlay';
+    el.id        = 'pageCommentModal';
+    el.className = 'page-modal-overlay';
     el.setAttribute('role', 'dialog');
     el.setAttribute('aria-modal', 'true');
     el.setAttribute('aria-label', 'Comments');
     el.innerHTML = `
-      <div class="artx-modal-box" role="document">
+      <div class="page-modal-box" role="document">
 
         <!-- Header -->
-        <div class="artx-modal-head">
-          <h3 class="artx-modal-title"><i class="fas fa-comment-dots"></i> Comments</h3>
-          <button class="artx-modal-close" onclick="closeCommentModal()" aria-label="Close">
+        <div class="page-modal-head">
+          <h3 class="page-modal-title"><i class="fas fa-comment-dots"></i> Comments</h3>
+          <button class="page-modal-close" onclick="closeCommentModal()" aria-label="Close">
             <i class="fas fa-times"></i>
           </button>
         </div>
 
         <!-- Comment list -->
-        <div class="artx-comments-wrap" id="artxCommentsList">
-          <div class="artx-comments-skeleton">
+        <div class="page-comments-wrap" id="pageCommentsList">
+          <div class="page-comments-skeleton">
             ${[1,2,3].map(() => `
-              <div class="artx-comment-skel">
+              <div class="page-comment-skel">
                 <div class="skel-avatar"></div>
                 <div class="skel-lines"><div class="skel-line skel-line--w70"></div><div class="skel-line skel-line--w40"></div></div>
               </div>`).join('')}
@@ -184,22 +184,22 @@ function _buildCommentModal() {
         </div>
 
         <!-- Load more -->
-        <div class="artx-load-more-wrap" id="artxLoadMoreWrap" style="display:none">
-          <button class="artx-load-more-btn" id="artxLoadMoreBtn" onclick="_loadMoreComments()">
+        <div class="page-load-more-wrap" id="pageLoadMoreWrap" style="display:none">
+          <button class="page-load-more-btn" id="pageLoadMoreBtn" onclick="_loadMoreComments()">
             Load more comments
           </button>
         </div>
 
         <!-- Composer -->
-        <div class="artx-composer">
-          <div class="artx-composer-avatar"><i class="fas fa-user-circle"></i></div>
-          <div class="artx-composer-inner">
-            <textarea id="artxCommentInput" class="artx-composer-textarea"
+        <div class="page-composer">
+          <div class="page-composer-avatar"><i class="fas fa-user-circle"></i></div>
+          <div class="page-composer-inner">
+            <textarea id="pageCommentInput" class="page-composer-textarea"
               placeholder="Write a comment…" maxlength="1000" rows="1"
               oninput="_autoResize(this); _updateCharCount(this)"></textarea>
-            <div class="artx-composer-footer">
-              <span class="artx-char-count" id="artxCharCount">0 / 1000</span>
-              <button class="artx-send-btn" id="artxSendBtn" onclick="_submitComment()" aria-label="Post comment">
+            <div class="page-composer-footer">
+              <span class="page-char-count" id="pageCharCount">0 / 1000</span>
+              <button class="page-send-btn" id="pageSendBtn" onclick="_submitComment()" aria-label="Post comment">
                 <i class="fas fa-paper-plane"></i> Post
               </button>
             </div>
@@ -224,17 +224,17 @@ function _autoResize(el) {
 }
 
 function _updateCharCount(el) {
-    const count = document.getElementById('artxCharCount');
+    const count = document.getElementById('pageCharCount');
     if (count) count.textContent = `${el.value.length} / 1000`;
 }
 
 async function _loadComments(postId, reset = false) {
-    const list  = document.getElementById('artxCommentsList');
-    const moreW = document.getElementById('artxLoadMoreWrap');
+    const list  = document.getElementById('pageCommentsList');
+    const moreW = document.getElementById('pageLoadMoreWrap');
 
     if (reset) {
-        list.innerHTML = '<div class="artx-comments-skeleton">' +
-            [1,2,3].map(() => `<div class="artx-comment-skel">
+        list.innerHTML = '<div class="page-comments-skeleton">' +
+            [1,2,3].map(() => `<div class="page-comment-skel">
               <div class="skel-avatar"></div>
               <div class="skel-lines"><div class="skel-line skel-line--w70"></div><div class="skel-line skel-line--w40"></div></div>
             </div>`).join('') + '</div>';
@@ -242,11 +242,11 @@ async function _loadComments(postId, reset = false) {
 
     // ── Local-only posts: skip the API entirely ──
     if (_isLocalId(postId)) {
-        const all  = JSON.parse(localStorage.getItem('artxComments') || '{}');
+        const all  = JSON.parse(localStorage.getItem('pageComments') || '{}');
         const cmts = (all[postId] || []).slice().reverse();
         if (reset) list.innerHTML = '';
         if (cmts.length === 0 && reset) {
-            list.innerHTML = '<p class="artx-empty-msg"><i class="fas fa-comment-slash"></i> No comments yet — be the first!</p>';
+            list.innerHTML = '<p class="page-empty-msg"><i class="fas fa-comment-slash"></i> No comments yet — be the first!</p>';
             if (moreW) moreW.style.display = 'none';
         } else {
             cmts.forEach(c => list.appendChild(_makeCommentEl(c)));
@@ -269,27 +269,27 @@ async function _loadComments(postId, reset = false) {
             if (reset) list.innerHTML = '';
 
             if (comments.length === 0 && reset) {
-                list.innerHTML = '<p class="artx-empty-msg"><i class="fas fa-comment-slash"></i> No comments yet — be the first!</p>';
+                list.innerHTML = '<p class="page-empty-msg"><i class="fas fa-comment-slash"></i> No comments yet — be the first!</p>';
                 if (moreW) moreW.style.display = 'none';
                 return;
             }
 
             comments.forEach(c => list.appendChild(_makeCommentEl(c)));
 
-            const shown = list.querySelectorAll('.artx-comment-item').length;
+            const shown = list.querySelectorAll('.page-comment-item').length;
             if (moreW) moreW.style.display = shown < _commentTotal ? 'flex' : 'none';
             return;
         }
     } catch { /* fall through to local */ }
 
     // ── localStorage fallback ──
-    const all  = JSON.parse(localStorage.getItem('artxComments') || '{}');
+    const all  = JSON.parse(localStorage.getItem('pageComments') || '{}');
     const cmts = (all[postId] || []).slice().reverse();
 
     if (reset) list.innerHTML = '';
 
     if (cmts.length === 0 && reset) {
-        list.innerHTML = '<p class="artx-empty-msg"><i class="fas fa-comment-slash"></i> No comments yet — be the first!</p>';
+        list.innerHTML = '<p class="page-empty-msg"><i class="fas fa-comment-slash"></i> No comments yet — be the first!</p>';
         if (moreW) moreW.style.display = 'none';
         return;
     }
@@ -311,25 +311,25 @@ function _makeCommentEl(c) {
     const hasAvatar = author.profile_image;
 
     const div = document.createElement('div');
-    div.className = 'artx-comment-item';
+    div.className = 'page-comment-item';
     div.dataset.commentId = c.id || '';
     div.innerHTML = `
-      <div class="artx-comment-avatar">
+      <div class="page-comment-avatar">
         ${hasAvatar
             ? `<img src="${esc(author.profile_image)}" alt="${name}">`
             : `<i class="fas fa-user-circle"></i>`}
       </div>
-      <div class="artx-comment-body">
-        <div class="artx-comment-bubble">
-          <span class="artx-comment-name">${name}</span>
-          <p class="artx-comment-text">${text}</p>
+      <div class="page-comment-body">
+        <div class="page-comment-bubble">
+          <span class="page-comment-name">${name}</span>
+          <p class="page-comment-text">${text}</p>
         </div>
-        <div class="artx-comment-meta">
-          <span class="artx-comment-time">${when}</span>
-          <button class="artx-comment-react-btn" onclick="_reactToComment('${c.id || ''}', this)">
+        <div class="page-comment-meta">
+          <span class="page-comment-time">${when}</span>
+          <button class="page-comment-react-btn" onclick="_reactToComment('${c.id || ''}', this)">
             <i class="fas fa-fire"></i> ${c.reaction_count || 0}
           </button>
-          <button class="artx-comment-reply-btn" onclick="_startReply('${c.id || ''}', '${name}')">
+          <button class="page-comment-reply-btn" onclick="_startReply('${c.id || ''}', '${name}')">
             <i class="fas fa-reply"></i> Reply
           </button>
         </div>
@@ -338,8 +338,8 @@ function _makeCommentEl(c) {
 }
 
 async function _submitComment() {
-    const input   = document.getElementById('artxCommentInput');
-    const sendBtn = document.getElementById('artxSendBtn');
+    const input   = document.getElementById('pageCommentInput');
+    const sendBtn = document.getElementById('pageSendBtn');
     const text    = input.value.trim();
 
     if (!text) { input.focus(); return; }
@@ -372,10 +372,10 @@ async function _submitComment() {
             if (!wsClient._postConns?.has(String(_commentPostId))) {
                 wsClient.connectToPost(_commentPostId, {
                     onComment: c => {
-                        const list = document.getElementById('artxCommentsList');
+                        const list = document.getElementById('pageCommentsList');
                         if (!list) return;
                         const el = _makeCommentEl(c);
-                        el.classList.add('artx-comment--new');
+                        el.classList.add('page-comment--new');
                         list.appendChild(el);
                     }
                 });
@@ -384,12 +384,12 @@ async function _submitComment() {
         }
 
         if (postedViaWS) {
-            const list = document.getElementById('artxCommentsList');
-            const emptyMsg = list?.querySelector('.artx-empty-msg');
+            const list = document.getElementById('pageCommentsList');
+            const emptyMsg = list?.querySelector('.page-empty-msg');
             if (emptyMsg) emptyMsg.remove();
             if (list) {
                 const el = _makeCommentEl(newComment);
-                el.classList.add('artx-comment--new');
+                el.classList.add('page-comment--new');
                 list.appendChild(el);
                 el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             }
@@ -420,19 +420,19 @@ async function _submitComment() {
         }
 
         if (!posted) {
-            const all = JSON.parse(localStorage.getItem('artxComments') || '{}');
+            const all = JSON.parse(localStorage.getItem('pageComments') || '{}');
             if (!all[_commentPostId]) all[_commentPostId] = [];
             all[_commentPostId].push(newComment);
-            localStorage.setItem('artxComments', JSON.stringify(all));
+            localStorage.setItem('pageComments', JSON.stringify(all));
         }
 
         // Inject into list
-        const list = document.getElementById('artxCommentsList');
+        const list = document.getElementById('pageCommentsList');
         if (list) {
-            const emptyMsg = list.querySelector('.artx-empty-msg');
+            const emptyMsg = list.querySelector('.page-empty-msg');
             if (emptyMsg) emptyMsg.remove();
             const el = _makeCommentEl(newComment);
-            el.classList.add('artx-comment--new');
+            el.classList.add('page-comment--new');
             list.appendChild(el);
             el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
@@ -465,7 +465,7 @@ async function _reactToComment(commentId, btn) {
 }
 
 function _startReply(parentId, authorName) {
-    const input = document.getElementById('artxCommentInput');
+    const input = document.getElementById('pageCommentInput');
     if (!input) return;
     input.value = `@${authorName} `;
     input.dataset.parentId = parentId;
@@ -476,7 +476,7 @@ function _startReply(parentId, authorName) {
 
 function _getCurrentUsername() {
     try {
-        const u = JSON.parse(localStorage.getItem('artxUser') || '{}');
+        const u = JSON.parse(localStorage.getItem('pageUser') || '{}');
         return u.username || u.display_name || 'You';
     } catch { return 'You'; }
 }
@@ -490,24 +490,24 @@ let _shareUrls   = {};
 function openShareModal(postId) {
     _sharePostId = postId;
 
-    let modal = document.getElementById('artxShareModal');
+    let modal = document.getElementById('pageShareModal');
     if (!modal) modal = _buildShareModal();
 
     document.body.classList.add('modal-open');
     modal.style.display = 'flex';
     requestAnimationFrame(() => {
         modal.classList.add('modal--visible');
-        modal.querySelector('.artx-modal-box').classList.add('modal-box--visible');
+        modal.querySelector('.page-modal-box').classList.add('modal-box--visible');
     });
 
     _loadShareUrls(postId);
 }
 
 function closeShareModal() {
-    const modal = document.getElementById('artxShareModal');
+    const modal = document.getElementById('pageShareModal');
     if (!modal) return;
     modal.classList.remove('modal--visible');
-    modal.querySelector('.artx-modal-box').classList.remove('modal-box--visible');
+    modal.querySelector('.page-modal-box').classList.remove('modal-box--visible');
     setTimeout(() => {
         modal.style.display = 'none';
         document.body.classList.remove('modal-open');
@@ -518,54 +518,54 @@ function closeShareModal() {
 
 function _buildShareModal() {
     const el = document.createElement('div');
-    el.id        = 'artxShareModal';
-    el.className = 'artx-modal-overlay';
+    el.id        = 'pageShareModal';
+    el.className = 'page-modal-overlay';
     el.setAttribute('role', 'dialog');
     el.setAttribute('aria-modal', 'true');
     el.setAttribute('aria-label', 'Share post');
     el.innerHTML = `
-      <div class="artx-modal-box artx-modal-box--share" role="document">
+      <div class="page-modal-box page-modal-box--share" role="document">
 
-        <div class="artx-modal-head">
-          <h3 class="artx-modal-title"><i class="fas fa-share-alt"></i> Share Post</h3>
-          <button class="artx-modal-close" onclick="closeShareModal()" aria-label="Close">
+        <div class="page-modal-head">
+          <h3 class="page-modal-title"><i class="fas fa-share-alt"></i> Share Post</h3>
+          <button class="page-modal-close" onclick="closeShareModal()" aria-label="Close">
             <i class="fas fa-times"></i>
           </button>
         </div>
 
         <!-- Share platform grid -->
-        <div class="artx-share-grid">
-          <button class="artx-share-tile artx-share-tile--fb"       onclick="_shareVia('facebook')">
+        <div class="page-share-grid">
+          <button class="page-share-tile page-share-tile--fb"       onclick="_shareVia('facebook')">
             <i class="fab fa-facebook-f"></i><span>Facebook</span>
           </button>
-          <button class="artx-share-tile artx-share-tile--wa"       onclick="_shareVia('whatsapp')">
+          <button class="page-share-tile page-share-tile--wa"       onclick="_shareVia('whatsapp')">
             <i class="fab fa-whatsapp"></i><span>WhatsApp</span>
           </button>
-          <button class="artx-share-tile artx-share-tile--x"        onclick="_shareVia('x')">
+          <button class="page-share-tile page-share-tile--x"        onclick="_shareVia('x')">
             <i class="fab fa-x-twitter"></i><span>X / Twitter</span>
           </button>
-          <button class="artx-share-tile artx-share-tile--tg"       onclick="_shareVia('telegram')">
+          <button class="page-share-tile page-share-tile--tg"       onclick="_shareVia('telegram')">
             <i class="fab fa-telegram-plane"></i><span>Telegram</span>
           </button>
-          <button class="artx-share-tile artx-share-tile--copy"     onclick="_shareVia('copy_link')" id="artxCopyBtn">
+          <button class="page-share-tile page-share-tile--copy"     onclick="_shareVia('copy_link')" id="pageCopyBtn">
             <i class="fas fa-link"></i><span>Copy Link</span>
           </button>
-          <button class="artx-share-tile artx-share-tile--native"   onclick="_nativeShare()"
-            id="artxNativeBtn" style="display:none">
+          <button class="page-share-tile page-share-tile--native"   onclick="_nativeShare()"
+            id="pageNativeBtn" style="display:none">
             <i class="fas fa-share"></i><span>More…</span>
           </button>
         </div>
 
         <!-- URL bar -->
-        <div class="artx-share-url-bar">
-          <input class="artx-share-url-input" id="artxShareUrlInput" readonly value="Generating link…">
-          <button class="artx-share-url-copy" onclick="_copyFromInput()" aria-label="Copy link">
+        <div class="page-share-url-bar">
+          <input class="page-share-url-input" id="pageShareUrlInput" readonly value="Generating link…">
+          <button class="page-share-url-copy" onclick="_copyFromInput()" aria-label="Copy link">
             <i class="fas fa-copy"></i>
           </button>
         </div>
 
         <!-- Share count feedback -->
-        <p class="artx-share-note" id="artxShareNote"></p>
+        <p class="page-share-note" id="pageShareNote"></p>
 
       </div>`;
 
@@ -574,7 +574,7 @@ function _buildShareModal() {
 
     // Show native share if available
     if (navigator.share) {
-        const nb = el.querySelector('#artxNativeBtn');
+        const nb = el.querySelector('#pageNativeBtn');
         if (nb) nb.style.display = '';
     }
 
@@ -583,7 +583,7 @@ function _buildShareModal() {
 }
 
 async function _loadShareUrls(postId) {
-    const input = document.getElementById('artxShareUrlInput');
+    const input = document.getElementById('pageShareUrlInput');
     const fallbackUrl = `${window.location.origin}/posts/${postId}`;
 
     try {
@@ -598,7 +598,7 @@ async function _loadShareUrls(postId) {
     } catch { /* fall through */ }
 
     // Fallback: build URLs client-side
-    const text = encodeURIComponent('Check out this post on ARTX! 🔥');
+    const text = encodeURIComponent('Check out this post on PAGE! 🔥');
     const url  = encodeURIComponent(fallbackUrl);
     _shareUrls = {
         facebook:  `https://www.facebook.com/sharer/sharer.php?u=${url}`,
@@ -621,7 +621,7 @@ async function _shareVia(platform) {
         return;
     }
 
-    window.open(url, `artx-share-${platform}`, 'width=620,height=480,resizable=yes');
+    window.open(url, `page-share-${platform}`, 'width=620,height=480,resizable=yes');
     await _recordShare(platform);
     socialToast(`Opening ${_platformLabel(platform)}…`, 'info');
 
@@ -632,7 +632,7 @@ async function _shareVia(platform) {
 async function _nativeShare() {
     const shareUrl = _shareUrls.copy_link || window.location.href;
     try {
-        await navigator.share({ title: 'ARTX Post', text: 'Check out this post on ARTX! 🔥', url: shareUrl });
+        await navigator.share({ title: 'PAGE Post', text: 'Check out this post on PAGE! 🔥', url: shareUrl });
         await _recordShare('native');
         socialToast('Shared successfully! 🎉', 'success');
     } catch (e) {
@@ -641,7 +641,7 @@ async function _nativeShare() {
 }
 
 async function _copyFromInput() {
-    const input = document.getElementById('artxShareUrlInput');
+    const input = document.getElementById('pageShareUrlInput');
     if (!input) return;
     await _copyText(input.value);
     _animateCopyBtn();
@@ -664,14 +664,14 @@ async function _copyText(text) {
 }
 
 function _animateCopyBtn() {
-    const btn = document.getElementById('artxCopyBtn');
+    const btn = document.getElementById('pageCopyBtn');
     if (!btn) return;
     const orig = btn.innerHTML;
     btn.innerHTML = '<i class="fas fa-check"></i><span>Copied!</span>';
-    btn.classList.add('artx-share-tile--copied');
+    btn.classList.add('page-share-tile--copied');
     setTimeout(() => {
         btn.innerHTML = orig;
-        btn.classList.remove('artx-share-tile--copied');
+        btn.classList.remove('page-share-tile--copied');
     }, 2000);
 }
 
@@ -715,7 +715,7 @@ function _bumpCount(postId, type) {
 // ─────────────────────────────────────────────────────────────
 document.addEventListener('keydown', e => {
     if (e.key !== 'Tab') return;
-    const active = document.querySelector('.artx-modal-overlay.modal--visible');
+    const active = document.querySelector('.page-modal-overlay.modal--visible');
     if (!active) return;
     const focusable = active.querySelectorAll(
         'button:not([disabled]),textarea,input,[tabindex]:not([tabindex="-1"])'

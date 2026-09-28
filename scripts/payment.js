@@ -1,5 +1,5 @@
 /**
- * ARTX Payment Page — payment.js
+ * PAGE Payment Page — payment.js
  * Deposit (PawaPay / Stripe / Paystack) + Withdrawal + Transactions + Chart
  */
 

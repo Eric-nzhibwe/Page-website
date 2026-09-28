@@ -5,8 +5,8 @@
 
 /* ── CSS variables (inherit from :root if defined, else sensible defaults) ── */
 :root {
-    --ii-primary:   var(--artx-primary,  #556b2f);
-    --ii-accent:    var(--artx-accent,   #8bc34a);
+    --ii-primary:   var(--page-primary,  #556b2f);
+    --ii-accent:    var(--page-accent,   #8bc34a);
     --ii-danger:    #e74c3c;
     --ii-warn:      #f39c12;
     --ii-win-bg:    linear-gradient(160deg, #1a3a0a, #2d6015);

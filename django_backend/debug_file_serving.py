@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Debug file serving for ARTX Platform
+Debug file serving for PAGE Platform
 """
 import os
 import sys
@@ -9,7 +9,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 # Set Django settings
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'artx_platform.settings')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'page_platform.settings')
 
 try:
     import django
@@ -28,8 +28,8 @@ try:
     test_files = [
         'styles/styles.css',
         'scripts/app.js',
-        'images/ARTX.jpg',
-        'Images/ARTX.jpg',  # Case sensitivity test
+        'images/PAGE.jpg',
+        'Images/PAGE.jpg',  # Case sensitivity test
         'index.html'
     ]
     
@@ -61,8 +61,8 @@ try:
         '/',
         '/styles/styles.css',
         '/scripts/app.js',
-        '/images/ARTX.jpg',
-        '/Images/ARTX.jpg'
+        '/images/PAGE.jpg',
+        '/Images/PAGE.jpg'
     ]
     
     for url in test_urls:

@@ -5,13 +5,13 @@ import os
 import django
 
 # Setup Django
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'artx_platform.settings')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'page_platform.settings')
 django.setup()
 
 from users.models import User
 from messenger.models import Conversation, Message
 
-print("🧪 Testing ARTX Messenger")
+print("🧪 Testing PAGE Messenger")
 print("=" * 70)
 
 # Get or create test users

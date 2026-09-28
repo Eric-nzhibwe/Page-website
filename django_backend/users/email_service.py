@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-ARTX Email Service
+PAGE Email Service
 ==================
 Sends transactional email via:
   - Resend API  (EMAIL_PROVIDER=resend)  -- HTTPS, works on Render free tier
@@ -28,13 +28,13 @@ logger = logging.getLogger(__name__)
 # ─────────────────────────────────────────────────────────────────
 
 def _site_url():
-    return getattr(settings, 'FRONTEND_BASE_URL', 'https://artxplatform.com').rstrip('/')
+    return getattr(settings, 'FRONTEND_BASE_URL', 'https://pageplatform.com').rstrip('/')
 
 
 def _from_address():
     return getattr(
         settings, 'DEFAULT_FROM_EMAIL',
-        'ARTX Platform <noreply@artxplatform.com>'
+        'PAGE Platform <noreply@pageplatform.com>'
     )
 
 
@@ -44,7 +44,7 @@ def _provider():
 
 def _render(template_name, context):
     context.setdefault('site_url', _site_url())
-    context.setdefault('from_name', 'ARTX Team')
+    context.setdefault('from_name', 'PAGE Team')
     html  = render_to_string(f'emails/{template_name}', context)
     plain = strip_tags(html)
     return html, plain
@@ -126,7 +126,7 @@ def _send_via_smtp(subject, html_body, plain_body, recipient_email):
 
 def _send_via_console(subject, html_body, plain_body, recipient_email):
     print('\n' + '=' * 60)
-    print(f'[ARTX EMAIL - CONSOLE MODE]')
+    print(f'[PAGE EMAIL - CONSOLE MODE]')
     print(f'To:      {recipient_email}')
     print(f'Subject: {subject}')
     print('-' * 60)
@@ -169,12 +169,12 @@ class EmailService:
 
     def send_welcome(self, user):
         return _send(
-            subject='Welcome to ARTX Platform! 🎮',
+            subject='Welcome to PAGE! 🎮',
             template_name='welcome.html',
             context={
                 'user':      user,
                 'username':  user.username,
-                'login_url': f'{_site_url()}/pages/auth.html',
+                'login_url': f'{https://page.onrender.com()}/pages/auth.html',
             },
             recipient_email=user.email,
         )
@@ -182,7 +182,7 @@ class EmailService:
     def send_login_notification(self, user, ip_address='Unknown', device='Unknown browser'):
         from django.utils import timezone
         return _send(
-            subject='New sign-in to your ARTX account',
+            subject='New sign-in to your PAGE account',
             template_name='login_notification.html',
             context={
                 'user':        user,
@@ -199,7 +199,7 @@ class EmailService:
         # Try HTML template first; fall back to plain text
         try:
             return _send(
-                subject='Your ARTX verification code',
+                subject='Your PAGE verification code',
                 template_name='otp.html',
                 context={
                     'user':           user,
@@ -219,34 +219,34 @@ class EmailService:
         """
         html  = (
             f'<p>Hi <b>{user.username}</b>,</p>'
-            f'<p>Your ARTX verification code is: <b style="font-size:24px">{otp}</b></p>'
+            f'<p>Your PAGE verification code is: <b style="font-size:24px">{otp}</b></p>'
             f'<p>Expires in {expiry_minutes} minutes.</p>'
             f'<p>If you did not request this, ignore this email.</p>'
         )
         plain = (
             f'Hi {user.username},\n\n'
-            f'Your ARTX verification code is: {otp}\n\n'
+            f'Your PAGE verification code is: {otp}\n\n'
             f'It expires in {expiry_minutes} minutes.\n\n'
-            f'-- ARTX Team'
+            f'-- PAGE Team'
         )
         provider = _provider()
         if provider == 'resend':
-            return _send_via_resend('Your ARTX verification code', html, plain, user.email)
+            return _send_via_resend('Your PAGE  verification code', html, plain, user.email)
         elif provider == 'smtp':
-            return _send_via_smtp('Your ARTX verification code', html, plain, user.email)
+            return _send_via_smtp('Your PAGE verification code', html, plain, user.email)
         else:
-            return _send_via_console('Your ARTX verification code', html, plain, user.email)
+            return _send_via_console('Your PAGE verification code', html, plain, user.email)
 
     def send_tier_upgrade(self, user, old_tier, new_tier):
         return _send(
-            subject=f'You reached {new_tier} Tier on ARTX!',
+            subject=f'You reached {new_tier} Tier on PAGE!',
             template_name='tier_upgrade.html',
             context={
                 'user':          user,
                 'username':      user.username,
                 'old_tier':      old_tier,
                 'new_tier':      new_tier,
-                'dashboard_url': f'{_site_url()}/pages/user.html',
+                'dashboard_url': f'{https://page.onrender.com()}/pages/user.html',
             },
             recipient_email=user.email,
         )
@@ -259,7 +259,7 @@ class EmailService:
                 'user':          user,
                 'username':      user.username,
                 'alliance_name': alliance_name,
-                'dashboard_url': f'{_site_url()}/pages/user.html',
+                'dashboard_url': f'{https://page.onrender.com()}/pages/user.html',
             },
             recipient_email=user.email,
         )
@@ -272,14 +272,14 @@ class EmailService:
                 'user':          user,
                 'username':      user.username,
                 'alliance_name': alliance_name,
-                'dashboard_url': f'{_site_url()}/pages/user.html',
+                'dashboard_url': f'{https://page.onrender.com()}/pages/user.html',
             },
             recipient_email=user.email,
         )
 
     def send_password_reset(self, user, reset_url, expiry_hours=1):
         return _send(
-            subject='Reset your ARTX password',
+            subject='Reset your PAGE password',
             template_name='password_reset.html',
             context={
                 'user':         user,

@@ -239,6 +239,6 @@ def ai_status_view(request):
         'engine': 'groq',
         'model':  'llama-3.3-70b',
         'status': 'online',
-        'label':  'ARTX AI',
+        'label':  'PAGE AI',
         'tested': False,
     })

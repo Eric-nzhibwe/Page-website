@@ -109,7 +109,7 @@ class ConversationViewSet(viewsets.ModelViewSet):
             # FIX Bug 4: mirror the zeroed unread count to Firestore so the
             # sender's badge updates immediately when the recipient opens the chat.
             try:
-                from artx_platform.firebase_client import firebase_enabled
+                from page_platform.firebase_client import firebase_enabled
                 if firebase_enabled():
                     from .firestore_messenger_service import mark_read_in_firestore
                     mark_read_in_firestore(conversation.id, str(request.user.id))
@@ -300,7 +300,7 @@ def firebase_config_view(request):
     can initialise Firestore listeners.  All values are non-secret.
     Returns empty dict when Firebase is not configured.
     """
-    from artx_platform.firebase_client import firebase_enabled
+    from page_platform.firebase_client import firebase_enabled
     if not firebase_enabled():
         return Response({})
     from .firestore_messenger_service import get_firebase_config
@@ -328,7 +328,7 @@ def mark_read_view(request, conversation_id):
 
     # Mirror the zeroed unread count to Firestore (best-effort)
     try:
-        from artx_platform.firebase_client import firebase_enabled
+        from page_platform.firebase_client import firebase_enabled
         if firebase_enabled():
             from .firestore_messenger_service import mark_read_in_firestore
             mark_read_in_firestore(conversation_id, str(request.user.id))

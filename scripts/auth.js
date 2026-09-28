@@ -1,5 +1,5 @@
 // ============================================================
-//  ARTX Authentication — Firebase Auth + Django fallback
+//  PAGE Authentication — Firebase Auth + Django fallback
 //  Firebase Auth handles registration and login on the frontend.
 //  After Firebase issues an ID token, we exchange it for a DRF
 //  token at /api/auth/firebase-login/ so the rest of the app
@@ -257,7 +257,7 @@ async function handleSignup(event) {
             const result = await _registerWithFirebase(email, password, username);
             if (result.success) {
                 _storeSession(result.token, result.user);
-                showToast('Account created! Welcome to ARTX 🎉', 'success');
+                showToast('Account created! Welcome to PAGE 🎉', 'success');
                 setTimeout(() => { window.location.href = '../index.html'; }, 1000);
                 return;
             }
@@ -289,7 +289,7 @@ async function handleSignup(event) {
         }
 
         _storeSession(data.token, data.user);
-        showToast('Account created! Welcome to ARTX 🎉', 'success');
+        showToast('Account created! Welcome to PAGE 🎉', 'success');
         setTimeout(() => { window.location.href = '../index.html'; }, 1000);
 
     } catch (err) {
@@ -365,7 +365,7 @@ function _storeSession(token, user) {
         localStorage.setItem('token', token);
     }
     if (user) {
-        localStorage.setItem('artxUser', JSON.stringify(user));
+        localStorage.setItem('pageUser', JSON.stringify(user));
         localStorage.setItem('user',     JSON.stringify(user));
     }
 }
@@ -443,13 +443,13 @@ function showToast(message, type = 'info') {
         document.body.appendChild(container);
     }
     const toast = document.createElement('div');
-    toast.className = `artx-toast artx-toast--${type}`;
+    toast.className = `page-toast page-toast--${type}`;
     const icons = { success: 'fa-check-circle', error: 'fa-times-circle', info: 'fa-info-circle' };
     toast.innerHTML = `<i class="fas ${icons[type] || icons.info}"></i><span>${message}</span>`;
     container.appendChild(toast);
-    requestAnimationFrame(() => { toast.classList.add('artx-toast--visible'); });
+    requestAnimationFrame(() => { toast.classList.add('page-toast--visible'); });
     setTimeout(() => {
-        toast.classList.remove('artx-toast--visible');
+        toast.classList.remove('page-toast--visible');
         toast.addEventListener('transitionend', () => toast.remove(), { once: true });
     }, 3500);
 }

@@ -1,5 +1,5 @@
 /**
- * ARTX WebSocket Client
+ * PAGE WebSocket Client
  * ─────────────────────
  * Manages three persistent WebSocket connections:
  *   1.  /ws/social/feed/         — live feed (posts, stories, activity ticker)
@@ -48,7 +48,7 @@ async function _wsClientCheckSupport() {
         _wsClientSupported = false;
     }
     sessionStorage.setItem('ws_supported', String(_wsClientSupported));
-    console.info(`[ARTX WS] ${_wsClientSupported ? 'Redis active — real-time enabled' : 'No Redis — WebSockets disabled, using polling'}`);
+    console.info(`[PAGE WS] ${_wsClientSupported ? 'Redis active — real-time enabled' : 'No Redis — WebSockets disabled, using polling'}`);
     return _wsClientSupported;
 }
 
@@ -156,9 +156,9 @@ class _WSConn {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  ARTX WebSocket Client  (global singleton)
+//  PAGE WebSocket Client  (global singleton)
 // ─────────────────────────────────────────────────────────────────────────────
-class ARTXWebSocketClient {
+class PAGEWebSocketClient {
     constructor() {
         this._listeners   = {};
         this._feedConn    = null;
@@ -278,7 +278,7 @@ class ARTXWebSocketClient {
     get storyConnected() { return this._storyConn?.isOpen || false; }
 }
 
-const wsClient = new ARTXWebSocketClient();
+const wsClient = new PAGEWebSocketClient();
 window.wsClient = wsClient;
 
 window.addEventListener('beforeunload', () => wsClient.disconnectAll());
@@ -392,9 +392,9 @@ class _WSConn {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  ARTX WebSocket Client  (global singleton)
+//  PAGE WebSocket Client  (global singleton)
 // ─────────────────────────────────────────────────────────────────────────────
-class ARTXWebSocketClient {
+class PAGEWebSocketClient {
     constructor() {
         this._listeners   = {};   // { 'channel:type': [fn, …] }
         this._feedConn    = null;
@@ -558,7 +558,7 @@ class ARTXWebSocketClient {
 }
 
 // ─── Global singleton ─────────────────────────────────────────────────────────
-const wsClient = new ARTXWebSocketClient();
+const wsClient = new PAGEWebSocketClient();
 window.wsClient = wsClient;
 
 window.addEventListener('beforeunload', () => wsClient.disconnectAll());

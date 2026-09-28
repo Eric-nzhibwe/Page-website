@@ -53,7 +53,7 @@ class FeedConsumer(AsyncWebsocketConsumer):
     Every connected authenticated client joins the 'feed' group.
     The server pushes new posts, reactions and live activity events here.
     """
-    GROUP = 'artx_feed'
+    GROUP = 'page_feed'
 
     async def connect(self):
         token_key = _token_from_scope(self.scope)
@@ -347,7 +347,7 @@ class PostConsumer(AsyncWebsocketConsumer):
 #  STORY CONSUMER
 # ─────────────────────────────────────────────────────────────────────────────
 class StoryConsumer(AsyncWebsocketConsumer):
-    GROUP = 'artx_stories'
+    GROUP = 'page_stories'
 
     async def connect(self):
         token_key = _token_from_scope(self.scope)

@@ -1,5 +1,5 @@
 """
-Payment models for ARTX Platform
+Payment models for PAGE
 """
 from django.db import models
 from django.conf import settings

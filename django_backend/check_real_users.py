@@ -4,7 +4,7 @@ Quick script to verify messenger shows real database users
 import os
 import django
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'artx_platform.settings')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'page_platform.settings')
 django.setup()
 
 from users.models import User

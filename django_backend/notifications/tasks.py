@@ -24,14 +24,14 @@ def _do_send_welcome_email(user_id):
     try:
         user = User.objects.get(id=user_id)
         html_content = render_to_string('emails/welcome.html', {'user': user})
-        subject = f"Welcome to ARTX Platform, {user.display_name or user.username}! 🎮"
+        subject = f"Welcome to PAGE, {user.display_name or user.username}! 🎮"
         log = NotificationLog.objects.create(
             user=user, subject=subject,
             recipient_email=user.email, status='pending'
         )
         send_mail(
             subject=subject,
-            message="Welcome to ARTX Platform! Your gaming journey starts now.",
+            message="Welcome to PAGE! Your gaming journey starts now.",
             html_message=html_content,
             from_email=settings.DEFAULT_FROM_EMAIL,
             recipient_list=[user.email],
@@ -78,7 +78,7 @@ def _do_send_login_notification_email(user_id, login_data=None):
         )
         send_mail(
             subject=subject,
-            message="Welcome back to ARTX Platform! The arena awaits your return.",
+            message="Welcome back to PAGE! The arena awaits your return.",
             html_message=html_content,
             from_email=settings.DEFAULT_FROM_EMAIL,
             recipient_list=[user.email],

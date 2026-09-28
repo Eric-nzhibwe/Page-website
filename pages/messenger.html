@@ -4,8 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Messages — ARTX</title>
-    <link rel="icon" type="image/jpeg" href="../images/ARTX.jpg">
+    <title>Messages</title>
+    <link rel="icon" type="image/jpeg" href="../images/Page.jpeg">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
     <script src="../scripts/theme.js"></script>
     <style>
@@ -518,7 +518,7 @@
             color: #fff;
         }
 
-        .artx-follow-btn {
+        .page-follow-btn {
             padding: 5px 10px;
             border-radius: 999px;
             border: 1.5px solid rgba(85, 107, 47, 0.3);
@@ -535,13 +535,13 @@
             white-space: nowrap;
         }
 
-        .artx-follow-btn:hover {
+        .page-follow-btn:hover {
             background: #556b2f;
             color: #fff;
             border-color: #556b2f;
         }
 
-        .artx-follow-btn.artx-follow-btn--following {
+        .page-follow-btn.page-follow-btn--following {
             background: rgba(85, 107, 47, 0.1);
             border-color: #556b2f;
         }
@@ -2157,7 +2157,7 @@
             setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 220); }, 3000);
         };
         window.logout = function () {
-            ['djangoAuthToken', 'authToken', 'artxUser'].forEach(k => localStorage.removeItem(k));
+            ['djangoAuthToken', 'authToken', 'pageUser'].forEach(k => localStorage.removeItem(k));
             window.location.href = 'auth.html';
         };
     </script>

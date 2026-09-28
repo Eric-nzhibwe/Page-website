@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// ARTX Settings — Complete Implementation
+// PAGE Settings — Complete Implementation
 // ─────────────────────────────────────────────────────────────────────────────
 
 const _SM_API = (
@@ -15,7 +15,7 @@ function _smToken() {
 
 function _smGetUser() {
     if (typeof currentUser !== 'undefined' && currentUser) return currentUser;
-    try { return JSON.parse(localStorage.getItem('artxUser') || '{}'); } catch { return {}; }
+    try { return JSON.parse(localStorage.getItem('pageUser') || '{}'); } catch { return {}; }
 }
 
 function _smHeaders(multipart) {
@@ -70,7 +70,7 @@ function showToast(msg, type = 'success') {
     if (!toast) {
         toast = document.createElement('div');
         toast.id = 'smToast';
-        toast.className = 'artx-toast';
+        toast.className = 'page-toast';
         toast.innerHTML = `<i></i><span></span><button class="sm-toast-close" onclick="this.parentElement.classList.remove('visible')">×</button>`;
         document.body.appendChild(toast);
     }
@@ -78,7 +78,7 @@ function showToast(msg, type = 'success') {
     const icons = { success: 'fas fa-circle-check', error: 'fas fa-circle-xmark', info: 'fas fa-circle-info', warning: 'fas fa-triangle-exclamation' };
     toast.querySelector('i').className = icons[type] || icons.info;
     toast.querySelector('span').textContent = msg;
-    toast.className = `artx-toast artx-toast-${type}`;
+    toast.className = `page-toast page-toast-${type}`;
 
     // force reflow then show
     toast.offsetHeight;
@@ -437,7 +437,7 @@ function toggleCompactModeSetting(checkbox) {
 }
 
 // ── Accent color palette ──────────────────────────────────────────────────────
-// Palette data now lives in theme.js (ARTX_THEME.palettes).
+// Palette data now lives in theme.js (PAGE_THEME.palettes).
 // settings.js delegates everything to that shared engine so that:
 //   • the palette is defined in exactly one place
 //   • adding a new color only requires editing theme.js
@@ -445,8 +445,8 @@ function toggleCompactModeSetting(checkbox) {
 
 function selectAccentColor(color) {
     // 1. Apply the color immediately via the shared theme engine
-    if (window.ARTX_THEME) {
-        ARTX_THEME.selectAccent(color);
+    if (window.PAGE_THEME) {
+        PAGE_THEME.selectAccent(color);
     }
 
     // 2. Also keep legacy .color-swatch[data-color] selectors in sync
@@ -475,11 +475,11 @@ function selectAccentColor(color) {
 
 // Keep internal references working for any code that calls these directly
 function _applyAccentVars(color) {
-    if (window.ARTX_THEME) ARTX_THEME.applyAccent(color);
+    if (window.PAGE_THEME) PAGE_THEME.applyAccent(color);
 }
 
 function _spawnColorRipple(color) {
-    // Handled inside ARTX_THEME.selectAccent — no-op here to avoid double ripple
+    // Handled inside PAGE_THEME.selectAccent — no-op here to avoid double ripple
 }
 
 function _applyAppearance(prefs) {
@@ -763,10 +763,10 @@ async function _smUploadAvatar(e) {
 
         // ── 1. Persist into localStorage so every page reload shows it ──────
         try {
-            const stored = JSON.parse(localStorage.getItem('artxUser') || '{}');
+            const stored = JSON.parse(localStorage.getItem('pageUser') || '{}');
             stored.profile_image     = imgUrl;
             stored.profile_image_url = imgUrl;
-            localStorage.setItem('artxUser', JSON.stringify(stored));
+            localStorage.setItem('pageUser', JSON.stringify(stored));
             localStorage.setItem('user',     JSON.stringify(stored));
         } catch (_) { /* non-critical */ }
 
@@ -780,7 +780,7 @@ async function _smUploadAvatar(e) {
         _applyAvatarEverywhere(imgUrl);
 
         // ── 4. Broadcast so other scripts (realtime-updates, etc.) can react ─
-        window.dispatchEvent(new CustomEvent('artx:avatarChanged', { detail: { url: imgUrl } }));
+        window.dispatchEvent(new CustomEvent('page:avatarChanged', { detail: { url: imgUrl } }));
 
         showToast('Profile photo updated ✓', 'success');
     } catch (err) {
@@ -791,7 +791,7 @@ async function _smUploadAvatar(e) {
 
 /**
  * Update every known avatar element on the current page with a new image URL.
- * Called immediately after a successful upload and also on the artx:avatarChanged event.
+ * Called immediately after a successful upload and also on the page:avatarChanged event.
  */
 function _applyAvatarEverywhere(imgUrl) {
     if (!imgUrl) return;
@@ -843,7 +843,7 @@ async function deactivateAccount() {
 }
 
 async function deleteAccount() {
-    const first  = confirm('⚠️ Delete your ARTX account?\n\nThis is PERMANENT — all your data, prestige, and earnings will be lost.');
+    const first  = confirm('⚠️ Delete your PAGE account?\n\nThis is PERMANENT — all your data, prestige, and earnings will be lost.');
     if (!first) return;
     const second = prompt('Type DELETE to confirm account deletion:');
     if (second !== 'DELETE') { showToast('Deletion cancelled', 'info'); return; }
@@ -871,7 +871,7 @@ async function deleteAccount() {
 // but on normal pages theme.js fires first so this is effectively a no-op.
 (function _smBoot() {
     try {
-        if (window.ARTX_THEME) return; // theme.js already handled it
+        if (window.PAGE_THEME) return; // theme.js already handled it
         const prefs = JSON.parse(localStorage.getItem('userPreferences') || '{}');
         _applyAppearance(prefs);
     } catch { /* silent */ }

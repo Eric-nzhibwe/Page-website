@@ -1,5 +1,5 @@
 """
-User URLs for ARTX Platform
+User URLs for PAGES Platform
 """
 from django.urls import path
 from . import views

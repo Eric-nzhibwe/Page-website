@@ -58,7 +58,7 @@ function _iiWalletBalance() {
     }
 
     try {
-        const raw = localStorage.getItem('artxUser') || localStorage.getItem('artCurrentUser');
+        const raw = localStorage.getItem('pageUser') || localStorage.getItem('pageUser');
         const user = raw ? JSON.parse(raw) : {};
         return parseFloat(user.wallet_balance || 0) || 0;
     } catch (_) {
@@ -77,8 +77,8 @@ function _iiSetWalletBalance(val) {
     localStorage.setItem('walletBalance', balance.toFixed(2));
 
     try {
-        const key = localStorage.getItem('artxUser') ? 'artxUser' :
-                    localStorage.getItem('artCurrentUser') ? 'artCurrentUser' : null;
+        const key = localStorage.getItem('pageUser') ? 'pageUser' :
+                    localStorage.getItem('pageUser') ? 'pageUser' : null;
         if (key) {
             const user = JSON.parse(localStorage.getItem(key) || '{}');
             user.wallet_balance = balance.toFixed(2);
@@ -296,7 +296,7 @@ function _iiLaunchGame() {
     _iiEl('iiGameTitle').textContent = c.title;
     _iiUpdateTimerDisplay();
     _iiEl('iiTimerFill').style.width      = '100%';
-    _iiEl('iiTimerFill').style.background = 'var(--artx-primary, #556b2f)';
+    _iiEl('iiTimerFill').style.background = 'var(--page-primary, #556b2f)';
 
     // Reset steps
     _iiShowStep(IMG_INTERP_STEPS.OBSERVE);

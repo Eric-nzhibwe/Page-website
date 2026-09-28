@@ -1,5 +1,5 @@
 /**
- * ARTX Firebase Real-time Service
+ * PAGE Firebase Real-time Service
  * =================================
  * Replaces WebSocket / polling for notifications and messenger badge updates
  * with Firestore onSnapshot listeners so UI updates happen instantly.
@@ -97,9 +97,9 @@ async function fbRealtimeInit() {
         // 4. Attach all listeners
         _fbRTAttachAll();
 
-        console.info('[ARTX] Firebase real-time listeners active.');
+        console.info('[PAGE] Firebase real-time listeners active.');
     } catch (err) {
-        console.warn('[ARTX] Firebase real-time init failed — using polling fallback.', err.message);
+        console.warn('[PAGE] Firebase real-time init failed — using polling fallback.', err.message);
     }
 }
 
@@ -140,7 +140,7 @@ function _fbRTAttachNotifListener(userId) {
         .limit(30)
         .onSnapshot(
             snapshot => _fbRTHandleNotifSnapshot(snapshot),
-            err => console.warn('[ARTX] Notification listener error:', err.message)
+            err => console.warn('[PAGE] Notification listener error:', err.message)
         );
 }
 
@@ -387,7 +387,7 @@ function _fbRTAttachConvBadgeListener(userId) {
         .limit(30)
         .onSnapshot(
             snapshot => _fbRTHandleConvBadge(snapshot, userId),
-            err => console.warn('[ARTX] Conv badge listener error:', err.message)
+            err => console.warn('[PAGE] Conv badge listener error:', err.message)
         );
 }
 
@@ -480,7 +480,7 @@ async function _fbRTFetchConfig() {
 
 function _fbRTCurrentUserId() {
     try {
-        const raw = localStorage.getItem('artxUser') || localStorage.getItem('artCurrentUser');
+        const raw = localStorage.getItem('pageUser') || localStorage.getItem('pageUser');
         return raw ? JSON.parse(raw)?.id : null;
     } catch (_) { return null; }
 }

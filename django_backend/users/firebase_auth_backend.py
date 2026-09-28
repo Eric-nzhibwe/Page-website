@@ -1,5 +1,5 @@
 """
-Firebase Authentication Backend for ARTX
+Firebase Authentication Backend for PAGE
 ==========================================
 Validates Firebase ID tokens issued by the Firebase Auth SDK on the frontend.
 
@@ -54,7 +54,7 @@ class FirebaseAuthenticationBackend(BaseBackend):
             return None
 
         try:
-            from artx_platform.firebase_client import firebase_enabled
+            from page_platform.firebase_client import firebase_enabled
             if not firebase_enabled():
                 return None
 

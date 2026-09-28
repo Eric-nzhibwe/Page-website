@@ -1,4 +1,4 @@
-// ARTX — Community Page  ·  community.js
+// PAGE — Community Page  ·  community.js
 // All data comes from the Django REST API
 
 const API = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
@@ -275,7 +275,7 @@ async function submitComment() {
 async function sharePost(postId) {
     const url = `${window.location.origin}/posts/${postId}`;
     if (navigator.share) {
-        navigator.share({ title: 'ARTX Post', url });
+        navigator.share({ title: 'PAGE Post', url });
     } else {
         navigator.clipboard.writeText(url).then(() => showToast('Link copied!'));
     }

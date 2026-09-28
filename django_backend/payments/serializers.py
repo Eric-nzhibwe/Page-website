@@ -1,5 +1,5 @@
 """
-Payment serializers — ARTX Platform
+Payment serializers — PAGE
 """
 from rest_framework import serializers
 from .models import Payment, PaymentAllocation, Withdrawal, PaymentMethod, Wallet, Transaction, PaymentAuditLog

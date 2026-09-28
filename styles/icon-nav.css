@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════
-   ARTX · icon-nav.css  (v2 — FA 6.6 upgrade)
+   PAGE · icon-nav.css  (v2 — FA 6.6 upgrade)
    Header, icon navigation, quick menu, user menu dropdowns.
    ═══════════════════════════════════════════════════════════════ */
 
@@ -9,7 +9,7 @@
     justify-content: space-between;
     align-items: center;
     padding: 6px 10px;
-    background: var(--artx-header-grad);
+    background: var(--page-header-grad);
     box-shadow: 0 2px 12px rgba(0,0,0,0.12);
     position: sticky;
     top: 0;
@@ -72,7 +72,7 @@
 }
 .search-bar:focus-within {
     background: rgba(0,0,0,0.03);
-    border-color: var(--artx-primary);
+    border-color: var(--page-primary);
 }
 
 @media (min-width: 768px) { .search-bar { display: flex; } }
@@ -140,13 +140,13 @@
 
 .icon-nav-btn:hover {
     background: rgba(0,0,0,0.06);
-    color: var(--artx-primary);
+    color: var(--page-primary);
 }
 .icon-nav-btn:hover i { transform: translateY(-1px); }
 
 .icon-nav-btn.active {
-    color: var(--artx-primary);
-    border-bottom-color: var(--artx-primary);
+    color: var(--page-primary);
+    border-bottom-color: var(--page-primary);
     background: rgba(85,107,47,0.07);
 }
 
@@ -204,14 +204,14 @@
 
 .header-icon-btn:hover {
     background: rgba(0,0,0,0.13);
-    color: var(--artx-primary);
+    color: var(--page-primary);
     transform: scale(1.08);
 }
 
 .user-avatar-btn {
     width: 34px;
     height: 34px;
-    background: linear-gradient(135deg, var(--artx-primary), #90ee90);
+    background: linear-gradient(135deg, var(--page-primary), #90ee90);
     border-radius: 50%;
     cursor: pointer;
     display: flex;
@@ -290,11 +290,11 @@
 .quick-menu-item:hover {
     background: #eef0f4;
     transform: translateY(-2px);
-    color: var(--artx-primary);
+    color: var(--page-primary);
 }
 .quick-menu-item i {
     font-size: 22px;
-    color: var(--artx-primary);
+    color: var(--page-primary);
     transition: transform .18s;
 }
 .quick-menu-item:hover i { transform: scale(1.15); }
@@ -333,7 +333,7 @@
     align-items: center;
     gap: 12px;
     padding: 16px;
-    background: linear-gradient(135deg, var(--artx-primary-dk), var(--artx-primary));
+    background: linear-gradient(135deg, var(--page-primary-dk), var(--page-primary));
     color: white;
 }
 
@@ -379,7 +379,7 @@
 }
 .user-menu-stat i {
     font-size: 18px;
-    color: var(--artx-primary);
+    color: var(--page-primary);
 }
 .user-menu-stat span {
     font-size: 13px;
@@ -403,7 +403,7 @@
 }
 .user-menu-links a:hover {
     background: #f0f2f5;
-    color: var(--artx-primary);
+    color: var(--page-primary);
 }
 .user-menu-links a i {
     font-size: 16px;
@@ -412,7 +412,7 @@
     color: #65676b;
     transition: color .18s;
 }
-.user-menu-links a:hover i { color: var(--artx-primary); }
+.user-menu-links a:hover i { color: var(--page-primary); }
 
 /* Logout link distinct style */
 .user-menu-links a.logout-link { color: #c0392b; }

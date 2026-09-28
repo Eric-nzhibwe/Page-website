@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# ── ARTX start script for Render ──────────────────────────────────────────────
+# ── PAGE start script for Render ──────────────────────────────────────────────
 # Runs migrate with retries THEN starts uvicorn.
 # Render's port-scan window is ~5 min on free tier; we give migrate 3 attempts
 # of 60 s each before giving up and starting the server anyway (so the service
@@ -29,14 +29,14 @@ echo "==> Starting uvicorn..."
 # Log channel layer backend so it's visible in Render logs
 python -c "
 import os, django
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'artx_platform.settings')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'page_platform.settings')
 django.setup()
 from django.conf import settings
 backend = settings.CHANNEL_LAYERS.get('default', {}).get('BACKEND', 'unknown')
 ws_mode = 'Redis (real-time WebSockets enabled)' if 'redis' in backend.lower() else 'InMemoryChannelLayer (polling fallback)'
 print(f'==> Channel layer: {ws_mode}')
 " 2>/dev/null || true
-exec uvicorn artx_platform.asgi:application \
+exec uvicorn page_platform.asgi:application \
     --host 0.0.0.0 \
     --port "${PORT:-8000}" \
     --workers 1 \

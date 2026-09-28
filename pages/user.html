@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Profile — ARTX</title>
-    <link rel="icon" type="image/jpeg" href="../images/ARTX.jpg">
+    <title>Profile</title>
+    <link rel="icon" type="image/jpeg" href="../images/Page.jpeg">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -36,11 +36,11 @@
 <header class="header w-100">
     <div class="header-left d-flex align-items-center">
         <div class="logo" onclick="window.location.href='../index.html'" style="cursor:pointer">
-            <i class="fas fa-fire-flame-curved"></i>ARTX
+            <i class="fas fa-fire-flame-curved"></i>PAGE
         </div>
         <div class="search-bar d-none d-md-flex align-items-center">
             <i class="fas fa-magnifying-glass"></i>
-            <input type="text" placeholder="Search ARTX..." id="headerSearch">
+            <input type="text" placeholder="Search PAGE..." id="headerSearch">
         </div>
     </div>
 
@@ -89,7 +89,7 @@
                 <i class="fas fa-wallet"></i><span>Wallet</span>
             </a>
             <a href="chatbot.html" class="quick-menu-item">
-                <i class="fas fa-robot"></i><span>AI Assistant</span>
+                <i class="fas fa-robot"></i><span>PAGE AI</span>
             </a>
             <a href="influencers.html" class="quick-menu-item">
                 <i class="fas fa-star"></i><span>Influencers</span>
@@ -463,7 +463,7 @@
             <div class="modal-av" id="modalAvatar"><i class="fas fa-user"></i></div>
             <div>
                 <h2>Edit Profile</h2>
-                <p>Update how the ARTX community sees you</p>
+                <p>Update how the PAGE community sees you</p>
             </div>
         </div>
 
@@ -628,7 +628,7 @@
                 <div id="profileTab" class="settings-tab">
                     <div class="tab-heading">
                         <i class="fas fa-id-card"></i>
-                        <div><h3>Profile Settings</h3><p>Customize how others see you on ARTX</p></div>
+                        <div><h3>Profile Settings</h3><p>Customize how others see you on PAGE</p></div>
                     </div>
                     <div class="settings-card">
                         <div class="avatar-upload-section">
@@ -688,7 +688,7 @@
                 <div id="linkedTab" class="settings-tab">
                     <div class="tab-heading">
                         <i class="fas fa-link"></i>
-                        <div><h3>Linked Accounts</h3><p>Connect your social media profiles to ARTX</p></div>
+                        <div><h3>Linked Accounts</h3><p>Connect your social media profiles to PAGE</p></div>
                     </div>
                     <div class="settings-card">
                         <div class="settings-card-title">Social Platforms</div>
@@ -860,7 +860,7 @@
                 <div id="appearanceTab" class="settings-tab">
                     <div class="tab-heading">
                         <i class="fas fa-palette"></i>
-                        <div><h3>Appearance</h3><p>Make ARTX look the way you like it</p></div>
+                        <div><h3>Appearance</h3><p>Make PAGE look the way you like it</p></div>
                     </div>
                     <div class="settings-card">
                         <div class="settings-card-title">Theme &amp; Display</div>
@@ -1070,7 +1070,7 @@ document.addEventListener('DOMContentLoaded', () => {
 /* ── Share ─────────────────────────────────────── */
 function shareProfile() {
     const url = window.location.href;
-    if (navigator.share) navigator.share({ title: 'ARTX Profile', url });
+    if (navigator.share) navigator.share({ title: 'PAGE Profile', url });
     else navigator.clipboard.writeText(url).then(() => window.showToast && showToast('Link copied!'));
 }
 

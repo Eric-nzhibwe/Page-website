@@ -1,16 +1,16 @@
 /* ── Accent color token layer ──────────────────────────────────
    theme.js sets these on :root before first paint.
-   Every CSS file uses var(--artx-*) so the whole UI repaints.
+   Every CSS file uses var(--page-*) so the whole UI repaints.
    ─────────────────────────────────────────────────────────────── */
 :root {
-    --artx-primary:     #556b2f;
-    --artx-primary-lt:  #6b8a3a;
-    --artx-primary-dk:  #3d4f22;
-    --artx-accent:      #90ee90;
-    --artx-glow:        rgba(85,107,47,0.18);
-    --artx-text-on-primary: #ffffff;
-    --artx-bg-grad:     linear-gradient(to left, #ffffff, #f4f7f0);
-    --artx-header-grad: linear-gradient(to right, #f5f5f5, #556b2f);
+    --page-primary:     #556b2f;
+    --page-primary-lt:  #6b8a3a;
+    --page-primary-dk:  #3d4f22;
+    --page-accent:      #90ee90;
+    --page-glow:        rgba(85,107,47,0.18);
+    --page-text-on-primary: #ffffff;
+    --page-bg-grad:     linear-gradient(to left, #ffffff, #f4f7f0);
+    --page-header-grad: linear-gradient(to right, #f5f5f5, #556b2f);
 
     /* ── Light mode (default) ── */
     --theme-bg:           #f4f6f9;
@@ -37,8 +37,8 @@
     --theme-input-bg:     #3a3b3c;
     --theme-card-shadow:  0 2px 8px rgba(0,0,0,0.40);
     --theme-overlay:      rgba(0,0,0,0.70);
-    --artx-bg-grad:       linear-gradient(to left, #18191a, #242526);
-    --artx-header-grad:   linear-gradient(to right, #18191a, #1e3a0f);
+    --page-bg-grad:       linear-gradient(to left, #18191a, #242526);
+    --page-header-grad:   linear-gradient(to right, #18191a, #1e3a0f);
 }
 
 /* ── Auto mode — follow OS preference ── */
@@ -54,8 +54,8 @@
         --theme-input-bg:     #3a3b3c;
         --theme-card-shadow:  0 2px 8px rgba(0,0,0,0.40);
         --theme-overlay:      rgba(0,0,0,0.70);
-        --artx-bg-grad:       linear-gradient(to left, #18191a, #242526);
-        --artx-header-grad:   linear-gradient(to right, #18191a, #1e3a0f);
+        --page-bg-grad:       linear-gradient(to left, #18191a, #242526);
+        --page-header-grad:   linear-gradient(to right, #18191a, #1e3a0f);
     }
 }
 
@@ -67,7 +67,7 @@
 
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: var(--theme-bg, var(--artx-bg-grad));
+    background: var(--theme-bg, var(--page-bg-grad));
     color: var(--theme-text, #1c1e21);
     min-height: 100vh;
     transition: background .35s ease, color .35s ease;
@@ -97,7 +97,7 @@ body {
     justify-content: space-between;
     align-items: center;
     padding: 12px;
-    background: var(--artx-header-grad);
+    background: var(--page-header-grad);
     backdrop-filter: blur(10px);
     border-radius: 0;
     margin-bottom: 20px;
@@ -163,7 +163,7 @@ body {
 .nav-btn {
     padding: 10px 20px;
     background: transparent;
-    border: 2px solid var(--artx-primary);
+    border: 2px solid var(--page-primary);
     color: black;
     border-radius: 8px;
     cursor: pointer;
@@ -172,7 +172,7 @@ body {
 
 .nav-btn:hover, .nav-btn.active {
     background: rgba(255, 255, 255, 0.1);
-    border-color: var(--artx-primary);
+    border-color: var(--page-primary);
 }
 
 .user-info {
@@ -186,7 +186,7 @@ body {
     align-items: center;
     gap: 5px;
     padding: 8px 16px;
-    background: linear-gradient(45deg, var(--artx-primary), var(--artx-accent));
+    background: linear-gradient(45deg, var(--page-primary), var(--page-accent));
     border-radius: 20px;
     font-weight: bold;
     animation: pulse 2s infinite;
@@ -239,7 +239,7 @@ body {
 
 .btn-logout:hover {
     background: rgba(255, 87, 108, 0.2);
-    border-color: var(--artx-primary);
+    border-color: var(--page-primary);
 }
 
 /* User Menu Dropdown */
@@ -264,7 +264,7 @@ body {
 
 .btn-user-menu:hover {
     background: rgba(255, 255, 255, 0.2);
-    border-color: var(--artx-primary);
+    border-color: var(--page-primary);
 }
 
 .dropdown-content {
@@ -355,7 +355,7 @@ body {
     text-align: center;
     padding: 60px 20px;
     background: black;
-    border: 2px solid var(--artx-primary);
+    border: 2px solid var(--page-primary);
     border-radius: 15px;
     margin-bottom: 30px;
 }
@@ -367,7 +367,7 @@ body {
 
 .philosophy {
     font-size: 24px;
-    color: var(--artx-primary);
+    color: var(--page-primary);
     font-weight: 500;
 }
 
@@ -384,7 +384,7 @@ body {
     padding: 30px;
     border-radius: 15px;
     text-align: center;
-    border: 1px solid var(--artx-primary);
+    border: 1px solid var(--page-primary);
 }
 
 .stat-card h3 {
@@ -397,7 +397,7 @@ body {
 .stat-value {
     font-size: 36px;
     font-weight: bold;
-    background: linear-gradient(to left, var(--artx-primary), darkgreen);
+    background: linear-gradient(to left, var(--page-primary), darkgreen);
     background-clip: text;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
@@ -414,7 +414,7 @@ body {
 
 .progress-fill {
     height: 100%;
-    background: var(--artx-accent);
+    background: var(--page-accent);
     transition: width 0.3s;
 }
 
@@ -437,7 +437,7 @@ body {
 
 .challenge-card:hover {
     transform: translateY(-5px);
-    border-color: var(--artx-primary);
+    border-color: var(--page-primary);
 }
 
 .challenge-card h3 {
@@ -462,7 +462,7 @@ body {
 }
 
 .btn-primary {
-    background: linear-gradient(to left, white, var(--artx-primary));
+    background: linear-gradient(to left, white, var(--page-primary));
     color: #000;
     box-shadow: rgba(245, 87, 108, 0.6);
 }
@@ -550,7 +550,7 @@ body {
     top: 15px;
     right: 15px;
     padding: 5px 15px;
-    background: linear-gradient(to left, var(--artx-primary),var(--artx-accent));
+    background: linear-gradient(to left, var(--page-primary),var(--page-accent));
     border-radius: 20px;
     font-size: 12px;
     font-weight: bold;
@@ -562,7 +562,7 @@ body {
 
 .prize {
     font-size: 24px;
-    color: var(--artx-accent);
+    color: var(--page-accent);
     margin: 15px 0;
 }
 
@@ -587,7 +587,7 @@ body {
     background: rgba(255, 255, 255, 0.03);
     margin-bottom: 10px;
     border-radius: 8px;
-    border-left: 3px solid var(--artx-primary);
+    border-left: 3px solid var(--page-primary);
 }
 
 /* Personal Dashboard */
@@ -615,13 +615,13 @@ body {
     padding: 20px;
     background: rgba(255, 255, 255, 0.05);
     border-radius: 12px;
-    border: 2px solid var(--artx-primary);
+    border: 2px solid var(--page-primary);
     transition: all 0.3s;
 }
 
 .dashboard-card:hover {
     transform: translateY(-3px);
-    border-color: var(--artx-primary);
+    border-color: var(--page-primary);
 }
 
 .card-icon {
@@ -695,7 +695,7 @@ body {
 
 .filter-btn.active {
     background: rgba(245, 87, 108, 0.2);
-    border-color: var(--artx-primary);
+    border-color: var(--page-primary);
 }
 
 .history-list {
@@ -775,7 +775,7 @@ body {
 }
 
 .loop-step.active {
-    border-color: var(--artx-primary);
+    border-color: var(--page-primary);
     background: rgba(245, 87, 108, 0.1);
     transform: scale(1.1);
     box-shadow: 0 0 20px rgba(245, 87, 108, 0.3);
@@ -784,7 +784,7 @@ body {
 .loop-icon {
     font-size: 32px;
     margin-bottom: 10px;
-    color: var(--artx-primary);
+    color: var(--page-primary);
 }
 
 .loop-icon i {
@@ -799,7 +799,7 @@ body {
 
 .loop-arrow {
     font-size: 24px;
-    color: var(--artx-primary);
+    color: var(--page-primary);
     font-weight: bold;
 }
 
@@ -826,7 +826,7 @@ body {
     background: rgba(255, 255, 255, 0.03);
     margin-bottom: 10px;
     border-radius: 8px;
-    border-left: 3px solid var(--artx-primary);
+    border-left: 3px solid var(--page-primary);
     animation: slideIn 0.3s;
 }
 
@@ -836,7 +836,7 @@ body {
 }
 
 .feed-item strong {
-    color: var(--artx-primary);
+    color: var(--page-primary);
 }
 
 /* Action Center */
@@ -858,7 +858,7 @@ body {
 
 .action-card:hover {
     transform: translateY(-5px);
-    border-color: var(--artx-primary);
+    border-color: var(--page-primary);
 }
 
 .action-card.pulse {
@@ -892,7 +892,7 @@ body {
 
 .answer-input:focus {
     outline: none;
-    border-color: var(--artx-primary);
+    border-color: var(--page-primary);
 }
 
 .action-card.locked {
@@ -945,8 +945,8 @@ body {
     justify-content: space-between;
     align-items: center;
     padding: 20px;
-    background: linear-gradient(to left, var(--artx-accent));
-    border: 2px solid var(--artx-primary);
+    background: linear-gradient(to left, var(--page-accent));
+    border: 2px solid var(--page-primary);
     border-radius: 12px;
     margin-bottom: 20px;
     font-weight: bold;
@@ -954,7 +954,7 @@ body {
 
 .position-rank {
     font-size: 32px;
-    color: var(--artx-primary);
+    color: var(--page-primary);
 }
 
 .ladder-list {
@@ -976,7 +976,7 @@ body {
 
 .ladder-item:hover {
     background: rgba(76, 175, 80, 0.2);
-    border-left-color: var(--artx-primary);
+    border-left-color: var(--page-primary);
 }
 
 .ladder-item.top-3 {
@@ -995,7 +995,7 @@ body {
 }
 
 .ladder-prestige {
-    color: var(--artx-primary);
+    color: var(--page-primary);
     font-weight: bold;
 }
 
@@ -1012,7 +1012,7 @@ body {
 
 .rank-benefits, .tier-unlock {
     margin-top: 10px;
-    color: var(--artx-primary);
+    color: var(--page-primary);
     font-size: 14px;
 }
 
@@ -1048,7 +1048,7 @@ body {
     background: white;
     padding: 25px;
     border-radius: 15px;
-    border: 2px solid var(--artx-primary);
+    border: 2px solid var(--page-primary);
 }
 
 .alliance-benefits {
@@ -1088,7 +1088,7 @@ body {
 .power-value {
     font-size: 24px;
     font-weight: bold;
-    color: var(--artx-primary);
+    color: var(--page-primary);
 }
 
 .alliance-member {
@@ -1122,14 +1122,14 @@ body {
     background: rgba(255, 255, 255, 0.05);
     padding: 25px;
     border-radius: 12px;
-    border: 2px solid var(--artx-primary);
+    border: 2px solid var(--page-primary);
     position: relative;
     transition: all 0.3s;
 }
 
 .event-card:hover {
     transform: translateY(-5px);
-    border-color: var(--artx-primary);
+    border-color: var(--page-primary);
 }
 
 .event-badge {
@@ -1137,7 +1137,7 @@ body {
     top: 15px;
     right: 15px;
     padding: 5px 12px;
-    background: linear-gradient(to left, var(--artx-primary), var(--artx-accent));
+    background: linear-gradient(to left, var(--page-primary), var(--page-accent));
     border-radius: 20px;
     font-size: 11px;
     font-weight: bold;
@@ -1148,7 +1148,7 @@ body {
 }
 
 .event-countdown {
-    color: var(--artx-primary);
+    color: var(--page-primary);
     font-size: 18px;
     margin: 10px 0;
     font-weight: bold;
@@ -1185,7 +1185,7 @@ body {
     background: linear-gradient(to left, white, whitesmoke);
     margin: auto;
     padding: 25px;
-    border: 2px solid var(--artx-primary);
+    border: 2px solid var(--page-primary);
     border-radius: 15px;
     width: 90%;
     max-width: 500px;
@@ -1233,7 +1233,7 @@ body {
 
 .tab-btn.active {
     background: rgba(245, 87, 108, 0.2);
-    border-color: var(--artx-primary);
+    border-color: var(--page-primary);
 }
 
 .tab-content {
@@ -1257,7 +1257,7 @@ body {
 
 .modal-input:focus {
     outline: none;
-    border-color: var(--artx-primary);
+    border-color: var(--page-primary);
 }
 
 .available-alliance {
@@ -1309,7 +1309,7 @@ body {
 
 .modal-input:focus {
     outline: none;
-    border-color: var(--artx-primary);
+    border-color: var(--page-primary);
 }
 
 .amount-input-wrapper {
@@ -1325,7 +1325,7 @@ body {
 
 .btn-max {
     padding: 9px 12px;
-    background: var(--artx-primary);
+    background: var(--page-primary);
     color: white;
     border: none;
     border-radius: 6px;
@@ -1338,7 +1338,7 @@ body {
 }
 
 .btn-max:hover {
-    background: var(--artx-primary);
+    background: var(--page-primary);
     transform: translateY(-1px);
 }
 
@@ -1364,7 +1364,7 @@ body {
 .cashout-info {
     padding: 10px;
     background: rgba(245, 87, 108, 0.1);
-    border-left: 4px solid var(--artx-primary);
+    border-left: 4px solid var(--page-primary);
     border-radius: 6px;
     margin-bottom: 12px;
     font-size: 13px;
@@ -1759,7 +1759,7 @@ body {
     left: 0;
     right: 0;
     bottom: 0;
-    background: linear-gradient(135deg, var(--artx-primary) 0%, #2d5016 50%, var(--artx-primary) 100%);
+    background: linear-gradient(135deg, var(--page-primary) 0%, #2d5016 50%, var(--page-primary) 100%);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1886,7 +1886,7 @@ body {
     align-items: center;
     padding: 20px 25px;
     border-bottom: 2px solid #e0e0e0;
-    background: linear-gradient(to right, whitesmoke, var(--artx-primary));
+    background: linear-gradient(to right, whitesmoke, var(--page-primary));
 }
 
 .messenger-header h2 {
@@ -1927,12 +1927,12 @@ body {
 
 .search-input:focus {
     outline: none;
-    border-color: var(--artx-primary);
+    border-color: var(--page-primary);
 }
 
 .btn-new-chat {
     padding: 10px 15px;
-    background: var(--artx-primary);
+    background: var(--page-primary);
     color: white;
     border: none;
     border-radius: 8px;
@@ -1941,7 +1941,7 @@ body {
 }
 
 .btn-new-chat:hover {
-    background: var(--artx-primary);
+    background: var(--page-primary);
 }
 
 .conversations-list {
@@ -1966,14 +1966,14 @@ body {
 
 .conversation-item.active {
     background: #e8f5e9;
-    border-left: 4px solid var(--artx-primary);
+    border-left: 4px solid var(--page-primary);
 }
 
 .conversation-avatar {
     width: 45px;
     height: 45px;
     border-radius: 50%;
-    background: linear-gradient(135deg, var(--artx-primary), var(--artx-accent));
+    background: linear-gradient(135deg, var(--page-primary), var(--page-accent));
     display: flex;
     align-items: center;
     justify-content: center;
@@ -2063,7 +2063,7 @@ body {
     width: 45px;
     height: 45px;
     border-radius: 50%;
-    background: linear-gradient(135deg, var(--artx-primary), var(--artx-accent));
+    background: linear-gradient(135deg, var(--page-primary), var(--page-accent));
     display: flex;
     align-items: center;
     justify-content: center;
@@ -2130,7 +2130,7 @@ body {
 }
 
 .message.sent .message-bubble {
-    background: linear-gradient(135deg, var(--artx-primary), var(--artx-accent));
+    background: linear-gradient(135deg, var(--page-primary), var(--page-accent));
     color: white;
     border-bottom-right-radius: 4px;
 }
@@ -2167,7 +2167,7 @@ body {
 
 .message-input:focus {
     outline: none;
-    border-color: var(--artx-primary);
+    border-color: var(--page-primary);
     background: white;
 }
 
@@ -2175,7 +2175,7 @@ body {
     width: 45px;
     height: 45px;
     border-radius: 50%;
-    background: var(--artx-primary);
+    background: var(--page-primary);
     color: white;
     border: none;
     cursor: pointer;
@@ -2187,7 +2187,7 @@ body {
 }
 
 .btn-send:hover {
-    background: var(--artx-primary);
+    background: var(--page-primary);
     transform: scale(1.05);
 }
 
@@ -2217,14 +2217,14 @@ body {
 
 .user-item:hover {
     background: #f0f0f0;
-    border-color: var(--artx-primary);
+    border-color: var(--page-primary);
 }
 
 .user-avatar {
     width: 40px;
     height: 40px;
     border-radius: 50%;
-    background: linear-gradient(135deg, var(--artx-primary), var(--artx-accent));
+    background: linear-gradient(135deg, var(--page-primary), var(--page-accent));
     display: flex;
     align-items: center;
     justify-content: center;
@@ -2329,7 +2329,7 @@ body {
 /* Header */
 [data-theme="dark"] .header,
 [data-theme="auto"] .header {
-    background: var(--artx-header-grad);
+    background: var(--page-header-grad);
     border-bottom: 1px solid var(--theme-border);
 }
 
@@ -2414,7 +2414,7 @@ body {
 
 [data-theme="dark"] .settings-nav-btn.active {
     background: rgba(255,255,255,0.08) !important;
-    color: var(--artx-accent) !important;
+    color: var(--page-accent) !important;
 }
 
 /* Typography */
@@ -2475,7 +2475,7 @@ body {
 }
 
 [data-theme="dark"] .settings-card-title {
-    color: var(--artx-accent) !important;
+    color: var(--page-accent) !important;
     border-bottom-color: var(--theme-border) !important;
 }
 
@@ -2521,7 +2521,7 @@ body {
 
 [data-theme="dark"] .icon-nav-btn.active,
 [data-theme="dark"] .icon-nav-btn:hover {
-    color: var(--artx-accent) !important;
+    color: var(--page-accent) !important;
 }
 
 /* xPoints banner stays dark regardless */
@@ -2537,7 +2537,7 @@ body {
 }
 
 [data-theme="dark"] .filter-btn.active {
-    background: var(--artx-primary) !important;
+    background: var(--page-primary) !important;
     color: #fff !important;
 }
 

@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Challenges — ARTX</title>
-    <link rel="icon" type="image/jpeg" href="../images/ARTX.jpg">
+    <title>Challenges</title>
+    <link rel="icon" type="image/jpeg" href="../images/Page.jpeg">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
     <link rel="stylesheet" href="../styles/styles.css">
@@ -20,11 +20,11 @@
 <header class="header w-100">
     <div class="header-left d-flex align-items-center">
         <div class="logo" onclick="window.location.href='../index.html'" style="cursor:pointer">
-            <i class="fas fa-fire-flame-curved"></i>ARTX
+            <i class="fas fa-fire-flame-curved"></i>PAGE
         </div>
         <div class="search-bar d-none d-md-flex align-items-center">
             <i class="fas fa-magnifying-glass"></i>
-            <input type="text" placeholder="Search ARTX..." id="headerSearch">
+            <input type="text" placeholder="Search PAGE..." id="headerSearch">
         </div>
     </div>
 
@@ -104,7 +104,7 @@
         <div class="user-menu-links">
             <a href="user.html"><i class="fas fa-id-card"></i> View Profile</a>
             <a href="payment.html"><i class="fas fa-wallet"></i> My Wallet</a>
-            <a href="chatbot.html"><i class="fas fa-robot"></i> AI Assistant</a>
+            <a href="chatbot.html"><i class="fas fa-robot"></i> PAGE AI</a>
             <a href="#" onclick="logout(); return false;" class="logout-link"><i class="fas fa-right-from-bracket"></i> Logout</a>
         </div>
     </div>
@@ -249,7 +249,7 @@
 
             <p class="fee-gate-note">
                 <i class="fas fa-info-circle"></i>
-                The entry fee is deducted from your ARTX wallet. Earnings from winning go straight back in.
+                The entry fee is deducted from your PAGE wallet. Earnings from winning go straight back in.
             </p>
         </div>
 
@@ -804,7 +804,7 @@
     /* Populate user menu from player data already loaded by challenges.js */
     document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => {
-            const raw = localStorage.getItem('artxUser') || localStorage.getItem('artCurrentUser');
+            const raw = localStorage.getItem('pageUser') || localStorage.getItem('artCurrentUser');
             if (!raw) return;
             try {
                 const u = typeof JSON.parse(raw) === 'object' ? JSON.parse(raw) : {};

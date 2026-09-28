@@ -1,5 +1,5 @@
 /**
- * API Service for ARTX Platform
+ * API Service for PAGE Platform
  * Handles all API calls to the Django backend
  */
 

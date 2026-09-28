@@ -190,7 +190,7 @@ class PostViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get'])
     def share_urls(self, request, pk=None):
         post       = self.get_object()
-        share_text = f"Check out this post on ARTX: {post.content[:100]}..."
+        share_text = f"Check out this post on PAGE: {post.content[:100]}..."
         post_url   = f"{request.build_absolute_uri('/').rstrip('/')}/posts/{post.id}"
         return Response({
             'facebook': f"https://www.facebook.com/sharer/sharer.php?u={post_url}",
@@ -212,7 +212,7 @@ class PostViewSet(viewsets.ModelViewSet):
             post_data = PostSerializer(post, context={'request': req}).data
             get_channel_layer() and async_to_sync(
                 get_channel_layer().group_send
-            )('artx_feed', {
+            )('page_feed', {
                 'type': 'feed_new_post',
                 'post': json.loads(json.dumps(dict(post_data), cls=DjangoJSONEncoder)),
             })
@@ -228,7 +228,7 @@ class PostViewSet(viewsets.ModelViewSet):
             from django.core.serializers.json import DjangoJSONEncoder
             get_channel_layer() and async_to_sync(
                 get_channel_layer().group_send
-            )('artx_feed', {
+            )('page_feed', {
                 'type': 'feed_new_post',
                 'post': json.loads(json.dumps(post_dict, cls=DjangoJSONEncoder)),
             })

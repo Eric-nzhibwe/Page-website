@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-Create sample users for ARTX Platform
+Create sample users for PAGE Platform
 """
 import os
 import django
 
 # Setup Django
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'artx_platform.settings')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'page_platform.settings')
 django.setup()
 
 from users.models import User

@@ -1,5 +1,5 @@
 """
-Chatbot models for ARTX Platform
+Chatbot models for PAGE Platform
 """
 from django.db import models
 from django.conf import settings

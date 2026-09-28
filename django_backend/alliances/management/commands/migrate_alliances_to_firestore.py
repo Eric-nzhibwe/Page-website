@@ -13,7 +13,7 @@ Usage:
     python manage.py migrate_alliances_to_firestore --dry-run
 """
 from django.core.management.base import BaseCommand
-from artx_platform.firebase_client import firebase_enabled
+from page_platform.firebase_client import firebase_enabled
 
 
 class Command(BaseCommand):

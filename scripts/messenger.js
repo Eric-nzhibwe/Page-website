@@ -1,5 +1,5 @@
 /**
- * ARTX Messenger — Direct Message UI
+ * PAGE Messenger — Direct Message UI
  * ====================================
  * Talks to the existing Django messenger REST API:
  *   GET    /api/messenger/conversations/
@@ -880,7 +880,7 @@ function _dmRenderUserResults(users) {
             <div class="dm-user-result-info">
                 <div class="dm-user-result-name">
                     ${_escHtml(name)}
-                    ${isFollowing ? `<span style="font-size:10px;color:var(--artx-primary,#556b2f);font-weight:600;margin-left:5px;">Following</span>` : ''}
+                    ${isFollowing ? `<span style="font-size:10px;color:var(--page-primary,#556b2f);font-weight:600;margin-left:5px;">Following</span>` : ''}
                 </div>
                 <div class="dm-user-result-tier">
                     ${_escHtml(u.access_tier || 'Bronze')} · ${(u.prestige_points || 0).toLocaleString()} pts
@@ -1139,7 +1139,7 @@ function _dmRenderPeopleList(container, users, showOnlineDot) {
         const followLabel = isFollowing
             ? '<i class="fas fa-check"></i> Following'
             : '<i class="fas fa-user-plus"></i> Follow';
-        const followClass = isFollowing ? 'artx-follow-btn artx-follow-btn--following' : 'artx-follow-btn';
+        const followClass = isFollowing ? 'page-follow-btn page-follow-btn--following' : 'page-follow-btn';
 
         return `<div class="dm-person-item">
             <div class="dm-person-avatar">
@@ -1169,13 +1169,13 @@ async function _dmToggleFollow(userId, btnEl) {
         return;
     }
     // Standalone fallback — no dependency on apiService
-    const isFollowing = btnEl.classList.contains('artx-follow-btn--following');
+    const isFollowing = btnEl.classList.contains('page-follow-btn--following');
     const endpoint = isFollowing
         ? `${_dmApiBase()}/social/follows/unfollow/`
         : `${_dmApiBase()}/social/follows/follow/`;
 
     // Optimistic UI
-    btnEl.classList.toggle('artx-follow-btn--following', !isFollowing);
+    btnEl.classList.toggle('page-follow-btn--following', !isFollowing);
     btnEl.innerHTML = !isFollowing
         ? '<i class="fas fa-check"></i> Following'
         : '<i class="fas fa-user-plus"></i> Follow';
@@ -1189,7 +1189,7 @@ async function _dmToggleFollow(userId, btnEl) {
         if (!res.ok) throw new Error(`${res.status}`);
     } catch {
         // Rollback on failure
-        btnEl.classList.toggle('artx-follow-btn--following', isFollowing);
+        btnEl.classList.toggle('page-follow-btn--following', isFollowing);
         btnEl.innerHTML = isFollowing
             ? '<i class="fas fa-check"></i> Following'
             : '<i class="fas fa-user-plus"></i> Follow';
@@ -1226,7 +1226,7 @@ if (typeof window !== 'undefined') {
 
 function _dmCurrentUserId() {
     try {
-        const raw = localStorage.getItem('artxUser') || localStorage.getItem('artCurrentUser');
+        const raw = localStorage.getItem('pageUser') || localStorage.getItem('pageUser');
         return raw ? JSON.parse(raw)?.id : null;
     } catch (_) { return null; }
 }

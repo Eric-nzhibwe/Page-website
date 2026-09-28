@@ -1,5 +1,5 @@
 """
-User admin — ARTX Platform
+User admin — PAGE Platform
 """
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
@@ -21,7 +21,7 @@ class UserAdmin(BaseUserAdmin):
     ordering      = ['-prestige_points']
 
     fieldsets = BaseUserAdmin.fieldsets + (
-        ('ARTX Profile', {
+        ('PAGE Profile', {
             'fields': ('display_name', 'bio', 'profile_image'),
         }),
         ('Gaming Stats', {

@@ -1,5 +1,5 @@
 """
-Social models for ARTX Platform - Posts, Comments, and Shares
+Social models for PAGE Platform - Posts, Comments, and Shares
 """
 from django.db import models
 from django.utils import timezone

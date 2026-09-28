@@ -1,4 +1,4 @@
-// Clear All Local Storage Data - ARTX Platform Reset
+// Clear All Local Storage Data - PAGE Platform Reset
 // This script will completely clear all local storage data
 
 function clearAllLocalStorage() {

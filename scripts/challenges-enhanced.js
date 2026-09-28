@@ -1224,7 +1224,7 @@ async function _checkWsSupport() {
     }
 
     sessionStorage.setItem('ws_supported', String(_wsSupported));
-    console.info(`[ArtX] WebSocket mode: ${_wsSupported ? 'Real-time (Redis)' : 'Polling fallback'}`);
+    console.info(`[PAGE] WebSocket mode: ${_wsSupported ? 'Real-time (Redis)' : 'Polling fallback'}`);
     return _wsSupported;
 }
 
@@ -1383,10 +1383,10 @@ function _pollQAAnswers(qaId) {
 /* ── Share Challenge ── */
 function shareChallenge(title, id, category) {
     const url  = `${location.origin}${location.pathname}#challenge-${id}`;
-    const text = `Check out this ${category} challenge on ArtX: "${title}"`;
+    const text = `Check out this ${category} challenge on PAGE: "${title}"`;
 
     if (navigator.share) {
-        navigator.share({ title: `ArtX — ${title}`, text, url }).catch(() => {});
+        navigator.share({ title: `PAGE — ${title}`, text, url }).catch(() => {});
         return;
     }
 

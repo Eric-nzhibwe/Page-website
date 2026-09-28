@@ -71,7 +71,7 @@
 
 .btn-dashboard-toggle:hover {
     background: rgba(255, 255, 255, 0.2);
-    border-color: var(--artx-primary);
+    border-color: var(--page-primary);
 }
 
 .dashboard-dropdown-content {
@@ -203,7 +203,7 @@
 .stat-value {
     font-size: 18px;
     font-weight: bold;
-    color: var(--artx-primary);
+    color: var(--page-primary);
 }
 
 /* Sidebar Menu */
@@ -233,7 +233,7 @@
 
 .menu-item.active {
     background: linear-gradient(to right, rgba(107, 142, 35, 0.1), rgba(144, 238, 144, 0.1));
-    color: var(--artx-primary);
+    color: var(--page-primary);
     font-weight: 600;
 }
 
@@ -422,7 +422,7 @@
     font-size: 28px;
     color: white;
     /* Default fallback for stories without a real image — overridden by inline style */
-    background-color: var(--artx-primary);
+    background-color: var(--page-primary);
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
@@ -442,7 +442,7 @@
 
 .create-story .story-image {
     background: #f0f0f0;
-    color: var(--artx-primary);
+    color: var(--page-primary);
 }
 
 .story-name {
@@ -520,7 +520,7 @@
     width: 40px;
     height: 40px;
     border-radius: 50%;
-    background: linear-gradient(135deg, var(--artx-primary), var(--artx-accent));
+    background: linear-gradient(135deg, var(--page-primary), var(--page-accent));
     display: flex;
     align-items: center;
     justify-content: center;
@@ -763,7 +763,7 @@
 }
 
 .achievement-badge-large {
-    background: linear-gradient(135deg, var(--artx-primary), var(--artx-accent));
+    background: linear-gradient(135deg, var(--page-primary), var(--page-accent));
     padding: 24px;
     text-align: center;
     color: white;
@@ -822,7 +822,7 @@
 }
 
 .post-stats i {
-    color: var(--artx-primary);
+    color: var(--page-primary);
 }
 
 .post-actions {
@@ -839,7 +839,7 @@
 }
 
 .post-actions .post-action-btn:hover {
-    color: var(--artx-primary);
+    color: var(--page-primary);
 }
 
 /* Right Sidebar */
@@ -866,7 +866,7 @@
 }
 
 .sidebar-title i {
-    color: var(--artx-primary);
+    color: var(--page-primary);
 }
 
 /* Live Feed */
@@ -885,7 +885,7 @@
 .live-dot {
     width: 8px;
     height: 8px;
-    background: var(--artx-primary);
+    background: var(--page-primary);
     border-radius: 50%;
     margin-top: 6px;
     animation: pulse 2s infinite;
@@ -899,7 +899,7 @@
 }
 
 .live-info strong {
-    color: var(--artx-primary);
+    color: var(--page-primary);
 }
 
 .live-time {
@@ -926,7 +926,7 @@
     width: 40px;
     height: 40px;
     border-radius: 50%;
-    background: linear-gradient(135deg, var(--artx-primary), var(--artx-accent));
+    background: linear-gradient(135deg, var(--page-primary), var(--page-accent));
     display: flex;
     align-items: center;
     justify-content: center;
@@ -953,7 +953,7 @@
 
 .btn-follow {
     padding: 6px 16px;
-    background: var(--artx-primary);
+    background: var(--page-primary);
     color: white;
     border: none;
     border-radius: 6px;
@@ -964,7 +964,7 @@
 }
 
 .btn-follow:hover {
-    background: var(--artx-primary);
+    background: var(--page-primary);
 }
 
 /* Rankings */
@@ -1186,8 +1186,8 @@
 
 .post-option-btn:hover {
     background: #f0f0f0;
-    border-color: var(--artx-primary);
-    color: var(--artx-primary);
+    border-color: var(--page-primary);
+    color: var(--page-primary);
 }
 
 .btn-post {
@@ -1376,7 +1376,7 @@
 
 /* Post reaction animation */
 .post-action-btn.reacted {
-    color: var(--artx-accent) !important;
+    color: var(--page-accent) !important;
     animation: bounce 0.5s ease;
 }
 
@@ -1417,7 +1417,7 @@
     width: 40px;
     height: 40px;
     border-radius: 50%;
-    background: linear-gradient(135deg, var(--artx-primary), var(--artx-accent));
+    background: linear-gradient(135deg, var(--page-primary), var(--page-accent));
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1480,14 +1480,14 @@
 }
 
 .comment-input:focus {
-    border-color: var(--artx-primary);
+    border-color: var(--page-primary);
 }
 
 .comment-submit-btn {
     width: 40px;
     height: 40px;
     border-radius: 50%;
-    background: var(--artx-primary);
+    background: var(--page-primary);
     color: white;
     border: none;
     cursor: pointer;
@@ -1498,7 +1498,7 @@
 }
 
 .comment-submit-btn:hover {
-    background: var(--artx-primary);
+    background: var(--page-primary);
     transform: scale(1.1);
 }
 
@@ -1580,12 +1580,12 @@
 }
 
 .share-platform-btn.copy {
-    border-color: var(--artx-primary);
-    color: var(--artx-primary);
+    border-color: var(--page-primary);
+    color: var(--page-primary);
 }
 
 .share-platform-btn.copy:hover {
-    background: var(--artx-primary);
+    background: var(--page-primary);
     color: white;
 }
 
@@ -1717,7 +1717,7 @@
 
 /* ── Create Challenge Banner ── */
 .create-challenge-banner {
-    background: linear-gradient(to right, whitesmoke, var(--artx-primary));
+    background: linear-gradient(to right, whitesmoke, var(--page-primary));
     border-radius: 12px;
     padding: 14px 18px;
     box-shadow: 0 4px 12px rgba(85, 107, 47, 0.3);
@@ -1765,7 +1765,7 @@
 
 .create-challenge-banner-btn {
     flex-shrink: 0;
-    background: linear-gradient(to left, var(--artx-primary), darkgreen);
+    background: linear-gradient(to left, var(--page-primary), darkgreen);
     color: #fff;
     border: none;
     border-radius: 8px;
@@ -1862,7 +1862,7 @@
 }
 
 .people-section-title i {
-    color: var(--artx-primary);
+    color: var(--page-primary);
 }
 
 /* Pulsing green dot for Online Now */
@@ -1907,7 +1907,7 @@
     width: 52px;
     height: 52px;
     border-radius: 50%;
-    background: linear-gradient(135deg, var(--artx-primary), var(--artx-accent));
+    background: linear-gradient(135deg, var(--page-primary), var(--page-accent));
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1990,7 +1990,7 @@
 }
 
 .voice-record-btn:hover {
-    color: var(--artx-primary, #6c63ff);
+    color: var(--page-primary, #6c63ff);
 }
 
 .voice-record-btn.recording {
@@ -2060,7 +2060,7 @@
 }
 
 .voice-post-btn {
-    background: var(--artx-primary, #6c63ff);
+    background: var(--page-primary, #6c63ff);
     color: #fff;
 }
 

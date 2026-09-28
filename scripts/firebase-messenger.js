@@ -1,5 +1,5 @@
 /**
- * ARTX Firebase Messenger — Real-time Firestore listeners
+ * PAGE Firebase Messenger — Real-time Firestore listeners
  * =========================================================
  *
  * Voice note workflow (simplified & reliable):
@@ -426,7 +426,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function _fbCurrentUserId() {
     try {
-        const raw = localStorage.getItem('artxUser') || localStorage.getItem('artCurrentUser');
+        const raw = localStorage.getItem('pageUser') || localStorage.getItem('pageUser');
         return raw ? JSON.parse(raw)?.id : null;
     } catch (_) { return null; }
 }

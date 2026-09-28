@@ -1,5 +1,5 @@
 """
-User models for ARTX Platform
+User models for PAGE Platform
 """
 from django.contrib.auth.models import AbstractUser
 from django.db import models
@@ -9,7 +9,7 @@ import secrets
 import json
 
 class User(AbstractUser):
-    """Extended User model for ARTX Platform"""
+    """Extended User model for PAGE Platform"""
     
     # Basic profile info
     email = models.EmailField(unique=True)

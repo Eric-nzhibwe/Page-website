@@ -1,15 +1,15 @@
 databases:
   # PostgreSQL Database (free tier)
-  - name: artx-db
-    databaseName: artx_platform
-    user: artx_user
+  - name: page-db
+    databaseName: page_platform
+    user: page_user
     plan: free
     region: oregon
 
 services:
   # Django Backend Web Service (serves both API and frontend)
   - type: web
-    name: artx-backend
+    name: page-backend
     runtime: python
     region: oregon
     plan: free
@@ -27,34 +27,34 @@ services:
         value: .onrender.com
       - key: DATABASE_URL
         fromDatabase:
-          name: artx-db
+          name: page-db
           property: connectionString
       - key: DB_NAME
         fromDatabase:
-          name: artx-db
+          name: page-db
           property: database
       - key: DB_USER
         fromDatabase:
-          name: artx-db
+          name: page-db
           property: user
       - key: DB_PASSWORD
         fromDatabase:
-          name: artx-db
+          name: page-db
           property: password
       - key: DB_HOST
         fromDatabase:
-          name: artx-db
+          name: page-db
           property: host
       - key: DB_PORT
         fromDatabase:
-          name: artx-db
+          name: page-db
           property: port
       - key: EMAIL_PROVIDER
         value: resend
       - key: RESEND_API_KEY
         sync: false
       - key: DEFAULT_FROM_EMAIL
-        value: "ARTX Platform <noreply@artxplatform.com>"
+        value: "PAGE <noreply@page.com>"
       # Base URL for password-reset links -- set to your real Render URL
       - key: FRONTEND_BASE_URL
         sync: false
@@ -95,7 +95,7 @@ services:
   # inactivity sleep window.
   #
   # IMPORTANT: Set SERVICE_URL in your Render dashboard environment variables
-  # to your actual web service URL, e.g. https://artx-backend.onrender.com
+  # to your actual web service URL, e.g. https://page-backend.onrender.com
   # The cron will not keep the service alive if this points to the wrong URL.
   - type: cron
     name: keep-alive

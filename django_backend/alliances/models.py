@@ -1,5 +1,5 @@
 """
-Alliance models for ARTX Platform
+Alliance models for PAGE Platform
 """
 from django.db import models
 from django.conf import settings
@@ -12,7 +12,7 @@ class Alliance(models.Model):
     
     # Basic info
     name = models.CharField(max_length=100, unique=True)
-    tag = models.CharField(max_length=10, unique=True)  # Short alliance tag like [ARTX]
+    tag = models.CharField(max_length=10, unique=True)  # Short alliance tag like [PAGE]
     description = models.TextField(max_length=500, blank=True)
     logo = models.ImageField(upload_to='alliance_logos/', blank=True, null=True)
     

@@ -1,11 +1,11 @@
 /**
- * ARTX Theme Engine — theme.js
+ * PAGE Theme Engine — theme.js
  *
  * Load this as the FIRST script on every page (before any other JS).
  * It reads localStorage and applies the saved accent color instantly,
  * so there is zero flash-of-wrong-color on reload.
  *
- * Also exports window.ARTX_THEME so settings.js and any other script
+ * Also exports window.PAGE_THEME so settings.js and any other script
  * can call applyAccent / saveAccent without duplicating logic.
  */
 
@@ -118,13 +118,13 @@
         var p = PALETTES[hex] || PALETTES[DEFAULT_ACCENT];
         var r = document.documentElement;
 
-        r.style.setProperty('--artx-primary',    p.primary);
-        r.style.setProperty('--artx-primary-lt', p.primaryLt);
-        r.style.setProperty('--artx-primary-dk', p.primaryDk);
-        r.style.setProperty('--artx-accent',     p.accent);
-        r.style.setProperty('--artx-glow',       p.glow);
-        r.style.setProperty('--artx-bg-grad',    p.bgGrad);
-        r.style.setProperty('--artx-header-grad',p.headerGrad);
+        r.style.setProperty('--page-primary',    p.primary);
+        r.style.setProperty('--page-primary-lt', p.primaryLt);
+        r.style.setProperty('--page-primary-dk', p.primaryDk);
+        r.style.setProperty('--page-accent',     p.accent);
+        r.style.setProperty('--page-glow',       p.glow);
+        r.style.setProperty('--page-bg-grad',    p.bgGrad);
+        r.style.setProperty('--page-header-grad',p.headerGrad);
 
         /* sg-* mirror vars used by settings modal */
         r.style.setProperty('--sg-primary',      p.primary);
@@ -210,7 +210,7 @@
     /* ─────────────────────────────────────────────────────────────
        PUBLIC API
     ───────────────────────────────────────────────────────────── */
-    window.ARTX_THEME = {
+    window.PAGE_THEME = {
         palettes:     PALETTES,
         defaultAccent:DEFAULT_ACCENT,
         applyAccent:  applyAccent,

@@ -1,5 +1,5 @@
 """
-Alliance URLs for ARTX Platform
+Alliance URLs for PAGE Platform
 """
 from django.urls import path
 from . import views

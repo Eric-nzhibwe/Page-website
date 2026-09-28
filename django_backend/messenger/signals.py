@@ -20,7 +20,7 @@ def mirror_message_to_firestore(sender, instance, created, **kwargs):
         return  # skip loaddata / fixtures
 
     try:
-        from artx_platform.firebase_client import firebase_enabled
+        from page_platform.firebase_client import firebase_enabled
         if not firebase_enabled():
             return
 
@@ -55,7 +55,7 @@ def mirror_conversation_to_firestore(sender, instance, created, **kwargs):
         return
 
     try:
-        from artx_platform.firebase_client import firebase_enabled
+        from page_platform.firebase_client import firebase_enabled
         if not firebase_enabled():
             return
         from .firestore_messenger_service import mirror_conversation

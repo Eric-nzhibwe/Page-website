@@ -1,5 +1,5 @@
 """
-Notification views for ARTX Platform
+Notification views for PAGE
 """
 from django.conf import settings
 from rest_framework.decorators import api_view, permission_classes
@@ -52,7 +52,7 @@ def create_notification(recipient, notif_type, title, message, actor=None, link=
         # the authoritative store — this lets the JS onSnapshot listeners fire
         # without requiring the FIRESTORE_COLLECTIONS['notifications'] flag.
         try:
-            from artx_platform.firebase_client import firebase_enabled
+            from page_platform.firebase_client import firebase_enabled
             if firebase_enabled():
                 from .firestore_service import create_notification as fs_create
                 fs_create(recipient, notif_type, title, message, actor=actor, link=link)

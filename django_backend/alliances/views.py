@@ -1,5 +1,5 @@
 """
-Alliance views for ARTX Platform — Firestore-backed
+Alliance views for PAGE Platform — Firestore-backed
 """
 from django.conf import settings
 from rest_framework import generics
@@ -12,7 +12,7 @@ from rest_framework import status
 def _use_fs():
     """True when FS_ALLIANCES flag is on OR alliances were never implemented in PG."""
     # Alliances views were always TODO stubs — use Firestore whenever it's available.
-    from artx_platform.firebase_client import firebase_enabled
+    from page_platform.firebase_client import firebase_enabled
     return (
         settings.FIRESTORE_COLLECTIONS.get('alliances', False)
         or firebase_enabled()

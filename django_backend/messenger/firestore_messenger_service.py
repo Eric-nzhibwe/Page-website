@@ -42,7 +42,7 @@ Required Firestore indexes (create in Firebase Console → Indexes):
 import logging
 from datetime import datetime, timezone
 
-from artx_platform.firebase_client import get_firestore
+from page_platform.firebase_client import get_firestore
 
 logger         = logging.getLogger(__name__)
 CONV_COLL      = 'messenger_conversations'

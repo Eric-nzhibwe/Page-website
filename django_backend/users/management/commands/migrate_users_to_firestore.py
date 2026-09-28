@@ -15,7 +15,7 @@ Usage:
     python manage.py migrate_users_to_firestore --active-only
 """
 from django.core.management.base import BaseCommand
-from artx_platform.firebase_client import firebase_enabled
+from page_platform.firebase_client import firebase_enabled
 
 
 class Command(BaseCommand):

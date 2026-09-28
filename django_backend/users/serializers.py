@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-User serializers - ARTX Platform
+User serializers - PAGE Platform
 """
 from rest_framework import serializers
 from django.contrib.auth import authenticate

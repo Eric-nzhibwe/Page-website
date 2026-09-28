@@ -1,5 +1,5 @@
 /**
- * Real-time Service for ARTX Platform
+ * Real-time Service for PAGE Platform
  *
  * Connects via WebSocket (django-channels) when available,
  * falls back to HTTP polling if the connection fails.

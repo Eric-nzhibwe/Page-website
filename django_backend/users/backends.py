@@ -1,5 +1,5 @@
 """
-Custom authentication backends for ARTX Platform.
+Custom authentication backends for PAGE Platform.
 
 Allows login with either email or username, case-insensitively.
 """

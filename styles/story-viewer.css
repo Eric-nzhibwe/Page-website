@@ -65,7 +65,7 @@
     width: 40px;
     height: 40px;
     border-radius: 50%;
-    background: linear-gradient(135deg, var(--artx-primary), var(--artx-accent));
+    background: linear-gradient(135deg, var(--page-primary), var(--page-accent));
     display: flex;
     align-items: center;
     justify-content: center;
@@ -287,7 +287,7 @@
 }
 
 .viewer-count {
-    background: var(--artx-primary);
+    background: var(--page-primary);
     color: white;
     padding: 4px 8px;
     border-radius: 12px;
@@ -336,7 +336,7 @@
     width: 36px;
     height: 36px;
     border-radius: 50%;
-    background: linear-gradient(135deg, var(--artx-primary), var(--artx-accent));
+    background: linear-gradient(135deg, var(--page-primary), var(--page-accent));
     display: flex;
     align-items: center;
     justify-content: center;
@@ -412,7 +412,7 @@
     width: 32px;
     height: 32px;
     border-radius: 50%;
-    background: linear-gradient(135deg, var(--artx-primary), var(--artx-accent));
+    background: linear-gradient(135deg, var(--page-primary), var(--page-accent));
     display: flex;
     align-items: center;
     justify-content: center;

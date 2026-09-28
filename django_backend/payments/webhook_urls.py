@@ -1,5 +1,5 @@
 """
-Payment webhook URLs for ARTX Platform
+Payment webhook URLs for PAGE
 """
 from django.urls import path
 from . import views

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-ARTX SMS Service
+PAGE SMS Service
 ================
 Sends transactional SMS via:
   - Twilio           (SMS_PROVIDER=twilio)         -- global coverage, reliable
@@ -103,7 +103,7 @@ def _send_via_africastalking(to_number: str, message: str) -> bool:
 
 def _send_via_console(to_number: str, message: str) -> bool:
     print('\n' + '=' * 60)
-    print('[ARTX SMS - CONSOLE MODE]')
+    print('[PAGE SMS - CONSOLE MODE]')
     print(f'To:      {to_number}')
     print(f'Message: {message}')
     print('=' * 60 + '\n')
@@ -148,7 +148,7 @@ class SMSService:
             return False
 
         message = (
-            f'Your ARTX verification code is: {otp}\n'
+            f'Your PAGE verification code is: {otp}\n'
             f'Expires in {expiry_minutes} minutes. Do not share it.'
         )
         return _send(phone, message)
@@ -160,8 +160,8 @@ class SMSService:
             return False
 
         message = (
-            'New sign-in detected on your ARTX account. '
-            'Not you? Contact support immediately at artxplatform.com'
+            'New sign-in detected on your PAGE account. '
+            'Not you? Contact support immediately at pageplatform.com'
         )
         return _send(phone, message)
 
@@ -172,7 +172,7 @@ class SMSService:
             return False
 
         message = (
-            f'ARTX: Congrats! You just reached {new_tier} Tier! '
+            f'PAGE: Congrats! You just reached {new_tier} Tier! '
             f'Keep competing to unlock more rewards!'
         )
         return _send(phone, message)
@@ -184,7 +184,7 @@ class SMSService:
             return False
 
         message = (
-            f'ARTX: You\'ve been invited to join the "{alliance_name}" alliance! '
+            f'PAGE: You\'ve been invited to join the "{alliance_name}" alliance! '
             f'Log in to accept.'
         )
         return _send(phone, message)
@@ -196,7 +196,7 @@ class SMSService:
             return False
 
         message = (
-            f'ARTX: Your alliance "{alliance_name}" has been created successfully! '
+            f'PAGE: Your alliance "{alliance_name}" has been created successfully! '
             f'Invite your crew and start competing.'
         )
         return _send(phone, message)
@@ -208,7 +208,7 @@ class SMSService:
             return False
 
         message = (
-            f'ARTX: Password reset requested. Use this link (expires in 1h):\n'
+            f'PAGE: Password reset requested. Use this link (expires in 1h):\n'
             f'{reset_url}\n'
             f'Ignore this if you did not request a reset.'
         )
@@ -221,7 +221,7 @@ class SMSService:
             return False
 
         message = (
-            f'Welcome to ARTX, {user.username}! '
+            f'Welcome to PAGE, {user.username}! '
             f'Your account is ready. Start competing and earn prestige!'
         )
         return _send(phone, message)

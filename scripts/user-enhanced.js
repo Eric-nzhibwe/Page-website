@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// ARTX Profile Enhancements — user-enhanced.js
+// PAGE Profile Enhancements — user-enhanced.js
 // Badges, Heatmap, Weekly Chart, Rank Panel, Activity Filters,
 // Followers Modal, Cover Upload, Profile Completion Bar
 // ─────────────────────────────────────────────────────────────────────────────

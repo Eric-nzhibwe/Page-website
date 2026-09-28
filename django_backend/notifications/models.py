@@ -1,5 +1,5 @@
 """
-Notification models for ARTX Platform
+Notification models for PAGE
 """
 from django.db import models
 from django.conf import settings

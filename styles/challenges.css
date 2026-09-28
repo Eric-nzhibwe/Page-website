@@ -1,5 +1,5 @@
 /* ===================================================
-   ARTX Challenges — Card & page styles
+   PAGE Challenges — Card & page styles
    Navbar is provided by styles.css + icon-nav.css
    =================================================== */
 
@@ -1089,7 +1089,7 @@
     font-family: 'Font Awesome 6 Free';
     font-weight: 900;
     font-size: 42px;
-    color: var(--artx-accent, #90ee90);
+    color: var(--page-accent, #90ee90);
     opacity: 0.85;
 }
 .ii-thumb-locked-label {

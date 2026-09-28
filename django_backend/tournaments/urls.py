@@ -1,5 +1,5 @@
 """
-Tournament URLs for ARTX Platform
+Tournament URLs for PAGE
 """
 from django.urls import path
 from . import views

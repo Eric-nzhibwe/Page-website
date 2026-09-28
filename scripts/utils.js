@@ -1,4 +1,4 @@
-// ARTX Platform - Utility Functions
+// PAGE Platform - Utility Functions
 
 /**
  * Sanitize HTML to prevent XSS attacks
@@ -278,7 +278,7 @@ function avatarHTML(user, extraStyle = 'width:100%;height:100%;object-fit:cover;
         const alt     = escapeHTML(name);
         // onerror replaces the broken img with a letter-avatar span
         return `<img src="${escaped}" alt="${alt}" style="${extraStyle}"
-                    onerror="this.replaceWith(artxLetterAvatar('${escapeHTML(initial)}'))">`;
+                    onerror="this.replaceWith(pageLetterAvatar('${escapeHTML(initial)}'))">`;
     }
     return `<i class="fas fa-user-circle" aria-label="${escapeHTML(name)}"></i>`;
 }
@@ -288,7 +288,7 @@ function avatarHTML(user, extraStyle = 'width:100%;height:100%;object-fit:cover;
  * @param {string} letter
  * @returns {HTMLElement}
  */
-function artxLetterAvatar(letter) {
+function pageLetterAvatar(letter) {
     const colours = ['#6c63ff','#e74c3c','#2ecc71','#f39c12','#1abc9c','#9b59b6','#3498db','#e67e22'];
     const colour  = colours[letter.charCodeAt(0) % colours.length];
     const el = document.createElement('span');
@@ -312,14 +312,14 @@ function patchBrokenAvatars() {
         img.dataset.avatarPatched = '1';
         const letter = (img.alt || '?').charAt(0).toUpperCase();
         img.addEventListener('error', () => {
-            img.replaceWith(artxLetterAvatar(letter));
+            img.replaceWith(pageLetterAvatar(letter));
         });
     });
 }
 
 window.getAvatarUrl         = getAvatarUrl;
 window.avatarHTML            = avatarHTML;
-window.artxLetterAvatar      = artxLetterAvatar;
+window.pageLetterAvatar      = pageLetterAvatar;
 window.patchBrokenAvatars    = patchBrokenAvatars;
 
 // Patch any avatars that were already in the DOM when this script loaded
