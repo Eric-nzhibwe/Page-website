@@ -24,6 +24,7 @@ urlpatterns = [
 
     # API routes
     path('api/users/',         include('users.urls')),
+    path('api/auth/',          include('users.urls')),   # alias used by frontend auth.js
     path('api/challenges/',    include('challenges.urls')),
     path('api/tournaments/',   include('tournaments.urls')),
     path('api/alliances/',     include('alliances.urls')),
