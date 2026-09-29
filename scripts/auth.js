@@ -341,7 +341,10 @@ async function _exchangeFirebaseToken(idToken) {
     }, 15000);
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
-        return { success: false, fatal: true, message: data.error || 'Authentication failed.' };
+        // 503 with fallback:true means Firebase isn't configured server-side —
+        // let the caller drop through to legacy Django auth instead of hard-failing.
+        const nonFatal = res.status === 503 && data.fallback === true;
+        return { success: false, fatal: !nonFatal, message: data.error || 'Authentication failed.' };
     }
     return { success: true, token: data.token, user: data.user };
 }

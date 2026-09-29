@@ -643,7 +643,7 @@ def firebase_token_login_view(request):
     from page_platform.firebase_client import firebase_enabled
     if not firebase_enabled():
         return Response(
-            {'error': 'Firebase Auth is not configured on this server.'},
+            {'error': 'Firebase Auth is not configured on this server.', 'fallback': True},
             status=status.HTTP_503_SERVICE_UNAVAILABLE,
         )
 
