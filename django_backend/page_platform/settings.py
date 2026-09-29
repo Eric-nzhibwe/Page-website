@@ -88,7 +88,11 @@ DATABASES = {
 AUTH_USER_MODEL = 'users.User'
 
 AUTHENTICATION_BACKENDS = [
+    # Firebase ID-token auth (used when Firebase is configured)
     'users.firebase_auth_backend.FirebaseAuthenticationBackend',
+    # Email OR username login (case-insensitive) — used by the legacy login view
+    'users.backends.EmailOrUsernameBackend',
+    # Fallback — required by Django admin
     'django.contrib.auth.backends.ModelBackend',
 ]
 
