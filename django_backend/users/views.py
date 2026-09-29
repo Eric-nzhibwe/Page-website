@@ -684,7 +684,8 @@ def firebase_token_login_view(request):
 
 
 @api_view(['GET'])
-@permission_classes([permissions.IsAuthenticated])
+@authentication_classes([])
+@permission_classes([permissions.AllowAny])
 def firebase_config_view(request):
     """
     Return the public Firebase web config so the frontend can initialise

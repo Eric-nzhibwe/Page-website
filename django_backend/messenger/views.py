@@ -1,5 +1,5 @@
-from rest_framework import viewsets, status
-from rest_framework.decorators import action, api_view, permission_classes
+from rest_framework import viewsets, status, permissions
+from rest_framework.decorators import action, api_view, permission_classes, authentication_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.pagination import PageNumberPagination
@@ -293,7 +293,8 @@ def unread_count_view(request):
 
 
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
+@authentication_classes([])
+@permission_classes([permissions.AllowAny])
 def firebase_config_view(request):
     """
     Return the public Firebase web SDK config so the messenger frontend
