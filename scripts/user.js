@@ -24,6 +24,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     const token = localStorage.getItem('djangoAuthToken');
     if (!token) { window.location.href = '/pages/auth.html'; return; }
 
+    // Restore saved profile photo immediately (before API responds) to avoid icon flash
+    try {
+        const stored = JSON.parse(localStorage.getItem('pageUser') || '{}');
+        const savedUrl = stored.profile_image_url || stored.profile_image;
+        if (savedUrl) applyAvatarEverywhere(savedUrl);
+    } catch (_) { /* non-critical */ }
+
+    // Also react to avatar changes triggered from the settings modal on this page
+    window.addEventListener('page:avatarChanged', e => {
+        if (e.detail?.url) applyAvatarEverywhere(e.detail.url);
+    });
+
     // Check if we're viewing another user's profile (?id=X)
     const params     = new URLSearchParams(window.location.search);
     const viewUserId = params.get('id');
@@ -266,13 +278,33 @@ function renderProfile(u, rank) {
 }
 
 function setAvatarImg(src) {
-    const img = `<img src="${src}" alt="avatar">`;
-    ['avatarDisplay','modalAvatar','umAvatar'].forEach(id => {
+    // Legacy wrapper — delegates to the unified function
+    applyAvatarEverywhere(src);
+}
+
+/**
+ * Apply a profile image URL to every avatar slot on the current page.
+ * Called on upload AND on page load to restore saved photo from localStorage.
+ */
+function applyAvatarEverywhere(imgUrl) {
+    if (!imgUrl) return;
+    const imgTag = `<img src="${imgUrl}" alt="avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+
+    // Named IDs
+    ['avatarDisplay', 'modalAvatar', 'umAvatar', 'navAvatar',
+     'smAvatarImg', 'heroAvatar', 'profileAvatar', 'settingsAvatarPreview'
+    ].forEach(id => {
         const el = document.getElementById(id);
-        if (el) el.innerHTML = img;
+        if (el) el.innerHTML = imgTag;
     });
-    const na = document.getElementById('navAvatar');
-    if (na) na.innerHTML = img;
+
+    // Class-based slots across all pages
+    document.querySelectorAll(
+        '.user-avatar-btn, .user-menu-avatar, ' +
+        '.nav-avatar, .header-avatar, [data-avatar="current-user"], ' +
+        '.current-user-avatar, .post-avatar.current-user, .post-creator-avatar, ' +
+        '.profile-avatar'
+    ).forEach(el => { el.innerHTML = imgTag; });
 }
 
 // Donut
@@ -407,22 +439,51 @@ async function uploadAvatar(input) {
     const file = input.files[0];
     if (!file) return;
     if (file.size > 5 * 1024 * 1024) { showToast('Max file size is 5 MB'); return; }
+
     const token = localStorage.getItem('djangoAuthToken');
     const form  = new FormData();
-    form.append('profile_image', file);
+    form.append('avatar', file);  // dedicated upload endpoint expects 'avatar'
+
+    showToast('Uploading…');
     try {
-        const res = await fetch(`${PROFILE_API}/auth/profile/`, {
-            method: 'PATCH',
+        const res  = await fetch(`${PROFILE_API}/auth/avatar/`, {
+            method:  'POST',
             headers: { 'Authorization': `Token ${token}` },
-            body: form
+            body:    form,
         });
-        if (res.ok) {
-            const reader = new FileReader();
-            reader.onload = e => setAvatarImg(e.target.result);
-            reader.readAsDataURL(file);
-            showToast('Avatar updated ✓');
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) { showToast(data.error || 'Upload failed'); return; }
+
+        const imgUrl = data.profile_image_url || data.profile_image || data.avatar_url;
+        if (!imgUrl) { showToast('Upload failed — no URL returned'); return; }
+
+        // 1. Persist to localStorage so every page reload restores the photo
+        try {
+            const stored = JSON.parse(localStorage.getItem('pageUser') || '{}');
+            stored.profile_image     = imgUrl;
+            stored.profile_image_url = imgUrl;
+            localStorage.setItem('pageUser', JSON.stringify(stored));
+            localStorage.setItem('user',     JSON.stringify(stored));
+        } catch (_) { /* non-critical */ }
+
+        // 2. Update in-memory profileData
+        if (profileData) {
+            profileData.profile_image     = imgUrl;
+            profileData.profile_image_url = imgUrl;
         }
-    } catch (e) { console.error(e); }
+
+        // 3. Update every avatar slot on this page immediately
+        applyAvatarEverywhere(imgUrl);
+
+        // 4. Broadcast so other scripts on this page can react
+        window.dispatchEvent(new CustomEvent('page:avatarChanged', { detail: { url: imgUrl } }));
+
+        showToast('Profile photo updated ✓');
+    } catch (e) {
+        console.error('Avatar upload error:', e);
+        showToast('Upload failed. Please try again.');
+    }
+    input.value = ''; // reset so the same file can be re-selected
 }
 
 // ── Helpers ───────────────────────────────────────────────────

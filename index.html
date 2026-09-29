@@ -1292,15 +1292,23 @@
                         </select>
                     </div>
 
-                    <div class="form-group">
-                        <label>Prize Money (ZMW) <span class="required">*</span></label>
-                        <input type="number" id="challengePrize" class="modal-input" placeholder="e.g., 500" step="0.01" min="50" required>
-                        <small>Minimum: K50.00</small>
+                    <div class="form-group" id="challengePrizeGroup">
+                        <label>Prize Money (ZMW) <span class="optional" style="font-size:11px;color:#999;font-weight:400;">(optional)</span></label>
+                        <input type="number" id="challengePrize" class="modal-input" placeholder="e.g., 500" step="0.01" min="0" value="0">
+                        <small>Leave at 0 for prestige-only reward.</small>
                     </div>
 
                     <div class="form-group">
-                        <label>Duration (Days) <span class="required">*</span></label>
-                        <input type="number" id="challengeDuration" class="modal-input" placeholder="e.g., 7" min="1" max="30" required>
+                        <label>Duration <span class="required">*</span></label>
+                        <div style="display:flex;gap:8px;align-items:center;">
+                            <input type="number" id="challengeDuration" class="modal-input" placeholder="e.g. 30" min="1" max="9999" required style="flex:1;">
+                            <select id="challengeDurationUnit" class="modal-input" style="width:110px;flex-shrink:0;">
+                                <option value="minutes">Minutes</option>
+                                <option value="hours">Hours</option>
+                                <option value="days" selected>Days</option>
+                            </select>
+                        </div>
+                        <small>Set how long participants have — from 5 minutes to multiple days.</small>
                     </div>
 
                     <div class="form-group">

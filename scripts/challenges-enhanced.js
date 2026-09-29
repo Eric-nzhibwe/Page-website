@@ -191,6 +191,10 @@ function selectChallengeCategory(category) {
         document.getElementById('debateSidesGroup').style.display = 'block';
     }
 
+    // Hide prize field for debates (not needed)
+    const prizeGroup = document.getElementById('challengePrizeGroup');
+    if (prizeGroup) prizeGroup.style.display = category === 'debates' ? 'none' : 'block';
+
     // Transition to step 2
     document.getElementById('createChallengeStep1').style.display = 'none';
     document.getElementById('createChallengeStep2').style.display = 'block';
@@ -227,9 +231,25 @@ async function publishChallenge(event) {
     const title       = document.getElementById('challengeTitle').value.trim();
     const category    = document.getElementById('challengeCategory').value;
     const difficulty  = document.getElementById('challengeDifficulty').value;
-    const prize       = parseFloat(document.getElementById('challengePrize').value);
-    const duration    = parseInt(document.getElementById('challengeDuration').value);
+    const prize       = parseFloat(document.getElementById('challengePrize').value) || 0;
+    const durVal      = document.getElementById('challengeDuration').value.trim();
+    const durUnit     = document.getElementById('challengeDurationUnit')?.value || 'days';
     const description = document.getElementById('challengeDescription').value.trim();
+
+    // Convert to fractional days for the backend; keep raw string for display
+    let durationDays;
+    let durationDisplay;
+    const durNum = parseFloat(durVal) || 1;
+    if (durUnit === 'minutes') {
+        durationDays    = durNum / (24 * 60);
+        durationDisplay = `${durNum}m`;
+    } else if (durUnit === 'hours') {
+        durationDays    = durNum / 24;
+        durationDisplay = `${durNum}h`;
+    } else {
+        durationDays    = durNum;
+        durationDisplay = `${durNum}d`;
+    }
 
     if (!title) { showNotification('Please enter a title.'); return; }
 
@@ -251,17 +271,17 @@ async function publishChallenge(event) {
             return;
         }
         endpoint = `${API}/polls/create/`;
-        body = { title, description, prize_amount: prize, difficulty, duration_days: duration, options };
+        body = { title, description, prize_amount: prize, difficulty, duration_days: durationDays, options };
 
     } else if (category === 'debates') {
         const side_a = document.getElementById('debateSideA').value.trim() || 'For';
         const side_b = document.getElementById('debateSideB').value.trim() || 'Against';
         endpoint = `${API}/debates/create/`;
-        body = { title, description, side_a, side_b, prize_amount: prize, difficulty, duration_days: duration };
+        body = { title, description, side_a, side_b, prize_amount: prize, difficulty, duration_days: durationDays };
 
     } else if (category === 'qa') {
         endpoint = `${API}/qa/create/`;
-        body = { title, description, prize_amount: prize, difficulty, duration_days: duration };
+        body = { title, description, prize_amount: prize, difficulty, duration_days: durationDays };
     }
 
     const { ok, data } = await apiPost(endpoint, body);
@@ -278,7 +298,7 @@ async function publishChallenge(event) {
 
     // Immediately inject the new card at the top of the grid using the
     // ID returned by the API — no full page reload needed.
-    _injectNewCard(category, data, title, description, prize, duration, difficulty, body);
+    _injectNewCard(category, data, title, description, prize, durationDisplay, difficulty, body);
 }
 
 
@@ -323,66 +343,128 @@ function _injectNewCard(category, apiResponse, title, description, prize, durati
 /* ── Card builders ── */
 
 function buildDebateCard(id, title, description, sideA, sideB, prize, duration, difficulty, imgSrc) {
-    const img = imgSrc
-        ? `<img src="${imgSrc}" alt="${title}">`
-        : `<div style="width:100%;height:100%;background:linear-gradient(135deg,#1a1a2e,#16213e);display:flex;align-items:center;justify-content:center;"><i class="fas fa-gavel" style="font-size:48px;color:rgba(255,255,255,0.15);"></i></div>`;
+    // duration can be minutes (e.g. 30) or days (e.g. 1, 3, 7)
+    // We store raw value + unit string for display
+    const durLabel = _fmtDuration(duration);
 
-    const seedComments = [
-        { user: 'Alex', text: `${sideA} is the clear winner here 🔥` },
-        { user: 'Mia',  text: `No way! ${sideB} all the way 💪` },
-        { user: 'Jay',  text: 'This is a great debate topic!' },
+    // Seed Team A comments (sideA supporters)
+    const seedA = [
+        { user: 'Alex', text: `${sideA} is the clear winner 🔥` },
+        { user: 'Sam',  text: `Facts! ${sideA} makes more sense.` },
     ];
-    const commentsHTML = seedComments.map(c => `
+    // Seed Team B comments (sideB supporters)
+    const seedB = [
+        { user: 'Mia', text: `No way! ${sideB} all the way 💪` },
+        { user: 'Jay', text: `${sideB} is undeniable, period.` },
+    ];
+
+    const makeComment = (c, side) => {
+        const hue = side === 'a' ? 0 : 140; // red for A, green for B
+        const shade = side === 'a'
+            ? `hsl(0,60%,42%)`
+            : `hsl(140,50%,35%)`;
+        return `
         <div class="debate-comment">
-            <span class="comment-user">${c.user}</span>
-            <span class="comment-text">${c.text}</span>
-        </div>`).join('');
+            <div class="debate-comment-avatar" style="background:${shade};">${c.user[0]}</div>
+            <div class="debate-comment-body">
+                <span class="comment-user">${c.user}</span>
+                <span class="comment-text">${c.text}</span>
+            </div>
+        </div>`;
+    };
+
+    const commentsA = seedA.map(c => makeComment(c, 'a')).join('');
+    const commentsB = seedB.map(c => makeComment(c, 'b')).join('');
 
     return `
         <div class="debate-card-header">
             <span class="debate-type-label"><i class="fas fa-gavel"></i> Debate</span>
-            <span style="font-size:11px;color:#aaa;">${duration} days · ${difficulty}</span>
+            <span style="font-size:11px;color:#888;">${durLabel} · ${difficulty}</span>
         </div>
         <p class="debate-card-title" style="padding:0 16px 10px;margin:0;">${title.toUpperCase()}</p>
+
         <div class="debate-arena">
-            <div class="debate-image-wrap">
-                ${img}
-                <span class="debate-image-caption">${description.slice(0,40)}${description.length>40?'…':''}</span>
-            </div>
-            <div class="debate-live-comments" id="debateComments_${id}">
-                <div class="debate-live-header">
-                    <div class="live-dot"></div>
-                    <span class="live-label">Live</span>
+            <!-- Team A side — red -->
+            <div class="debate-team-pane debate-pane-a" id="debatePaneA_${id}">
+                <div class="debate-pane-header pane-header-a">
+                    <span class="debate-pane-team-label">Team A</span>
+                    <span class="debate-pane-team-name">${sideA}</span>
                 </div>
-                ${commentsHTML}
+                <div class="debate-pane-feed" id="debateFeedA_${id}">
+                    ${commentsA}
+                </div>
+            </div>
+            <!-- Team B side — green -->
+            <div class="debate-team-pane debate-pane-b" id="debatePaneB_${id}">
+                <div class="debate-pane-header pane-header-b">
+                    <span class="debate-pane-team-label">Team B</span>
+                    <span class="debate-pane-team-name">${sideB}</span>
+                </div>
+                <div class="debate-pane-feed" id="debateFeedB_${id}">
+                    ${commentsB}
+                </div>
             </div>
         </div>
+
+        <div class="debate-input-row">
+            <input class="debate-text-input" placeholder="Share your take…" id="debateInput_${id}"
+                onkeydown="if(event.key==='Enter') submitDebateComment('${id}')">
+            <button class="debate-voice-btn" id="debateVoiceBtn_${id}" title="Voice note"
+                onclick="toggleDebateVoice('${id}')">
+                <i class="fas fa-microphone"></i>
+            </button>
+            <button class="debate-send-btn" onclick="submitDebateComment('${id}')">
+                <i class="fas fa-paper-plane"></i>
+            </button>
+        </div>
+
         <div class="debate-teams">
             <div class="debate-team team-a">
                 <span class="debate-team-label">Team A</span>
                 <span class="debate-team-desc">${sideA}</span>
-                <span class="debate-team-count"><i class="fas fa-user-friends"></i> 0 joined</span>
+                <span class="debate-team-count" id="debateCountA_${id}"><i class="fas fa-user-friends"></i> 0 joined</span>
             </div>
             <div class="debate-team team-b">
                 <span class="debate-team-label">Team B</span>
                 <span class="debate-team-desc">${sideB}</span>
-                <span class="debate-team-count"><i class="fas fa-user-friends"></i> 0 joined</span>
+                <span class="debate-team-count" id="debateCountB_${id}"><i class="fas fa-user-friends"></i> 0 joined</span>
             </div>
         </div>
+
         <div class="debate-card-footer">
-            <div class="debate-meta">
-                <span class="debate-meta-item"><i class="fas fa-trophy"></i> K${prize.toFixed(2)}</span>
-                <span class="debate-meta-item"><i class="fas fa-clock"></i> ${duration}d</span>
+            <div style="display:flex;align-items:center;gap:6px;">
+                <span style="font-size:11px;color:#888;"><i class="fas fa-clock" style="color:var(--page-primary);margin-right:3px;"></i>${durLabel} left</span>
             </div>
             <div style="display:flex;gap:8px;align-items:center;">
                 <button class="share-challenge-btn" onclick="shareChallenge('${title.replace(/'/g,"\\'")}','${id}','debate')" title="Share">
                     <i class="fas fa-share-alt"></i>
                 </button>
                 <button class="xpoints-cost" onclick="joinDebate('${id}', event)">
-                    <i class="fas fa-bolt"></i> 1.5 xP to Join
+                    <i class="fas fa-bolt"></i> Join
                 </button>
             </div>
         </div>`;
+}
+
+/** Format a raw duration number smartly.
+ *  ≤ 90  → "Xm" (minutes)
+ *  ≤ 48h → "Xh" (hours, if duration_days was stored as fractional or 1-2)
+ *  else  → "Xd" (days)
+ *  The backend stores duration_days; values < 1 represent sub-day durations.
+ *  We also accept a string like "30m" or "2h" passed directly.
+ */
+function _fmtDuration(val) {
+    if (typeof val === 'string') {
+        if (val.endsWith('m')) return val;
+        if (val.endsWith('h')) return val;
+        if (val.endsWith('d')) return val;
+        val = parseFloat(val);
+    }
+    if (!val || isNaN(val)) return '—';
+    if (val < 1/24)       return `${Math.round(val * 24 * 60)}m`;  // sub-hour
+    if (val < 1)          return `${Math.round(val * 24)}h`;        // sub-day
+    if (val === 1)        return '1d';
+    return `${val}d`;
 }
 
 function buildPollCard(id, title, description, options, prize, duration, difficulty) {
@@ -486,30 +568,126 @@ async function joinDebate(challengeId, e) {
     btn.innerHTML = '<i class="fas fa-check"></i> Joined!';
     btn.style.background = '#1b7f3a';
 
-    // Update participant counts on the card
+    // Tag the card with the user's side so comments route correctly
     const card = btn.closest('.challenge-card');
+    if (card) card.dataset.userSide = data.user_side || 'a';
+
+    // Update participant counts on the card
     if (card && data.participants) {
-        const aEl = card.querySelector('.team-a .debate-team-count');
-        const bEl = card.querySelector('.team-b .debate-team-count');
+        const aEl = card.querySelector(`#debateCountA_${challengeId}`);
+        const bEl = card.querySelector(`#debateCountB_${challengeId}`);
         if (aEl) aEl.innerHTML = `<i class="fas fa-user-friends"></i> ${data.participants.a} joined`;
         if (bEl) bEl.innerHTML = `<i class="fas fa-user-friends"></i> ${data.participants.b} joined`;
     }
 
     renderXPointsBanner(data.balance);
     showNotification('+0.5 xP earned for joining! 🔥');
-    setTimeout(() => addLiveDebateComment(challengeId, 'You', 'Just joined the debate! 🔥'), 300);
+    const side = data.user_side || 'a';
+    setTimeout(() => addLiveDebateComment(challengeId, 'You', 'Just joined the debate! 🔥', side), 300);
 }
 
-function addLiveDebateComment(challengeId, user, text) {
-    const pane = document.getElementById(`debateComments_${challengeId}`);
+function addLiveDebateComment(challengeId, user, text, side) {
+    // side: 'a' → Team A (red), 'b' → Team B (green), default 'b'
+    side = side || 'b';
+    const paneId = side === 'a' ? `debateFeedA_${challengeId}` : `debateFeedB_${challengeId}`;
+    const pane = document.getElementById(paneId);
     if (!pane) return;
+
+    const shade = side === 'a' ? 'hsl(0,60%,42%)' : 'hsl(140,50%,35%)';
     const el = document.createElement('div');
     el.className = 'debate-comment';
-    el.innerHTML = `<span class="comment-user">${user}</span><span class="comment-text">${text}</span>`;
+    el.innerHTML = `
+        <div class="debate-comment-avatar" style="background:${shade};">${user[0].toUpperCase()}</div>
+        <div class="debate-comment-body">
+            <span class="comment-user">${user}</span>
+            <span class="comment-text">${text}</span>
+        </div>`;
     pane.appendChild(el);
     pane.scrollTop = pane.scrollHeight;
     const comments = pane.querySelectorAll('.debate-comment');
     if (comments.length > 8) comments[0].remove();
+}
+
+async function submitDebateComment(challengeId) {
+    const input = document.getElementById(`debateInput_${challengeId}`);
+    const text  = input?.value.trim();
+    if (!text) return;
+    if (!requireAuth('comment on a debate')) return;
+
+    const username = localStorage.getItem('pageUser')
+        ? (JSON.parse(localStorage.getItem('pageUser'))?.username || 'You')
+        : 'You';
+
+    // Determine which side the user is on (default 'b' until they join a team)
+    const card = document.querySelector(`[data-id="${challengeId}"]`);
+    const side = card?.dataset.userSide || 'b';
+
+    addLiveDebateComment(challengeId, username, text, side);
+    input.value = '';
+
+    await apiPost(`${API}/debates/${challengeId}/comment/`, { text, side }).catch(() => {});
+}
+
+// Voice note recording for debates
+const _debateVoiceState = {};
+
+function toggleDebateVoice(challengeId) {
+    if (!requireAuth('record a voice note')) return;
+
+    const btn = document.getElementById(`debateVoiceBtn_${challengeId}`);
+    const state = _debateVoiceState[challengeId];
+
+    if (state?.recording) {
+        // Stop recording
+        state.recorder?.stop();
+        state.stream?.getTracks().forEach(t => t.stop());
+        btn?.classList.remove('recording');
+        btn.innerHTML = '<i class="fas fa-microphone"></i>';
+        _debateVoiceState[challengeId] = null;
+        showNotification('Voice note sent! 🎤');
+        return;
+    }
+
+    // Start recording
+    if (!navigator.mediaDevices?.getUserMedia) {
+        showNotification('Voice notes not supported on this browser.');
+        return;
+    }
+
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+        const recorder = new MediaRecorder(stream);
+        const chunks   = [];
+        recorder.ondataavailable = e => chunks.push(e.data);
+        recorder.onstop = async () => {
+            const blob = new Blob(chunks, { type: 'audio/webm' });
+            const username = localStorage.getItem('pageUser')
+                ? (JSON.parse(localStorage.getItem('pageUser'))?.username || 'You')
+                : 'You';
+            addLiveDebateComment(challengeId, username, '🎤 Sent a voice note');
+
+            // Upload to backend (best-effort)
+            const fd = new FormData();
+            fd.append('audio', blob, 'voice.webm');
+            const token = getAuthToken();
+            fetch(`${API}/debates/${challengeId}/voice/`, {
+                method: 'POST',
+                headers: token ? { 'Authorization': `Token ${token}` } : {},
+                body: fd,
+            }).catch(() => {});
+        };
+        recorder.start();
+        _debateVoiceState[challengeId] = { recorder, stream, recording: true };
+        btn?.classList.add('recording');
+        btn.innerHTML = '<i class="fas fa-stop"></i>';
+        showNotification('Recording… tap again to send 🎤');
+
+        // Auto-stop after 60s
+        setTimeout(() => {
+            if (_debateVoiceState[challengeId]?.recording) toggleDebateVoice(challengeId);
+        }, 60000);
+    }).catch(() => {
+        showNotification('Microphone permission denied.');
+    });
 }
 
 async function castPollVote(challengeId, optionIndex, btn) {

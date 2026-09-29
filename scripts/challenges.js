@@ -471,11 +471,11 @@ async function openChallenge(challengeId) {
             </div>
             ${hasSubmitted ? buildAlreadySubmittedBox() : buildSubmissionForm(currentChallenge)}
             <div class="modal-section" id="leaderboardContainer">
-                <h3><i class="fas fa-trophy"></i> Live Leaderboard</h3>
+                <h3><i class="fas fa-trophy"></i> Top Players</h3>
                 <div id="leaderboardContent"><div class="spinner" style="margin:20px auto;"></div></div>
             </div>
             <div class="modal-section" id="activityContainer">
-                <h3><i class="fas fa-bolt"></i> Live Activity</h3>
+                <h3><i class="fas fa-comment-dots"></i> Responses <span id="activityCount" style="font-size:12px;color:var(--text-muted);font-weight:500;margin-left:4px;"></span></h3>
                 <div id="activityContent"><div class="spinner" style="margin:20px auto;"></div></div>
             </div>`;
 
@@ -723,14 +723,33 @@ async function loadActivityFeed() {
     if (!container) return;
     try {
         const activities = await apiService.getChallengeActivity(currentChallenge.id);
-        if (!activities || !activities.length) { container.innerHTML = `<p style="color:var(--text-muted);padding:12px 0;">No activity yet.</p>`; return; }
-        container.innerHTML = `<div class="activity-feed">${activities.slice(0, 10).map(a => `
+        // Update the count badge in the section header
+        const countEl = document.getElementById('activityCount');
+        if (countEl && activities?.length) countEl.textContent = `· ${activities.length}`;
+
+        if (!activities || !activities.length) {
+            container.innerHTML = `<p style="color:var(--text-muted);padding:12px 0;font-size:13px;">No responses yet — be the first to submit!</p>`;
+            return;
+        }
+        container.innerHTML = `<div class="activity-feed">${activities.slice(0, 10).map(a => {
+            const username  = a.user?.username || 'Unknown';
+            const initial   = username.charAt(0).toUpperCase();
+            // Generate a deterministic hue from the username for varied avatar colours
+            const hue       = username.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0) % 360;
+            const avatarBg  = `hsl(${hue}, 55%, 42%)`;
+            return `
             <div class="activity-item">
-                <div><strong>${escHtml(a.user?.username || 'Unknown')}</strong>
-                    <p>${escHtml(a.description)}</p></div>
+                <div class="activity-avatar" style="background:${avatarBg};">${initial}</div>
+                <div class="activity-body">
+                    <span class="activity-username">${escHtml(username)}</span>
+                    <div class="activity-text">${escHtml(a.description)}</div>
+                </div>
                 <span class="activity-time">${formatTime(a.created_at)}</span>
-            </div>`).join('')}</div>`;
-    } catch (e) { if (container) container.innerHTML = `<p style="color:var(--text-muted);">Activity unavailable.</p>`; }
+            </div>`;
+        }).join('')}</div>`;
+    } catch (e) {
+        if (container) container.innerHTML = `<p style="color:var(--text-muted);">Activity unavailable.</p>`;
+    }
 }
 
 async function updateChallengeStats() {
