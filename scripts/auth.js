@@ -25,7 +25,7 @@ async function initFirebase() {
     if (_fbReady) return true;
 
     try {
-        const res = await fetchWithTimeout(`${API_BASE_URL}/auth/firebase-config/`, {
+        const res = await fetchWithTimeout(`${API_BASE_URL}/users/firebase-config/`, {
             headers: getAuthHeaders(),
         }, 8000);
 
