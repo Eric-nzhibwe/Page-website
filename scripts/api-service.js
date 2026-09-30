@@ -142,6 +142,11 @@ class APIService {
         return this.get('/challenges/active/', { auth: false });
     }
 
+    getAllChallenges() {
+        // Returns standard challenges merged with polls, debates and Q&As
+        return this.get('/challenges/all_types/', { auth: false });
+    }
+
     /**
      * Get active challenges created by users the current user follows
      */

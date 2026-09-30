@@ -131,6 +131,88 @@ class ChallengeViewSet(viewsets.ModelViewSet):
         return Response(self.get_serializer(challenges, many=True).data)
 
     @action(detail=False, methods=['get'], permission_classes=[AllowAny])
+    def all_types(self, request):
+        """
+        Unified feed — returns image/text challenges merged with
+        Polls, Debates, and Q&As so every challenge type appears on
+        the challenges page regardless of which model it lives in.
+        Each item includes a `challenge_type` field so the frontend
+        knows which card builder to use.
+        """
+        now = timezone.now()
+
+        # ── Standard image/text challenges ───────────────────────────────────
+        std = Challenge.objects.filter(
+            status='active', starts_at__lte=now, ends_at__gte=now
+        ).order_by('-created_at')
+        std_data = self.get_serializer(std, many=True).data
+
+        # ── Polls ─────────────────────────────────────────────────────────────
+        from .models import PollChallenge, DebateChallenge, QAChallenge, DebateComment
+
+        polls = PollChallenge.objects.filter(is_active=True).select_related('created_by')
+        polls_data = [
+            {
+                'id':             str(p.id),
+                'challenge_type': 'poll',
+                'title':          p.title,
+                'description':    p.description,
+                'options':        p.options,
+                'prize_amount':   str(p.prize_amount),
+                'difficulty':     p.difficulty,
+                'duration_days':  p.duration_days,
+                'created_by':     p.created_by.username,
+                'created_at':     p.created_at.isoformat(),
+                'total_votes':    p.total_votes(),
+                'vote_counts':    p.vote_counts(),
+            }
+            for p in polls
+        ]
+
+        # ── Debates ───────────────────────────────────────────────────────────
+        debates = DebateChallenge.objects.filter(is_active=True).select_related('created_by')
+        debates_data = [
+            {
+                'id':             str(d.id),
+                'challenge_type': 'debate',
+                'title':          d.title,
+                'description':    d.description,
+                'side_a':         d.side_a,
+                'side_b':         d.side_b,
+                'prize_amount':   str(d.prize_amount),
+                'difficulty':     d.difficulty,
+                'duration_days':  d.duration_days,
+                'created_by':     d.created_by.username,
+                'created_at':     d.created_at.isoformat(),
+                'participants':   d.participant_counts(),
+            }
+            for d in debates
+        ]
+
+        # ── Q&As ──────────────────────────────────────────────────────────────
+        qas = QAChallenge.objects.filter(is_active=True).select_related('created_by')
+        qas_data = [
+            {
+                'id':             str(q.id),
+                'challenge_type': 'qa',
+                'title':          q.title,
+                'description':    q.description,
+                'image_url':      q.image_url,
+                'prize_amount':   str(q.prize_amount),
+                'difficulty':     q.difficulty,
+                'duration_days':  q.duration_days,
+                'created_by':     q.created_by.username,
+                'created_at':     q.created_at.isoformat(),
+            }
+            for q in qas
+        ]
+
+        # Merge and sort by created_at descending
+        merged = list(std_data) + polls_data + debates_data + qas_data
+        merged.sort(key=lambda x: x.get('created_at', ''), reverse=True)
+        return Response(merged)
+
+    @action(detail=False, methods=['get'], permission_classes=[AllowAny])
     def featured(self, request):
         """Get featured challenges."""
         if _use_fs_challenges():

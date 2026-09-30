@@ -219,10 +219,20 @@ async function _loginWithFirebase(identifier, password) {
         // Exchange Firebase token for Django DRF token
         return await _exchangeFirebaseToken(idToken);
     } catch (err) {
-        const code    = err.code || '';
-        const fatal   = ['auth/wrong-password', 'auth/user-not-found',
-                         'auth/invalid-credential', 'auth/user-disabled',
-                         'auth/too-many-requests'].includes(code);
+        const code = err.code || '';
+
+        // These errors mean the user exists in Firebase but the password is wrong,
+        // or the account is locked — do NOT fall through to Django legacy auth.
+        const fatal = [
+            'auth/wrong-password',   // user exists in Firebase, wrong password
+            'auth/user-disabled',    // account explicitly disabled in Firebase
+            'auth/too-many-requests' // rate-limited — trying Django won't help
+        ].includes(code);
+
+        // auth/user-not-found and auth/invalid-credential mean the account was
+        // created via the legacy Django path (not Firebase) — fall through to
+        // Django legacy auth so those users can still log in.
+
         const message = _firebaseErrorMessage(code);
         return { success: false, fatal, message };
     }

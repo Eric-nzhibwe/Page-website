@@ -29,7 +29,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     setInterval(async () => {
         if (document.hidden) return;
         try {
-            const data = await apiService.getActiveChallenges();
+            const data = await apiService.getAllChallenges();
             const fresh = Array.isArray(data) ? data : (data.results || []);
             if (!fresh.length) return;
 
@@ -129,7 +129,7 @@ function startPollingUpdates() {
 // ── Data loading ──────────────────────────────────────────────────────────────
 async function loadChallenges() {
     try {
-        const data = await apiService.getActiveChallenges();
+        const data = await apiService.getAllChallenges();
         challenges = Array.isArray(data) ? data : (data.results || []);
     } catch (e) { console.error('loadChallenges:', e); challenges = []; }
 }
@@ -190,6 +190,11 @@ function renderChallenges() {
     }
 
     container.innerHTML = filtered.map(c => {
+        // ── Social challenge types rendered with their own card layout ────────
+        if (c.challenge_type === 'debate')  return _renderDebateCard(c);
+        if (c.challenge_type === 'poll')    return _renderPollCard(c);
+        if (c.challenge_type === 'qa')      return _renderQACard(c);
+
         const isImgInterp  = c.challenge_type === 'image_interpretation';
         const hasSubmitted = isImgInterp
             ? mySubmissions.some(s => s.challenge === c.id) || c.user_has_img_submitted
@@ -1318,3 +1323,238 @@ window.ccRuleCount           = ccRuleCount;
 window.ccDragOver            = ccDragOver;
 window.ccDragLeave           = ccDragLeave;
 window.ccDrop                = ccDrop;
+
+// ── Social challenge card renderers (debate / poll / Q&A) ─────────────────────
+// These challenge types live in separate DB models (PollChallenge, DebateChallenge,
+// QAChallenge) and are fetched via the /challenges/all_types/ endpoint.
+// They are rendered inline here so challenges.html doesn't need to load the
+// heavier challenges-enhanced.js bundle.
+
+function _fmtDur(days) {
+    if (!days && days !== 0) return '—';
+    const d = parseFloat(days);
+    if (d < 1/24)  return `${Math.round(d * 24 * 60)}m`;
+    if (d < 1)     return `${Math.round(d * 24)}h`;
+    return `${d}d`;
+}
+
+function _renderDebateCard(c) {
+    const dur      = _fmtDur(c.duration_days);
+    const sideA    = escHtml(c.side_a || 'For');
+    const sideB    = escHtml(c.side_b || 'Against');
+    const title    = escHtml(c.title);
+    const id       = c.id;
+
+    const seedA = [{ user: 'Alex', text: `${c.side_a} is the clear winner 🔥` }];
+    const seedB = [{ user: 'Mia',  text: `${c.side_b} all the way 💪` }];
+
+    const mkComment = (u, t, side) => {
+        const shade = side === 'a' ? 'hsl(0,60%,42%)' : 'hsl(140,50%,35%)';
+        return `<div class="debate-comment">
+            <div class="debate-comment-avatar" style="background:${shade};">${u[0]}</div>
+            <div class="debate-comment-body">
+                <span class="comment-user">${escHtml(u)}</span>
+                <span class="comment-text">${escHtml(t)}</span>
+            </div>
+        </div>`;
+    };
+
+    return `<div class="challenge-card" data-status="active" data-category="debates" data-id="${id}">
+        <div class="debate-card-header">
+            <span class="debate-type-label"><i class="fas fa-gavel"></i> Debate</span>
+            <span style="font-size:11px;color:#888;">${dur} · ${escHtml(c.difficulty || 'medium')}</span>
+        </div>
+        <p class="debate-card-title" style="padding:0 16px 10px;margin:0;">${title.toUpperCase()}</p>
+        <div class="debate-arena">
+            <div class="debate-team-pane debate-pane-a" id="debatePaneA_${id}">
+                <div class="debate-pane-header pane-header-a">
+                    <span class="debate-pane-team-label">Team A</span>
+                    <span class="debate-pane-team-name">${sideA}</span>
+                </div>
+                <div class="debate-pane-feed" id="debateFeedA_${id}">
+                    ${seedA.map(s => mkComment(s.user, s.text, 'a')).join('')}
+                </div>
+            </div>
+            <div class="debate-team-pane debate-pane-b" id="debatePaneB_${id}">
+                <div class="debate-pane-header pane-header-b">
+                    <span class="debate-pane-team-label">Team B</span>
+                    <span class="debate-pane-team-name">${sideB}</span>
+                </div>
+                <div class="debate-pane-feed" id="debateFeedB_${id}">
+                    ${seedB.map(s => mkComment(s.user, s.text, 'b')).join('')}
+                </div>
+            </div>
+        </div>
+        <div class="debate-input-row">
+            <input class="debate-text-input" placeholder="Share your take…" id="debateInput_${id}"
+                onkeydown="if(event.key==='Enter') _chSubmitDebate('${id}')">
+            <button class="debate-send-btn" onclick="_chSubmitDebate('${id}')">
+                <i class="fas fa-paper-plane"></i>
+            </button>
+        </div>
+        <div class="debate-teams">
+            <div class="debate-team team-a">
+                <span class="debate-team-label">Team A</span>
+                <span class="debate-team-desc">${sideA}</span>
+                <span class="debate-team-count"><i class="fas fa-user-friends"></i> ${(c.participants?.a || 0)} joined</span>
+            </div>
+            <div class="debate-team team-b">
+                <span class="debate-team-label">Team B</span>
+                <span class="debate-team-desc">${sideB}</span>
+                <span class="debate-team-count"><i class="fas fa-user-friends"></i> ${(c.participants?.b || 0)} joined</span>
+            </div>
+        </div>
+        <div class="debate-card-footer">
+            <span style="font-size:11px;color:#888;"><i class="fas fa-clock" style="color:var(--page-primary);margin-right:3px;"></i>${dur} left</span>
+            <button class="xpoints-cost" onclick="_chJoinDebate('${id}', event)">
+                <i class="fas fa-bolt"></i> Join
+            </button>
+        </div>
+    </div>`;
+}
+
+function _renderPollCard(c) {
+    const id   = c.id;
+    const opts = (c.options || []);
+    const optionsHTML = opts.map((opt, i) => `
+        <button class="poll-vote-btn" onclick="_chCastPollVote('${id}', ${i}, this)">
+            <div class="poll-vote-bar" style="width:${c.vote_counts ? Math.round((c.vote_counts[i]||0)/(c.total_votes||1)*100) : 0}%"></div>
+            <span class="poll-option-label">${escHtml(opt)}</span>
+            <span class="poll-vote-pct">${c.vote_counts && c.total_votes ? Math.round((c.vote_counts[i]||0)/c.total_votes*100)+'%' : '0%'}</span>
+        </button>`).join('');
+
+    return `<div class="challenge-card" data-status="active" data-category="polls" data-id="${id}">
+        <div class="poll-header-bar">
+            <div class="poll-avatar"><span class="poll-avatar-placeholder"><i class="fas fa-poll"></i></span></div>
+            <h3 class="poll-title">${escHtml(c.title)}</h3>
+        </div>
+        <div class="poll-options-list">${optionsHTML}</div>
+        <div class="poll-card-footer">
+            <div class="poll-meta">
+                <span><i class="fas fa-users"></i> ${c.total_votes || 0} votes</span>
+                <span><i class="fas fa-clock"></i> ${_fmtDur(c.duration_days)} left</span>
+            </div>
+            <span class="poll-prize-badge">${c.prize_amount > 0 ? `K${parseFloat(c.prize_amount).toFixed(2)}` : 'Prestige'}</span>
+        </div>
+    </div>`;
+}
+
+function _renderQACard(c) {
+    const id = c.id;
+    const answers = (c.answers || []);
+    const answersHTML = answers.slice(-3).map(a => {
+        const hue = a.user.split('').reduce((s, ch) => s + ch.charCodeAt(0), 0) % 360;
+        return `<div class="qa-live-msg">
+            <div class="qa-live-avatar" style="background:hsl(${hue},50%,38%);">${a.user[0]}</div>
+            <div class="qa-live-bubble">
+                <span class="qa-live-user">${escHtml(a.user)}</span>
+                <span class="qa-live-text">${escHtml(a.text)}</span>
+            </div>
+        </div>`;
+    }).join('');
+
+    return `<div class="challenge-card" data-status="active" data-category="qa" data-id="${id}">
+        <div class="qa-creator-avatar-wrap">
+            <div class="qa-creator-avatar"><i class="fas fa-question"></i></div>
+        </div>
+        <p class="qa-question">${escHtml(c.title)}</p>
+        <div class="qa-live-pane" id="qaLive_${id}">
+            ${answersHTML || '<p style="color:var(--text-muted);font-size:12px;padding:8px;">No answers yet — be first!</p>'}
+        </div>
+        <div class="qa-input-row">
+            <input class="qa-type-input" placeholder="Type your answer..." id="qaInput_${id}"
+                onkeydown="if(event.key==='Enter') _chSubmitQA('${id}')">
+            <button class="qa-send-btn" onclick="_chSubmitQA('${id}')">
+                <i class="fas fa-paper-plane"></i>
+            </button>
+        </div>
+        <div class="qa-card-footer">
+            <div class="qa-meta">
+                <span><i class="fas fa-clock"></i> ${_fmtDur(c.duration_days)} left</span>
+            </div>
+            <span class="qa-prize-badge">${c.prize_amount > 0 ? `K${parseFloat(c.prize_amount).toFixed(2)}` : 'Prestige'}</span>
+        </div>
+    </div>`;
+}
+
+// ── Interaction handlers for social cards on challenges.html ──────────────────
+const _CH_API = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+    ? 'http://localhost:8000/api/challenges'
+    : `${window.location.origin}/api/challenges`;
+
+async function _chPost(url, body) {
+    const token = localStorage.getItem('djangoAuthToken') || localStorage.getItem('authToken') || '';
+    const r = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Token ${token}` } : {}) },
+        body: JSON.stringify(body),
+    });
+    return { ok: r.ok, data: await r.json().catch(() => ({})) };
+}
+
+async function _chJoinDebate(id, e) {
+    const btn = e.currentTarget;
+    btn.disabled = true;
+    const { ok, data } = await _chPost(`${_CH_API}/debates/${id}/join/`, { side: 'a' });
+    if (!ok) { showToast(data.error || 'Could not join.', 'error'); btn.disabled = false; return; }
+    btn.innerHTML = '<i class="fas fa-check"></i> Joined!';
+    btn.style.background = '#1b7f3a';
+}
+
+async function _chSubmitDebate(id) {
+    const input = document.getElementById(`debateInput_${id}`);
+    const text  = input?.value.trim();
+    if (!text) return;
+    const username = (() => { try { return JSON.parse(localStorage.getItem('pageUser') || '{}').username || 'You'; } catch { return 'You'; } })();
+    // Optimistic UI
+    const side  = 'b';
+    const shade = 'hsl(140,50%,35%)';
+    const feed  = document.getElementById(`debateFeedB_${id}`);
+    if (feed) {
+        const el = document.createElement('div');
+        el.className = 'debate-comment';
+        el.innerHTML = `<div class="debate-comment-avatar" style="background:${shade};">${username[0]}</div>
+            <div class="debate-comment-body"><span class="comment-user">${escHtml(username)}</span><span class="comment-text">${escHtml(text)}</span></div>`;
+        feed.appendChild(el);
+        feed.scrollTop = feed.scrollHeight;
+    }
+    input.value = '';
+    await _chPost(`${_CH_API}/debates/${id}/comment/`, { text, side }).catch(() => {});
+}
+
+async function _chCastPollVote(id, optionIndex, btn) {
+    const list = btn.closest('.poll-options-list');
+    list.querySelectorAll('.poll-vote-btn').forEach(b => b.disabled = true);
+    const { ok, data } = await _chPost(`${_CH_API}/polls/${id}/vote/`, { option_index: optionIndex });
+    if (!ok) { showToast(data.error || 'Could not vote.', 'error'); list.querySelectorAll('.poll-vote-btn').forEach(b => b.disabled = false); return; }
+    const total = data.total_votes || 1;
+    list.querySelectorAll('.poll-vote-btn').forEach((b, i) => {
+        const pct = Math.round(((data.vote_counts?.[i] || 0) / total) * 100);
+        const bar = b.querySelector('.poll-vote-bar');
+        const pctEl = b.querySelector('.poll-vote-pct');
+        if (bar) setTimeout(() => { bar.style.width = `${pct}%`; }, 50);
+        if (pctEl) pctEl.textContent = `${pct}%`;
+        if (i === optionIndex) b.classList.add('voted');
+    });
+    showToast('+0.5 xP for voting! 📊', 'success');
+}
+
+async function _chSubmitQA(id) {
+    const input = document.getElementById(`qaInput_${id}`);
+    const text  = input?.value.trim();
+    if (!text) return;
+    const username = (() => { try { return JSON.parse(localStorage.getItem('pageUser') || '{}').username || 'You'; } catch { return 'You'; } })();
+    const hue = username.split('').reduce((s, c) => s + c.charCodeAt(0), 0) % 360;
+    const pane = document.getElementById(`qaLive_${id}`);
+    if (pane) {
+        const el = document.createElement('div');
+        el.className = 'qa-live-msg own';
+        el.innerHTML = `<div class="qa-live-avatar" style="background:hsl(${hue},50%,38%);">${username[0]}</div>
+            <div class="qa-live-bubble"><span class="qa-live-user">${escHtml(username)}</span><span class="qa-live-text">${escHtml(text)}</span></div>`;
+        pane.appendChild(el);
+        pane.scrollTop = pane.scrollHeight;
+    }
+    input.value = '';
+    await _chPost(`${_CH_API}/qa/${id}/answer/`, { text }).catch(() => {});
+    showToast('+0.5 xP for answering! 💬', 'success');
+}

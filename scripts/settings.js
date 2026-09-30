@@ -796,28 +796,39 @@ async function _smUploadAvatar(e) {
 function _applyAvatarEverywhere(imgUrl) {
     if (!imgUrl) return;
 
-    const imgTag = `<img src="${imgUrl}" alt="Avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+    const imgTag = `<img src="${imgUrl}" alt="Avatar"
+        style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;"
+        onerror="this.style.display='none';this.parentElement.innerHTML='<i class=\\'fas fa-circle-user\\'></i>'">`;
 
-    // Settings preview
-    const prev = document.getElementById('settingsAvatarPreview');
-    if (prev) prev.innerHTML = imgTag;
-
-    // Profile page avatar
-    ['avatarDisplay', 'smAvatarImg', 'heroAvatar', 'profileAvatar'].forEach(id => {
+    // Named IDs
+    [
+        'settingsAvatarPreview',
+        'avatarDisplay',
+        'smAvatarImg',
+        'heroAvatar',
+        'profileAvatar',
+        'modalAvatar',
+        'umAvatar',
+        'navAvatar',
+    ].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.innerHTML = imgTag;
     });
 
-    // Nav bar / header avatar (common patterns)
-    document.querySelectorAll(
-        '.user-avatar, .nav-avatar, .header-avatar, ' +
-        '[data-avatar="current-user"], .current-user-avatar'
-    ).forEach(el => { el.innerHTML = imgTag; });
-
-    // index.html post-bar avatar (the circle next to "What's on your mind?")
-    document.querySelectorAll('.post-avatar.current-user, .post-creator-avatar').forEach(el => {
-        el.innerHTML = imgTag;
-    });
+    // Class / attribute selectors — matches every page's avatar slots
+    document.querySelectorAll([
+        '.user-avatar-btn',
+        '.user-menu-avatar',
+        '.nav-avatar',
+        '.header-avatar',
+        '.profile-avatar',
+        '.current-user-avatar',
+        '.post-avatar.current-user',
+        '.post-creator-avatar',
+        '.page-composer-avatar',
+        '[data-avatar="current-user"]',
+        '[data-current-user-avatar]',
+    ].join(', ')).forEach(el => { el.innerHTML = imgTag; });
 }
 
 // ── Danger zone ───────────────────────────────────────────────────────────────
@@ -875,4 +886,22 @@ async function deleteAccount() {
         const prefs = JSON.parse(localStorage.getItem('userPreferences') || '{}');
         _applyAppearance(prefs);
     } catch { /* silent */ }
+})();
+
+// ── Avatar sync: react to uploads triggered from user.js or any other page ───
+// When a user uploads a photo on user.html, the page:avatarChanged event fires
+// and settings.js (loaded on index.html) updates every avatar slot including
+// the settings modal preview.
+window.addEventListener('page:avatarChanged', e => {
+    const url = e.detail?.url;
+    if (url) _applyAvatarEverywhere(url);
+});
+
+// On page load, restore photo from localStorage immediately so there's no flash
+(function _smAvatarBoot() {
+    try {
+        const user = JSON.parse(localStorage.getItem('pageUser') || '{}');
+        const url  = user.profile_image_url || user.profile_image || null;
+        if (url) _applyAvatarEverywhere(url);
+    } catch { /* non-critical */ }
 })();

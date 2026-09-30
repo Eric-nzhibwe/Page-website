@@ -943,33 +943,38 @@ function _stampCurrentUserAvatar(imgUrl) {
     if (!imgUrl) return;
 
     const imgTag = `<img src="${imgUrl}" alt="Your avatar"
-        style="width:100%;height:100%;object-fit:cover;border-radius:50%;"
-        onerror="this.parentElement.innerHTML='<i class=\\'fas fa-user-circle\\'></i>'"
-    >`;
+        style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;"
+        onerror="this.style.display='none';this.parentElement.innerHTML='<i class=\\'fas fa-circle-user\\'></i>'">`;
 
-    // Nav bar top-right avatar button
-    const navBtn = document.querySelector('.user-avatar-btn');
-    if (navBtn) navBtn.innerHTML = imgTag;
+    // ── Named IDs (covers all pages) ──────────────────────────
+    [
+        'avatarDisplay',
+        'modalAvatar',
+        'umAvatar',
+        'navAvatar',
+        'smAvatarImg',
+        'heroAvatar',
+        'profileAvatar',
+        'settingsAvatarPreview',
+    ].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.innerHTML = imgTag;
+    });
 
-    // Sidebar profile mini-avatar
-    const sidebarAvatar = document.querySelector('.user-profile-mini .profile-avatar');
-    if (sidebarAvatar) sidebarAvatar.innerHTML = imgTag;
-
-    // "What's on your mind" post bar avatar
-    document.querySelectorAll('.create-post-header .post-avatar, .create-post-card .post-avatar')
-        .forEach(el => { el.innerHTML = imgTag; });
-
-    // Create post modal avatar
-    document.querySelectorAll('.post-creator-header .post-avatar')
-        .forEach(el => { el.innerHTML = imgTag; });
-
-    // Settings modal preview (if open)
-    const settingsPrev = document.getElementById('settingsAvatarPreview');
-    if (settingsPrev) settingsPrev.innerHTML = imgTag;
-
-    // Any element with data-current-user-avatar attribute (extensible hook)
-    document.querySelectorAll('[data-current-user-avatar]')
-        .forEach(el => { el.innerHTML = imgTag; });
+    // ── Class / attribute selectors ───────────────────────────
+    document.querySelectorAll([
+        '.user-avatar-btn',
+        '.user-menu-avatar',
+        '.nav-avatar',
+        '.header-avatar',
+        '.profile-avatar',
+        '.current-user-avatar',
+        '.post-avatar.current-user',
+        '.post-creator-avatar',
+        '.page-composer-avatar',
+        '[data-avatar="current-user"]',
+        '[data-current-user-avatar]',
+    ].join(', ')).forEach(el => { el.innerHTML = imgTag; });
 }
 
 // Boot: stamp avatar from localStorage as soon as DOM is ready

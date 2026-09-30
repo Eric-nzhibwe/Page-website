@@ -62,7 +62,7 @@ class UserRegistrationView(generics.CreateAPIView):
 def login_view(request):
     """User login endpoint — email or username, token-based."""
     identifier = (request.data.get('username') or '').strip()
-    password   = (request.data.get('password') or '').strip()
+    password   = (request.data.get('password') or '')   # do NOT strip passwords
 
     if not identifier:
         return Response({

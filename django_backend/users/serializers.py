@@ -42,8 +42,16 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         validated_data.pop('password_confirm', None)
         password = validated_data.pop('password')
+        email    = validated_data.pop('email')
+        username = validated_data.pop('username')
 
-        user = User.objects.create_user(password=password, **validated_data)
+        # Use the custom manager which correctly handles USERNAME_FIELD='email'
+        user = User.objects.create_user(
+            email=email,
+            username=username,
+            password=password,
+            **validated_data,
+        )
 
         # Send welcome email + SMS via the central services.
         # Never block registration if this fails.
@@ -75,7 +83,7 @@ class UserLoginSerializer(serializers.Serializer):
 
     def validate(self, data):
         identifier = data.get('username', '').strip()
-        password   = data.get('password', '').strip()
+        password   = data.get('password', '')   # do NOT strip — passwords may have leading/trailing spaces
 
         if not identifier or not password:
             raise serializers.ValidationError('Email/username and password are required.')

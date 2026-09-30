@@ -288,23 +288,41 @@ function setAvatarImg(src) {
  */
 function applyAvatarEverywhere(imgUrl) {
     if (!imgUrl) return;
-    const imgTag = `<img src="${imgUrl}" alt="avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
 
-    // Named IDs
-    ['avatarDisplay', 'modalAvatar', 'umAvatar', 'navAvatar',
-     'smAvatarImg', 'heroAvatar', 'profileAvatar', 'settingsAvatarPreview'
+    // onerror replaces broken img with a simple user icon so nothing looks broken
+    const imgTag = `<img src="${imgUrl}" alt="avatar"
+        style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;"
+        onerror="this.style.display='none';this.parentElement.innerHTML='<i class=\\'fas fa-circle-user\\' style=\\'font-size:inherit;\\'></i>'">`;
+
+    // ── Named IDs ─────────────────────────────────────────────
+    [
+        'avatarDisplay',          // user.html main profile avatar
+        'modalAvatar',            // edit profile modal
+        'umAvatar',               // user menu avatar
+        'navAvatar',              // nav avatar
+        'smAvatarImg',            // sidebar mini avatar
+        'heroAvatar',             // hero section avatar
+        'profileAvatar',          // generic profile avatar
+        'settingsAvatarPreview',  // settings modal preview
     ].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.innerHTML = imgTag;
     });
 
-    // Class-based slots across all pages
-    document.querySelectorAll(
-        '.user-avatar-btn, .user-menu-avatar, ' +
-        '.nav-avatar, .header-avatar, [data-avatar="current-user"], ' +
-        '.current-user-avatar, .post-avatar.current-user, .post-creator-avatar, ' +
-        '.profile-avatar'
-    ).forEach(el => { el.innerHTML = imgTag; });
+    // ── Class / attribute selectors covering every page ───────
+    document.querySelectorAll([
+        '.user-avatar-btn',          // top-right nav button (all pages)
+        '.user-menu-avatar',         // user dropdown header avatar (all pages)
+        '.nav-avatar',
+        '.header-avatar',
+        '.profile-avatar',
+        '.current-user-avatar',
+        '.post-avatar.current-user', // create-post bar
+        '.post-creator-avatar',      // create-post modal
+        '.page-composer-avatar',     // comment composer (social-features)
+        '[data-avatar="current-user"]',
+        '[data-current-user-avatar]',
+    ].join(', ')).forEach(el => { el.innerHTML = imgTag; });
 }
 
 // Donut

@@ -192,7 +192,9 @@ function _buildCommentModal() {
 
         <!-- Composer -->
         <div class="page-composer">
-          <div class="page-composer-avatar"><i class="fas fa-user-circle"></i></div>
+          <div class="page-composer-avatar" data-current-user-avatar>
+            <i class="fas fa-user-circle"></i>
+          </div>
           <div class="page-composer-inner">
             <textarea id="pageCommentInput" class="page-composer-textarea"
               placeholder="Write a comment…" maxlength="1000" rows="1"
@@ -214,6 +216,14 @@ function _buildCommentModal() {
     el.addEventListener('keydown', e => { if (e.key === 'Escape') closeCommentModal(); });
 
     document.body.appendChild(el);
+
+    // Stamp the current user's avatar in the composer immediately after building
+    try {
+        const user = JSON.parse(localStorage.getItem('pageUser') || '{}');
+        const url  = user.profile_image_url || user.profile_image || null;
+        if (url && window._stampCurrentUserAvatar) window._stampCurrentUserAvatar(url);
+    } catch (_) { /* non-critical */ }
+
     return el;
 }
 

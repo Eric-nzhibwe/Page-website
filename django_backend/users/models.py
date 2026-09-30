@@ -1,16 +1,53 @@
 """
 User models for PAGE Platform
 """
-from django.contrib.auth.models import AbstractUser
+from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
 from django.core.validators import MinValueValidator
 from django.utils import timezone
 import secrets
 import json
 
+
+class UserManager(BaseUserManager):
+    """
+    Custom manager for User where email is the unique identifier (USERNAME_FIELD).
+    Django's default manager expects USERNAME_FIELD to be 'username', so we
+    override create_user / create_superuser to work with email correctly.
+    """
+
+    def create_user(self, email, username, password=None, **extra_fields):
+        if not email:
+            raise ValueError('Email address is required.')
+        if not username:
+            raise ValueError('Username is required.')
+
+        email = self.normalize_email(email)
+        extra_fields.setdefault('is_staff', False)
+        extra_fields.setdefault('is_superuser', False)
+
+        user = self.model(email=email, username=username, **extra_fields)
+        user.set_password(password)
+        user.save(using=self._db)
+        return user
+
+    def create_superuser(self, email, username, password=None, **extra_fields):
+        extra_fields.setdefault('is_staff', True)
+        extra_fields.setdefault('is_superuser', True)
+        extra_fields.setdefault('is_active', True)
+
+        if not extra_fields.get('is_staff'):
+            raise ValueError('Superuser must have is_staff=True.')
+        if not extra_fields.get('is_superuser'):
+            raise ValueError('Superuser must have is_superuser=True.')
+
+        return self.create_user(email, username, password, **extra_fields)
+
 class User(AbstractUser):
     """Extended User model for PAGE Platform"""
-    
+
+    objects = UserManager()
+
     # Basic profile info
     email = models.EmailField(unique=True)
     display_name = models.CharField(max_length=100, blank=True)
