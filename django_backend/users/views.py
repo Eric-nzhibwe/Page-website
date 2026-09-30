@@ -61,6 +61,9 @@ class UserRegistrationView(generics.CreateAPIView):
 @permission_classes([permissions.AllowAny])
 def login_view(request):
     """User login endpoint — email or username, token-based."""
+    import logging
+    log = logging.getLogger('users.login')
+
     identifier = (request.data.get('username') or '').strip()
     password   = (request.data.get('password') or '')   # do NOT strip passwords
 
@@ -75,6 +78,24 @@ def login_view(request):
             'error': 'validation_error',
             'message': 'Please enter your password.'
         }, status=status.HTTP_400_BAD_REQUEST)
+
+    # ── Diagnostic logging (visible in Render logs) ───────────────────────
+    identifier_type = 'email' if '@' in identifier else 'username'
+    log.info('LOGIN attempt: identifier_type=%s len(password)=%d', identifier_type, len(password))
+
+    # Check whether the user even exists and has a usable password
+    try:
+        if '@' in identifier:
+            _u = User.objects.get(email__iexact=identifier)
+        else:
+            _u = User.objects.get(username__iexact=identifier)
+        log.info('LOGIN user found: id=%s has_usable_password=%s is_active=%s',
+                 _u.pk, _u.has_usable_password(), _u.is_active)
+    except User.DoesNotExist:
+        log.warning('LOGIN user NOT found for identifier=%r', identifier)
+    except Exception as exc:
+        log.error('LOGIN user lookup error: %s', exc)
+    # ─────────────────────────────────────────────────────────────────────
 
     serializer = UserLoginSerializer(
         data={'username': identifier, 'password': password},

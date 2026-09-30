@@ -307,6 +307,17 @@ LOGGING = {
             'level': 'WARNING',
             'propagate': False,
         },
+        # Auth debugging — shows up in Render logs
+        'users.login': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+        'users.backends': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
     },
 }
 

@@ -8,6 +8,61 @@ const API_BASE_URL = (window.location.hostname === 'localhost' || window.locatio
 // Current User Data (loaded from Django backend)
 let currentUser = null;
 
+// ── Avatar boot — runs on every page that loads app.js ───────────────────────
+// Reads the saved profile photo from localStorage and stamps it into every
+// fa-circle-user / fa-user placeholder on the page.
+// Also listens for page:avatarChanged so a photo uploaded on user.html
+// propagates to the nav bar on index.html without a page reload.
+(function _avatarBoot() {
+    function _stamp(imgUrl) {
+        if (!imgUrl) return;
+        const imgTag = `<img src="${imgUrl}" alt="avatar"
+            style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;"
+            onerror="this.style.display='none';this.parentElement.innerHTML='<i class=\\'fas fa-circle-user\\'></i>'">`;
+
+        // IDs
+        ['avatarDisplay','modalAvatar','umAvatar','navAvatar',
+         'smAvatarImg','heroAvatar','profileAvatar','settingsAvatarPreview'
+        ].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.innerHTML = imgTag;
+        });
+
+        // Classes / attributes
+        document.querySelectorAll([
+            '.user-avatar-btn',
+            '.user-menu-avatar',
+            '.nav-avatar',
+            '.header-avatar',
+            '.profile-avatar',
+            '.current-user-avatar',
+            '.post-avatar.current-user',
+            '.post-creator-avatar',
+            '.page-composer-avatar',
+            '[data-avatar="current-user"]',
+            '[data-current-user-avatar]',
+        ].join(', ')).forEach(el => { el.innerHTML = imgTag; });
+    }
+
+    // Stamp as soon as DOM is ready
+    document.addEventListener('DOMContentLoaded', () => {
+        try {
+            const u = JSON.parse(localStorage.getItem('pageUser') || '{}');
+            const url = u.profile_image_url || u.profile_image || null;
+            if (url) _stamp(url);
+        } catch (_) { /* non-critical */ }
+    });
+
+    // Live update when photo changes (upload on any page)
+    window.addEventListener('page:avatarChanged', e => {
+        const url = e.detail?.url;
+        if (url) _stamp(url);
+    });
+
+    // Expose so other scripts can call it directly if needed
+    window._stampCurrentUserAvatar = window._stampCurrentUserAvatar || _stamp;
+})();
+
 // Mobile Menu Toggle
 function toggleMobileMenu() {
     const nav = document.getElementById('mainNav');
