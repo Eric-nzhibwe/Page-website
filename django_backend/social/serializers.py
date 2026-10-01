@@ -116,15 +116,19 @@ class PostSerializer(serializers.ModelSerializer):
         media_file  = validated_data.pop('media_file', None)
         voice_file  = validated_data.pop('voice_file', None)
         post = super().create(validated_data)
-        # Use queryset update to avoid double-triggering any post save logic
-        update_fields = {}
+        # Assign uploaded file fields directly on the instance and call
+        # save(update_fields=[...]).  QuerySet.update() cannot handle
+        # InMemoryUploadedFile objects — the ORM must write the file to
+        # storage through the descriptor, which only works on an instance.
+        update_fields = []
         if media_file:
-            update_fields['media_file'] = media_file
+            post.media_file = media_file
+            update_fields.append('media_file')
         if voice_file:
-            update_fields['voice_file'] = voice_file
+            post.voice_file = voice_file
+            update_fields.append('voice_file')
         if update_fields:
-            Post.objects.filter(pk=post.pk).update(**update_fields)
-            post.refresh_from_db(fields=list(update_fields.keys()))
+            post.save(update_fields=update_fields)
         return post
 
 

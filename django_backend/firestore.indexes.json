@@ -36,6 +36,15 @@
         { "fieldPath": "created_at",    "order": "DESCENDING" }
       ]
     },
+    {
+      "collectionGroup": "challenges",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "created_by_id", "order": "ASCENDING" },
+        { "fieldPath": "status",        "order": "ASCENDING" },
+        { "fieldPath": "created_at",    "order": "DESCENDING" }
+      ]
+    },
 
     {
       "collectionGroup": "challenge_submissions",
@@ -153,6 +162,14 @@
         { "fieldPath": "prestige_points", "order": "DESCENDING" }
       ]
     },
+    {
+      "collectionGroup": "user_profiles",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "username",        "order": "ASCENDING" },
+        { "fieldPath": "prestige_points", "order": "DESCENDING" }
+      ]
+    },
 
     {
       "collectionGroup": "messenger_conversations",
@@ -160,6 +177,15 @@
       "fields": [
         { "fieldPath": "participant_ids", "arrayConfig": "CONTAINS" },
         { "fieldPath": "updated_at",      "order": "DESCENDING" }
+      ]
+    },
+
+    {
+      "collectionGroup": "chat_conversations",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "user_id",    "order": "ASCENDING" },
+        { "fieldPath": "updated_at", "order": "DESCENDING" }
       ]
     },
 
@@ -182,20 +208,19 @@
     },
 
     {
-      "collectionGroup": "chat_conversations",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "user_id",    "order": "ASCENDING" },
-        { "fieldPath": "updated_at", "order": "DESCENDING" }
-      ]
-    },
-
-    {
       "collectionGroup": "members",
       "queryScope": "COLLECTION_GROUP",
       "fields": [
         { "fieldPath": "user_id", "order": "ASCENDING" },
         { "fieldPath": "status",  "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "members",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status",               "order": "ASCENDING" },
+        { "fieldPath": "prestige_contributed", "order": "DESCENDING" }
       ]
     }
 
