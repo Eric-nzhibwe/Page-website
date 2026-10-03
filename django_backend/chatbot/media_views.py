@@ -33,7 +33,7 @@ from .views import _call_ai, _chat_postgres, _chat_firestore, _use_firestore
 logger = logging.getLogger(__name__)
 
 GROQ_WHISPER_URL  = 'https://api.groq.com/openai/v1/audio/transcriptions'
-GROQ_VISION_MODEL = 'meta-llama/llama-4-scout-17b-16e-instruct'   # Groq vision model
+GROQ_VISION_MODEL = 'meta-llama/llama-4-scout-17b-16e-instruct'  # supports vision + text
 GROQ_API_URL      = 'https://api.groq.com/openai/v1/chat/completions'
 
 MAX_AUDIO_MB  = 25     # Groq Whisper limit

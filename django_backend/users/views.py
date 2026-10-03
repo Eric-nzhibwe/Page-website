@@ -48,6 +48,15 @@ class UserRegistrationView(generics.CreateAPIView):
         # Create token for immediate login
         token, created = Token.objects.get_or_create(user=user)
 
+        # Mirror new user to Firestore immediately (backup — non-blocking)
+        try:
+            from page_platform.firebase_client import firebase_enabled
+            if firebase_enabled():
+                from users.firestore_user_service import sync_user
+                sync_user(user, request=request)
+        except Exception:
+            pass
+
         return Response({
             'user': UserProfileSerializer(user).data,
             'token': token.key,
@@ -145,6 +154,15 @@ def login_view(request):
         sms_service.send_login_alert(user)
     except Exception:
         pass  # Never block login if SMS fails
+
+    # ── Mirror to Firestore (always, as a backup — non-blocking) ──────────
+    try:
+        from page_platform.firebase_client import firebase_enabled
+        if firebase_enabled():
+            from users.firestore_user_service import sync_user
+            sync_user(user, request=request)
+    except Exception:
+        pass  # Never block login if Firestore sync fails
 
     return Response({
         'token': token.key,
@@ -688,12 +706,12 @@ def firebase_token_login_view(request):
     # Issue a DRF token so the rest of the app works unchanged
     token, _ = Token.objects.get_or_create(user=user)
 
-    # Mirror profile to Firestore if FS_USERS is enabled
+    # Always mirror to Firestore — this is the backup regardless of FS_USERS flag
     try:
-        from django.conf import settings as _s
-        if _s.FIRESTORE_COLLECTIONS.get('users', False):
+        from page_platform.firebase_client import firebase_enabled
+        if firebase_enabled():
             from users.firestore_user_service import sync_user
-            sync_user(user)
+            sync_user(user, request=request)
     except Exception:
         pass
 
@@ -722,6 +740,81 @@ def firebase_config_view(request):
         'messagingSenderId': getattr(_s, 'FIREBASE_MESSAGING_SENDER_ID', ''),
         'appId':             getattr(_s, 'FIREBASE_APP_ID', ''),
     })
+
+
+@csrf_exempt
+@api_view(['POST'])
+@authentication_classes([])
+@permission_classes([permissions.AllowAny])
+def firestore_profile_view(request):
+    """
+    Postgres-free user profile lookup — reads from Firestore only.
+
+    Called by the frontend as a fallback when Postgres is down (Render free
+    tier DB suspension). The frontend exchanges a Firebase ID token for the
+    user's public profile stored in Firestore.
+
+    Request body:  { "firebase_token": "<Firebase ID token>" }
+    Response:      { "user": { ...public profile fields... }, "source": "firestore" }
+    """
+    firebase_token = request.data.get('firebase_token', '').strip()
+    if not firebase_token:
+        return Response({'error': 'firebase_token is required.'}, status=400)
+
+    from page_platform.firebase_client import firebase_enabled, get_firestore
+    if not firebase_enabled():
+        return Response({'error': 'Firebase not configured.'}, status=503)
+
+    # Verify the Firebase ID token
+    try:
+        import firebase_admin.auth as fb_auth
+        decoded = fb_auth.verify_id_token(firebase_token)
+    except Exception as exc:
+        return Response({'error': f'Invalid Firebase token: {exc}'}, status=401)
+
+    firebase_uid = decoded.get('uid')
+    email        = (decoded.get('email') or '').lower().strip()
+
+    # Look up Firestore profile by firebase_uid first, then email
+    db = get_firestore()
+    if db is None:
+        return Response({'error': 'Firestore not available.'}, status=503)
+
+    profile = None
+
+    # Search by firebase_uid in user_profiles
+    try:
+        docs = (db.collection('user_profiles')
+                  .where('firebase_uid', '==', firebase_uid)
+                  .limit(1)
+                  .stream())
+        for doc in docs:
+            d = doc.to_dict()
+            d['id'] = doc.id
+            profile = d
+            break
+    except Exception:
+        pass
+
+    # Fallback: search by email field if we stored it (we store username, not email)
+    # Fall back to firebase decoded data to build a minimal profile
+    if profile is None:
+        profile = {
+            'id':              firebase_uid,
+            'username':        decoded.get('name') or email.split('@')[0],
+            'display_name':    decoded.get('name') or '',
+            'email':           email,
+            'access_tier':     'Bronze',
+            'prestige_points': 0,
+            'level':           1,
+            'is_verified':     decoded.get('email_verified', False),
+            'source':          'firebase_token_only',
+        }
+    else:
+        profile['email'] = email  # add email from token (not stored in Firestore)
+
+    profile['source'] = 'firestore'
+    return Response({'user': profile})
 
 
 @api_view(['POST'])

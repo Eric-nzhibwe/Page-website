@@ -137,8 +137,8 @@ body {
 .logo {
     font-size: 24px;
     font-weight: bold;
-    font-family: 'Bebas Neue', 'Impact', sans-serif;
-    letter-spacing: 3px;
+    font-family: 'Fredericka the Great', serif;
+    letter-spacing: 1px;
     background: linear-gradient(to left, #f093fb, #f5576c, #ee5a6f, #22c1c3, #ffd700);
     background-clip: text;
     -webkit-background-clip: text;

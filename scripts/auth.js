@@ -163,8 +163,11 @@ async function handleLogin(event) {
         if (fbReady) {
             const result = await _loginWithFirebase(identifier, password);
             if (result.success) {
-                _storeSession(result.token, result.user);
-                showToast(`Welcome back, ${result.user?.username || 'player'}! 🔥`, 'success');
+                _storeSession(result.token, result.user, result.source);
+                const greeting = result.source === 'firestore'
+                    ? `Welcome back, ${result.user?.username || 'player'}! (Limited mode — some features offline) 🔥`
+                    : `Welcome back, ${result.user?.username || 'player'}! 🔥`;
+                showToast(greeting, 'success');
                 setTimeout(() => { window.location.href = '../index.html'; }, 900);
                 return;
             }
@@ -189,7 +192,7 @@ async function handleLogin(event) {
             return;
         }
 
-        _storeSession(data.token, data.user);
+        _storeSession(data.token, data.user, 'postgres');
         showToast(`Welcome back, ${data.user?.username || 'player'}! 🔥`, 'success');
         setTimeout(() => { window.location.href = '../index.html'; }, 900);
 
@@ -266,7 +269,7 @@ async function handleSignup(event) {
         if (fbReady) {
             const result = await _registerWithFirebase(email, password, username);
             if (result.success) {
-                _storeSession(result.token, result.user);
+                _storeSession(result.token, result.user, result.source);
                 showToast('Account created! Welcome to PAGE 🎉', 'success');
                 setTimeout(() => { window.location.href = '../index.html'; }, 1000);
                 return;
@@ -298,7 +301,7 @@ async function handleSignup(event) {
             return;
         }
 
-        _storeSession(data.token, data.user);
+        _storeSession(data.token, data.user, 'postgres');
         showToast('Account created! Welcome to PAGE 🎉', 'success');
         setTimeout(() => { window.location.href = '../index.html'; }, 1000);
 
@@ -344,19 +347,54 @@ async function _registerWithFirebase(email, password, username) {
 // ─────────────────────────────────────────────────────────────
 
 async function _exchangeFirebaseToken(idToken) {
-    const res  = await fetchWithTimeout(`${API_BASE_URL}/auth/firebase-login/`, {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ firebase_token: idToken }),
-    }, 15000);
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
-        // 503 with fallback:true means Firebase isn't configured server-side —
-        // let the caller drop through to legacy Django auth instead of hard-failing.
-        const nonFatal = res.status === 503 && data.fallback === true;
-        return { success: false, fatal: !nonFatal, message: data.error || 'Authentication failed.' };
+    // Primary: exchange Firebase token for Django DRF token (needs Postgres)
+    try {
+        const res  = await fetchWithTimeout(`${API_BASE_URL}/auth/firebase-login/`, {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ firebase_token: idToken }),
+        }, 15000);
+        const data = await res.json().catch(() => ({}));
+
+        if (res.ok) return { success: true, token: data.token, user: data.user };
+
+        // 503 with fallback:true means Firebase isn't configured server-side
+        if (res.status === 503 && data.fallback === true) {
+            return { success: false, fatal: false, message: data.error || 'Authentication failed.' };
+        }
+
+        // Any other non-ok that isn't a DB error — hard fail
+        if (res.status !== 500 && res.status !== 503) {
+            return { success: false, fatal: true, message: data.error || 'Authentication failed.' };
+        }
+    } catch (_) {
+        // Network error on primary — fall through to Firestore fallback
     }
-    return { success: true, token: data.token, user: data.user };
+
+    // ── Firestore fallback — works even when Postgres is down ──────────
+    // This lets users log in via Firebase Auth and see their profile from
+    // Firestore when the Render free-tier DB has been suspended.
+    try {
+        const res  = await fetchWithTimeout(`${API_BASE_URL}/auth/firestore-profile/`, {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ firebase_token: idToken }),
+        }, 12000);
+        const data = await res.json().catch(() => ({}));
+
+        if (res.ok && data.user) {
+            // No DRF token available — store Firebase token as the auth credential
+            // The user can browse but actions needing the DB will gracefully degrade
+            return {
+                success: true,
+                token:   null,          // no DRF token
+                user:    data.user,
+                source:  'firestore',   // flag so the app knows we're in fallback mode
+            };
+        }
+    } catch (_) { /* ignore */ }
+
+    return { success: false, fatal: false, message: 'Could not reach the server. Please try again.' };
 }
 
 async function _patchUsername(token, username) {
@@ -372,7 +410,7 @@ async function _patchUsername(token, username) {
     } catch { /* non-fatal */ }
 }
 
-function _storeSession(token, user) {
+function _storeSession(token, user, source) {
     if (token) {
         localStorage.setItem('djangoAuthToken', token);
         localStorage.setItem('token', token);
@@ -380,6 +418,12 @@ function _storeSession(token, user) {
     if (user) {
         localStorage.setItem('pageUser', JSON.stringify(user));
         localStorage.setItem('user',     JSON.stringify(user));
+    }
+    // Flag Firestore-only mode so the app can show a degraded-mode banner
+    if (source === 'firestore') {
+        localStorage.setItem('authSource', 'firestore');
+    } else {
+        localStorage.removeItem('authSource');
     }
 }
 

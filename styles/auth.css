@@ -101,7 +101,7 @@ body {
 .landing-nav-logo {
     font-size: 28px;
     font-weight: 800;
-    font-family: 'Bebas Neue', 'Impact', sans-serif;
+    font-family: 'Fredericka the Great', serif;
     letter-spacing: 4px;
     background: linear-gradient(to right, #f093fb, #f5576c, var(--page-accent), lightblue, #ffd700);
     background-clip: text;

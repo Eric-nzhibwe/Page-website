@@ -10,6 +10,8 @@ urlpatterns = [
     path('firebase-login/', views.firebase_token_login_view, name='firebase-login'),
     # Returns public Firebase web config for the JS SDK initialisation
     path('firebase-config/', views.firebase_config_view, name='firebase-config'),
+    # Postgres-free profile lookup via Firestore (DB-down fallback)
+    path('firestore-profile/', views.firestore_profile_view, name='firestore-profile'),
 
     # Authentication (existing Django email/password — kept as fallback)
     path('register/', views.UserRegistrationView.as_view(), name='user-register'),

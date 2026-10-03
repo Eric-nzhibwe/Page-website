@@ -132,14 +132,20 @@ async function sendMessage(event) {
 
     try {
         const data    = await callBackend(message);
-        const content = data?.ai_message?.content;
+        // Backend sends both `reply` (shortcut) and `ai_message.content` — accept either
+        const content = data?.ai_message?.content || data?.reply;
         const source  = data?.ai_source || currentAiSource;
         setWaiting(false);
         if (content) appendMessage(content, 'bot', source);
-        else appendMessage('Sorry, no response. Please try again.', 'bot', 'fallback', true);
+        else appendMessage('No response received — please try again.', 'bot', 'fallback', true);
     } catch (err) {
         setWaiting(false);
-        appendMessage('Connection error — please check your network.', 'bot', 'fallback', true);
+        const msg = err.message || '';
+        if (msg.includes('401'))       appendMessage('Session expired — please log in again.', 'bot', 'fallback', true);
+        else if (msg.includes('403'))  appendMessage('Access denied. Please refresh and try again.', 'bot', 'fallback', true);
+        else if (msg.includes('500'))  appendMessage('The AI server hit an error. Please try again in a moment.', 'bot', 'fallback', true);
+        else if (msg.includes('503'))  appendMessage('AI service is starting up — please wait a few seconds and retry.', 'bot', 'fallback', true);
+        else                           appendMessage(`Connection error (${msg || 'unknown'}) — check your network and try again.`, 'bot', 'fallback', true);
     }
 }
 
@@ -152,12 +158,21 @@ function sendQuickMessage(text) {
 
 async function callBackend(message) {
     const token = localStorage.getItem('djangoAuthToken');
-    const res   = await fetch(`${CHAT_API}/chatbot/chat/`, {
+    if (!token) throw new Error('401 — not authenticated');
+
+    const res = await fetch(`${CHAT_API}/chatbot/chat/`, {
         method:  'POST',
         headers: { 'Authorization': `Token ${token}`, 'Content-Type': 'application/json' },
         body:    JSON.stringify({ message, conversation_id: conversationId || undefined }),
     });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    if (!res.ok) {
+        // Try to get the server's error message for better diagnostics
+        let errText = '';
+        try { errText = (await res.json()).error || (await res.text()); } catch { /* ignore */ }
+        throw new Error(`${res.status} — ${errText || res.statusText}`);
+    }
+
     const data = await res.json();
     if (data.conversation_id) conversationId = data.conversation_id;
     return data;
@@ -234,7 +249,8 @@ async function stopRecording() {
 
         // Send as a regular text message
         const data    = await callBackend(transcript);
-        const content = data?.ai_message?.content;
+        // Accept both ai_message.content and top-level reply
+        const content = data?.ai_message?.content || data?.reply;
         const source  = data?.ai_source || currentAiSource;
         setWaiting(false);
         if (content) appendMessage(content, 'bot', source);
@@ -242,7 +258,7 @@ async function stopRecording() {
 
     } catch (err) {
         setWaiting(false);
-        appendMessage('Voice message failed. Please try again.', 'bot', 'fallback', true);
+        appendMessage(`Voice message failed (${err.message || 'unknown error'}) — please try again.`, 'bot', 'fallback', true);
     }
 }
 

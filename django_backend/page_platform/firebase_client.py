@@ -15,6 +15,44 @@ _firebase_app = None
 _initialised = False
 
 
+def _clean_private_key(raw: str) -> str:
+    """
+    Normalise the Firebase private key from whatever format the env var
+    arrives in — Render and other hosts frequently mangle PEM keys.
+
+    Handles:
+      • Literal \\n  → real newline   (most common Render issue)
+      • Surrounding single or double quotes added by some secret managers
+      • Extra whitespace around the whole key
+      • Keys already containing real newlines (pass-through)
+    """
+    if not raw:
+        return raw
+
+    # Strip surrounding whitespace and quotes
+    key = raw.strip().strip('"').strip("'").strip()
+
+    # Replace literal \n sequences with real newlines
+    # Do this before checking for header/footer so we don't break a key
+    # that already has real newlines mixed with escaped ones.
+    if '\\n' in key:
+        key = key.replace('\\n', '\n')
+
+    # If the key somehow came in as a single long line without any newlines
+    # at all (some CI systems strip newlines), reconstruct it:
+    if '\n' not in key and 'BEGIN' in key:
+        # Insert newlines after the header and before the footer,
+        # and every 64 chars through the base64 body.
+        import re
+        header_match = re.match(r'(-----BEGIN [^-]+-----)(.+?)(-----END [^-]+-----)', key)
+        if header_match:
+            header, body, footer = header_match.groups()
+            body_lines = [body[i:i+64] for i in range(0, len(body), 64)]
+            key = header + '\n' + '\n'.join(body_lines) + '\n' + footer + '\n'
+
+    return key
+
+
 def firebase_enabled() -> bool:
     """Return True if Firebase Admin has been successfully initialised."""
     _ensure_initialised()
@@ -78,7 +116,7 @@ def _ensure_initialised():
             'type': 'service_account',
             'project_id': settings.FIREBASE_PROJECT_ID,
             'private_key_id': settings.FIREBASE_PRIVATE_KEY_ID,
-            'private_key': settings.FIREBASE_PRIVATE_KEY,
+            'private_key': _clean_private_key(settings.FIREBASE_PRIVATE_KEY),
             'client_email': settings.FIREBASE_CLIENT_EMAIL,
             'client_id': settings.FIREBASE_CLIENT_ID,
             'auth_uri': 'https://accounts.google.com/o/oauth2/auth',

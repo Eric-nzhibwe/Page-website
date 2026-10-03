@@ -28,6 +28,9 @@ done
 echo "==> Ensuring superuser exists..."
 python manage.py ensure_superuser || echo "   WARNING: ensure_superuser failed (env vars may not be set)."
 
+echo "==> Syncing users to Firestore backup..."
+python manage.py sync_users_to_firestore || echo "   WARNING: Firestore sync failed (Firebase may not be configured)."
+
 echo "==> Starting uvicorn..."
 # Log channel layer backend so it's visible in Render logs
 python -c "

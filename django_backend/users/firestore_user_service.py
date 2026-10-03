@@ -262,6 +262,14 @@ def migrate_from_postgres(queryset):
 #  Internal helpers
 # ─────────────────────────────────────────────────────────────────────────────
 
+def _get_firebase_uid(user) -> str:
+    """Return the Firebase UID for a user if linked, else empty string."""
+    try:
+        return user.firebase_profile.firebase_uid
+    except Exception:
+        return ''
+
+
 def _user_to_doc(user, request=None) -> dict:
     """Build the Firestore document dict from a Django User instance."""
     # Profile image URL — gracefully handle missing files on Render
@@ -314,6 +322,7 @@ def _user_to_doc(user, request=None) -> dict:
         'preferences':           safe_prefs,
         'followers_count':       followers_count,
         'following_count':       following_count,
+        'firebase_uid':          _get_firebase_uid(user),   # for Firestore-only lookups
         'created_at':            user.created_at if hasattr(user, 'created_at') and user.created_at else now,
         'updated_at':            now,
     }

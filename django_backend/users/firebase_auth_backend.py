@@ -130,6 +130,15 @@ class FirebaseAuthenticationBackend(BaseBackend):
             defaults={'firebase_uid': firebase_uid, 'picture_url': picture},
         )
 
+        # ── Mirror to Firestore (always, non-blocking backup) ──────────
+        try:
+            from page_platform.firebase_client import get_firestore
+            if get_firestore() is not None:
+                from users.firestore_user_service import sync_user
+                sync_user(user)
+        except Exception:
+            pass
+
         return user
 
     @staticmethod

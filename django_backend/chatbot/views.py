@@ -239,7 +239,7 @@ def ai_status_view(request):
 
     return Response({
         'engine': 'groq',
-        'model':  'llama-3.3-70b',
+        'model':  'llama-4-scout-17b',
         'status': 'online',
         'label':  'PAGE AI',
         'tested': False,
