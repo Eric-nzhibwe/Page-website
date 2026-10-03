@@ -25,6 +25,9 @@ for i in $(seq 1 $MAX_RETRIES); do
     fi
 done
 
+echo "==> Ensuring superuser exists..."
+python manage.py ensure_superuser || echo "   WARNING: ensure_superuser failed (env vars may not be set)."
+
 echo "==> Starting uvicorn..."
 # Log channel layer backend so it's visible in Render logs
 python -c "

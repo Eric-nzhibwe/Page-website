@@ -9,6 +9,9 @@
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles/styles.css">
     <link rel="stylesheet" href="styles/social-features.css">
     <link rel="stylesheet" href="styles/realtime-features.css">
@@ -216,8 +219,10 @@
                     <!-- Stories Section -->
                     <div class="stories-container d-flex overflow-auto w-100 mb-3">
                         <div class="story-card create-story flex-shrink-0" onclick="openCreateStoryModal()">
-                            <div class="story-image d-flex align-items-center justify-content-center">
-                                <i class="fas fa-plus-circle"></i>
+                            <div class="story-ring-wrap" style="background:#e0e0e0;">
+                                <div class="story-image d-flex align-items-center justify-content-center">
+                                    <i class="fas fa-plus"></i>
+                                </div>
                             </div>
                             <span class="story-name">Add Story</span>
                         </div>

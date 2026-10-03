@@ -359,8 +359,11 @@ function postVoiceRecording() {
 
     const token   = localStorage.getItem('djangoAuthToken');
     const caption = (document.getElementById('voiceCaption')?.value || '').trim();
-    const m = Math.floor(_voiceSeconds / 60);
-    const s = String(_voiceSeconds % 60).padStart(2, '0');
+
+    // Capture duration BEFORE we reset state
+    const durationSecs = _voiceSeconds;
+    const m = Math.floor(durationSecs / 60);
+    const s = String(durationSecs % 60).padStart(2, '0');
     const durLabel = `${m}:${s}`;
 
     if (!token) {
@@ -372,10 +375,11 @@ function postVoiceRecording() {
     const ext  = _voiceBlob.type.includes('mp4') ? 'm4a'
                : _voiceBlob.type.includes('ogg') ? 'ogg'
                : 'webm';
-    const file = new File([_voiceBlob], `voice-${Date.now()}.${ext}`, { type: _voiceBlob.type });
+    const blobCopy = _voiceBlob;   // hold reference before clearing
+    const file = new File([blobCopy], `voice-${Date.now()}.${ext}`, { type: blobCopy.type });
 
-    // Optimistic local card (uses blob URL — swapped for server URL on success)
-    const localUrl = URL.createObjectURL(_voiceBlob);
+    // Optimistic local card (blob URL — kept until server URL arrives or upload succeeds)
+    const localUrl = URL.createObjectURL(blobCopy);
     const tempId   = `local-voice-${Date.now()}`;
     const local    = {
         id:             tempId,
@@ -388,7 +392,7 @@ function postVoiceRecording() {
         reaction_count: 0, comment_count: 0, share_count: 0,
     };
 
-    // Clean up recording state before async upload
+    // Clean up recording state
     _voiceBlob       = null;
     _voiceChunks     = [];
     _voiceDiscarding = true;
@@ -404,7 +408,7 @@ function postVoiceRecording() {
     fd.append('post_type',      'voice');
     fd.append('content',        caption);
     fd.append('voice_file',     file, file.name);
-    fd.append('voice_duration', String(_voiceSeconds));
+    fd.append('voice_duration', String(durationSecs));  // captured before reset
     fd.append('media_type',     'audio');
 
     fetch(_POST_API, {
@@ -418,22 +422,37 @@ function postVoiceRecording() {
         const tempCard = document.querySelector(`[data-post-id="${tempId}"]`);
         if (tempCard) {
             tempCard.setAttribute('data-post-id', apiPost.id);
-            const audio  = tempCard.querySelector('audio.voice-note-player');
+            const audio   = tempCard.querySelector('audio.voice-note-player');
             const realUrl = apiPost.resolved_media_url || apiPost.media_url;
             if (audio && realUrl) {
                 URL.revokeObjectURL(localUrl);
                 audio.src = realUrl;
             }
+            // Ensure card stays visible — remove any fade-out class that may have been added
+            tempCard.style.opacity  = '1';
+            tempCard.style.display  = '';
         }
         _feedToast('Voice message posted! 🎤', 'success');
     })
     .catch(err => {
         console.error('Voice post failed:', err);
-        // Remove the optimistic card — upload failed, nothing was saved
+        // Keep the optimistic card so the user can see it and retry — just mark it
         const tempCard = document.querySelector(`[data-post-id="${tempId}"]`);
-        if (tempCard) tempCard.remove();
-        URL.revokeObjectURL(localUrl);
-        _feedToast('Could not post voice message — please try again.', 'error');
+        if (tempCard) {
+            tempCard.style.opacity = '0.6';
+            const errNote = document.createElement('p');
+            errNote.style.cssText = 'color:#e63946;font-size:12px;margin:4px 0 0;padding:0 16px;';
+            errNote.textContent   = '⚠️ Upload failed — tap to retry';
+            errNote.style.cursor  = 'pointer';
+            errNote.onclick       = () => {
+                // Re-show the voice recording bar pre-filled so user can re-post
+                tempCard.remove();
+                URL.revokeObjectURL(localUrl);
+                _feedToast('Please record and post your voice message again.', 'info');
+            };
+            tempCard.appendChild(errNote);
+        }
+        _feedToast('Upload failed — your message is still visible locally.', 'error');
     });
 }
 
@@ -865,42 +884,33 @@ function createStory() {
 /** Insert a rendered story card into the stories rail */
 function _insertStoryCard(story, tempId) {
     const isVideo  = story.media_type === 'video';
-    // Use resolved_media_url (API) or fall back to media_url (local preview)
     const mediaUrl = story.resolved_media_url || story.media_url || '';
+    const name     = _esc(story.author?.display_name || story.author?.username || 'Story');
 
     const card = document.createElement('div');
     card.className = 'story-card';
     card.style.animation = 'fadeInCard .4s ease';
     card.dataset.storyId = tempId || story.id;
 
-    // Set background-image via inline style — never use background shorthand
-    // so the CSS fallback background-color doesn't bleed through
-    if (!isVideo && mediaUrl) {
-        const imgEl = card;
-        // We set it on the .story-image div below via a ref trick
-    }
-
-    const imgDivStyle = (!isVideo && mediaUrl)
-        ? `background-image:url('${CSS.escape ? mediaUrl : mediaUrl}');`
-        : '';
+    const imgStyle = (!isVideo && mediaUrl)
+        ? `background-image:url('${mediaUrl}');background-size:cover;background-position:center;`
+        : (story.author?.profile_image
+            ? `background:url('${story.author.profile_image}') center/cover;`
+            : 'background:linear-gradient(135deg,#556b2f,#8bc34a);');
 
     card.innerHTML = `
-        <div class="story-image" style="${imgDivStyle}">
-            ${isVideo && mediaUrl
-                ? `<video src="${mediaUrl}" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;" muted playsinline></video>`
-                : ''}
+        <div class="story-ring-wrap own-story" style="position:relative;">
+            <div class="story-image" style="${imgStyle}">
+                ${isVideo && mediaUrl ? `<video src="${_esc(mediaUrl)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;position:absolute;inset:0;" muted playsinline></video>` : ''}
+            </div>
         </div>
-        <span class="story-name">${story.author?.display_name || story.author?.username || 'Story'}</span>`;
+        <span class="story-name">${name}</span>`;
 
-    // Store story data for the viewer
     const storyData = [story];
-    card._storyData  = storyData;
-
+    card._storyData = storyData;
     card.onclick = () => {
         const data = card._storyData || storyData;
-        if (window.storyViewer?.openStory) {
-            window.storyViewer.openStory(data[0].id, data);
-        }
+        if (window.storyViewer?.openStory) window.storyViewer.openStory(data[0].id, data);
     };
 
     const container  = document.querySelector('.stories-container');
@@ -1204,18 +1214,24 @@ async function loadRealStories() {
             const mediaSrc    = latestStory.resolved_media_url || latestStory.media_url || null;
             const isVideo     = latestStory.media_type === 'video';
 
-            const bgStyle = (mediaSrc && !isVideo)
+            // Avatar fallback — profile image or gradient initial
+            const avatarStyle = (mediaSrc && !isVideo)
                 ? `background-image:url('${_esc(mediaSrc)}');background-size:cover;background-position:center`
                 : (author.profile_image
                     ? `background:url('${_esc(author.profile_image)}') center/cover`
                     : `background:linear-gradient(135deg,#556b2f,#8bc34a)`);
 
+            const multiCount = authorStories.length > 1
+                ? `<span class="story-count-badge">${authorStories.length}</span>` : '';
+
             card.innerHTML = `
-                <div class="story-image" style="${bgStyle}">
-                    ${isVideo && mediaSrc
-                        ? `<video src="${_esc(mediaSrc)}" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;" muted playsinline></video>`
-                        : ''}
-                    <div class="story-ring"></div>
+                <div class="story-ring-wrap" title="${name}">
+                    <div class="story-image" style="${avatarStyle}">
+                        ${isVideo && mediaSrc
+                            ? `<video src="${_esc(mediaSrc)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;position:absolute;inset:0;" muted playsinline></video>`
+                            : ''}
+                    </div>
+                    ${multiCount}
                 </div>
                 <span class="story-name">${name}</span>`;
 

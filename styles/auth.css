@@ -34,6 +34,8 @@ body {
 .splash-logo {
     font-size: 120px;
     font-weight: bold;
+    font-family: 'Bebas Neue', 'Impact', sans-serif;
+    letter-spacing: 8px;
     background: linear-gradient(to right, #f093fb, #f5576c, var(--page-accent), lightblue, #ffd700);
     background-clip: text;
     -webkit-background-clip: text;
@@ -99,6 +101,8 @@ body {
 .landing-nav-logo {
     font-size: 28px;
     font-weight: 800;
+    font-family: 'Bebas Neue', 'Impact', sans-serif;
+    letter-spacing: 4px;
     background: linear-gradient(to right, #f093fb, #f5576c, var(--page-accent), lightblue, #ffd700);
     background-clip: text;
     -webkit-background-clip: text;
@@ -475,14 +479,14 @@ body {
 
 .logo-mark {
     position: relative;
-    width: 54px;
-    height: 54px;
+    width: 64px;
+    height: 64px;
     flex-shrink: 0;
 }
 
 .logo-image {
-    width: 54px;
-    height: 54px;
+    width: 64px;
+    height: 64px;
     border-radius: 50%;
     object-fit: cover;
     position: relative;
@@ -1285,7 +1289,8 @@ body {
     }
     
     .logo { font-size: 36px; }
-    .logo-image { width: 40px; height: 40px; }
+    .logo-image { width: 56px; height: 56px; }
+    .logo-mark { width: 56px; height: 56px; }
     .splash-logo { font-size: 80px; }
 
     /* ── Landing: stack to column on tablet ── */
@@ -1358,8 +1363,8 @@ body {
     .auth-card { border-radius: 20px; }
     .auth-card-inner { padding: 20px 16px 18px; }
     .logo { font-size: 30px; letter-spacing: -1px; }
-    .logo-mark { width: 44px; height: 44px; }
-    .logo-image { width: 44px; height: 44px; }
+    .logo-mark { width: 52px; height: 52px; }
+    .logo-image { width: 52px; height: 52px; }
     .tagline { font-size: 10px; }
     .auth-tab { font-size: 12px; padding: 10px 0; letter-spacing: 0.3px; }
     .input-group { margin-bottom: 14px; }
