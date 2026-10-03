@@ -15,7 +15,7 @@ from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
-GROQ_MODEL   = "llama-3.3-70b-versatile"
+GROQ_MODEL   = "meta-llama/llama-4-scout-17b-16e-instruct"  # Updated: llama-3.3-70b-versatile retired Aug 16 2026
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 
 # ── System prompt ─────────────────────────────────────────────────────────────
@@ -121,6 +121,12 @@ def _groq_response(
             return None
 
         data = response.json()
+        # Guard against unexpected response shapes (e.g. deprecated model error bodies)
+        choices = data.get("choices")
+        if not choices or not isinstance(choices, list) or not choices[0].get("message"):
+            logger.error(f"Groq unexpected response shape: {str(data)[:300]}")
+            return None
+
         return data["choices"][0]["message"]["content"].strip()
 
     except Exception as e:
