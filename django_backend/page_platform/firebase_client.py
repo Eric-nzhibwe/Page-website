@@ -96,7 +96,10 @@ def _ensure_initialised():
         settings.FIREBASE_CLIENT_EMAIL,
     ]
 
-    if not all(required):
+    # Also accept the single-JSON-blob method
+    sa_json = getattr(settings, 'FIREBASE_SERVICE_ACCOUNT_JSON', '').strip()
+
+    if not sa_json and not all(required):
         logger.info(
             'Firebase credentials not configured — '
             'Firebase Auth and Firestore features are disabled.'
@@ -106,17 +109,44 @@ def _ensure_initialised():
     try:
         import firebase_admin
         from firebase_admin import credentials
+        import json
 
         # Avoid re-initialising if another module already did it
         if firebase_admin._apps:
             _firebase_app = firebase_admin.get_app()
             return
 
+        # ── Method 1: full service-account JSON as a single env var ──────────
+        # Most reliable on Render — no PEM line-ending issues.
+        # Set FIREBASE_SERVICE_ACCOUNT_JSON in Render dashboard to the full
+        # contents of your serviceAccountKey.json file (paste the whole JSON).
+        sa_json = getattr(settings, 'FIREBASE_SERVICE_ACCOUNT_JSON', '').strip()
+        if sa_json:
+            try:
+                sa_dict = json.loads(sa_json)
+                cred = credentials.Certificate(sa_dict)
+                _firebase_app = firebase_admin.initialize_app(cred)
+                logger.info(f'Firebase Admin initialised via JSON env var for project: {settings.FIREBASE_PROJECT_ID}')
+                return
+            except Exception as json_exc:
+                logger.warning(f'FIREBASE_SERVICE_ACCOUNT_JSON parse failed: {json_exc} — trying individual vars')
+
+        # ── Method 2: individual env vars (with aggressive key cleaning) ──────
+        cleaned_key = _clean_private_key(settings.FIREBASE_PRIVATE_KEY)
+
+        # Log key shape for diagnostics (never logs the actual key content)
+        lines = cleaned_key.split('\n')
+        logger.info(
+            f'Firebase key shape: {len(lines)} lines, '
+            f'starts={lines[0][:30]!r}, '
+            f'ends={lines[-1][-20:]!r}'
+        )
+
         cred = credentials.Certificate({
             'type': 'service_account',
             'project_id': settings.FIREBASE_PROJECT_ID,
             'private_key_id': settings.FIREBASE_PRIVATE_KEY_ID,
-            'private_key': _clean_private_key(settings.FIREBASE_PRIVATE_KEY),
+            'private_key': cleaned_key,
             'client_email': settings.FIREBASE_CLIENT_EMAIL,
             'client_id': settings.FIREBASE_CLIENT_ID,
             'auth_uri': 'https://accounts.google.com/o/oauth2/auth',
@@ -124,7 +154,6 @@ def _ensure_initialised():
             'auth_provider_x509_cert_url': 'https://www.googleapis.com/oauth2/v1/certs',
             'client_x509_cert_url': settings.FIREBASE_CLIENT_X509_CERT_URL,
         })
-
         _firebase_app = firebase_admin.initialize_app(cred)
         logger.info(f'Firebase Admin initialised for project: {settings.FIREBASE_PROJECT_ID}')
 

@@ -234,6 +234,11 @@ OPENAI_API_KEY = config('OPENAI_API_KEY', default='')
 GEMINI_API_KEY = config('GEMINI_API_KEY', default='')
 
 # ─── Firebase / Firestore ─────────────────────────────────────────────────────
+# Method 1 (recommended on Render): paste the entire serviceAccountKey.json
+# contents as a single env var — no PEM line-ending issues.
+FIREBASE_SERVICE_ACCOUNT_JSON = config('FIREBASE_SERVICE_ACCOUNT_JSON', default='')
+
+# Method 2 (fallback): individual fields from the service account JSON
 FIREBASE_PROJECT_ID = config('FIREBASE_PROJECT_ID', default='')
 FIREBASE_PRIVATE_KEY_ID = config('FIREBASE_PRIVATE_KEY_ID', default='')
 FIREBASE_PRIVATE_KEY = config('FIREBASE_PRIVATE_KEY', default='').replace('\\n', '\n')
@@ -300,6 +305,12 @@ LOGGING = {
         'django': {
             'handlers': ['console'],
             'level': config('DJANGO_LOG_LEVEL', default='INFO'),
+            'propagate': False,
+        },
+        # Suppress noisy 404s from bots/crawlers that aren't real errors
+        'django.request': {
+            'handlers': ['console'],
+            'level': 'ERROR',   # only log 500s, not 404s
             'propagate': False,
         },
         'channels': {

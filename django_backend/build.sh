@@ -124,4 +124,24 @@ if not frontend_url or 'localhost' in frontend_url:
 print("   Email config check complete.")
 PYEOF
 
-echo "==> Build complete"
+echo "==> Verifying Cloudinary configuration"
+python - <<'PYEOF'
+import os, sys
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'page_platform.settings')
+import django; django.setup()
+from django.conf import settings
+
+cloud = settings.CLOUDINARY_STORAGE.get('CLOUD_NAME', '')
+key   = settings.CLOUDINARY_STORAGE.get('API_KEY', '')
+sec   = settings.CLOUDINARY_STORAGE.get('API_SECRET', '')
+
+if not all([cloud, key, sec]):
+    print("   WARNING: Cloudinary not configured — uploads will use local disk (lost on restart).")
+    print("   Set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET in Render.")
+else:
+    storage = getattr(settings, 'DEFAULT_FILE_STORAGE', '')
+    if 'cloudinary' in storage.lower():
+        print(f"   Cloudinary ACTIVE — cloud={cloud}, storage={storage}")
+    else:
+        print(f"   WARNING: Keys set but DEFAULT_FILE_STORAGE is not Cloudinary: {storage}")
+PYEOF
