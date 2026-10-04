@@ -80,6 +80,12 @@ services:
         sync: false
       - key: CLOUDINARY_URL
         sync: false
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
       - key: OPENAI_API_KEY
         sync: false
       - key: DJANGO_SUPERUSER_EMAIL

@@ -73,6 +73,8 @@ class PostSerializer(serializers.ModelSerializer):
     # Write-only upload fields
     media_file  = serializers.FileField(write_only=True, required=False, allow_null=True)
     voice_file  = serializers.FileField(write_only=True, required=False, allow_null=True)
+    # privacy is sent by the frontend but not stored — accept and ignore it
+    privacy     = serializers.CharField(write_only=True, required=False, allow_blank=True)
     # Resolved URL the frontend should use to display the media
     resolved_media_url = serializers.SerializerMethodField()
 
@@ -85,7 +87,15 @@ class PostSerializer(serializers.ModelSerializer):
             'achievement_badge', 'challenge_id', 'reaction_count', 'comment_count',
             'share_count', 'created_at', 'updated_at', 'comments', 'reactions',
             'shares', 'user_reaction', 'user_has_shared',
+            'privacy',   # accepted, not stored
         ]
+
+    def to_internal_value(self, data):
+        """Strip unknown fields (e.g. 'privacy') before validation so they
+        never cause a 400 rejection."""
+        allowed = set(self.fields.keys())
+        filtered = {k: v for k, v in data.items() if k in allowed}
+        return super().to_internal_value(filtered)
 
     def get_resolved_media_url(self, obj):
         """Return the best available media URL — uploaded file takes priority."""
@@ -115,6 +125,7 @@ class PostSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         media_file  = validated_data.pop('media_file', None)
         voice_file  = validated_data.pop('voice_file', None)
+        validated_data.pop('privacy', None)   # frontend sends it, model doesn't have it
         post = super().create(validated_data)
         # Assign uploaded file fields directly on the instance and call
         # save(update_fields=[...]).  QuerySet.update() cannot handle

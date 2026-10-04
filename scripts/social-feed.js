@@ -408,8 +408,7 @@ function postVoiceRecording() {
     fd.append('post_type',      'voice');
     fd.append('content',        caption);
     fd.append('voice_file',     file, file.name);
-    fd.append('voice_duration', String(durationSecs));  // captured before reset
-    fd.append('media_type',     'audio');
+    fd.append('voice_duration', String(durationSecs));
 
     fetch(_POST_API, {
         method:  'POST',
@@ -602,7 +601,7 @@ function publishPost() {
     const fd = new FormData();
     fd.append('content',   content);
     fd.append('post_type', post_type);
-    fd.append('privacy',   privacy);
+    // Note: 'privacy' is intentionally omitted — not a model field yet
     if (_selectedMedia && !isAchievement) {
         fd.append('media_file', _selectedMedia, _selectedMedia.name);
         fd.append('media_type', _selectedMediaType === 'video' ? 'video' : 'image');
