@@ -446,7 +446,14 @@ class FollowViewSet(viewsets.ViewSet):
 
 class StoryViewSet(viewsets.ModelViewSet):
     """
-    ViewSet for Stories with real-time viewer tracking
+    ViewSet for Stories.
+
+    When Firestore is configured (firebase_enabled()), stories are stored in
+    the 'social_stories' Firestore collection so they survive Render re-deploys.
+    Media files are uploaded to Cloudinary via Django's DEFAULT_FILE_STORAGE;
+    only the resulting permanent URL is written to Firestore.
+
+    Falls back to the original PostgreSQL path when Firestore is unavailable.
     """
     serializer_class = StorySerializer
     permission_classes = [IsAuthenticated]
@@ -458,50 +465,166 @@ class StoryViewSet(viewsets.ModelViewSet):
         from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
         return [MultiPartParser(), FormParser(), JSONParser()]
 
-    def get_queryset(self):
-        """Get non-expired stories from followed users"""
+    # ── helpers ───────────────────────────────────────────────────────────────
+
+    @staticmethod
+    def _use_firestore():
+        from page_platform.firebase_client import firebase_enabled
+        return firebase_enabled()
+
+    def _upload_media(self, request) -> tuple[str | None, str | None]:
+        """
+        Upload the attached media file to Cloudinary (or local media root as
+        fallback) and return (url, media_type).  Returns (None, None) if no
+        file was provided.
+        """
+        media_file = request.FILES.get('media_file')
+        if not media_file:
+            return None, None
+
+        import os
+        from django.core.files.storage import default_storage
+        from django.core.files.base import ContentFile
+
+        media_type = 'video' if media_file.content_type.startswith('video') else 'image'
+        ext        = os.path.splitext(media_file.name)[1].lower() or (
+            '.mp4' if media_type == 'video' else '.jpg'
+        )
+        safe_name  = f"stories/{request.user.id}_{uuid.uuid4().hex}{ext}"
+        path       = default_storage.save(safe_name, ContentFile(media_file.read()))
+        url        = request.build_absolute_uri(default_storage.url(path))
+        return url, media_type
+
+    # ── create ────────────────────────────────────────────────────────────────
+
+    def create(self, request, *args, **kwargs):
+        if self._use_firestore():
+            return self._create_firestore(request)
+        return self._create_postgres(request)
+
+    def _create_firestore(self, request):
+        from .firestore_story_service import create_story
+
+        media_url, media_type = self._upload_media(request)
+
+        # Also accept a plain URL posted directly (no file upload)
+        if not media_url:
+            media_url  = request.data.get('media_url', '')
+            media_type = request.data.get('media_type', 'image')
+
+        if not media_url:
+            return Response(
+                {'error': 'media_file or media_url is required.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        content = request.data.get('content', '').strip()
+        story   = create_story(request.user, media_url, media_type, content=content)
+        if not story:
+            return Response(
+                {'error': 'Failed to save story. Please try again.'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+        return Response(story, status=status.HTTP_201_CREATED)
+
+    def _create_postgres(self, request):
+        """Original PostgreSQL path — kept as fallback."""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save(author=request.user)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+    # ── feed ──────────────────────────────────────────────────────────────────
+
+    @action(detail=False, methods=['get'])
+    def feed(self, request):
+        """Get stories feed for current user (Firestore or PostgreSQL)."""
+        if self._use_firestore():
+            from .firestore_story_service import get_story_feed
+            followed = list(request.user.following.values_list('following', flat=True))
+            stories  = get_story_feed(followed, request.user.id)
+            return Response(stories)
+
+        # PostgreSQL fallback
         from django.utils import timezone
-        user = self.request.user
+        user           = request.user
         followed_users = user.following.values_list('following', flat=True)
-        
+        stories = Story.objects.filter(
+            Q(author=user) | Q(author__in=followed_users),
+            expires_at__gt=timezone.now()
+        ).select_related('author').prefetch_related('views').order_by('-created_at')[:50]
+        serializer = self.get_serializer(stories, many=True, context={'request': request})
+        return Response(serializer.data)
+
+    # ── view (mark as viewed) ─────────────────────────────────────────────────
+
+    @action(detail=True, methods=['post'])
+    def view(self, request, pk=None):
+        """Mark story as viewed by the current user."""
+        if self._use_firestore():
+            from .firestore_story_service import mark_viewed
+            result = mark_viewed(pk, request.user)
+            if not result:
+                return Response({'error': 'Story not found.'},
+                                status=status.HTTP_404_NOT_FOUND)
+            code = status.HTTP_201_CREATED if result.get('created') else status.HTTP_200_OK
+            return Response(result, status=code)
+
+        # PostgreSQL fallback
+        story = self.get_object()
+        view, created = StoryView.objects.get_or_create(
+            story=story, viewer=request.user
+        )
+        serializer = StoryViewSerializer(view)
+        return Response(serializer.data,
+                        status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
+
+    # ── viewers ───────────────────────────────────────────────────────────────
+
+    @action(detail=True, methods=['get'])
+    def viewers(self, request, pk=None):
+        """Return the viewer list for a story (author only)."""
+        if self._use_firestore():
+            from .firestore_story_service import get_story, get_story_viewers
+            story = get_story(pk)
+            if story is None:
+                return Response({'error': 'Story not found.'},
+                                status=status.HTTP_404_NOT_FOUND)
+            if story['author']['id'] != str(request.user.id):
+                return Response({'error': 'Permission denied.'},
+                                status=status.HTTP_403_FORBIDDEN)
+            return Response(get_story_viewers(pk))
+
+        # PostgreSQL fallback
+        story = self.get_object()
+        if story.author != request.user:
+            return Response({'error': 'Permission denied'},
+                            status=status.HTTP_403_FORBIDDEN)
+        views      = story.views.all().order_by('-viewed_at')
+        serializer = StoryViewSerializer(views, many=True)
+        return Response(serializer.data)
+
+    # ── destroy ───────────────────────────────────────────────────────────────
+
+    def destroy(self, request, *args, **kwargs):
+        if self._use_firestore():
+            from .firestore_story_service import delete_story
+            ok = delete_story(kwargs.get('pk'), request.user.id)
+            if not ok:
+                return Response({'error': 'Not found or permission denied.'},
+                                status=status.HTTP_404_NOT_FOUND)
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        return super().destroy(request, *args, **kwargs)
+
+    # ── list / retrieve — not commonly used but kept working ──────────────────
+
+    def get_queryset(self):
+        """PostgreSQL queryset — only used when Firestore is off."""
+        from django.utils import timezone
+        user           = self.request.user
+        followed_users = user.following.values_list('following', flat=True)
         return Story.objects.filter(
             Q(author=user) | Q(author__in=followed_users),
             expires_at__gt=timezone.now()
         ).select_related('author').prefetch_related('views')
-    
-    def perform_create(self, serializer):
-        """Create story with current user as author"""
-        serializer.save(author=self.request.user)
-    
-    @action(detail=True, methods=['post'])
-    def view(self, request, pk=None):
-        """Mark story as viewed by current user"""
-        story = self.get_object()
-        
-        view, created = StoryView.objects.get_or_create(
-            story=story,
-            viewer=request.user
-        )
-        
-        serializer = StoryViewSerializer(view)
-        return Response(serializer.data, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
-    
-    @action(detail=True, methods=['get'])
-    def viewers(self, request, pk=None):
-        """Get list of users who viewed this story"""
-        story = self.get_object()
-        
-        # Only author can see viewers
-        if story.author != request.user:
-            return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
-        
-        views = story.views.all().order_by('-viewed_at')
-        serializer = StoryViewSerializer(views, many=True)
-        return Response(serializer.data)
-    
-    @action(detail=False, methods=['get'])
-    def feed(self, request):
-        """Get stories feed for current user"""
-        stories = self.get_queryset().order_by('-created_at')[:50]
-        serializer = self.get_serializer(stories, many=True)
-        return Response(serializer.data)

@@ -66,12 +66,18 @@ def get_firebase_app():
 
 
 def get_firestore_client():
-    """Return a Firestore client, or None if Firebase is not configured."""
+    """
+    Return a Firestore client authenticated with the Firebase Admin SDK.
+    Returns None if Firebase is not configured.
+    """
     if not firebase_enabled():
         return None
     try:
-        from google.cloud import firestore
-        return firestore.Client(project=settings.FIREBASE_PROJECT_ID)
+        # Use firebase_admin's own Firestore client — authenticated via the
+        # service account credential we already initialised. This avoids the
+        # "Application Default Credentials" error from google.cloud.firestore.
+        from firebase_admin import firestore as fb_firestore
+        return fb_firestore.client()
     except Exception as exc:
         logger.warning(f'Could not create Firestore client: {exc}')
         return None
