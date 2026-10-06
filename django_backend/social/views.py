@@ -450,8 +450,8 @@ class StoryViewSet(viewsets.ModelViewSet):
 
     When Firestore is configured (firebase_enabled()), stories are stored in
     the 'social_stories' Firestore collection so they survive Render re-deploys.
-    Media files are uploaded to Cloudinary via Django's DEFAULT_FILE_STORAGE;
-    only the resulting permanent URL is written to Firestore.
+    Story images are resized, JPEG-compressed, and stored as base64 data URIs —
+    no external file storage service required.
 
     Falls back to the original PostgreSQL path when Firestore is unavailable.
     """
@@ -474,26 +474,73 @@ class StoryViewSet(viewsets.ModelViewSet):
 
     def _upload_media(self, request) -> tuple[str | None, str | None]:
         """
-        Upload the attached media file to Cloudinary (or local media root as
-        fallback) and return (url, media_type).  Returns (None, None) if no
-        file was provided.
+        Process the attached media file and return (data_uri_or_url, media_type).
+        
+        Images are resized to max 800px, JPEG-compressed, and returned as a
+        base64 data URI — no external storage service required.
+        Videos are too large for base64; they fall back to default_storage
+        (Cloudinary if configured, local otherwise).
+        Returns (None, None) if no file was provided.
         """
         media_file = request.FILES.get('media_file')
         if not media_file:
             return None, None
 
+        media_type = 'video' if media_file.content_type.startswith('video') else 'image'
+
+        # ── Images → base64 data URI (no Cloudinary needed) ──────────────────
+        if media_type == 'image':
+            try:
+                from PIL import Image
+                import io, base64
+
+                img = Image.open(media_file)
+
+                # Normalise colour mode for JPEG
+                if img.mode in ('RGBA', 'LA', 'P'):
+                    bg = Image.new('RGB', img.size, (255, 255, 255))
+                    if img.mode == 'P':
+                        img = img.convert('RGBA')
+                    bg.paste(img, mask=img.split()[-1] if img.mode == 'RGBA' else None)
+                    img = bg
+                elif img.mode != 'RGB':
+                    img = img.convert('RGB')
+
+                # Resize: cap longest side at 800px, preserve aspect ratio
+                max_side = 800
+                w, h = img.size
+                if max(w, h) > max_side:
+                    scale = max_side / max(w, h)
+                    img = img.resize((int(w * scale), int(h * scale)), Image.LANCZOS)
+
+                buf = io.BytesIO()
+                img.save(buf, format='JPEG', quality=82, optimize=True)
+                encoded  = base64.b64encode(buf.getvalue()).decode('utf-8')
+                data_uri = f'data:image/jpeg;base64,{encoded}'
+                return data_uri, 'image'
+
+            except Exception as exc:
+                import logging
+                logging.getLogger(__name__).error(f'Story image processing failed: {exc}')
+                return None, None
+
+        # ── Videos → fall back to default_storage ────────────────────────────
+        # Videos are too large for base64 in Firestore (1 MB doc limit).
+        # They still use whatever DEFAULT_FILE_STORAGE is configured.
         import os
         from django.core.files.storage import default_storage
         from django.core.files.base import ContentFile
 
-        media_type = 'video' if media_file.content_type.startswith('video') else 'image'
-        ext        = os.path.splitext(media_file.name)[1].lower() or (
-            '.mp4' if media_type == 'video' else '.jpg'
-        )
-        safe_name  = f"stories/{request.user.id}_{uuid.uuid4().hex}{ext}"
-        path       = default_storage.save(safe_name, ContentFile(media_file.read()))
-        url        = request.build_absolute_uri(default_storage.url(path))
-        return url, media_type
+        ext       = os.path.splitext(media_file.name)[1].lower() or '.mp4'
+        safe_name = f"stories/{request.user.id}_{uuid.uuid4().hex}{ext}"
+        try:
+            path = default_storage.save(safe_name, ContentFile(media_file.read()))
+            url  = request.build_absolute_uri(default_storage.url(path))
+            return url, 'video'
+        except Exception as exc:
+            import logging
+            logging.getLogger(__name__).error(f'Story video upload failed: {exc}')
+            return None, None
 
     # ── create ────────────────────────────────────────────────────────────────
 
@@ -528,12 +575,35 @@ class StoryViewSet(viewsets.ModelViewSet):
         return Response(story, status=status.HTTP_201_CREATED)
 
     def _create_postgres(self, request):
-        """Original PostgreSQL path — kept as fallback."""
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        serializer.save(author=request.user)
-        headers = self.get_success_headers(serializer.data)
-        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+        """
+        PostgreSQL fallback path.
+        Processes the image the same way as the Firestore path (base64 data URI
+        stored in media_url) so Cloudinary is never touched.
+        """
+        media_url, media_type = self._upload_media(request)
+
+        if not media_url:
+            media_url  = request.data.get('media_url', '')
+            media_type = request.data.get('media_type', 'image')
+
+        if not media_url:
+            return Response(
+                {'error': 'media_file or media_url is required.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        content = request.data.get('content', '').strip()
+
+        from django.utils import timezone
+        story = Story.objects.create(
+            author     = request.user,
+            content    = content,
+            media_url  = media_url,
+            media_type = media_type,
+            expires_at = timezone.now() + timezone.timedelta(hours=24),
+        )
+        serializer = self.get_serializer(story, context={'request': request})
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     # ── feed ──────────────────────────────────────────────────────────────────
 

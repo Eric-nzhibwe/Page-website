@@ -259,8 +259,8 @@ class Story(models.Model):
     
     # Content
     content = models.TextField(max_length=500, blank=True)
-    media_url = models.URLField(blank=True)          # external URL (optional)
-    media_file = models.FileField(                   # uploaded file (preferred)
+    media_url = models.TextField(blank=True)             # data URI or external URL
+    media_file = models.FileField(                       # legacy file upload (unused when base64 path is active)
         upload_to='stories/',
         blank=True,
         null=True,

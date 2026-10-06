@@ -244,6 +244,14 @@ def get_story_viewers(story_id: str, limit: int = 100) -> list:
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _avatar(user) -> str | None:
+    # Prefer the new avatar_url TextField (base64 data URI or CDN URL)
+    try:
+        av = getattr(user, 'avatar_url', '')
+        if av:
+            return av
+    except Exception:
+        pass
+    # Fall back to legacy ImageField
     try:
         return user.profile_image.url if user.profile_image else None
     except Exception:

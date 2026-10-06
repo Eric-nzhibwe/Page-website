@@ -31,11 +31,11 @@
     padding: 3px;
     /* Instagram-style gradient ring: orange → magenta → purple */
     background: conic-gradient(
-        #f9a825 0deg,
-        #e64a19 72deg,
-        #c2185b 144deg,
-        #7b1fa2 216deg,
-        #f9a825 360deg
+        lightgreen 0deg,
+        darkolivegreen 72deg,
+        darkgreen 144deg,
+        lightblue 216deg,
+        darkblue 360deg
     );
     flex-shrink: 0;
 }

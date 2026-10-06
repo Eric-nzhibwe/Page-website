@@ -200,13 +200,17 @@ class StorySerializer(serializers.ModelSerializer):
         ]
 
     def get_resolved_media_url(self, obj):
-        """Return the best available media URL — file upload takes priority."""
+        """Return the best available media URL — data URI or file upload URL."""
+        # media_url holds the base64 data URI (new path) or an external URL
+        if obj.media_url:
+            return obj.media_url
+        # Legacy: file was uploaded via FileField
         request = self.context.get('request')
         if obj.media_file and hasattr(obj.media_file, 'url'):
             if request:
                 return request.build_absolute_uri(obj.media_file.url)
             return obj.media_file.url
-        return obj.media_url or ''
+        return ''
 
     def create(self, validated_data):
         media_file = validated_data.pop('media_file', None)
