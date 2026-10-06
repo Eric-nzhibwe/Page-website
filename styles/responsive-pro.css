@@ -629,109 +629,128 @@ body {
    =================================================================== */
 .stories-container {
   display: flex !important;
-  gap: 8px !important;
-  padding: 12px 12px 10px !important;
-  background: var(--page-surface) !important;
+  gap: 16px !important;
+  padding: 12px 16px 14px !important;
+  background: #111 !important;
   overflow-x: auto !important;
   overflow-y: hidden !important;
   scroll-behavior: smooth !important;
   -webkit-overflow-scrolling: touch !important;
   scrollbar-width: none !important;
   -ms-overflow-style: none !important;
-  border-bottom: 1px solid var(--page-border) !important;
+  border-bottom: 1px solid #2a2a2a !important;
   margin-bottom: 10px !important;
   border-radius: 0 !important;
+  align-items: flex-start !important;
 }
 
 .stories-container::-webkit-scrollbar { display: none !important; }
 
 @media (min-width: 1024px) {
   .stories-container {
-    padding: 16px 20px !important;
-    gap: 12px !important;
-    border-radius: var(--page-radius-md) !important;
+    padding: 16px 20px 16px !important;
+    gap: 20px !important;
+    border-radius: 12px !important;
     margin-bottom: 14px !important;
-    border: 1px solid var(--page-border) !important;
-    box-shadow: var(--page-shadow-sm) !important;
-    scrollbar-width: thin !important;
-    scrollbar-color: var(--page-border) transparent !important;
+    border: 1px solid #2a2a2a !important;
+    box-shadow: none !important;
   }
-
-  .stories-container::-webkit-scrollbar { display: initial !important; height: 4px !important; }
-  .stories-container::-webkit-scrollbar-thumb { background: var(--page-border) !important; border-radius: 2px !important; }
 }
 
+/* ── Story card — circle layout, no card shape ── */
 .story-card {
-  min-width: 76px !important;
-  height: 108px !important;
-  border-radius: 14px !important;
-  overflow: hidden !important;
+  min-width: 80px !important;
+  width: 80px !important;
+  height: auto !important;
+  border-radius: 0 !important;
+  overflow: visible !important;
   cursor: pointer !important;
   position: relative !important;
   flex-shrink: 0 !important;
-  box-shadow: var(--page-shadow-sm) !important;
-  transition: transform .2s, box-shadow .2s !important;
-  border: 2px solid transparent !important;
+  box-shadow: none !important;
+  border: none !important;
+  background: none !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 4px 0 !important;
+  transition: transform .18s ease !important;
 }
 
 .story-card:hover {
-  transform: translateY(-4px) scale(1.03) !important;
-  box-shadow: var(--page-shadow-md) !important;
-  border-color: var(--page-green-light) !important;
+  transform: scale(1.06) !important;
+  box-shadow: none !important;
+  border-color: transparent !important;
 }
 
 .story-card:active { transform: scale(.97) !important; }
 
 @media (min-width: 640px) {
-  .story-card { min-width: 92px !important; height: 128px !important; }
+  .story-card { min-width: 86px !important; width: 86px !important; }
 }
 
 @media (min-width: 1024px) {
-  .story-card { min-width: 102px !important; height: 148px !important; }
+  .story-card { min-width: 90px !important; width: 90px !important; }
 }
 
+/* ── story-image is the inner circle, not the card background ── */
 .story-image {
-  width: 100% !important;
-  height: 100% !important;
+  width: 68px !important;
+  height: 68px !important;
+  min-width: 68px !important;
+  border-radius: 50% !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
-  font-size: 28px !important;
-  color: white !important;
-  /* No background here — each card sets its own via inline style */
-  background-color: var(--page-green) !important;
+  font-size: 0 !important;
+  background-color: #2a2a2a !important;
   background-size: cover !important;
   background-position: center !important;
   background-repeat: no-repeat !important;
+  border: 2px solid #111 !important;
+  overflow: hidden !important;
+  flex-shrink: 0 !important;
 }
 
-/* Only the "Add Story" placeholder card gets the green gradient */
+/* "Add Story" placeholder */
 .create-story .story-image {
   background-image: none !important;
-  background-color: #f4f6f1 !important;
-  color: var(--page-green) !important;
+  background-color: #2a2a2a !important;
+  color: transparent !important;
+  font-size: 0 !important;
 }
 
-/* Real story cards with an image — hide the icon inside */
-.story-card:not(.create-story) .story-image[style*="background-image"] i {
+/* Hide icon on cards that have a background photo */
+.story-card:not(.create-story) .story-image[style*="background-image"] i,
+.story-card:not(.create-story) .story-image[style*="background"] i {
   display: none !important;
 }
 
+/* ── Name label — below the circle, white text ── */
 .story-name {
-  position: absolute !important;
-  bottom: 6px !important;
-  left: 7px !important;
-  right: 7px !important;
-  color: white !important;
-  font-size: 10px !important;
-  font-weight: 600 !important;
-  text-shadow: 0 1px 4px rgba(0,0,0,.6) !important;
+  position: static !important;
+  bottom: auto !important;
+  left: auto !important;
+  right: auto !important;
+  color: #fff !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  text-shadow: none !important;
   white-space: nowrap !important;
   overflow: hidden !important;
   text-overflow: ellipsis !important;
+  text-align: center !important;
+  max-width: 78px !important;
 }
 
-.create-story .story-name { color: #333 !important; text-shadow: none !important; }
+.create-story .story-name {
+  color: #fff !important;
+  text-shadow: none !important;
+  font-weight: 600 !important;
+}
+
+
 
 /* ===================================================================
    CREATE POST CARD

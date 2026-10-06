@@ -1,106 +1,144 @@
 /* ═══════════════════════════════════════════════════════════════════
-   STORY CARD — Instagram-style circle with ring
+   STORY CARD — Instagram-style circles with gradient ring
    ═══════════════════════════════════════════════════════════════════ */
+
 .story-card {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 6px;
-    min-width: 72px;
+    gap: 8px;
+    min-width: 80px;
+    width: 80px;
     height: auto !important;
     background: none !important;
     border-radius: 0 !important;
     box-shadow: none !important;
     cursor: pointer;
     flex-shrink: 0;
-    transition: transform 0.2s ease;
-    padding: 4px 2px;
+    padding: 4px 0;
     overflow: visible !important;
+    transition: transform 0.18s ease;
 }
-.story-card:hover { transform: scale(1.07); }
+.story-card:hover  { transform: scale(1.06); }
 .story-card:active { transform: scale(1.02); }
 
-/* The circle frame — gradient ring like Instagram */
-.story-image {
-    width: 60px !important;
-    height: 60px !important;
-    min-width: 60px;
+/* ── Ring wrapper — gradient border via padding trick ── */
+.story-ring-wrap {
+    position: relative;
+    width: 74px;
+    height: 74px;
+    border-radius: 50%;
+    padding: 3px;
+    /* Instagram-style gradient ring: orange → magenta → purple */
+    background: conic-gradient(
+        #f9a825 0deg,
+        #e64a19 72deg,
+        #c2185b 144deg,
+        #7b1fa2 216deg,
+        #f9a825 360deg
+    );
+    flex-shrink: 0;
+}
+
+/* Viewed ring → grey */
+.story-ring-wrap.viewed {
+    background: #555 !important;
+}
+
+/* "Your story" card ring → flat dark border, no gradient */
+.create-story .story-ring-wrap {
+    background: #3a3a3a !important;
+}
+
+/* ── Inner circle — the actual photo ── */
+.story-ring-wrap .story-image {
+    width: 68px !important;
+    height: 68px !important;
+    min-width: 68px;
     border-radius: 50% !important;
     background-size: cover !important;
     background-position: center !important;
     background-repeat: no-repeat !important;
-    background-color: var(--page-primary) !important;
-    border: none !important;
+    background-color: #2a2a2a !important;
+    border: 2px solid #111 !important;  /* gap between ring and photo */
     box-shadow: none !important;
-    position: relative;
-    /* ring is painted via the wrapper */
-}
-
-/* Ring wrapper — sits behind the image via padding trick */
-.story-ring-wrap {
-    position: relative;
-    width: 64px;
-    height: 64px;
-    border-radius: 50%;
-    padding: 3px;
-    background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888);
-    flex-shrink: 0;
-}
-/* "viewed" ring is grey */
-.story-ring-wrap.viewed {
-    background: #ccc !important;
-}
-/* "own" story ring uses brand colours */
-.story-ring-wrap.own-story {
-    background: linear-gradient(45deg, var(--page-primary), var(--page-accent)) !important;
-}
-
-.story-ring-wrap .story-image {
-    width: 58px !important;
-    height: 58px !important;
-    min-width: 58px;
-    border-radius: 50% !important;
-    border: 2px solid white !important;
-    object-fit: cover;
-    display: block;
-}
-
-/* "+" badge on the create-story card */
-.create-story .story-ring-wrap {
-    background: #e0e0e0 !important;
-}
-.create-story .story-image {
-    background: #f8f8f8 !important;
-    font-size: 22px;
-    color: var(--page-primary);
     display: flex;
     align-items: center;
     justify-content: center;
+    overflow: hidden;
+    position: relative;
 }
 
+/* Standalone .story-image (outside ring wrap — fallback) */
+.story-image {
+    width: 68px !important;
+    height: 68px !important;
+    min-width: 68px;
+    border-radius: 50% !important;
+    background-size: cover !important;
+    background-position: center !important;
+    background-color: #2a2a2a !important;
+    border: none !important;
+    position: relative;
+}
+
+/* ── "+" add badge on Your Story card ── */
+.create-story .story-ring-wrap::after {
+    content: '+';
+    position: absolute;
+    bottom: 2px;
+    right: 2px;
+    width: 22px;
+    height: 22px;
+    background: #fff;
+    color: #111;
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 22px;
+    text-align: center;
+    border-radius: 50%;
+    border: 2px solid #111;
+    z-index: 3;
+    pointer-events: none;
+}
+
+/* Icon inside create-story image placeholder */
+.create-story .story-image {
+    background: #2a2a2a !important;
+    font-size: 0 !important;           /* hide any <i> icon — badge does the job */
+    color: transparent !important;
+}
+.create-story .story-image i { display: none !important; }
+
+/* ── Username label ── */
 .story-name {
     position: static !important;
-    color: var(--theme-text, #1c1e21);
+    bottom: auto !important;
+    left: auto !important;
+    color: #fff !important;
     font-size: 11px;
-    font-weight: 600;
+    font-weight: 500;
     text-align: center;
-    max-width: 68px;
+    max-width: 76px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     text-shadow: none !important;
-    bottom: auto !important;
-    left: auto !important;
+    letter-spacing: 0.01em;
 }
 
-.create-story .story-name { color: #555; }
+/* "Your story" label */
+.create-story .story-name {
+    color: #fff !important;
+    font-weight: 600;
+}
 
-/* multi-story count badge */
+/* ── Multi-story count badge ── */
 .story-count-badge {
     position: absolute;
-    bottom: 0;
-    right: 0;
-    background: var(--page-primary);
+    bottom: 2px;
+    right: 2px;
+    background: var(--page-primary, #556b2f);
     color: #fff;
     border-radius: 50%;
     width: 18px;
@@ -110,9 +148,10 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    border: 2px solid #fff;
+    border: 2px solid #111;
     z-index: 2;
 }
+
 
 /* ═══════════════════════════════════════════════════════════════════
    STORY VIEWER — full-screen Instagram-style modal

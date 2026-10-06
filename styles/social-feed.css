@@ -1147,8 +1147,8 @@
     }
 
     .story-card {
-        min-width: 90px;
-        height: 150px;
+        min-width: 80px;
+        height: auto;
     }
 
     .create-post-card {
@@ -1187,12 +1187,12 @@
     }
 
     .story-card {
-        min-width: 80px;
-        height: 130px;
+        min-width: 76px;
+        height: auto;
     }
 
     .story-image {
-        font-size: 30px;
+        font-size: 0;
     }
 
     .story-name {
