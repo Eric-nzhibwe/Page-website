@@ -52,6 +52,9 @@ class User(AbstractUser):
     email = models.EmailField(unique=True)
     display_name = models.CharField(max_length=100, blank=True)
     profile_image = models.ImageField(upload_to='profiles/', blank=True, null=True)
+    # avatar_url stores a permanent image URL (base64 data URI or any CDN URL).
+    # This field bypasses file storage entirely — set by the avatar upload endpoint.
+    avatar_url = models.TextField(blank=True, default='')
     bio = models.TextField(max_length=500, blank=True)
     
     # Gaming stats

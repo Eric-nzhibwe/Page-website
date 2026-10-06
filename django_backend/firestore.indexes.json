@@ -127,6 +127,24 @@
     },
 
     {
+      "collectionGroup": "social_stories",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "author_id",  "order": "ASCENDING" },
+        { "fieldPath": "expires_at", "order": "ASCENDING" },
+        { "fieldPath": "created_at", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "social_stories",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "expires_at", "order": "ASCENDING" },
+        { "fieldPath": "created_at", "order": "DESCENDING" }
+      ]
+    },
+
+    {
       "collectionGroup": "alliances",
       "queryScope": "COLLECTION",
       "fields": [

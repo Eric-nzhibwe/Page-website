@@ -542,7 +542,13 @@ def change_password_view(request):
 @api_view(['POST'])
 @permission_classes([permissions.IsAuthenticated])
 def upload_avatar_view(request):
-    """Upload / replace the user's profile image."""
+    """
+    Upload / replace the user's profile avatar.
+
+    Accepts a multipart file upload ('avatar' field).
+    Resizes the image to 256×256, converts it to a JPEG base64 data URI,
+    and stores it in user.avatar_url — no external storage service required.
+    """
     if 'avatar' not in request.FILES:
         return Response({'error': 'No file provided.'}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -554,26 +560,62 @@ def upload_avatar_view(request):
     if file.size > 5 * 1024 * 1024:  # 5 MB limit
         return Response({'error': 'File too large. Max 5 MB.'}, status=status.HTTP_400_BAD_REQUEST)
 
+    # ── Resize to 256×256 and encode as base64 data URI ──────────────────────
+    try:
+        from PIL import Image
+        import io, base64
+
+        img = Image.open(file)
+
+        # Convert palette / RGBA modes to RGB so JPEG save works
+        if img.mode in ('RGBA', 'LA', 'P'):
+            background = Image.new('RGB', img.size, (255, 255, 255))
+            if img.mode == 'P':
+                img = img.convert('RGBA')
+            background.paste(img, mask=img.split()[-1] if img.mode == 'RGBA' else None)
+            img = background
+        elif img.mode != 'RGB':
+            img = img.convert('RGB')
+
+        # Crop to square from centre, then resize
+        w, h   = img.size
+        side   = min(w, h)
+        left   = (w - side) // 2
+        top    = (h - side) // 2
+        img    = img.crop((left, top, left + side, top + side))
+        img    = img.resize((256, 256), Image.LANCZOS)
+
+        buf = io.BytesIO()
+        img.save(buf, format='JPEG', quality=85, optimize=True)
+        encoded = base64.b64encode(buf.getvalue()).decode('utf-8')
+        data_uri = f'data:image/jpeg;base64,{encoded}'
+
+    except Exception as exc:
+        import logging
+        logging.getLogger(__name__).error(f'Avatar resize failed: {exc}')
+        return Response({'error': 'Could not process image.'}, status=status.HTTP_400_BAD_REQUEST)
+
     user = request.user
+    user.avatar_url = data_uri
+    user.save(update_fields=['avatar_url'])
 
-    # Delete the old file before replacing it (keeps storage clean)
-    if user.profile_image:
-        try:
-            user.profile_image.delete(save=False)
-        except Exception:
-            pass
-
-    user.profile_image = file
-    user.save(update_fields=['profile_image'])
-
-    absolute_url = request.build_absolute_uri(user.profile_image.url)
+    # Also sync to Firestore so the avatar appears in real-time features
+    try:
+        from page_platform.firebase_client import get_firestore
+        db = get_firestore()
+        if db:
+            db.collection('user_profiles').document(str(user.id)).set(
+                {'avatar_url': data_uri, 'profile_image': data_uri},
+                merge=True,
+            )
+    except Exception:
+        pass  # Firestore sync is best-effort
 
     return Response({
         'message': 'Avatar updated successfully.',
-        # Both keys returned so all frontend code paths find one of them
-        'avatar_url':        absolute_url,
-        'profile_image_url': absolute_url,
-        'profile_image':     absolute_url,
+        'avatar_url':        data_uri,
+        'profile_image_url': data_uri,
+        'profile_image':     data_uri,
     })
 
 

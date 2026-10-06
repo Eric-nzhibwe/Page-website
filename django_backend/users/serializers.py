@@ -141,11 +141,14 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
     def get_profile_image_url(self, obj):
         """
-        Return the profile image URL only if the file actually exists on disk.
-        On Render (ephemeral filesystem) uploaded files are lost on restart --
-        returning a broken URL causes 404 log spam and broken avatar images.
-        Falls back to None so the frontend can show a generated avatar instead.
+        Return the best available avatar URL.
+        Priority: avatar_url (base64/CDN, always works) → profile_image file → None.
         """
+        # New field — base64 data URI or any persistent URL
+        if getattr(obj, 'avatar_url', ''):
+            return obj.avatar_url
+
+        # Legacy ImageField — only return if the file actually exists
         if not obj.profile_image:
             return None
         try:

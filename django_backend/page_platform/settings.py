@@ -174,9 +174,9 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # ─── Cloudinary (media storage) ───────────────────────────────────────────────
 CLOUDINARY_STORAGE = {
-    'CLOUD_NAME': config('CLOUDINARY_CLOUD_NAME', default=''),
-    'API_KEY':    config('CLOUDINARY_API_KEY', default=''),
-    'API_SECRET': config('CLOUDINARY_API_SECRET', default=''),
+    'CLOUD_NAME': config('CLOUDINARY_CLOUD_NAME', default='').strip(),
+    'API_KEY':    config('CLOUDINARY_API_KEY', default='').strip(),
+    'API_SECRET': config('CLOUDINARY_API_SECRET', default='').strip(),
 }
 
 _cloudinary_configured = all([
@@ -187,6 +187,23 @@ _cloudinary_configured = all([
 
 if _cloudinary_configured:
     DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+    # Startup diagnostic — logs key shape so mismatches are visible in Render logs.
+    # Never logs the full secret; only the first/last 4 chars and total length.
+    import logging as _logging
+    _cld_log = _logging.getLogger('cloudinary.config')
+    _key    = CLOUDINARY_STORAGE['API_KEY']
+    _secret = CLOUDINARY_STORAGE['API_SECRET']
+    _cld_log.info(
+        f"Cloudinary configured: cloud={CLOUDINARY_STORAGE['CLOUD_NAME']!r} "
+        f"key={_key[:4]}...{_key[-4:]}(len={len(_key)}) "
+        f"secret={_secret[:4]}...{_secret[-4:]}(len={len(_secret)})"
+    )
+    del _cld_log, _key, _secret
+else:
+    import logging as _logging
+    _logging.getLogger('cloudinary.config').warning(
+        'Cloudinary NOT configured — media uploads will use local storage.'
+    )
 
 # ─── Email ────────────────────────────────────────────────────────────────────
 EMAIL_PROVIDER = config('EMAIL_PROVIDER', default='console')
