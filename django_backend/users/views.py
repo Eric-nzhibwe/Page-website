@@ -614,8 +614,7 @@ def upload_avatar_view(request):
     user.avatar_url = data_uri
     user.save(update_fields=['avatar_url'])
 
-    # Also sync to Firestore so the avatar appears in real-time features
-    # (other users see the new photo in discover list, stories, messenger)
+    # Sync to Firestore so the avatar appears in discover list, stories, messenger
     try:
         from page_platform.firebase_client import get_firestore
         db = get_firestore()
@@ -624,12 +623,32 @@ def upload_avatar_view(request):
                 {
                     'avatar_url':        data_uri,
                     'profile_image':     data_uri,
-                    'profile_image_url': data_uri,  # canonical field read by other users
+                    'profile_image_url': data_uri,
                 },
                 merge=True,
             )
     except Exception:
         pass  # Firestore sync is best-effort
+
+    # Push avatar update to all followers via WebSocket so their pages update
+    # immediately without a reload (avatars in post cards, suggest list, etc.)
+    try:
+        from channels.layers import get_channel_layer
+        from asgiref.sync import async_to_sync
+        from social.consumers import _follower_group
+        layer = get_channel_layer()
+        if layer:
+            async_to_sync(layer.group_send)(
+                _follower_group(str(user.id)),
+                {
+                    'type':       'user_feed_avatar_updated',
+                    'user_id':    str(user.id),
+                    'username':   user.username,
+                    'avatar_url': data_uri,
+                }
+            )
+    except Exception:
+        pass  # WS broadcast is best-effort
 
     return Response({
         'message': 'Avatar updated successfully.',

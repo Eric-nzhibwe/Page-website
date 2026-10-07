@@ -684,6 +684,7 @@ function _insertPostCard(post) {
     const card = document.createElement('div');
     card.className = 'post-card post-card--new';
     card.setAttribute('data-post-id', post.id);
+    card.setAttribute('data-author-id', String(author.id || ''));
     card.innerHTML = `
         <div class="post-header">
             <div class="post-author">
@@ -1153,6 +1154,7 @@ function _appendPostCard(post, container) {
     const card = document.createElement('div');
     card.className = 'post-card';
     card.setAttribute('data-post-id', post.id);
+    card.setAttribute('data-author-id', String(author.id || ''));
     card.innerHTML = `
         <div class="post-header">
             <div class="post-author">

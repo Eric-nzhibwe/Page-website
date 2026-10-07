@@ -202,36 +202,54 @@ class PostViewSet(viewsets.ModelViewSet):
     # ── broadcast helpers ─────────────────────────────────────────────────────
 
     def _broadcast_new_post(self, post):
-        """Broadcast a Django model post instance to the feed channel."""
+        """Broadcast a Django model post instance to the feed channel AND follower groups."""
         try:
             from channels.layers import get_channel_layer
             from asgiref.sync import async_to_sync
             import json
             from django.core.serializers.json import DjangoJSONEncoder
+            from .consumers import _follower_group
             req       = type('Req', (), {'user': self.request.user})()
             post_data = PostSerializer(post, context={'request': req}).data
-            get_channel_layer() and async_to_sync(
-                get_channel_layer().group_send
-            )('page_feed', {
-                'type': 'feed_new_post',
-                'post': json.loads(json.dumps(dict(post_data), cls=DjangoJSONEncoder)),
+            post_dict = json.loads(json.dumps(dict(post_data), cls=DjangoJSONEncoder))
+            layer     = get_channel_layer()
+            if not layer:
+                return
+            send = async_to_sync(layer.group_send)
+            # 1. Global feed (count patches, existing subscribers)
+            send('page_feed', {'type': 'feed_new_post', 'post': post_dict})
+            # 2. Follower-specific group — only followers receive new-post events
+            author_id = str(post.author_id)
+            send(_follower_group(author_id), {
+                'type': 'user_feed_new_post',
+                'post': post_dict,
             })
         except Exception:
             pass
 
     def _broadcast_new_post_dict(self, post_dict):
-        """Broadcast a plain dict post to the feed channel."""
+        """Broadcast a plain dict post to the feed channel AND follower groups."""
         try:
             from channels.layers import get_channel_layer
             from asgiref.sync import async_to_sync
             import json
             from django.core.serializers.json import DjangoJSONEncoder
-            get_channel_layer() and async_to_sync(
-                get_channel_layer().group_send
-            )('page_feed', {
-                'type': 'feed_new_post',
-                'post': json.loads(json.dumps(post_dict, cls=DjangoJSONEncoder)),
-            })
+            from .consumers import _follower_group
+            layer = get_channel_layer()
+            if not layer:
+                return
+            send      = async_to_sync(layer.group_send)
+            post_json = json.loads(json.dumps(post_dict, cls=DjangoJSONEncoder))
+            # Global feed
+            send('page_feed', {'type': 'feed_new_post', 'post': post_json})
+            # Follower group — author_id is nested under 'author' dict
+            author_id = str(post_dict.get('author', {}).get('id', '') or
+                            post_dict.get('author_id', ''))
+            if author_id:
+                send(_follower_group(author_id), {
+                    'type': 'user_feed_new_post',
+                    'post': post_json,
+                })
         except Exception:
             pass
 
@@ -572,6 +590,8 @@ class StoryViewSet(viewsets.ModelViewSet):
                 {'error': 'Failed to save story. Please try again.'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+        # Broadcast to followers so their stories rail updates without a reload
+        self._broadcast_new_story(story)
         return Response(story, status=status.HTTP_201_CREATED)
 
     def _create_postgres(self, request):
@@ -603,7 +623,37 @@ class StoryViewSet(viewsets.ModelViewSet):
             expires_at = timezone.now() + timezone.timedelta(hours=24),
         )
         serializer = self.get_serializer(story, context={'request': request})
+        # Broadcast to followers
+        self._broadcast_new_story(serializer.data)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    def _broadcast_new_story(self, story_data):
+        """Push a new story to the global stories group AND the author's follower group."""
+        try:
+            import json
+            from django.core.serializers.json import DjangoJSONEncoder
+            from channels.layers import get_channel_layer
+            from asgiref.sync import async_to_sync
+            from .consumers import _follower_group
+
+            layer = get_channel_layer()
+            if not layer:
+                return
+            send = async_to_sync(layer.group_send)
+            # story_data can be a dict (Firestore) or DRF ReturnDict (Postgres)
+            story_json = json.loads(json.dumps(dict(story_data), cls=DjangoJSONEncoder))
+            # 1. Global stories channel (all connected users)
+            send('page_stories', {'type': 'ws_story_created', 'story': story_json})
+            # 2. Follower group (followers see it on the feed page too)
+            author_id = str(story_data.get('author', {}).get('id', '') or
+                            story_data.get('author_id', ''))
+            if author_id:
+                send(_follower_group(author_id), {
+                    'type':  'user_feed_new_story',
+                    'story': story_json,
+                })
+        except Exception:
+            pass
 
     # ── feed ──────────────────────────────────────────────────────────────────
 

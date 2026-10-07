@@ -522,6 +522,7 @@ function _buildPostCard(post) {
     const div = document.createElement('div');
     div.className = 'post-card';
     div.setAttribute('data-post-id', post.id);
+    div.setAttribute('data-author-id', String(post.author?.id || ''));
 
     const author   = post.author || {};
     const name     = _rtEsc(author.display_name || author.username || 'User');
@@ -911,7 +912,12 @@ async function _initRealtimeUpdates() {
 
     } // end if (wsSupported)
 
-    // ── 3. Load who we're following first so follow buttons render correctly ──
+    // ── 3. Follower-feed WebSocket — new posts/stories/avatar from followed accounts ──
+    // This is a separate, lightweight channel that only delivers content from
+    // accounts the logged-in user actually follows — no polling needed.
+    _connectUserFeedWs();
+
+    // ── 4. Load who we're following first so follow buttons render correctly ──
     _loadFollowingSet().then(() => {
         loadDiscoverUsers();
         loadSuggestedUsers();
@@ -919,18 +925,19 @@ async function _initRealtimeUpdates() {
         _startOnlinePoller();
     });
 
-    // ── 4. Notification WebSocket (real-time bell badge + toasts) ────────────
+    // ── 5. Notification WebSocket (real-time bell badge + toasts) ────────────
     _connectNotifWs();
     // Fallback poller starts automatically if WS fails to connect
 
-    // ── 5. Pause everything when tab is hidden ────────────────────────────────
+    // ── 6. Pause everything when tab is hidden ────────────────────────────────
     document.addEventListener('visibilitychange', () => {
         if (document.hidden) {
             clearInterval(_notifTimer);
             clearInterval(_onlinePollTimer);
             _notifTimer = _onlinePollTimer = null;
         } else {
-            _connectNotifWs();   // reconnect WS if it dropped while hidden
+            _connectNotifWs();
+            _connectUserFeedWs();   // reconnect follower feed WS too
             _startOnlinePoller();
         }
     });
@@ -940,7 +947,8 @@ async function _initRealtimeUpdates() {
 function _buildStoryCard(story) {
     const card = document.createElement('div');
     card.className = 'story-card';
-    card.dataset.storyId = story.id;
+    card.dataset.storyId  = story.id;
+    card.dataset.authorId = String(author.id || '');
 
     const author   = story.author || {};
     const name     = author.display_name || author.username || 'User';
@@ -1188,3 +1196,161 @@ window.unfollowUser    = unfollowUser;
 window.searchUsers     = searchUsers;         // wires up the sidebar search input
 window.loadDiscoverUsers  = loadDiscoverUsers;
 window.loadSuggestedUsers = loadSuggestedUsers;
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  FOLLOWER FEED WebSocket
+//  Connects to ws/social/user-feed/ and handles:
+//    followed_new_post     — prepend new post card to feed
+//    followed_new_story    — add story ring to stories rail
+//    followed_avatar_updated — patch all avatar slots for that user
+// ─────────────────────────────────────────────────────────────────────────────
+let _userFeedWs        = null;
+let _userFeedRetries   = 0;
+let _userFeedDisabled  = false;
+
+function _connectUserFeedWs() {
+    const token = localStorage.getItem('djangoAuthToken');
+    if (!token || _userFeedDisabled) return;
+
+    // Reuse existing open connection
+    if (_userFeedWs &&
+        (_userFeedWs.readyState === WebSocket.OPEN ||
+         _userFeedWs.readyState === WebSocket.CONNECTING)) return;
+
+    // Don't attempt if we already know WS is unsupported on this server
+    const cached = sessionStorage.getItem('ws_supported');
+    if (cached === 'false') return;
+
+    _userFeedWs = new WebSocket(`${_wsBase()}/ws/social/user-feed/?token=${token}`);
+
+    _userFeedWs.onopen = () => {
+        _userFeedRetries = 0;
+    };
+
+    _userFeedWs.onmessage = e => {
+        try { _handleUserFeedMessage(JSON.parse(e.data)); } catch { /* ignore */ }
+    };
+
+    _userFeedWs.onclose = ev => {
+        _userFeedWs = null;
+        if (_userFeedDisabled) return;
+
+        if (ev.code === 1006 && _userFeedRetries === 0) {
+            _userFeedDisabled = true;
+            return;
+        }
+        if (_userFeedRetries >= 5) { _userFeedDisabled = true; return; }
+
+        const delay = Math.min(2000 * Math.pow(2, _userFeedRetries), 30_000);
+        _userFeedRetries++;
+        setTimeout(_connectUserFeedWs, delay);
+    };
+
+    _userFeedWs.onerror = () => { _userFeedWs?.close(); };
+
+    // Keep-alive ping every 25 s
+    setInterval(() => {
+        if (_userFeedWs?.readyState === WebSocket.OPEN) {
+            _userFeedWs.send(JSON.stringify({ action: 'ping' }));
+        }
+    }, 25_000);
+}
+
+function _handleUserFeedMessage(msg) {
+    switch (msg.type) {
+
+        case 'user_feed_ready':
+            // Server confirmed connection — no action needed
+            break;
+
+        case 'followed_new_post': {
+            // A followed user posted — prepend to feed if not already seen
+            const post = msg.post;
+            if (!post || _seenPostIds.has(String(post.id))) break;
+            _seenPostIds.add(String(post.id));
+
+            const container = document.getElementById('feedPosts');
+            if (!container) break;
+
+            const el = _buildPostCard(post);
+            el.classList.add('post-card--new');
+            container.insertBefore(el, container.firstChild);
+
+            // Show a subtle toast so the user notices the new content
+            const authorName = post.author?.display_name || post.author?.username || 'Someone';
+            _rtToast(`${authorName} just posted`, 'info');
+            break;
+        }
+
+        case 'followed_new_story': {
+            // A followed user posted a story — add ring to stories rail
+            const story = msg.story;
+            if (!story) break;
+
+            // Only add if not already present on the rail
+            const existing = document.querySelector(`[data-story-id="${story.id}"]`);
+            if (existing) break;
+
+            _appendStoryCard(story);
+
+            const authorName = story.author?.display_name || story.author?.username || 'Someone';
+            _rtToast(`${authorName} added a story`, 'info');
+            break;
+        }
+
+        case 'followed_avatar_updated': {
+            // A followed user updated their profile picture — patch every
+            // place their avatar appears on the current page without a reload.
+            const { user_id, username, avatar_url } = msg;
+            if (!user_id || !avatar_url) break;
+
+            _patchUserAvatarEverywhere(user_id, avatar_url);
+            break;
+        }
+
+        default:
+            break;
+    }
+}
+
+/**
+ * Update every avatar `<img>` on the page that belongs to a specific user.
+ * Looks for elements with data-user-id or data-author-id attributes,
+ * plus the messenger chat header avatar.
+ *
+ * @param {string} userId    - The author's user id (string)
+ * @param {string} avatarUrl - New avatar URL / base64 data URI
+ */
+function _patchUserAvatarEverywhere(userId, avatarUrl) {
+    if (!userId || !avatarUrl) return;
+
+    const imgTag = `<img src="${_rtEsc(avatarUrl)}" alt="avatar"
+        style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;"
+        onerror="this.replaceWith(window._rtLetterAvatar('?'))">`;
+
+    // Post card author avatars
+    document.querySelectorAll(
+        `.post-card[data-author-id="${userId}"] .post-avatar,
+         .post-card .post-author [data-user-id="${userId}"]`
+    ).forEach(el => { el.innerHTML = imgTag; });
+
+    // Discover / online user list items
+    document.querySelectorAll(
+        `[data-user-id="${userId}"] .page-user-avatar,
+         [data-user-id="${userId}"] .page-online-avatar,
+         [data-user-id="${userId}"] .chip-avatar`
+    ).forEach(el => { el.innerHTML = imgTag; });
+
+    // Messenger chat header (if that user is the open conversation partner)
+    const chatAvatar = document.getElementById('dmChatAvatar');
+    if (chatAvatar && chatAvatar.dataset.userId === String(userId)) {
+        chatAvatar.innerHTML = imgTag;
+    }
+
+    // Story author rings in the stories rail
+    document.querySelectorAll(`.story-card[data-author-id="${userId}"] .story-image`)
+        .forEach(el => {
+            el.style.backgroundImage = `url('${avatarUrl}')`;
+            el.style.backgroundSize = 'cover';
+        });
+}

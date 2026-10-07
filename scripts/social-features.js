@@ -117,10 +117,14 @@ function _clearReactionBtn(btn) {
 
 /**
  * Show the floating reaction picker above the reaction button.
- * Dismissed on mouseup / touchend / click-outside.
+ * Triggered by a single click. Dismissed by clicking outside or picking.
  */
 function _showReactionPicker(postId, btn) {
-    // Remove any other open pickers first
+    // If picker for this post is already open, close it (toggle)
+    const existing = document.querySelector(`.reaction-picker[data-for-post="${postId}"]`);
+    if (existing) { existing.remove(); return; }
+
+    // Close any other open pickers first
     document.querySelectorAll('.reaction-picker').forEach(p => p.remove());
 
     const picker = document.createElement('div');
@@ -136,10 +140,6 @@ function _showReactionPicker(postId, btn) {
         item.dataset.type = type;
         item.innerHTML = `<i class="${meta.icon}"></i><span>${meta.label}</span>`;
         item.style.setProperty('--reaction-color', meta.color);
-        item.addEventListener('mousedown', e => {
-            e.preventDefault();
-            e.stopPropagation();
-        });
         item.addEventListener('click', e => {
             e.stopPropagation();
             picker.remove();
@@ -152,61 +152,47 @@ function _showReactionPicker(postId, btn) {
 
     // Position above the button
     const rect = btn.getBoundingClientRect();
-    const pw   = picker.offsetWidth || 220;
-    let   left = rect.left + rect.width / 2 - pw / 2;
-    left = Math.max(8, Math.min(left, window.innerWidth - pw - 8));
-    picker.style.left = `${left}px`;
-    picker.style.top  = `${rect.top + window.scrollY - picker.offsetHeight - 10}px`;
+    picker.style.visibility = 'hidden';   // measure without flicker
+    picker.style.position   = 'fixed';    // use fixed so no scrollY math needed
+    picker.style.left = '0';
+    picker.style.top  = '0';
+    // Force layout so offsetWidth/Height are real
+    requestAnimationFrame(() => {
+        const pw = picker.offsetWidth  || 220;
+        const ph = picker.offsetHeight || 60;
+        let left = rect.left + rect.width / 2 - pw / 2;
+        left = Math.max(8, Math.min(left, window.innerWidth - pw - 8));
+        const top  = rect.top - ph - 10;
+        picker.style.left       = `${left}px`;
+        picker.style.top        = `${top}px`;
+        picker.style.visibility = '';
+    });
 
     // Dismiss on outside click
     const dismiss = e => {
         if (!picker.contains(e.target) && e.target !== btn) {
             picker.remove();
-            document.removeEventListener('click', dismiss);
+            document.removeEventListener('click', dismiss, true);
         }
     };
-    setTimeout(() => document.addEventListener('click', dismiss), 50);
+    // Use capture so it runs before other handlers
+    setTimeout(() => document.addEventListener('click', dismiss, true), 50);
 }
 
 /**
- * Attach hold-to-react behaviour to a reaction button.
- * Short tap  → toggle current reaction (or default 'fire')
- * Hold 400ms → show reaction picker
+ * Attach single-click-to-open-picker behaviour to a reaction button.
+ * First click → show picker
+ * Clicking the active reaction in the picker → unreact
+ * Clicking outside → close picker
  */
-function _attachReactHold(btn, postId) {
-    if (btn._reactHoldAttached) return;
-    btn._reactHoldAttached = true;
+function _attachReactClick(btn, postId) {
+    if (btn._reactClickAttached) return;
+    btn._reactClickAttached = true;
 
-    let holdTimer = null;
-    let pickerShown = false;
-
-    const start = e => {
-        pickerShown = false;
-        holdTimer = setTimeout(() => {
-            pickerShown = true;
-            _showReactionPicker(postId, btn);
-        }, 400);
-    };
-
-    const cancel = () => {
-        clearTimeout(holdTimer);
-        holdTimer = null;
-    };
-
-    const tap = e => {
-        clearTimeout(holdTimer);
-        if (pickerShown) { pickerShown = false; return; } // picker handled it
-        // Short tap — toggle current reaction
-        const type = btn.dataset.activeReaction || 'fire';
-        reactToPost(postId, type);
-    };
-
-    btn.addEventListener('mousedown',  start);
-    btn.addEventListener('touchstart', start, { passive: true });
-    btn.addEventListener('mouseleave', cancel);
-    btn.addEventListener('mouseup',    cancel);
-    btn.addEventListener('touchend',   cancel);
-    btn.addEventListener('click',      tap);
+    btn.addEventListener('click', e => {
+        e.stopPropagation();
+        _showReactionPicker(postId, btn);
+    });
 }
 
 async function reactToPost(postId, reactionType = 'fire') {
@@ -274,7 +260,7 @@ async function reactToPost(postId, reactionType = 'fire') {
 function initReactButtons() {
     document.querySelectorAll('.reaction-btn[data-post-id]').forEach(btn => {
         const postId = btn.dataset.postId;
-        _attachReactHold(btn, postId);
+        _attachReactClick(btn, postId);
         // Apply saved reaction state from data attribute set during card render
         const savedType = btn.dataset.activeReaction;
         if (savedType && savedType !== '') {
@@ -292,7 +278,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (n.nodeType !== 1) return;
             (n.matches?.('.reaction-btn') ? [n] : [...n.querySelectorAll('.reaction-btn[data-post-id]')])
                 .forEach(btn => {
-                    _attachReactHold(btn, btn.dataset.postId);
+                    _attachReactClick(btn, btn.dataset.postId);
                     if (btn.dataset.activeReaction) {
                         btn.classList.add('reacted');
                         _applyReactionToBtn(btn, btn.dataset.activeReaction);
@@ -500,19 +486,23 @@ function _loadMoreComments() {
 }
 
 function _makeCommentEl(c) {
-    const author   = c.author || {};
-    const name     = esc(author.display_name || author.username || c.username || 'User');
-    const text     = esc(c.content || c.text || '');
-    const when     = timeAgo(c.created_at || c.timestamp || new Date().toISOString());
-    const hasAvatar = author.profile_image;
+    const author  = c.author || {};
+    const name    = esc(author.display_name || author.username || c.username || 'User');
+    const text    = esc(c.content || c.text || '');
+    const when    = timeAgo(c.created_at || c.timestamp || new Date().toISOString());
+    // prefer profile_image_url (avatar_url / base64) over legacy profile_image
+    const avatarUrl = author.profile_image_url || author.avatar_url
+        || (author.profile_image && !author.profile_image.startsWith('/media/')
+            ? author.profile_image : null);
 
     const div = document.createElement('div');
     div.className = 'page-comment-item';
     div.dataset.commentId = c.id || '';
     div.innerHTML = `
       <div class="page-comment-avatar">
-        ${hasAvatar
-            ? `<img src="${esc(author.profile_image)}" alt="${name}">`
+        ${avatarUrl
+            ? `<img src="${esc(avatarUrl)}" alt="${name}"
+                   onerror="this.style.display='none';this.parentElement.innerHTML='<i class=\\'fas fa-user-circle\\'></i>'">`
             : `<i class="fas fa-user-circle"></i>`}
       </div>
       <div class="page-comment-body">
