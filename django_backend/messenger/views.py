@@ -176,12 +176,34 @@ class ConversationViewSet(viewsets.ModelViewSet):
         # sort order is correct when the onSnapshot listener fires.
         conversation.save()
 
+        # ── Audio: convert to base64 data URI ─────────────────────────────────
+        # Cloudinary's default storage uses resource_type='image', which rejects
+        # audio blobs with "Invalid image file".  To avoid that, we encode audio
+        # files as base64 data URIs and store them in the firebase_media_url field
+        # (which bypasses Django's file storage entirely).  Max 10 MB is already
+        # enforced above; a 10 MB audio file → ~13.3 MB base64 — well within
+        # Postgres text column limits and acceptable for voice messages.
+        audio_data_uri = None
+        if message_type == 'audio' and media_file:
+            import base64
+            media_file.seek(0)
+            raw   = media_file.read()
+            # Use the browser-reported content_type; fall back to audio/webm
+            mime  = media_file.content_type or 'audio/webm'
+            # Strip codec parameter for the MIME type in the data URI
+            # e.g. "audio/webm;codecs=opus" → "audio/webm"
+            mime_base = mime.split(';')[0].strip()
+            encoded   = base64.b64encode(raw).decode('utf-8')
+            audio_data_uri = f'data:{mime_base};base64,{encoded}'
+            media_file = None  # don't pass to media_file FileField
+
         message = Message.objects.create(
             conversation=conversation,
             sender=request.user,
             message_type=message_type,
             text=text or None,
             media_file=media_file or None,
+            firebase_media_url=audio_data_uri or None,
             media_duration=_parse_duration(duration),
         )
         # post_save signal in signals.py calls mirror_message() → Firestore
