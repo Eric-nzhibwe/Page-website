@@ -29,6 +29,7 @@ Required Firestore composite indexes
 import logging
 from datetime import datetime, timezone
 
+from google.cloud.firestore_v1 import FieldFilter
 from page_platform.firebase_client import get_firestore
 
 logger    = logging.getLogger(__name__)
@@ -89,7 +90,7 @@ def get_challenge_activity(challenge_id, limit=50):
     try:
         docs = (
             db.collection(COLLECTION)
-            .where('challenge_id', '==', str(challenge_id))
+            .where(filter=FieldFilter('challenge_id', '==', str(challenge_id)))
             .order_by('created_at', direction='DESCENDING')
             .limit(limit)
             .stream()

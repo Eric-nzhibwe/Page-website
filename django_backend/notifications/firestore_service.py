@@ -30,6 +30,7 @@ Indexes (create in Firebase Console → Firestore → Indexes):
 import logging
 from datetime import datetime, timezone
 
+from google.cloud.firestore_v1 import FieldFilter
 from page_platform.firebase_client import get_firestore
 
 logger = logging.getLogger(__name__)
@@ -95,7 +96,7 @@ def list_notifications(user, limit=50):
     try:
         query = (
             db.collection(COLLECTION)
-            .where('recipient_id', '==', str(user.id))
+            .where(filter=FieldFilter('recipient_id', '==', str(user.id)))
             .order_by('created_at', direction='DESCENDING')
             .limit(limit)
         )
@@ -120,8 +121,8 @@ def unread_count(user):
     try:
         query = (
             db.collection(COLLECTION)
-            .where('recipient_id', '==', str(user.id))
-            .where('is_read', '==', False)
+            .where(filter=FieldFilter('recipient_id', '==', str(user.id)))
+            .where(filter=FieldFilter('is_read', '==', False))
         )
         # count() is available in firebase-admin >= 6.2 with Firestore
         # Fall back to len(list(...)) for older SDK versions.
@@ -163,8 +164,8 @@ def mark_read(user, ids=None):
             # Mark all unread for this user using a batched write
             query = (
                 db.collection(COLLECTION)
-                .where('recipient_id', '==', str(user.id))
-                .where('is_read', '==', False)
+                .where(filter=FieldFilter('recipient_id', '==', str(user.id)))
+                .where(filter=FieldFilter('is_read', '==', False))
             )
             docs  = list(query.stream())
             batch = db.batch()

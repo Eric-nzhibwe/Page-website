@@ -78,6 +78,7 @@ import logging
 import uuid
 from datetime import datetime, timezone, timedelta
 
+from google.cloud.firestore_v1 import FieldFilter
 from page_platform.firebase_client import get_firestore
 
 logger       = logging.getLogger(__name__)
@@ -103,12 +104,12 @@ def create_alliance(leader, name: str, tag: str, description: str = '',
 
     # Check uniqueness (Firestore has no UNIQUE constraint — check manually)
     existing_name = (db.collection(ALLIANCES)
-                     .where('name', '==', name).limit(1).stream())
+                     .where(filter=FieldFilter('name', '==', name)).limit(1).stream())
     if any(True for _ in existing_name):
         raise ValueError(f'An alliance named "{name}" already exists.')
 
     existing_tag = (db.collection(ALLIANCES)
-                    .where('tag', '==', tag.upper()).limit(1).stream())
+                    .where(filter=FieldFilter('tag', '==', tag.upper())).limit(1).stream())
     if any(True for _ in existing_tag):
         raise ValueError(f'The tag "{tag}" is already taken.')
 
@@ -178,7 +179,7 @@ def list_alliances(public_only: bool = True, limit: int = 50) -> list:
     try:
         q = db.collection(ALLIANCES)
         if public_only:
-            q = q.where('is_public', '==', True)
+            q = q.where(filter=FieldFilter('is_public', '==', True))
         docs = q.order_by('total_prestige', direction='DESCENDING').limit(limit).stream()
         return [_fmt(d.to_dict() | {'id': d.id}) for d in docs]
     except Exception as exc:
@@ -200,8 +201,8 @@ def get_user_alliance(user_id: str) -> dict | None:
         # in the members sub-collection (Firebase creates this automatically
         # when you first run the query and it prompts you for the index).
         docs = (db.collection_group('members')
-                .where('user_id', '==', str(user_id))
-                .where('status', '==', 'active')
+                .where(filter=FieldFilter('user_id', '==', str(user_id)))
+                .where(filter=FieldFilter('status', '==', 'active'))
                 .limit(1)
                 .stream())
         for member_doc in docs:
@@ -289,7 +290,7 @@ def get_members(alliance_id: str) -> list:
         docs = (db.collection(ALLIANCES)
                 .document(str(alliance_id))
                 .collection('members')
-                .where('status', '==', 'active')
+                .where(filter=FieldFilter('status', '==', 'active'))
                 .order_by('prestige_contributed', direction='DESCENDING')
                 .stream())
         return [_fmt_member(d.to_dict() | {'id': d.id}) for d in docs]
@@ -335,9 +336,9 @@ def send_invitation(alliance_id: str, invited_user, invited_by,
 
     # Check no pending invite already exists
     existing = (db.collection(INVITATIONS)
-                .where('alliance_id',     '==', str(alliance_id))
-                .where('invited_user_id', '==', str(invited_user.id))
-                .where('status',          '==', 'pending')
+                .where(filter=FieldFilter('alliance_id',     '==', str(alliance_id)))
+                .where(filter=FieldFilter('invited_user_id', '==', str(invited_user.id)))
+                .where(filter=FieldFilter('status',          '==', 'pending'))
                 .limit(1)
                 .stream())
     if any(True for _ in existing):
@@ -375,8 +376,8 @@ def get_user_invitations(user_id: str) -> list:
         return []
     try:
         docs = (db.collection(INVITATIONS)
-                .where('invited_user_id', '==', str(user_id))
-                .where('status', '==', 'pending')
+                .where(filter=FieldFilter('invited_user_id', '==', str(user_id)))
+                .where(filter=FieldFilter('status', '==', 'pending'))
                 .order_by('created_at', direction='DESCENDING')
                 .stream())
         now  = datetime.now(tz=timezone.utc)

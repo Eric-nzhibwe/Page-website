@@ -59,6 +59,7 @@ import logging
 import uuid
 from datetime import datetime, timezone
 
+from google.cloud.firestore_v1 import FieldFilter
 from page_platform.firebase_client import get_firestore
 
 logger          = logging.getLogger(__name__)
@@ -175,7 +176,7 @@ def get_feed(followed_user_ids: list, current_user_id: str,
         for chunk in chunks:
             docs = (
                 db.collection(POSTS_COLL)
-                .where('author_id', 'in', chunk)
+                .where(filter=FieldFilter('author_id', 'in', chunk))
                 .order_by('created_at', direction='DESCENDING')
                 .limit(limit)
                 .stream()
@@ -202,7 +203,7 @@ def get_user_posts(user_id: str, limit: int = 40) -> list:
     try:
         docs = (
             db.collection(POSTS_COLL)
-            .where('author_id', '==', str(user_id))
+            .where(filter=FieldFilter('author_id', '==', str(user_id)))
             .order_by('created_at', direction='DESCENDING')
             .limit(limit)
             .stream()
@@ -262,7 +263,7 @@ def get_comments(post_id: str, limit: int = 100) -> list:
             db.collection(POSTS_COLL)
             .document(str(post_id))
             .collection('comments')
-            .where('parent_id', '==', None)
+            .where(filter=FieldFilter('parent_id', '==', None))
             .order_by('created_at')
             .limit(limit)
             .stream()

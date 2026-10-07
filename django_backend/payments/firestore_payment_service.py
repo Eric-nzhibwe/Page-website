@@ -55,6 +55,7 @@ Firestore Payment Mirror Service — Phase 9
 import logging
 from datetime import datetime, timezone
 
+from google.cloud.firestore_v1 import FieldFilter
 from page_platform.firebase_client import get_firestore
 
 logger        = logging.getLogger(__name__)
@@ -205,7 +206,7 @@ def get_transaction_history(user_id: str, tx_type: str = None,
                .order_by('created_at', direction='DESCENDING')
                .limit(limit))
         if tx_type:
-            q = q.where('transaction_type', '==', tx_type)
+            q = q.where(filter=FieldFilter('transaction_type', '==', tx_type))
         docs = q.stream()
         return [_fmt_tx(d.to_dict() | {'id': d.id}) for d in docs]
     except Exception as exc:

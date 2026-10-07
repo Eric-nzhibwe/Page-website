@@ -53,6 +53,7 @@ import uuid
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 
+from google.cloud.firestore_v1 import FieldFilter
 from page_platform.firebase_client import get_firestore
 
 logger     = logging.getLogger(__name__)
@@ -194,7 +195,7 @@ def get_active_challenges(user=None, limit=200) -> list:
     try:
         docs = (
             db.collection(COLLECTION)
-            .where('status', '==', 'active')
+            .where(filter=FieldFilter('status', '==', 'active'))
             .order_by('created_at', direction='DESCENDING')
             .limit(limit)
             .stream()
@@ -227,8 +228,8 @@ def get_featured_challenges(user=None, limit=20) -> list:
     try:
         docs = (
             db.collection(COLLECTION)
-            .where('is_featured', '==', True)
-            .where('status', '==', 'active')
+            .where(filter=FieldFilter('is_featured', '==', True))
+            .where(filter=FieldFilter('status', '==', 'active'))
             .order_by('created_at', direction='DESCENDING')
             .limit(limit)
             .stream()
@@ -257,7 +258,7 @@ def get_challenges_by_creator(user_id: str, user=None) -> list:
     try:
         docs = (
             db.collection(COLLECTION)
-            .where('created_by_id', '==', str(user_id))
+            .where(filter=FieldFilter('created_by_id', '==', str(user_id)))
             .order_by('created_at', direction='DESCENDING')
             .stream()
         )
@@ -292,8 +293,8 @@ def get_following_challenges(followed_user_ids: list, user=None) -> list:
         for chunk in chunks:
             docs = (
                 db.collection(COLLECTION)
-                .where('created_by_id', 'in', [str(uid) for uid in chunk])
-                .where('status', '==', 'active')
+                .where(filter=FieldFilter('created_by_id', 'in', [str(uid) for uid in chunk]))
+                .where(filter=FieldFilter('status', '==', 'active'))
                 .order_by('created_at', direction='DESCENDING')
                 .stream()
             )

@@ -54,6 +54,7 @@ Required Firestore indexes:
 import logging
 from datetime import datetime, timezone
 
+from google.cloud.firestore_v1 import FieldFilter
 from page_platform.firebase_client import get_firestore
 
 logger     = logging.getLogger(__name__)
@@ -177,8 +178,8 @@ def search_users(query: str, exclude_user_id: str = None,
         q = query.lower()
         docs = (
             db.collection(COLLECTION)
-            .where('username', '>=', q)
-            .where('username', '<=', q + '\uf8ff')
+            .where(filter=FieldFilter('username', '>=', q))
+            .where(filter=FieldFilter('username', '<=', q + '\uf8ff'))
             .limit(limit)
             .stream()
         )

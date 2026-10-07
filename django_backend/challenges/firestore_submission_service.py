@@ -46,6 +46,7 @@ import logging
 import uuid
 from datetime import datetime, timezone
 
+from google.cloud.firestore_v1 import FieldFilter
 from page_platform.firebase_client import get_firestore
 
 logger     = logging.getLogger(__name__)
@@ -242,7 +243,7 @@ def get_my_submissions(user, limit=100) -> list:
     try:
         docs = (
             db.collection(COLLECTION)
-            .where('user_id', '==', str(user.id))
+            .where(filter=FieldFilter('user_id', '==', str(user.id)))
             .order_by('submitted_at', direction='DESCENDING')
             .limit(limit)
             .stream()
@@ -263,10 +264,10 @@ def get_challenge_submissions(challenge_id: str, status_filter='scored',
     try:
         q = (
             db.collection(COLLECTION)
-            .where('challenge_id', '==', str(challenge_id))
+            .where(filter=FieldFilter('challenge_id', '==', str(challenge_id)))
         )
         if status_filter:
-            q = q.where('status', '==', status_filter)
+            q = q.where(filter=FieldFilter('status', '==', status_filter))
         docs = q.order_by('final_score', direction='DESCENDING').limit(limit).stream()
         return [_fmt(d.to_dict()) for d in docs]
     except Exception as exc:
@@ -283,8 +284,8 @@ def user_has_submitted(user_id: str, challenge_id: str) -> bool:
     try:
         docs = (
             db.collection(COLLECTION)
-            .where('user_id',      '==', str(user_id))
-            .where('challenge_id', '==', str(challenge_id))
+            .where(filter=FieldFilter('user_id',      '==', str(user_id)))
+            .where(filter=FieldFilter('challenge_id', '==', str(challenge_id)))
             .limit(1)
             .stream()
         )
@@ -307,11 +308,11 @@ def get_leaderboard(challenge_id: str, submission_type: str = None,
     try:
         q = (
             db.collection(COLLECTION)
-            .where('challenge_id', '==', str(challenge_id))
-            .where('status',       '==', 'scored')
+            .where(filter=FieldFilter('challenge_id', '==', str(challenge_id)))
+            .where(filter=FieldFilter('status',       '==', 'scored'))
         )
         if submission_type:
-            q = q.where('submission_type', '==', submission_type)
+            q = q.where(filter=FieldFilter('submission_type', '==', submission_type))
         docs = q.order_by('final_score', direction='DESCENDING').limit(limit).stream()
 
         results = []

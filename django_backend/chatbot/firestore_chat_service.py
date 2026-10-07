@@ -38,6 +38,7 @@ import logging
 import uuid
 from datetime import datetime, timezone
 
+from google.cloud.firestore_v1 import FieldFilter
 from page_platform.firebase_client import get_firestore
 
 logger = logging.getLogger(__name__)
@@ -112,7 +113,7 @@ def list_conversations(user, limit=20):
     try:
         docs = (
             db.collection(CONV_COLLECTION)
-            .where('user_id', '==', str(user.id))
+            .where(filter=FieldFilter('user_id', '==', str(user.id)))
             .order_by('updated_at', direction='DESCENDING')
             .limit(limit)
             .stream()

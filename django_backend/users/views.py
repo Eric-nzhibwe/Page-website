@@ -824,6 +824,7 @@ def firestore_profile_view(request):
         return Response({'error': 'firebase_token is required.'}, status=400)
 
     from page_platform.firebase_client import firebase_enabled, get_firestore
+    from google.cloud.firestore_v1 import FieldFilter
     if not firebase_enabled():
         return Response({'error': 'Firebase not configured.'}, status=503)
 
@@ -847,7 +848,7 @@ def firestore_profile_view(request):
     # Search by firebase_uid in user_profiles
     try:
         docs = (db.collection('user_profiles')
-                  .where('firebase_uid', '==', firebase_uid)
+                  .where(filter=FieldFilter('firebase_uid', '==', firebase_uid))
                   .limit(1)
                   .stream())
         for doc in docs:

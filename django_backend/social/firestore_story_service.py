@@ -37,6 +37,7 @@ import logging
 import uuid
 from datetime import datetime, timezone, timedelta
 
+from google.cloud.firestore_v1 import FieldFilter
 from page_platform.firebase_client import get_firestore
 
 logger         = logging.getLogger(__name__)
@@ -174,8 +175,8 @@ def get_story_feed(followed_user_ids: list, current_user_id: str,
         for chunk in chunks:
             docs = (
                 db.collection(STORIES_COLL)
-                .where('author_id', 'in', chunk)
-                .where('expires_at', '>', now)
+                .where(filter=FieldFilter('author_id', 'in', chunk))
+                .where(filter=FieldFilter('expires_at', '>', now))
                 .order_by('expires_at')          # required before created_at
                 .order_by('created_at', direction='DESCENDING')
                 .limit(limit)
