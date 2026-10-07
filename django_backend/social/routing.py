@@ -8,5 +8,5 @@ websocket_urlpatterns = [
     re_path(r'^ws/social/feed/$',                              consumers.FeedConsumer.as_asgi()),
     re_path(r'^ws/social/posts/(?P<post_id>[^/]+)/$',         consumers.PostConsumer.as_asgi()),
     re_path(r'^ws/social/stories/$',                          consumers.StoryConsumer.as_asgi()),
-    re_path(r'^ws/social/user-feed/$',                        consumers.UserFeedConsumer.as_asgi()),
+    re_path(r'^ws/social/user-feed/$',                        consumers.FeedConsumer.as_asgi()),
 ]
