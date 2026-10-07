@@ -109,11 +109,13 @@ class PostReaction(models.Model):
     """Reactions to posts (likes, fire, etc.)"""
     
     REACTION_TYPES = [
-        ('fire', '🔥'),
-        ('like', '👍'),
-        ('love', '❤️'),
-        ('wow', '😮'),
-        ('sad', '😢'),
+        ('fire',      '🔥'),
+        ('heart',     '❤️'),
+        ('handshake', '🤝'),
+        ('laugh',     '😂'),
+        ('like',      '👍'),
+        ('wow',       '😮'),
+        ('sad',       '😢'),
     ]
     
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)

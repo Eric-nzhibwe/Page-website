@@ -75,47 +75,233 @@ function _isLocalId(id) {
 }
 
 // ─────────────────────────────────────────────────────────────
-//  REACTIONS (fire toggle on post cards)
+//  REACTIONS  — hold-to-pick, tap-to-toggle
 // ─────────────────────────────────────────────────────────────
+
+// Map each reaction type to its icon class + display colour
+const _REACTION_META = {
+    fire:      { icon: 'fas fa-fire',            label: 'Fire',      color: '#f97316' },
+    heart:     { icon: 'fas fa-heart',           label: 'Heart',     color: '#e63946' },
+    handshake: { icon: 'fas fa-handshake',       label: 'Respect',   color: '#6c63ff' },
+    laugh:     { icon: 'fas fa-laugh-squint',    label: 'Haha',      color: '#f59e0b' },
+    like:      { icon: 'fas fa-thumbs-up',       label: 'Like',      color: '#3b82f6' },
+    wow:       { icon: 'fas fa-surprise',        label: 'Wow',       color: '#8b5cf6' },
+    sad:       { icon: 'fas fa-sad-tear',        label: 'Sad',       color: '#64748b' },
+};
+
+/**
+ * Apply a chosen reaction type's appearance to the reaction button.
+ * Called on page-load (from user_reaction) and after a reaction is made.
+ */
+function _applyReactionToBtn(btn, reactionType) {
+    const meta = _REACTION_META[reactionType] || _REACTION_META.fire;
+    const icon = btn.querySelector('i');
+    const lbl  = btn.querySelector('span');
+    if (icon) { icon.className = meta.icon; }
+    if (lbl)  { lbl.textContent = meta.label; }
+    btn.style.color = meta.color;
+    btn.dataset.activeReaction = reactionType;
+}
+
+/**
+ * Reset the reaction button to its default un-reacted state.
+ */
+function _clearReactionBtn(btn) {
+    const icon = btn.querySelector('i');
+    const lbl  = btn.querySelector('span');
+    if (icon) { icon.className = 'fas fa-fire'; }
+    if (lbl)  { lbl.textContent = 'React'; }
+    btn.style.color = '';
+    btn.dataset.activeReaction = '';
+}
+
+/**
+ * Show the floating reaction picker above the reaction button.
+ * Dismissed on mouseup / touchend / click-outside.
+ */
+function _showReactionPicker(postId, btn) {
+    // Remove any other open pickers first
+    document.querySelectorAll('.reaction-picker').forEach(p => p.remove());
+
+    const picker = document.createElement('div');
+    picker.className = 'reaction-picker';
+    picker.setAttribute('data-for-post', postId);
+
+    const options = ['fire', 'heart', 'handshake', 'laugh'];
+    options.forEach(type => {
+        const meta = _REACTION_META[type];
+        const item = document.createElement('button');
+        item.className = 'reaction-picker-item';
+        item.title = meta.label;
+        item.dataset.type = type;
+        item.innerHTML = `<i class="${meta.icon}"></i><span>${meta.label}</span>`;
+        item.style.setProperty('--reaction-color', meta.color);
+        item.addEventListener('mousedown', e => {
+            e.preventDefault();
+            e.stopPropagation();
+        });
+        item.addEventListener('click', e => {
+            e.stopPropagation();
+            picker.remove();
+            reactToPost(postId, type);
+        });
+        picker.appendChild(item);
+    });
+
+    document.body.appendChild(picker);
+
+    // Position above the button
+    const rect = btn.getBoundingClientRect();
+    const pw   = picker.offsetWidth || 220;
+    let   left = rect.left + rect.width / 2 - pw / 2;
+    left = Math.max(8, Math.min(left, window.innerWidth - pw - 8));
+    picker.style.left = `${left}px`;
+    picker.style.top  = `${rect.top + window.scrollY - picker.offsetHeight - 10}px`;
+
+    // Dismiss on outside click
+    const dismiss = e => {
+        if (!picker.contains(e.target) && e.target !== btn) {
+            picker.remove();
+            document.removeEventListener('click', dismiss);
+        }
+    };
+    setTimeout(() => document.addEventListener('click', dismiss), 50);
+}
+
+/**
+ * Attach hold-to-react behaviour to a reaction button.
+ * Short tap  → toggle current reaction (or default 'fire')
+ * Hold 400ms → show reaction picker
+ */
+function _attachReactHold(btn, postId) {
+    if (btn._reactHoldAttached) return;
+    btn._reactHoldAttached = true;
+
+    let holdTimer = null;
+    let pickerShown = false;
+
+    const start = e => {
+        pickerShown = false;
+        holdTimer = setTimeout(() => {
+            pickerShown = true;
+            _showReactionPicker(postId, btn);
+        }, 400);
+    };
+
+    const cancel = () => {
+        clearTimeout(holdTimer);
+        holdTimer = null;
+    };
+
+    const tap = e => {
+        clearTimeout(holdTimer);
+        if (pickerShown) { pickerShown = false; return; } // picker handled it
+        // Short tap — toggle current reaction
+        const type = btn.dataset.activeReaction || 'fire';
+        reactToPost(postId, type);
+    };
+
+    btn.addEventListener('mousedown',  start);
+    btn.addEventListener('touchstart', start, { passive: true });
+    btn.addEventListener('mouseleave', cancel);
+    btn.addEventListener('mouseup',    cancel);
+    btn.addEventListener('touchend',   cancel);
+    btn.addEventListener('click',      tap);
+}
+
 async function reactToPost(postId, reactionType = 'fire') {
-    const card  = document.querySelector(`[data-post-id="${postId}"]`);
-    const btn   = card?.querySelector('.post-actions .post-action-btn:first-child');
-    const counter = card?.querySelector('.post-stats span:first-child');
+    const card    = document.querySelector(`[data-post-id="${postId}"]`);
+    const btn     = card?.querySelector('.reaction-btn');
+    const rSpan   = card?.querySelector('.reaction-count');
 
-    // Optimistic UI
-    const currentCount = parseInt(counter?.textContent?.match(/\d+/)?.[0] || '0');
-    const alreadyReacted = btn?.classList.contains('reacted');
+    // Determine current state
+    const currentType    = btn?.dataset.activeReaction || '';
+    const alreadyReacted = !!currentType;
+    // If same type tapped again → unreact; different type → switch reaction
+    const isUnreact      = alreadyReacted && currentType === reactionType;
 
+    // ── Optimistic UI ────────────────────────────────────────────────────────
+    const currentCount = parseInt(rSpan?.textContent || '0') || 0;
     if (btn) {
-        btn.classList.toggle('reacted');
-        const newCount = alreadyReacted ? Math.max(0, currentCount - 1) : currentCount + 1;
-        if (counter) counter.innerHTML = `<i class="fas fa-fire"></i> ${newCount} reactions`;
+        if (isUnreact) {
+            btn.classList.remove('reacted');
+            _clearReactionBtn(btn);
+            if (rSpan) rSpan.textContent = Math.max(0, currentCount - 1);
+        } else {
+            btn.classList.add('reacted');
+            _applyReactionToBtn(btn, reactionType);
+            if (rSpan) rSpan.textContent = alreadyReacted ? currentCount : currentCount + 1;
+        }
         btn.style.transform = 'scale(1.3)';
         setTimeout(() => { btn.style.transform = ''; }, 250);
     }
 
+    // ── API call ─────────────────────────────────────────────────────────────
     try {
-        // Try WebSocket first
-        const wsOk = wsClient.sendReaction(postId, reactionType);
+        const wsOk = (typeof wsClient !== 'undefined') && wsClient.sendReaction?.(postId, reactionType);
         if (!wsOk) {
-            // Fall back to REST API
-            const endpoint = alreadyReacted
+            const endpoint = isUnreact
                 ? `${SOCIAL_API}/posts/${postId}/unreact/`
                 : `${SOCIAL_API}/posts/${postId}/react/`;
             await fetch(endpoint, {
-                method: 'POST',
+                method:  'POST',
                 headers: authHeaders(),
-                body: JSON.stringify({ reaction_type: reactionType })
+                body:    JSON.stringify({ reaction_type: reactionType }),
             });
         }
     } catch {
-        // Rollback optimistic update on failure
+        // Rollback on failure
         if (btn) {
-            btn.classList.toggle('reacted');
-            if (counter) counter.innerHTML = `<i class="fas fa-fire"></i> ${currentCount} reactions`;
+            if (isUnreact) {
+                btn.classList.add('reacted');
+                _applyReactionToBtn(btn, currentType);
+                if (rSpan) rSpan.textContent = currentCount;
+            } else {
+                if (!alreadyReacted) {
+                    btn.classList.remove('reacted');
+                    _clearReactionBtn(btn);
+                    if (rSpan) rSpan.textContent = currentCount;
+                }
+            }
         }
     }
 }
+
+/**
+ * Initialise all reaction buttons currently in the DOM.
+ * Also called after new cards are inserted (MutationObserver or explicit call).
+ */
+function initReactButtons() {
+    document.querySelectorAll('.reaction-btn[data-post-id]').forEach(btn => {
+        const postId = btn.dataset.postId;
+        _attachReactHold(btn, postId);
+        // Apply saved reaction state from data attribute set during card render
+        const savedType = btn.dataset.activeReaction;
+        if (savedType && savedType !== '') {
+            btn.classList.add('reacted');
+            _applyReactionToBtn(btn, savedType);
+        }
+    });
+}
+
+// Run once on load and observe future card insertions
+document.addEventListener('DOMContentLoaded', () => {
+    initReactButtons();
+    const observer = new MutationObserver(muts => {
+        muts.forEach(m => m.addedNodes.forEach(n => {
+            if (n.nodeType !== 1) return;
+            (n.matches?.('.reaction-btn') ? [n] : [...n.querySelectorAll('.reaction-btn[data-post-id]')])
+                .forEach(btn => {
+                    _attachReactHold(btn, btn.dataset.postId);
+                    if (btn.dataset.activeReaction) {
+                        btn.classList.add('reacted');
+                        _applyReactionToBtn(btn, btn.dataset.activeReaction);
+                    }
+                });
+        }));
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+});
 
 // ─────────────────────────────────────────────────────────────
 //  COMMENT MODAL

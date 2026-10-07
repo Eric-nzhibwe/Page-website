@@ -706,8 +706,9 @@ function _insertPostCard(post) {
                 · <span class="share-count">${post.share_count ?? 0}</span> shares</span>
         </div>
         <div class="post-actions">
-            <button class="post-action-btn${post.user_reaction ? ' reacted' : ''}"
-                onclick="reactToPost('${post.id}', 'fire')">
+            <button class="post-action-btn reaction-btn${post.user_reaction ? ' reacted' : ''}"
+                data-post-id="${post.id}"
+                data-active-reaction="${post.user_reaction || ''}">
                 <i class="fas fa-fire"></i><span>React</span>
             </button>
             <button class="post-action-btn" onclick="openCommentModal('${post.id}')">
@@ -1176,8 +1177,9 @@ function _appendPostCard(post, container) {
             </span>
         </div>
         <div class="post-actions">
-            <button class="post-action-btn${post.user_reaction ? ' reacted' : ''}"
-                onclick="reactToPost('${post.id}', 'fire')">
+            <button class="post-action-btn reaction-btn${post.user_reaction ? ' reacted' : ''}"
+                data-post-id="${post.id}"
+                data-active-reaction="${post.user_reaction || ''}">
                 <i class="fas fa-fire"></i><span>React</span>
             </button>
             <button class="post-action-btn" onclick="openCommentModal('${post.id}')">

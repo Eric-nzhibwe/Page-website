@@ -509,8 +509,8 @@ async function _pollFeed() {
 function _patchPostCounts(postId, reactions, comments, shares) {
     const card = document.querySelector(`[data-post-id="${postId}"]`);
     if (!card) return;
-    const rEl = card.querySelector('.post-stats span:first-child');
-    if (rEl && reactions != null) rEl.innerHTML = `<i class="fas fa-fire"></i> ${reactions} reactions`;
+    const rEl = card.querySelector('.reaction-count');
+    if (rEl && reactions != null) rEl.textContent = reactions;
     const cEl = card.querySelector('.comment-count');
     if (cEl && comments != null) cEl.textContent = comments;
     const sEl = card.querySelector('.share-count');
@@ -579,13 +579,15 @@ function _buildPostCard(post) {
       <div class="post-content"><p>${content}</p></div>
       ${mediaHTML}
       <div class="post-stats">
-        <span><i class="fas fa-fire"></i> ${post.reaction_count ?? 0} reactions</span>
+        <span><i class="fas fa-fire"></i>
+          <span class="reaction-count">${post.reaction_count ?? 0}</span> reactions</span>
         <span><span class="comment-count">${post.comment_count ?? 0}</span> comments
           · <span class="share-count">${post.share_count ?? 0}</span> shares</span>
       </div>
       <div class="post-actions">
-        <button class="post-action-btn${post.user_reaction ? ' reacted' : ''}"
-          onclick="reactToPost('${post.id}', 'fire')">
+        <button class="post-action-btn reaction-btn${post.user_reaction ? ' reacted' : ''}"
+          data-post-id="${post.id}"
+          data-active-reaction="${post.user_reaction || ''}">
           <i class="fas fa-fire"></i><span>React</span>
         </button>
         <button class="post-action-btn" onclick="openCommentModal('${post.id}')">

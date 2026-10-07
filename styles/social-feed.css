@@ -1289,16 +1289,87 @@
 
 /* Post reaction animation */
 .post-action-btn.reacted {
-    color: var(--page-accent) !important;
     animation: bounce 0.5s ease;
 }
 
+/* Override: reacted button colour set by JS per-reaction-type */
+.post-action-btn.reaction-btn.reacted {
+    font-weight: 700;
+}
+
 @keyframes bounce {
-    0%, 100% {
-        transform: scale(1);
+    0%, 100% { transform: scale(1); }
+    50%       { transform: scale(1.2); }
+}
+
+/* ── Reaction picker (hold-to-react popup) ───────────────────────── */
+.reaction-picker {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    background: #fff;
+    border-radius: 999px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.18), 0 1px 4px rgba(0,0,0,0.08);
+    z-index: 2000;
+    animation: pickerPop 0.18s cubic-bezier(.34,1.56,.64,1) both;
+    user-select: none;
+    pointer-events: auto;
+}
+
+@keyframes pickerPop {
+    from { opacity: 0; transform: scale(0.7) translateY(8px); }
+    to   { opacity: 1; transform: scale(1)   translateY(0);   }
+}
+
+.reaction-picker-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 6px 8px;
+    background: transparent;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: transform 0.15s, background 0.15s;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.reaction-picker-item:hover,
+.reaction-picker-item:focus {
+    transform: scale(1.35) translateY(-4px);
+    background: color-mix(in srgb, var(--reaction-color, #6c63ff) 12%, transparent);
+    outline: none;
+}
+
+.reaction-picker-item i {
+    font-size: 22px;
+    color: var(--reaction-color, #6c63ff);
+    transition: color 0.1s;
+}
+
+.reaction-picker-item span {
+    font-size: 10px;
+    font-weight: 600;
+    color: #555;
+    white-space: nowrap;
+}
+
+@media (max-width: 480px) {
+    .reaction-picker {
+        padding: 6px 8px;
+        gap: 4px;
     }
-    50% {
-        transform: scale(1.2);
+    .reaction-picker-item {
+        padding: 4px 6px;
+    }
+    .reaction-picker-item i {
+        font-size: 20px;
+    }
+    .reaction-picker-item span {
+        display: none;
     }
 }
 

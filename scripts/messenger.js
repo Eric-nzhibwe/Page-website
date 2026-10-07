@@ -211,7 +211,10 @@ async function dmLoadMessages(convId, silent = false) {
     const container = document.getElementById('dmMessages');
     if (!container) return;
 
-    if (!silent) {
+    // Only show the loading spinner on the initial open, not after every send.
+    // The `silent` flag preserves existing DOM content during the fetch so
+    // the chat never goes blank mid-conversation.
+    if (!silent && container.children.length === 0) {
         container.innerHTML = '<div class="dm-msgs-loading"><div class="dm-spinner"></div></div>';
     }
 
@@ -356,6 +359,48 @@ async function dmSendMessage(event) {
     const sendBtn = document.querySelector('.dm-send-btn');
     if (sendBtn) sendBtn.disabled = true;
 
+    // ── Optimistic bubble for voice messages ─────────────────────────────────
+    // Show a placeholder in the chat immediately so the message never
+    // "disappears" during the upload.  We replace it with real data on reload.
+    let optimisticId = null;
+    if (_dm.pendingMedia?.type === 'audio') {
+        optimisticId = `optimistic_${Date.now()}`;
+        const container  = document.getElementById('dmMessages');
+        const dur        = _dm.pendingMedia.duration
+            ? _dmFmtDuration(_dm.pendingMedia.duration) : '—';
+
+        // Build a local blob URL so the sender can play it back right away
+        const localUrl   = URL.createObjectURL(_dm.pendingMedia.file);
+        const msgId      = `vm_${optimisticId}`;
+
+        const row = document.createElement('div');
+        row.className = 'dm-msg-row mine';
+        row.dataset.optimisticId = optimisticId;
+        row.innerHTML = `
+            <div>
+                <audio id="audio_${msgId}" src="${localUrl}" preload="metadata"></audio>
+                <div class="dm-bubble">
+                    <div class="dm-voice-bubble">
+                        <button class="dm-voice-play" id="play_${msgId}" type="button"
+                                onclick="_dmToggleVoice('audio_${msgId}','play_${msgId}','dur_${msgId}')"
+                                title="Play voice message">
+                            <i class="fas fa-play"></i>
+                        </button>
+                        <div class="dm-voice-waveform">${_dmVoiceWaveform(18)}</div>
+                        <span class="dm-voice-dur" id="dur_${msgId}">${dur}</span>
+                    </div>
+                </div>
+                <div class="dm-msg-time" style="opacity:.5">Sending…</div>
+            </div>`;
+        if (container) {
+            container.appendChild(row);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        // Revoke the blob URL when the audio element is eventually replaced
+        row._localBlobUrl = localUrl;
+    }
+
     try {
         if (_dm.pendingMedia) {
             const fd = new FormData();
@@ -373,10 +418,43 @@ async function dmSendMessage(event) {
         }
 
         if (input) input.value = '';
-        await dmLoadMessages(_dm.activeConvId);
+
+        // Remove the optimistic bubble before the real reload so it isn't
+        // duplicated; revoke the blob URL to free memory.
+        if (optimisticId) {
+            const row = document.querySelector(`[data-optimistic-id="${optimisticId}"]`);
+            if (row) {
+                if (row._localBlobUrl) URL.revokeObjectURL(row._localBlobUrl);
+                row.remove();
+            }
+        }
+
+        // Silent reload preserves scroll position and doesn't wipe the DOM
+        await dmLoadMessages(_dm.activeConvId, true);
         dmRefreshConversations();
     } catch (e) {
         console.error('dmSendMessage:', e);
+
+        // Mark the optimistic bubble as failed instead of silently vanishing
+        if (optimisticId) {
+            const row = document.querySelector(`[data-optimistic-id="${optimisticId}"]`);
+            if (row) {
+                const timeEl = row.querySelector('.dm-msg-time');
+                if (timeEl) {
+                    timeEl.textContent = 'Failed to send — tap to retry';
+                    timeEl.style.color  = '#e63946';
+                    timeEl.style.cursor = 'pointer';
+                    timeEl.onclick      = () => {
+                        row.remove();
+                        // Re-surface the preview so the user can try again
+                        if (_dm.pendingMedia) {
+                            _dmShowPreview('audio', null,
+                                `Voice message — ${_dmFmtDuration(_dm.pendingMedia.duration || 0)}`);
+                        }
+                    };
+                }
+            }
+        }
     } finally {
         if (sendBtn) sendBtn.disabled = false;
     }
