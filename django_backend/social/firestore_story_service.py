@@ -270,13 +270,17 @@ def _ts(val) -> str | None:
 
 
 def _fmt_story(d: dict) -> dict:
+    avatar = d.get('author_avatar')
     return {
         'id':               d.get('id', ''),
         'author': {
-            'id':            d.get('author_id', ''),
-            'username':      d.get('author_username', ''),
-            'display_name':  d.get('author_username', ''),
-            'profile_image': d.get('author_avatar'),
+            'id':               d.get('author_id', ''),
+            'username':         d.get('author_username', ''),
+            'display_name':     d.get('author_username', ''),
+            # Expose under both keys so the frontend can find it regardless
+            # of which field it checks first (profile_image_url is preferred)
+            'profile_image_url': avatar,
+            'profile_image':    avatar,
         },
         'content':           d.get('content', ''),
         'media_url':         d.get('media_url', ''),

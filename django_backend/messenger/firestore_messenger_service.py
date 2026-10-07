@@ -307,7 +307,12 @@ def get_firebase_config() -> dict:
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _avatar_url(user) -> str | None:
-    """Return absolute profile image URL or None."""
+    """Return the best available avatar URL for a user — or None."""
+    # avatar_url is a base64 data URI or CDN URL stored directly on the user model
+    av = getattr(user, 'avatar_url', '')
+    if av:
+        return av
+    # Legacy ImageField fallback
     if not user.profile_image:
         return None
     try:

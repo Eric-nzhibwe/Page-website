@@ -272,10 +272,15 @@ def _get_firebase_uid(user) -> str:
 
 def _user_to_doc(user, request=None) -> dict:
     """Build the Firestore document dict from a Django User instance."""
-    # Profile image URL — gracefully handle missing files on Render
+    # Profile image URL — avatar_url (base64/CDN) takes priority over the
+    # legacy ImageField which can 404 on Render's ephemeral filesystem.
     profile_image_url = None
     try:
-        if user.profile_image and user.profile_image.storage.exists(user.profile_image.name):
+        # avatar_url is set by the upload endpoint — always a valid data URI or CDN URL
+        av = getattr(user, 'avatar_url', '')
+        if av:
+            profile_image_url = av
+        elif user.profile_image and user.profile_image.storage.exists(user.profile_image.name):
             if request:
                 profile_image_url = request.build_absolute_uri(user.profile_image.url)
             else:
@@ -340,12 +345,15 @@ def _ts(val) -> str | None:
 
 def _fmt(d: dict) -> dict:
     """Normalise a Firestore document to the REST API shape."""
+    avatar = d.get('profile_image_url')
     return {
         'id':                    d.get('id', ''),
         'username':              d.get('username', ''),
         'display_name':          d.get('display_name', ''),
         'bio':                   d.get('bio', ''),
-        'profile_image_url':     d.get('profile_image_url'),
+        # Both keys so every frontend renderer finds the avatar
+        'profile_image_url':     avatar,
+        'profile_image':         avatar,
         'access_tier':           d.get('access_tier', 'Bronze'),
         'prestige_points':       d.get('prestige_points', 0),
         'level':                 d.get('level', 1),

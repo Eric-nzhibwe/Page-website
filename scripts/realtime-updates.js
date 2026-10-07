@@ -43,6 +43,61 @@ function _rtEsc(s) {
     return d.innerHTML;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+//  AVATAR HELPERS  (other-user avatars — prefers profile_image_url/avatar_url)
+// ─────────────────────────────────────────────────────────────────────────────
+/**
+ * Get the best available avatar URL for any user object returned by the API.
+ * Prefers profile_image_url (set from avatar_url / base64) over profile_image
+ * (legacy ImageField that can 404). Returns null if no valid URL found.
+ */
+function _rtGetAvatarUrl(user) {
+    if (!user) return null;
+    const url = user.profile_image_url || user.avatar_url || user.profile_image || null;
+    if (!url) return null;
+    // Reject bare /media/ paths known to 404 on Render's ephemeral storage
+    if (url.startsWith('/media/')) return null;
+    return url;
+}
+
+/**
+ * Build avatar HTML for any user — photo if available, letter-circle fallback.
+ * @param {object} user  - user object from API
+ * @param {string} [cls] - optional extra CSS class for the <img>
+ * @returns {string} HTML string
+ */
+function _rtAvatarHTML(user, cls = 'page-user-avatar-img') {
+    const url  = _rtGetAvatarUrl(user);
+    const name = (user && (user.display_name || user.username)) || '?';
+    const init = name.charAt(0).toUpperCase();
+    if (url) {
+        // onerror swaps to letter-circle so a broken img never shows
+        return `<img src="${_rtEsc(url)}" alt="${_rtEsc(name)}" class="${cls}"
+                    onerror="this.replaceWith(window._rtLetterAvatar('${_rtEsc(init)}'))">`;
+    }
+    // Letter-circle (no fa-user icon — consistent look across user types)
+    return window._rtLetterAvatar ? window._rtLetterAvatar(init).outerHTML
+        : `<i class="fas fa-user-circle"></i>`;
+}
+
+/**
+ * Create a coloured letter-avatar DOM element.
+ * Exposed on window so onerror handlers can call it as a string expression.
+ */
+window._rtLetterAvatar = function(letter) {
+    const colours = ['#6c63ff','#e74c3c','#2ecc71','#f39c12','#1abc9c','#9b59b6','#3498db','#e67e22'];
+    const colour  = colours[(letter || '?').charCodeAt(0) % colours.length];
+    const el = document.createElement('span');
+    el.style.cssText = [
+        'display:inline-flex','align-items:center','justify-content:center',
+        'width:100%','height:100%','border-radius:50%',
+        `background:${colour}`,'color:#fff','font-weight:700','font-size:14px',
+        'user-select:none',
+    ].join(';');
+    el.textContent = letter || '?';
+    return el;
+};
+
 function _rtTimeAgo(iso) {
     const s = Math.floor((Date.now() - new Date(iso)) / 1000);
     if (s < 60)  return 'just now';
@@ -287,12 +342,11 @@ function _renderDiscoverList(container, users, mode) {
         item.className       = 'page-user-item';
         item.dataset.userId  = u.id;
 
-        const avatarHTML = u.profile_image
-            ? `<img src="${_rtEsc(u.profile_image)}" alt="${_rtEsc(u.display_name)}" class="page-user-avatar-img">`
-            : `<i class="fas fa-user-circle"></i>`;
+        // Use profile_image_url (avatar_url/base64) first, fall back gracefully
+        const avatarHtml = _rtAvatarHTML(u);
 
         item.innerHTML = `
-          <div class="page-user-avatar">${avatarHTML}</div>
+          <div class="page-user-avatar">${avatarHtml}</div>
           <div class="page-user-info">
             <strong class="page-user-name">${_rtEsc(u.display_name || u.username)}</strong>
             <span class="page-user-tier page-tier--${(u.access_tier||'bronze').toLowerCase()}">
@@ -360,12 +414,10 @@ function _renderOnlineUsers(users) {
             const item = document.createElement('div');
             item.className = 'page-online-item';
             item.dataset.userId = u.id;
-            const avatarHTML = u.profile_image
-                ? `<img src="${_rtEsc(u.profile_image)}" alt="${_rtEsc(u.display_name)}" class="page-user-avatar-img">`
-                : `<i class="fas fa-user-circle"></i>`;
+            const avatarHtml = _rtAvatarHTML(u);
             item.innerHTML = `
               <div class="page-online-avatar">
-                ${avatarHTML}
+                ${avatarHtml}
                 <span class="page-online-dot" title="Online"></span>
               </div>
               <div class="page-user-info">
@@ -386,9 +438,7 @@ function _renderOnlineUsers(users) {
             const chip = document.createElement('div');
             chip.className = 'online-user-chip';
             chip.title = u.display_name || u.username;
-            const avatarInner = u.profile_image
-                ? `<img src="${_rtEsc(u.profile_image)}" alt="${_rtEsc(u.display_name)}">`
-                : `<i class="fas fa-user-circle"></i>`;
+            const avatarInner = _rtAvatarHTML(u);
             chip.innerHTML = `
               <div class="chip-avatar">
                 ${avatarInner}
@@ -896,15 +946,21 @@ function _buildStoryCard(story) {
     const mediaSrc = story.resolved_media_url || story.media_url || null;
     const isVideo  = story.media_type === 'video';
 
+    // Use story media as thumbnail; fall back to author's profile photo, then gradient
+    const authorAvatarUrl = _rtGetAvatarUrl(author);
     const bgStyle  = (mediaSrc && !isVideo)
         ? `background-image:url('${_rtEsc(mediaSrc)}');background-size:cover;background-position:center`
-        : `background:linear-gradient(135deg,#556b2f,#8bc34a)`;
+        : (authorAvatarUrl
+            ? `background:url('${_rtEsc(authorAvatarUrl)}') center/cover`
+            : `background:linear-gradient(135deg,#556b2f,#8bc34a)`);
 
     card.innerHTML = `
-        <div class="story-image" style="${bgStyle}">
-            ${isVideo && mediaSrc
-                ? `<video src="${_rtEsc(mediaSrc)}" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;" muted playsinline></video>`
-                : (!mediaSrc ? `<i class="fas fa-user"></i>` : '')}
+        <div class="story-ring-wrap" title="${_rtEsc(name)}">
+            <div class="story-image" style="${bgStyle}">
+                ${isVideo && mediaSrc
+                    ? `<video src="${_rtEsc(mediaSrc)}" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;" muted playsinline></video>`
+                    : ''}
+            </div>
         </div>
         <span class="story-name">${_rtEsc(name)}</span>`;
 

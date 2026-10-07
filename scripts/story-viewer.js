@@ -70,8 +70,13 @@ class StoryViewer {
             </div>`).join('');
 
         // ── Author header ──
-        const avHTML = story.author?.profile_image
-            ? `<img src="${this._esc(story.author.profile_image)}" alt="${this._esc(story.author.username)}">`
+        // Prefer profile_image_url (avatar_url/base64) over legacy profile_image
+        const _authorAvatarUrl = (story.author?.profile_image_url || story.author?.avatar_url)
+            || (story.author?.profile_image && !story.author.profile_image.startsWith('/media/')
+                ? story.author.profile_image : null);
+        const avHTML = _authorAvatarUrl
+            ? `<img src="${this._esc(_authorAvatarUrl)}" alt="${this._esc(story.author?.username || 'User')}"
+                   onerror="this.style.display='none';this.parentElement.innerHTML='<i class=\\'fas fa-user-circle\\'></i>'">`
             : `<i class="fas fa-user-circle"></i>`;
 
         modal.querySelector('.story-author-avatar').innerHTML = avHTML;

@@ -642,9 +642,15 @@ function _insertPostCard(post) {
 
     const avatarHTML_str = (typeof avatarHTML === 'function')
         ? avatarHTML(author)
-        : (author.profile_image
-            ? `<img src="${_esc(author.profile_image)}" alt="${name}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`
-            : `<i class="fas fa-user-circle"></i>`);
+        : (() => {
+            const url = author.profile_image_url || author.avatar_url
+                || (author.profile_image && !author.profile_image.startsWith('/media/')
+                    ? author.profile_image : null);
+            return url
+                ? `<img src="${_esc(url)}" alt="${name}" style="width:100%;height:100%;object-fit:cover;border-radius:50%"
+                       onerror="this.style.display='none';this.parentElement.innerHTML='<i class=\\'fas fa-user-circle\\'></i>'">`
+                : `<i class="fas fa-user-circle"></i>`;
+        })();
 
     let mediaHTML = '';
     if (post._voiceUrl || (post.post_type === 'voice' && (post.resolved_media_url || post.media_url))) {
@@ -893,9 +899,15 @@ function _insertStoryCard(story, tempId) {
 
     const imgStyle = (!isVideo && mediaUrl)
         ? `background-image:url('${mediaUrl}');background-size:cover;background-position:center;`
-        : (story.author?.profile_image
-            ? `background:url('${story.author.profile_image}') center/cover;`
-            : 'background:linear-gradient(135deg,#556b2f,#8bc34a);');
+        : (() => {
+            // prefer profile_image_url (base64/CDN) over legacy profile_image
+            const authorUrl = story.author?.profile_image_url || story.author?.avatar_url
+                || (story.author?.profile_image && !story.author.profile_image.startsWith('/media/')
+                    ? story.author.profile_image : null);
+            return authorUrl
+                ? `background:url('${authorUrl}') center/cover;`
+                : 'background:linear-gradient(135deg,#556b2f,#8bc34a);';
+        })();
 
     card.innerHTML = `
         <div class="story-ring-wrap own-story" style="position:relative;">
@@ -1098,9 +1110,15 @@ function _appendPostCard(post, container) {
 
     const avatarHTML_str = (typeof avatarHTML === 'function')
         ? avatarHTML(author)
-        : (author.profile_image
-            ? `<img src="${_esc(author.profile_image)}" alt="${name}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`
-            : `<i class="fas fa-user-circle"></i>`);
+        : (() => {
+            const url = author.profile_image_url || author.avatar_url
+                || (author.profile_image && !author.profile_image.startsWith('/media/')
+                    ? author.profile_image : null);
+            return url
+                ? `<img src="${_esc(url)}" alt="${name}" style="width:100%;height:100%;object-fit:cover;border-radius:50%"
+                       onerror="this.style.display='none';this.parentElement.innerHTML='<i class=\\'fas fa-user-circle\\'></i>'">`
+                : `<i class="fas fa-user-circle"></i>`;
+        })();
 
     // Prefer resolved_media_url (uploaded file) over legacy media_url
     const mediaSrc = post.resolved_media_url || post.media_url || null;
@@ -1214,10 +1232,14 @@ async function loadRealStories() {
             const isVideo     = latestStory.media_type === 'video';
 
             // Avatar fallback — profile image or gradient initial
+            // prefer profile_image_url (avatar_url/base64) over legacy profile_image
+            const authorAvatarUrl = author.profile_image_url || author.avatar_url
+                || (author.profile_image && !author.profile_image.startsWith('/media/')
+                    ? author.profile_image : null);
             const avatarStyle = (mediaSrc && !isVideo)
                 ? `background-image:url('${_esc(mediaSrc)}');background-size:cover;background-position:center`
-                : (author.profile_image
-                    ? `background:url('${_esc(author.profile_image)}') center/cover`
+                : (authorAvatarUrl
+                    ? `background:url('${_esc(authorAvatarUrl)}') center/cover`
                     : `background:linear-gradient(135deg,#556b2f,#8bc34a)`);
 
             const multiCount = authorStories.length > 1

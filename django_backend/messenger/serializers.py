@@ -17,6 +17,13 @@ class ParticipantSerializer(serializers.ModelSerializer):
                   'prestige_points', 'profile_image_url']
 
     def get_profile_image_url(self, obj):
+        """
+        Return the best available avatar URL — avatar_url (base64/CDN) takes
+        priority over the legacy ImageField so followers always see the photo.
+        """
+        # avatar_url is set by the upload endpoint — always a valid data URI or CDN URL
+        if getattr(obj, 'avatar_url', ''):
+            return obj.avatar_url
         request = self.context.get('request')
         if not obj.profile_image:
             return None

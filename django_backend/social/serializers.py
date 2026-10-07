@@ -8,9 +8,30 @@ from users.models import User
 
 class UserMinimalSerializer(serializers.ModelSerializer):
     """Minimal user info for nested serialization"""
+    profile_image_url = serializers.SerializerMethodField()
+
     class Meta:
         model = User
-        fields = ['id', 'username', 'display_name', 'profile_image']
+        fields = ['id', 'username', 'display_name', 'profile_image', 'profile_image_url']
+
+    def get_profile_image_url(self, obj):
+        """
+        Return the best available avatar URL so followers see the correct photo.
+        Priority: avatar_url (base64/CDN, always works) → profile_image file → None.
+        """
+        if getattr(obj, 'avatar_url', ''):
+            return obj.avatar_url
+        if not obj.profile_image:
+            return None
+        try:
+            if obj.profile_image.storage.exists(obj.profile_image.name):
+                request = self.context.get('request')
+                if request:
+                    return request.build_absolute_uri(obj.profile_image.url)
+                return obj.profile_image.url
+        except Exception:
+            pass
+        return None
 
 
 class CommentReactionSerializer(serializers.ModelSerializer):

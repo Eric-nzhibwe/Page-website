@@ -290,14 +290,29 @@ def discover_users_view(request):
             Q(username__icontains=q) | Q(display_name__icontains=q)
         )
 
+    def _best_avatar(u):
+        """Return the best available avatar URL for a user object."""
+        # avatar_url is a base64 data URI or CDN URL — always works
+        if getattr(u, 'avatar_url', ''):
+            return u.avatar_url
+        # profile_image is a legacy ImageField — only return if the file exists
+        if u.profile_image:
+            try:
+                if u.profile_image.storage.exists(u.profile_image.name):
+                    return u.profile_image.url
+            except Exception:
+                pass
+        return None
+
     data = [
         {
-            'id':            u.id,
-            'username':      u.username,
-            'display_name':  u.display_name or u.username,
-            'access_tier':   u.access_tier,
-            'prestige_points': u.prestige_points,
-            'profile_image': u.profile_image.url if u.profile_image else None,
+            'id':               u.id,
+            'username':         u.username,
+            'display_name':     u.display_name or u.username,
+            'access_tier':      u.access_tier,
+            'prestige_points':  u.prestige_points,
+            'profile_image':    _best_avatar(u),
+            'profile_image_url': _best_avatar(u),
         }
         for u in qs[:30]
     ]
@@ -600,12 +615,17 @@ def upload_avatar_view(request):
     user.save(update_fields=['avatar_url'])
 
     # Also sync to Firestore so the avatar appears in real-time features
+    # (other users see the new photo in discover list, stories, messenger)
     try:
         from page_platform.firebase_client import get_firestore
         db = get_firestore()
         if db:
             db.collection('user_profiles').document(str(user.id)).set(
-                {'avatar_url': data_uri, 'profile_image': data_uri},
+                {
+                    'avatar_url':        data_uri,
+                    'profile_image':     data_uri,
+                    'profile_image_url': data_uri,  # canonical field read by other users
+                },
                 merge=True,
             )
     except Exception:
