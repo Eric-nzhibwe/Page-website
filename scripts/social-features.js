@@ -310,7 +310,7 @@ function openCommentModal(postId) {
         modal.querySelector('.page-modal-box').classList.add('modal-box--visible');
     });
 
-    _loadComments(postId, true);
+    _loadComments(postId, true).then(() => _startCommentPoller(postId));
     modal.querySelector('#pageCommentInput').focus();
 }
 
@@ -323,6 +323,7 @@ function closeCommentModal() {
         modal.style.display = 'none';
         document.body.classList.remove('modal-open');
     }, 280);
+    _stopCommentPoller();   // stop the 8-second comment poll
     _commentPostId = null;
 }
 
@@ -523,6 +524,10 @@ function _makeCommentEl(c) {
     return div;
 }
 
+// Hoisted so _submitComment can reference them before the poller section
+let _commentPollTimer = null;
+let _seenCommentIds   = new Set();
+
 async function _submitComment() {
     const input   = document.getElementById('pageCommentInput');
     const sendBtn = document.getElementById('pageSendBtn');
@@ -534,105 +539,157 @@ async function _submitComment() {
     sendBtn.disabled = true;
     sendBtn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i>';
 
-    const newComment = {
-        id:         `local-${Date.now()}`,
-        content:    text,
-        text:       text,
-        author:     { username: _getCurrentUsername() },
-        username:   _getCurrentUsername(),
-        created_at: new Date().toISOString(),
-        timestamp:  new Date().toISOString(),
-        reaction_count: 0
-    };
-
-    // Always reset the button at the end, no matter what
     const _resetBtn = () => {
         sendBtn.disabled = false;
         sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Post';
     };
 
+    // ── Build optimistic comment from localStorage user data ─────────────────
+    const _storedUser = (() => { try { return JSON.parse(localStorage.getItem('pageUser') || '{}'); } catch { return {}; } })();
+    const optimistic = {
+        id:             `optimistic-${Date.now()}`,
+        content:        text,
+        author: {
+            username:          _storedUser.username    || 'You',
+            display_name:      _storedUser.display_name || _storedUser.username || 'You',
+            profile_image_url: _storedUser.profile_image_url || _storedUser.profile_image || null,
+        },
+        created_at:     new Date().toISOString(),
+        reaction_count: 0,
+    };
+
+    // ── Inject bubble immediately (no waiting for API) ────────────────────────
+    const list     = document.getElementById('pageCommentsList');
+    const emptyMsg = list?.querySelector('.page-empty-msg');
+    if (emptyMsg) emptyMsg.remove();
+
+    const optEl = _makeCommentEl(optimistic);
+    optEl.classList.add('page-comment--new');
+    optEl.dataset.optimistic = '1';
+    if (list) {
+        list.appendChild(optEl);
+        optEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    // Bump count on feed card immediately
+    _bumpCount(_commentPostId, 'comment');
+
+    // Clear input right away so user can keep typing
+    input.value = '';
+    input.style.height = 'auto';
+    _updateCharCount(input);
+
     try {
-        // ── Try WebSocket first (instant, real-time) ──
-        let postedViaWS = false;
-        if (wsClient.feedConnected || wsClient._postConns?.has(String(_commentPostId))) {
-            if (!wsClient._postConns?.has(String(_commentPostId))) {
-                wsClient.connectToPost(_commentPostId, {
-                    onComment: c => {
-                        const list = document.getElementById('pageCommentsList');
-                        if (!list) return;
-                        const el = _makeCommentEl(c);
-                        el.classList.add('page-comment--new');
-                        list.appendChild(el);
-                    }
-                });
-            }
-            postedViaWS = wsClient.sendComment(_commentPostId, text);
-        }
-
-        if (postedViaWS) {
-            const list = document.getElementById('pageCommentsList');
-            const emptyMsg = list?.querySelector('.page-empty-msg');
-            if (emptyMsg) emptyMsg.remove();
-            if (list) {
-                const el = _makeCommentEl(newComment);
-                el.classList.add('page-comment--new');
-                list.appendChild(el);
-                el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-            }
-            _bumpCount(_commentPostId, 'comment');
-            input.value = '';
-            input.style.height = 'auto';
-            _updateCharCount(input);
-            _resetBtn();
-            socialToast('Comment posted! 💬', 'success');
-            return;
-        }
-
-        // ── Fallback: REST API ──
-        let posted = false;
         if (!_isLocalId(_commentPostId)) {
-            try {
-                const res = await fetch(`${SOCIAL_API}/comments/`, {
-                    method:  'POST',
-                    headers: authHeaders(),
-                    body:    JSON.stringify({ post_id: _commentPostId, content: text })
-                });
-                if (res.ok) {
-                    const data = await res.json();
-                    Object.assign(newComment, data);
-                    posted = true;
-                }
-            } catch { /* network error — fall through to local save */ }
+            const res = await fetch(`${SOCIAL_API}/comments/`, {
+                method:  'POST',
+                headers: authHeaders(),
+                body:    JSON.stringify({ post_id: _commentPostId, content: text }),
+            });
+            if (res.ok) {
+                const saved = await res.json();
+                // Replace optimistic element with real one to get a correct id
+                const realEl = _makeCommentEl(saved);
+                realEl.classList.add('page-comment--new');
+                optEl.replaceWith(realEl);
+                // Now that we have the real id, add it to seen-set so the poller
+                // doesn't insert a duplicate when it next fires
+                _seenCommentIds.add(String(saved.id));
+                socialToast('Comment posted! 💬', 'success');
+                _resetBtn();
+                return;
+            }
         }
-
-        if (!posted) {
-            const all = JSON.parse(localStorage.getItem('pageComments') || '{}');
-            if (!all[_commentPostId]) all[_commentPostId] = [];
-            all[_commentPostId].push(newComment);
-            localStorage.setItem('pageComments', JSON.stringify(all));
-        }
-
-        // Inject into list
-        const list = document.getElementById('pageCommentsList');
-        if (list) {
-            const emptyMsg = list.querySelector('.page-empty-msg');
-            if (emptyMsg) emptyMsg.remove();
-            const el = _makeCommentEl(newComment);
-            el.classList.add('page-comment--new');
-            list.appendChild(el);
-            el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        }
-
-        _bumpCount(_commentPostId, 'comment');
-        input.value = '';
-        input.style.height = 'auto';
-        _updateCharCount(input);
+        // localStorage fallback (local-id posts or API failure)
+        const all = JSON.parse(localStorage.getItem('pageComments') || '{}');
+        if (!all[_commentPostId]) all[_commentPostId] = [];
+        all[_commentPostId].push({ ...optimistic, id: `local-${Date.now()}` });
+        localStorage.setItem('pageComments', JSON.stringify(all));
         socialToast('Comment posted! 💬', 'success');
 
+    } catch {
+        // Network error — mark bubble as failed and let user retry
+        optEl.style.opacity = '0.6';
+        const errNote = document.createElement('p');
+        errNote.style.cssText = 'color:#e63946;font-size:11px;margin:4px 0 0 0;cursor:pointer;';
+        errNote.textContent = '⚠️ Not saved — tap to retry';
+        errNote.onclick = () => {
+            optEl.remove();
+            input.value = text;
+            _autoResize(input);
+            _updateCharCount(input);
+            input.focus();
+        };
+        optEl.querySelector('.page-comment-body')?.appendChild(errNote);
     } finally {
-        // Guaranteed to run — spinner always stops
         _resetBtn();
     }
+}
+
+// ─────────────────────────────────────────────────────────────
+//  REAL-TIME COMMENT POLLING
+//  While the comment modal is open, poll every 8 s and inject
+//  any new comments from other users without wiping the list.
+// ─────────────────────────────────────────────────────────────
+
+function _startCommentPoller(postId) {
+    _stopCommentPoller();
+    _seenCommentIds.clear();
+
+    // Seed with ids already rendered so we never duplicate them
+    document.querySelectorAll('#pageCommentsList .page-comment-item').forEach(el => {
+        if (el.dataset.commentId && !el.dataset.optimistic) {
+            _seenCommentIds.add(String(el.dataset.commentId));
+        }
+    });
+
+    if (!postId || _isLocalId(postId)) return;
+    _commentPollTimer = setInterval(() => _pollNewComments(postId), 8_000);
+}
+
+function _stopCommentPoller() {
+    if (_commentPollTimer) { clearInterval(_commentPollTimer); _commentPollTimer = null; }
+}
+
+async function _pollNewComments(postId) {
+    if (!postId || _isLocalId(postId)) return;
+    try {
+        const res = await fetch(`${SOCIAL_API}/comments/?post_id=${postId}&page=1`, {
+            headers: authHeaders(),
+        });
+        if (!res.ok) return;
+        const data     = await res.json();
+        const comments = Array.isArray(data) ? data : (data.results || []);
+
+        const list = document.getElementById('pageCommentsList');
+        if (!list) return;
+
+        let added = 0;
+        comments.forEach(c => {
+            const id = String(c.id);
+            if (_seenCommentIds.has(id)) return;
+            // Skip if the slot is currently held by an optimistic bubble —
+            // _submitComment will replace it once the API responds
+            if (list.querySelector('[data-optimistic="1"]')) return;
+
+            _seenCommentIds.add(id);
+            const emptyMsg = list.querySelector('.page-empty-msg');
+            if (emptyMsg) emptyMsg.remove();
+
+            const el = _makeCommentEl(c);
+            el.classList.add('page-comment--new');
+            list.appendChild(el);
+            added++;
+        });
+
+        // Keep comment count on the feed card accurate
+        if (added > 0) {
+            const total = data.count ?? comments.length;
+            const card  = document.querySelector(`[data-post-id="${postId}"]`);
+            const cEl   = card?.querySelector('.comment-count');
+            if (cEl) cEl.textContent = total;
+        }
+    } catch { /* silent — offline is fine */ }
 }
 
 async function _reactToComment(commentId, btn) {

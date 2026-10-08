@@ -44,6 +44,15 @@ def _send(payload):
     return json.dumps(payload, cls=DjangoJSONEncoder)
 
 
+def _follower_group(user_id):
+    """
+    Channel group name for a specific author's follower feed.
+    Every follower of user_id joins this group so they receive new
+    posts, stories, and avatar updates from that author in real time.
+    """
+    return f'user_feed_{user_id}'
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 #  FEED CONSUMER  — live post/story feed for all users
 # ─────────────────────────────────────────────────────────────────────────────
@@ -423,3 +432,92 @@ class StoryConsumer(AsyncWebsocketConsumer):
         story = Story.objects.get(id=story_id)
         view, _ = StoryView.objects.get_or_create(story=story, viewer=self.user)
         return StoryViewSerializer(view).data
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  USER FEED CONSUMER  — follower-scoped real-time updates
+#
+#  URL: ws/social/user-feed/?token=<token>
+#
+#  On connect each user joins a group for every account they follow:
+#    user_feed_<author_id>
+#  When that author creates a post, story, or updates their avatar, the
+#  Django view broadcasts to that group.  Only followers receive it.
+# ─────────────────────────────────────────────────────────────────────────────
+class UserFeedConsumer(AsyncWebsocketConsumer):
+    """
+    Per-follower real-time channel.
+    A client subscribes and immediately receives updates for all authors
+    they follow — new posts, new stories, and avatar changes — without
+    any polling.
+    """
+
+    async def connect(self):
+        token_key = _token_from_scope(self.scope)
+        self.user, err = await _get_user_from_token(token_key)
+        if err:
+            await self.close(code=4001)
+            return
+
+        # Join a group for every author this user follows so they receive
+        # broadcasts the moment that author publishes something.
+        self.followed_groups = await self._get_followed_groups()
+        for group in self.followed_groups:
+            await self.channel_layer.group_add(group, self.channel_name)
+
+        # Also join own group so the user sees their own avatar change
+        # reflected in all open browser tabs.
+        self.own_group = _follower_group(self.user.id)
+        await self.channel_layer.group_add(self.own_group, self.channel_name)
+
+        await self.accept()
+
+        # Send a ready signal so the frontend knows the channel is live.
+        await self.send(text_data=_send({'type': 'user_feed_ready'}))
+
+    async def disconnect(self, close_code):
+        for group in getattr(self, 'followed_groups', []):
+            await self.channel_layer.group_discard(group, self.channel_name)
+        if hasattr(self, 'own_group'):
+            await self.channel_layer.group_discard(self.own_group, self.channel_name)
+
+    async def receive(self, text_data):
+        try:
+            data = json.loads(text_data)
+            if data.get('action') == 'ping':
+                await self.send(text_data=_send({'type': 'pong'}))
+        except (json.JSONDecodeError, KeyError):
+            pass
+
+    # ── group message handlers ────────────────────────────────────────────────
+
+    async def user_feed_new_post(self, event):
+        """A followed author published a new post."""
+        await self.send(text_data=_send({
+            'type': 'followed_new_post',
+            'post': event['post'],
+        }))
+
+    async def user_feed_new_story(self, event):
+        """A followed author posted a new story."""
+        await self.send(text_data=_send({
+            'type':  'followed_new_story',
+            'story': event['story'],
+        }))
+
+    async def user_feed_avatar_updated(self, event):
+        """A followed author (or the current user themselves) updated their avatar."""
+        await self.send(text_data=_send({
+            'type':        'followed_avatar_updated',
+            'user_id':     event['user_id'],
+            'username':    event['username'],
+            'avatar_url':  event['avatar_url'],
+        }))
+
+    # ── DB helpers ────────────────────────────────────────────────────────────
+
+    @database_sync_to_async
+    def _get_followed_groups(self):
+        """Return the channel group name for each author this user follows."""
+        following_ids = self.user.following.values_list('following_id', flat=True)
+        return [_follower_group(uid) for uid in following_ids]

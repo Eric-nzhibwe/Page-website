@@ -1302,9 +1302,9 @@
     50%       { transform: scale(1.2); }
 }
 
-/* ── Reaction picker (hold-to-react popup) ───────────────────────── */
+/* ── Reaction picker (click-to-open popup) ───────────────────────── */
 .reaction-picker {
-    position: absolute;
+    position: fixed;   /* set by JS; fixed avoids scrollY offset math */
     display: flex;
     align-items: center;
     gap: 6px;
@@ -1313,7 +1313,7 @@
     border-radius: 999px;
     box-shadow: 0 4px 24px rgba(0,0,0,0.18), 0 1px 4px rgba(0,0,0,0.08);
     z-index: 2000;
-    animation: pickerPop 0.18s cubic-bezier(.34,1.56,.64,1) both;
+    animation: pickerPop 0.14s cubic-bezier(.34,1.56,.64,1) both;
     user-select: none;
     pointer-events: auto;
 }
