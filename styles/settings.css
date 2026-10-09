@@ -10,8 +10,8 @@
   --sg-primary:     var(--page-primary,    #556b2f);
   --sg-primary-lt:  var(--page-primary-lt, #6b8a3a);
   --sg-primary-dk:  var(--page-primary-dk, #3d4f22);
-  --sg-accent:      var(--page-accent,     #90ee90);
-  --sg-accent-glow: rgba(144,238,144,0.35);
+  --sg-accent:      var(--page-accent,     #ffffff);
+  --sg-accent-glow: rgba(55,65,81,0.20);
   --sg-bg:          #ffffff;
   --sg-surface:     #f7f9f4;
   --sg-surface2:    #eef2e8;

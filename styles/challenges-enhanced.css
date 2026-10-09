@@ -727,7 +727,7 @@
     position: absolute;
     top: 16px;
     left: 16px;
-    background: linear-gradient(to right, var(--page-primary), darkgreen);
+    background: linear-gradient(to right, var(--page-primary), var(--page-primary-dk));
     color: #fff;
     padding: 6px 12px;
     border-radius: 20px;
@@ -959,7 +959,7 @@
 /* Pay & Play button */
 .btn-play-now {
     width: 100%;
-    background: linear-gradient(to left, var(--page-primary), darkgreen);
+    background: linear-gradient(to left, var(--page-primary), var(--page-primary-dk));
     color: #fff;
     border: none;
     border-radius: 10px;
@@ -1179,7 +1179,7 @@
 }
 
 .btn-submit-interp {
-    background: linear-gradient(to left, var(--page-primary), darkgreen);
+    background: linear-gradient(to left, var(--page-primary), var(--page-primary-dk));
     color: #fff;
     border: none;
     border-radius: 10px;
@@ -1563,7 +1563,7 @@
     width: 22px;
     height: 22px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #556b2f, #8bc34a);
+    background: linear-gradient(135deg, var(--page-primary), var(--page-primary-lt, #4b5563));
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1641,7 +1641,7 @@
     box-shadow: 0 2px 6px rgba(85,107,47,0.35);
 }
 
-.debate-send-btn:hover { background: darkgreen; transform: scale(1.07); }
+.debate-send-btn:hover { background: var(--page-primary-dk); transform: scale(1.07); }
 
 /* Voice button */
 .debate-voice-btn {

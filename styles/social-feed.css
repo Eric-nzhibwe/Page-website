@@ -1742,7 +1742,7 @@
 
 .create-challenge-banner-btn {
     flex-shrink: 0;
-    background: linear-gradient(to left, var(--page-primary), darkgreen);
+    background: linear-gradient(to left, var(--page-primary), var(--page-primary-dk));
     color: #fff;
     border: none;
     border-radius: 8px;

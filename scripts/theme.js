@@ -18,7 +18,18 @@
        Values    = the full set of CSS tokens for that theme.
     ───────────────────────────────────────────────────────────── */
     var PALETTES = {
-        /* ── Greens (default) ── */
+        /* ── Classic White (default) ── */
+        '#ffffff': {
+            name:       'Classic White',
+            primary:    '#374151',
+            primaryLt:  '#4b5563',
+            primaryDk:  '#1f2937',
+            accent:     '#ffffff',
+            glow:       'rgba(55,65,81,0.15)',
+            bgGrad:     'linear-gradient(to left, #ffffff, #f9fafb)',
+            headerGrad: 'linear-gradient(to right, #f9fafb, #374151)',
+        },
+    /* ── Greens ── */
         '#90ee90': {
             name:       'Forest Green',
             primary:    '#556b2f',
@@ -108,7 +119,7 @@
         },
     };
 
-    var DEFAULT_ACCENT = '#90ee90';
+    var DEFAULT_ACCENT = '#ffffff';
     var STORAGE_KEY    = 'userPreferences';
 
     /* ─────────────────────────────────────────────────────────────

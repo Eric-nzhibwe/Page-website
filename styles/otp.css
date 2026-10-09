@@ -109,7 +109,7 @@ body {
 }
 
 .otp-subtitle strong {
-    color: darkgreen;
+    color: var(--page-primary);
     font-weight: 600;
 }
 
@@ -236,7 +236,7 @@ body {
 
 .btn-resend {
     background: transparent;
-    color: darkgreen;
+    color: var(--page-primary);
     border: 2px solid var(--page-accent);
     padding: 10px 24px;
     border-radius: 8px;
@@ -267,7 +267,7 @@ body {
 }
 
 .resend-timer span {
-    color: darkgreen;
+    color: var(--page-primary);
     font-weight: 600;
 }
 

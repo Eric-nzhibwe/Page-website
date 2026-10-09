@@ -255,7 +255,7 @@
 /* ── Play button ── */
 .ii-btn-play {
     width: 100%;
-    background: linear-gradient(to right, var(--ii-primary), darkgreen);
+    background: linear-gradient(to right, var(--ii-primary), var(--page-primary-dk));
     color: #fff;
     border: none;
     border-radius: 10px;
@@ -646,7 +646,7 @@
 
 .ii-btn-next, .ii-btn-submit {
     flex: 1;
-    background: linear-gradient(to right, var(--ii-primary), darkgreen);
+    background: linear-gradient(to right, var(--ii-primary), var(--page-primary-dk));
     color: #fff;
     border: none;
     border-radius: 9px;
@@ -943,7 +943,7 @@
     position: absolute;
     top: 14px;
     left: 14px;
-    background: linear-gradient(to right, var(--ii-primary), darkgreen);
+    background: linear-gradient(to right, var(--ii-primary), var(--page-primary-dk));
     color: #fff;
     font-size: 11px;
     font-weight: 700;

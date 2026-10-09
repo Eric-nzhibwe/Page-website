@@ -53,7 +53,7 @@
 .ch-hero {
     position: relative;
     background: var(--bg-card);
-    border: 1px solid darkolivegreen;
+    border: 1px solid var(--page-primary);
     border-radius: 15px;
     overflow: hidden;
     margin-bottom: 36px;
