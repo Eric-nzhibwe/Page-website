@@ -30,8 +30,6 @@ INSTALLED_APPS = [
     'django_filters',
     'django_extensions',
     'channels',
-    'cloudinary',
-    'cloudinary_storage',
 
     # Project apps
     'users',
@@ -44,6 +42,13 @@ INSTALLED_APPS = [
     'social',
     'chatbot',
 ]
+
+# Add cloudinary only when the package is installed (optional on local dev)
+try:
+    import cloudinary  # noqa: F401
+    INSTALLED_APPS += ['cloudinary', 'cloudinary_storage']
+except ImportError:
+    pass
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
