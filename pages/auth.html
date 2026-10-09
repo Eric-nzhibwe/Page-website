@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -11,7 +12,11 @@
     <link href="https://fonts.googleapis.com/css2?family=Fredericka+the+Great&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../styles/auth.css">
     <script src="../scripts/theme.js"></script>
+    <!-- Preload Firebase SDK so it's cached before the user submits -->
+    <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js">
+    <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js">
 </head>
+
 <body>
     <!-- Splash Screen -->
     <div id="splashScreen" class="splash-screen">
@@ -37,15 +42,15 @@
             <!-- Left: polaroids -->
             <div class="polaroid-container">
                 <div class="polaroid polaroid-1">
-                    <div class="polaroid-image" ></div>
+                    <div class="polaroid-image"></div>
                     <p class="polaroid-caption">Page</p>
                 </div>
                 <div class="polaroid polaroid-2">
-                    <div class="polaroid-image" ></div>
+                    <div class="polaroid-image"></div>
                     <p class="polaroid-caption">Compete & Win</p>
                 </div>
                 <div class="polaroid polaroid-3">
-                    <div class="polaroid-image" ></div>
+                    <div class="polaroid-image"></div>
                     <p class="polaroid-caption">Join Today</p>
                 </div>
             </div>
@@ -58,7 +63,8 @@
                     <span class="title-line">Your culture</span>
                     <span class="title-line">Your world</span>
                 </h1>
-                <p class="landing-subtitle">Welcome to the <span style="color: darkolivegreen;">PAGE</span> community</p>
+                <p class="landing-subtitle">Welcome to the <span style="color: darkolivegreen;">PAGE</span> community
+                </p>
 
                 <button class="btn-signup" onclick="showAuthPage()">
                     Get Started <i class="fas fa-arrow-right"></i>
@@ -109,30 +115,46 @@
             </div>
             <div class="legal-modal-body">
                 <h1 id="privacyModalTitle">Privacy Policy</h1>
-                <p class="legal-effective">Effective Date: December 10, 2026 &nbsp;·&nbsp; Last Updated: September 29, 2026</p>
+                <p class="legal-effective">Effective Date: December 10, 2026 &nbsp;·&nbsp; Last Updated: September 29,
+                    2026</p>
 
-                <p>PAGE ("we", "our", or "us") operates the PAGE platform, a competitive creative community where artists earn prestige, build streaks, form alliances, and compete for real cash prizes. This Privacy Policy explains how we collect, use, share, and protect your personal information when you use our website, mobile experience, and related services (collectively, the "Platform").</p>
-                <p>By registering or using the Platform you agree to the practices described in this policy. If you do not agree, please do not use the Platform.</p>
+                <p>PAGE ("we", "our", or "us") operates the PAGE platform, a competitive creative community where
+                    artists earn prestige, build streaks, form alliances, and compete for real cash prizes. This Privacy
+                    Policy explains how we collect, use, share, and protect your personal information when you use our
+                    website, mobile experience, and related services (collectively, the "Platform").</p>
+                <p>By registering or using the Platform you agree to the practices described in this policy. If you do
+                    not agree, please do not use the Platform.</p>
 
                 <h2>1. Information We Collect</h2>
                 <h3>1.1 Information You Provide</h3>
                 <ul>
                     <li><strong>Account data</strong> — username, email address, and password when you register.</li>
-                    <li><strong>Profile data</strong> — display name, bio, profile picture, and any social media handles you choose to link.</li>
-                    <li><strong>Payment &amp; payout data</strong> — billing information and payout details required to process competition winnings. Payment card data is handled exclusively by our PCI-compliant payment processor and is never stored on our servers.</li>
-                    <li><strong>User-generated content</strong> — artwork, submissions, comments, and messages you post on the Platform.</li>
-                    <li><strong>Communications</strong> — support tickets, feedback, and any other messages you send us.</li>
+                    <li><strong>Profile data</strong> — display name, bio, profile picture, and any social media handles
+                        you choose to link.</li>
+                    <li><strong>Payment &amp; payout data</strong> — billing information and payout details required to
+                        process competition winnings. Payment card data is handled exclusively by our PCI-compliant
+                        payment processor and is never stored on our servers.</li>
+                    <li><strong>User-generated content</strong> — artwork, submissions, comments, and messages you post
+                        on the Platform.</li>
+                    <li><strong>Communications</strong> — support tickets, feedback, and any other messages you send us.
+                    </li>
                 </ul>
 
                 <h3>1.2 Information Collected Automatically</h3>
                 <ul>
-                    <li><strong>Usage data</strong> — pages visited, features used, challenges entered, and interaction timestamps.</li>
-                    <li><strong>Device &amp; browser data</strong> — IP address, browser type and version, operating system, and device identifiers.</li>
-                    <li><strong>Cookies &amp; similar technologies</strong> — session cookies to keep you signed in, preference cookies to remember your settings, and analytics cookies to understand how the Platform is used.</li>
+                    <li><strong>Usage data</strong> — pages visited, features used, challenges entered, and interaction
+                        timestamps.</li>
+                    <li><strong>Device &amp; browser data</strong> — IP address, browser type and version, operating
+                        system, and device identifiers.</li>
+                    <li><strong>Cookies &amp; similar technologies</strong> — session cookies to keep you signed in,
+                        preference cookies to remember your settings, and analytics cookies to understand how the
+                        Platform is used.</li>
                 </ul>
 
                 <h3>1.3 Information from Third Parties</h3>
-                <p>If you connect a social media account (Instagram, TikTok, YouTube, etc.) we receive basic profile information and follower count from that platform to populate your PAGE profile and determine verification status. We only access the permissions you explicitly grant.</p>
+                <p>If you connect a social media account (Instagram, TikTok, YouTube, etc.) we receive basic profile
+                    information and follower count from that platform to populate your PAGE profile and determine
+                    verification status. We only access the permissions you explicitly grant.</p>
 
                 <h2>2. How We Use Your Information</h2>
                 <ul>
@@ -140,7 +162,8 @@
                     <li>Process competition entries, calculate rankings, and disburse prize money.</li>
                     <li>Display your profile, artwork, and stats to other community members.</li>
                     <li>Send transactional emails (account confirmation, password reset, prize notifications).</li>
-                    <li>Send promotional communications — you may opt out at any time via the unsubscribe link in any email.</li>
+                    <li>Send promotional communications — you may opt out at any time via the unsubscribe link in any
+                        email.</li>
                     <li>Detect and prevent fraud, abuse, and Terms of Service violations.</li>
                     <li>Analyse usage trends to improve the Platform.</li>
                     <li>Comply with legal obligations.</li>
@@ -149,14 +172,22 @@
                 <h2>3. How We Share Your Information</h2>
                 <p>We do not sell your personal information. We may share it only in the following circumstances:</p>
                 <ul>
-                    <li><strong>Service providers</strong> — third-party vendors who help us operate the Platform (hosting, email delivery, payment processing, analytics). They are contractually required to protect your data and may not use it for their own purposes.</li>
-                    <li><strong>Other users</strong> — your username, profile picture, artwork submissions, prestige level, and ranking are visible to other PAGE members as part of the competitive experience.</li>
-                    <li><strong>Legal requirements</strong> — when required by law, court order, or to protect the rights, safety, or property of PAGE or others.</li>
-                    <li><strong>Business transfers</strong> — in the event of a merger, acquisition, or sale of assets, your data may be transferred as part of that transaction. We will notify you before your data is subject to a different privacy policy.</li>
+                    <li><strong>Service providers</strong> — third-party vendors who help us operate the Platform
+                        (hosting, email delivery, payment processing, analytics). They are contractually required to
+                        protect your data and may not use it for their own purposes.</li>
+                    <li><strong>Other users</strong> — your username, profile picture, artwork submissions, prestige
+                        level, and ranking are visible to other PAGE members as part of the competitive experience.</li>
+                    <li><strong>Legal requirements</strong> — when required by law, court order, or to protect the
+                        rights, safety, or property of PAGE or others.</li>
+                    <li><strong>Business transfers</strong> — in the event of a merger, acquisition, or sale of assets,
+                        your data may be transferred as part of that transaction. We will notify you before your data is
+                        subject to a different privacy policy.</li>
                 </ul>
 
                 <h2>4. Data Retention</h2>
-                <p>We retain your account data for as long as your account is active. If you delete your account we will remove your personal data within 30 days, except where we are required to retain it for legal, tax, or financial record-keeping purposes (typically up to 7 years for transaction records).</p>
+                <p>We retain your account data for as long as your account is active. If you delete your account we will
+                    remove your personal data within 30 days, except where we are required to retain it for legal, tax,
+                    or financial record-keeping purposes (typically up to 7 years for transaction records).</p>
 
                 <h2>5. Your Rights &amp; Choices</h2>
                 <p>Depending on your jurisdiction you may have the right to:</p>
@@ -168,28 +199,41 @@
                     <li>Data portability — receive your data in a machine-readable format.</li>
                     <li>Withdraw consent at any time where processing is based on consent.</li>
                 </ul>
-                <p>To exercise any of these rights, email us at <strong>privacy@pageplatform.com</strong>. We will respond within 30 days.</p>
+                <p>To exercise any of these rights, email us at <strong>privacy@pageplatform.com</strong>. We will
+                    respond within 30 days.</p>
 
                 <h2>6. Cookies</h2>
-                <p>You can control cookies through your browser settings. Disabling cookies may affect Platform functionality. We do not currently respond to "Do Not Track" browser signals, but we support the Global Privacy Control (GPC) signal where applicable.</p>
+                <p>You can control cookies through your browser settings. Disabling cookies may affect Platform
+                    functionality. We do not currently respond to "Do Not Track" browser signals, but we support the
+                    Global Privacy Control (GPC) signal where applicable.</p>
 
                 <h2>7. Security</h2>
-                <p>We use industry-standard safeguards including TLS encryption in transit, hashed passwords (bcrypt), and access controls. No method of transmission over the internet is 100% secure, and we cannot guarantee absolute security. Please use a strong, unique password and enable two-factor authentication when available.</p>
+                <p>We use industry-standard safeguards including TLS encryption in transit, hashed passwords (bcrypt),
+                    and access controls. No method of transmission over the internet is 100% secure, and we cannot
+                    guarantee absolute security. Please use a strong, unique password and enable two-factor
+                    authentication when available.</p>
 
                 <h2>8. Children's Privacy</h2>
-                <p>PAGE is not intended for users under the age of 18. We do not knowingly collect personal data from minors. If you believe a minor has created an account, contact us at <strong>privacy@pageplatform.com</strong> and we will promptly delete the account.</p>
+                <p>PAGE is not intended for users under the age of 18. We do not knowingly collect personal data from
+                    minors. If you believe a minor has created an account, contact us at
+                    <strong>privacy@pageplatform.com</strong> and we will promptly delete the account.
+                </p>
 
                 <h2>9. International Transfers</h2>
-                <p>PAGE is operated from and your data may be processed in countries outside your own. Where required, we rely on approved transfer mechanisms (such as Standard Contractual Clauses) to protect your data.</p>
+                <p>PAGE is operated from and your data may be processed in countries outside your own. Where required,
+                    we rely on approved transfer mechanisms (such as Standard Contractual Clauses) to protect your data.
+                </p>
 
                 <h2>10. Changes to This Policy</h2>
-                <p>We may update this policy from time to time. We will notify you of material changes by email or by posting a prominent notice on the Platform at least 14 days before the change takes effect. Your continued use after the effective date constitutes acceptance.</p>
+                <p>We may update this policy from time to time. We will notify you of material changes by email or by
+                    posting a prominent notice on the Platform at least 14 days before the change takes effect. Your
+                    continued use after the effective date constitutes acceptance.</p>
 
                 <h2>11. Contact Us</h2>
                 <p>For privacy-related questions or requests:</p>
                 <p><strong>PAGE Privacy Team</strong><br>
-                Email: privacy@pageplatform.com<br>
-                Response time: within 2 to 3 days</p>
+                    Email: privacy@pageplatform.com<br>
+                    Response time: within 2 to 3 days</p>
             </div>
             <div class="legal-modal-footer">
                 <button class="btn-primary" onclick="closeLegalModal('privacy')">Close</button>
@@ -210,110 +254,163 @@
             </div>
             <div class="legal-modal-body">
                 <h1 id="termsModalTitle">Terms of Service</h1>
-                <p class="legal-effective">Effective Date: December 5, 2026 &nbsp;·&nbsp; Last Updated: September 29, 2026</p>
+                <p class="legal-effective">Effective Date: December 5, 2026 &nbsp;·&nbsp; Last Updated: September 29,
+                    2026</p>
 
-                <p>Welcome to PAGE. These Terms of Service ("Terms") govern your access to and use of the PAGE platform, including all competitions, community features, and prize disbursements. Please read them carefully. By creating an account or using the Platform you agree to be bound by these Terms.</p>
+                <p>Welcome to PAGE. These Terms of Service ("Terms") govern your access to and use of the PAGE platform,
+                    including all competitions, community features, and prize disbursements. Please read them carefully.
+                    By creating an account or using the Platform you agree to be bound by these Terms.</p>
 
                 <h2>1. Eligibility</h2>
                 <ul>
-                    <li>You must be at least <strong>18 years old</strong> to register and participate in cash-prize competitions.</li>
+                    <li>You must be at least <strong>18 years old</strong> to register and participate in cash-prize
+                        competitions.</li>
                     <li>You must be a human individual — bots, scrapers, and automated accounts are prohibited.</li>
-                    <li>You must provide accurate, truthful information during registration. Impersonation of any person or entity is grounds for immediate account termination.</li>
-                    <li>Participation in cash-prize competitions may be restricted in certain jurisdictions where online prize competitions are prohibited or heavily regulated. You are solely responsible for determining whether participation is lawful in your location.</li>
+                    <li>You must provide accurate, truthful information during registration. Impersonation of any person
+                        or entity is grounds for immediate account termination.</li>
+                    <li>Participation in cash-prize competitions may be restricted in certain jurisdictions where online
+                        prize competitions are prohibited or heavily regulated. You are solely responsible for
+                        determining whether participation is lawful in your location.</li>
                 </ul>
 
                 <h2>2. Your Account</h2>
                 <ul>
-                    <li>You are responsible for maintaining the confidentiality of your password and for all activity that occurs under your account.</li>
-                    <li>Notify us immediately at <strong>support@pageplatform.com</strong> if you suspect unauthorised access.</li>
-                    <li>One account per person. Creating multiple accounts to gain competitive advantages is prohibited and will result in permanent banning of all associated accounts.</li>
+                    <li>You are responsible for maintaining the confidentiality of your password and for all activity
+                        that occurs under your account.</li>
+                    <li>Notify us immediately at <strong>support@pageplatform.com</strong> if you suspect unauthorised
+                        access.</li>
+                    <li>One account per person. Creating multiple accounts to gain competitive advantages is prohibited
+                        and will result in permanent banning of all associated accounts.</li>
                     <li>You may not transfer or sell your account to any other person.</li>
                 </ul>
 
                 <h2>3. Competitions &amp; Challenges</h2>
                 <h3>3.1 Entry &amp; Participation</h3>
                 <ul>
-                    <li>Each challenge will clearly state its entry requirements, submission deadline, judging criteria, and prize pool before you enter.</li>
-                    <li>Submission of an entry constitutes your agreement to the specific rules of that challenge in addition to these Terms.</li>
-                    <li>Late submissions will not be accepted. PAGE is not responsible for technical issues on your end that prevent timely submission.</li>
+                    <li>Each challenge will clearly state its entry requirements, submission deadline, judging criteria,
+                        and prize pool before you enter.</li>
+                    <li>Submission of an entry constitutes your agreement to the specific rules of that challenge in
+                        addition to these Terms.</li>
+                    <li>Late submissions will not be accepted. PAGE is not responsible for technical issues on your end
+                        that prevent timely submission.</li>
                 </ul>
 
                 <h3>3.2 Original Work</h3>
                 <ul>
-                    <li>All submissions must be your own original work. You must own all rights to any content you submit.</li>
-                    <li>Submissions may not contain third-party copyrighted material without an appropriate licence.</li>
-                    <li>AI-generated content must be clearly disclosed. Fully AI-generated submissions without substantial human creative direction are prohibited in challenges that explicitly require original human artistry.</li>
-                    <li>Plagiarism, copying, or submitting work previously published elsewhere is grounds for disqualification and account suspension.</li>
+                    <li>All submissions must be your own original work. You must own all rights to any content you
+                        submit.</li>
+                    <li>Submissions may not contain third-party copyrighted material without an appropriate licence.
+                    </li>
+                    <li>AI-generated content must be clearly disclosed. Fully AI-generated submissions without
+                        substantial human creative direction are prohibited in challenges that explicitly require
+                        original human artistry.</li>
+                    <li>Plagiarism, copying, or submitting work previously published elsewhere is grounds for
+                        disqualification and account suspension.</li>
                 </ul>
 
                 <h3>3.3 Judging &amp; Results</h3>
                 <ul>
-                    <li>Judging may be conducted by community vote, a panel of judges, or a combination — as specified per challenge.</li>
-                    <li>PAGE reserves the right to disqualify any submission that violates these Terms or the specific challenge rules.</li>
-                    <li>All judging decisions are final. While we welcome feedback, PAGES is not obligated to provide individual explanations for judging outcomes.</li>
-                    <li>Vote manipulation, coordinated voting rings, or any attempt to game rankings is strictly prohibited and will result in permanent disqualification.</li>
+                    <li>Judging may be conducted by community vote, a panel of judges, or a combination — as specified
+                        per challenge.</li>
+                    <li>PAGE reserves the right to disqualify any submission that violates these Terms or the specific
+                        challenge rules.</li>
+                    <li>All judging decisions are final. While we welcome feedback, PAGES is not obligated to provide
+                        individual explanations for judging outcomes.</li>
+                    <li>Vote manipulation, coordinated voting rings, or any attempt to game rankings is strictly
+                        prohibited and will result in permanent disqualification.</li>
                 </ul>
 
                 <h3>3.4 Prizes &amp; Payouts</h3>
                 <ul>
-                    <li>Cash prizes will be disbursed within <strong>5 business days</strong> of a challenge closing and results being verified.</li>
+                    <li>Cash prizes will be disbursed within <strong>5 business days</strong> of a challenge closing and
+                        results being verified.</li>
                     <li>To receive a payout you must have a verified account and a valid payout method on file.</li>
-                    <li>Prize winnings may be subject to income tax in your jurisdiction. You are solely responsible for reporting and paying any applicable taxes. PAGES may be required to collect tax identification information for payouts above regulatory thresholds.</li>
-                    <li>PAGES reserves the right to withhold prizes pending identity verification or investigation of potential Terms violations.</li>
+                    <li>Prize winnings may be subject to income tax in your jurisdiction. You are solely responsible for
+                        reporting and paying any applicable taxes. PAGES may be required to collect tax identification
+                        information for payouts above regulatory thresholds.</li>
+                    <li>PAGES reserves the right to withhold prizes pending identity verification or investigation of
+                        potential Terms violations.</li>
                     <li>Prizes are non-transferable and have no cash equivalent outside of the stated prize amount.</li>
                 </ul>
 
                 <h2>4. User Content &amp; Licence</h2>
                 <ul>
                     <li>You retain ownership of all artwork and content you submit ("User Content").</li>
-                    <li>By submitting User Content you grant PAGE a non-exclusive, worldwide, royalty-free licence to display, reproduce, and promote your work on the Platform and in PAGES marketing materials (social media, press, promotional campaigns) for the purpose of showcasing the competition and your achievement. This licence ends when you delete your account, except for content already used in published materials.</li>
-                    <li>You may request removal of specific uses by emailing <strong>content@pageplatform.com</strong>.</li>
+                    <li>By submitting User Content you grant PAGE a non-exclusive, worldwide, royalty-free licence to
+                        display, reproduce, and promote your work on the Platform and in PAGES marketing materials
+                        (social media, press, promotional campaigns) for the purpose of showcasing the competition and
+                        your achievement. This licence ends when you delete your account, except for content already
+                        used in published materials.</li>
+                    <li>You may request removal of specific uses by emailing <strong>content@pageplatform.com</strong>.
+                    </li>
                 </ul>
 
                 <h2>5. Prohibited Conduct</h2>
                 <p>You agree not to:</p>
                 <ul>
-                    <li>Submit content that is hateful, harassing, sexually explicit, violent, defamatory, or illegal.</li>
+                    <li>Submit content that is hateful, harassing, sexually explicit, violent, defamatory, or illegal.
+                    </li>
                     <li>Harass, threaten, or abuse other community members.</li>
                     <li>Attempt to reverse-engineer, hack, or disrupt the Platform or its infrastructure.</li>
                     <li>Use bots, scripts, or automated tools to interact with the Platform.</li>
                     <li>Sell, trade, or exploit your account or winnings for purposes not sanctioned by PAGE.</li>
                     <li>Engage in any activity that creates an unfair competitive advantage.</li>
                 </ul>
-                <p>Violations may result in content removal, account suspension, permanent banning, forfeiture of prizes, and legal action where appropriate.</p>
+                <p>Violations may result in content removal, account suspension, permanent banning, forfeiture of
+                    prizes, and legal action where appropriate.</p>
 
                 <h2>6. Streaks &amp; Prestige System</h2>
-                <p>PAGE's streak and prestige mechanics are features of the Platform designed to reward consistent participation. PAGES reserves the right to adjust, reset, or discontinue these mechanics at any time. Streaks and prestige points have no monetary value and cannot be exchanged for cash.</p>
+                <p>PAGE's streak and prestige mechanics are features of the Platform designed to reward consistent
+                    participation. PAGES reserves the right to adjust, reset, or discontinue these mechanics at any
+                    time. Streaks and prestige points have no monetary value and cannot be exchanged for cash.</p>
 
                 <h2>7. Alliances</h2>
-                <p>Alliance features allow users to form groups for collaborative competitions. Alliance leaders are responsible for ensuring their members comply with these Terms. PAGE may dissolve alliances found to be engaging in prohibited conduct, and all members of a dissolved alliance may face individual penalties.</p>
+                <p>Alliance features allow users to form groups for collaborative competitions. Alliance leaders are
+                    responsible for ensuring their members comply with these Terms. PAGE may dissolve alliances found to
+                    be engaging in prohibited conduct, and all members of a dissolved alliance may face individual
+                    penalties.</p>
 
                 <h2>8. Intellectual Property</h2>
-                <p>The PAGE name, logo, platform design, and all original Platform content are the intellectual property of PAGE and may not be reproduced, distributed, or used without our express written permission.</p>
+                <p>The PAGE name, logo, platform design, and all original Platform content are the intellectual property
+                    of PAGE and may not be reproduced, distributed, or used without our express written permission.</p>
 
                 <h2>9. Disclaimers</h2>
-                <p>THE PLATFORM IS PROVIDED "AS IS" WITHOUT WARRANTIES OF ANY KIND, EXPRESS OR IMPLIED. PAGES DOES NOT GUARANTEE UNINTERRUPTED OR ERROR-FREE SERVICE. WE ARE NOT RESPONSIBLE FOR ANY LOSS OF USER CONTENT DUE TO TECHNICAL FAILURES.</p>
+                <p>THE PLATFORM IS PROVIDED "AS IS" WITHOUT WARRANTIES OF ANY KIND, EXPRESS OR IMPLIED. PAGES DOES NOT
+                    GUARANTEE UNINTERRUPTED OR ERROR-FREE SERVICE. WE ARE NOT RESPONSIBLE FOR ANY LOSS OF USER CONTENT
+                    DUE TO TECHNICAL FAILURES.</p>
 
                 <h2>10. Limitation of Liability</h2>
-                <p>TO THE MAXIMUM EXTENT PERMITTED BY LAW, PAGES'S TOTAL LIABILITY TO YOU FOR ANY CLAIM ARISING FROM YOUR USE OF THE PLATFORM SHALL NOT EXCEED THE GREATER OF (A) THE AMOUNT YOU PAID TO PAGE IN THE 12 MONTHS PRECEDING THE CLAIM, OR (B) k100 ZMW.</p>
+                <p>TO THE MAXIMUM EXTENT PERMITTED BY LAW, PAGES'S TOTAL LIABILITY TO YOU FOR ANY CLAIM ARISING FROM
+                    YOUR USE OF THE PLATFORM SHALL NOT EXCEED THE GREATER OF (A) THE AMOUNT YOU PAID TO PAGE IN THE 12
+                    MONTHS PRECEDING THE CLAIM, OR (B) k100 ZMW.</p>
 
                 <h2>11. Indemnification</h2>
-                <p>You agree to indemnify and hold PAGE and its officers, employees, and agents harmless from any claims, damages, or expenses (including reasonable legal fees) arising from your use of the Platform, your User Content, or your violation of these Terms.</p>
+                <p>You agree to indemnify and hold PAGE and its officers, employees, and agents harmless from any
+                    claims, damages, or expenses (including reasonable legal fees) arising from your use of the
+                    Platform, your User Content, or your violation of these Terms.</p>
 
                 <h2>12. Termination</h2>
-                <p>We reserve the right to suspend or permanently terminate any account at our discretion, with or without notice, for violations of these Terms or for any other reason we deem appropriate. Upon termination, your licence to use the Platform ends immediately. Provisions that by their nature should survive termination (ownership, disclaimers, indemnification, limitation of liability) will do so.</p>
+                <p>We reserve the right to suspend or permanently terminate any account at our discretion, with or
+                    without notice, for violations of these Terms or for any other reason we deem appropriate. Upon
+                    termination, your licence to use the Platform ends immediately. Provisions that by their nature
+                    should survive termination (ownership, disclaimers, indemnification, limitation of liability) will
+                    do so.</p>
 
                 <h2>13. Governing Law &amp; Disputes</h2>
-                <p>These Terms are governed by the laws of the applicable jurisdiction in which PAGE is incorporated. Any dispute that cannot be resolved informally shall be submitted to binding arbitration on an individual basis — class actions are waived to the fullest extent permitted by law.</p>
+                <p>These Terms are governed by the laws of the applicable jurisdiction in which PAGE is incorporated.
+                    Any dispute that cannot be resolved informally shall be submitted to binding arbitration on an
+                    individual basis — class actions are waived to the fullest extent permitted by law.</p>
 
                 <h2>14. Changes to These Terms</h2>
-                <p>We may update these Terms at any time. We will provide at least 14 days' notice of material changes via email or a prominent Platform notice. Continued use after the effective date constitutes acceptance of the revised Terms.</p>
+                <p>We may update these Terms at any time. We will provide at least 14 days' notice of material changes
+                    via email or a prominent Platform notice. Continued use after the effective date constitutes
+                    acceptance of the revised Terms.</p>
 
                 <h2>15. Contact</h2>
                 <p>For questions about these Terms:</p>
                 <p><strong>PAGE Legal Team</strong><br>
-                Email: legal@pageplatform.com<br>
-                Response time: within 7 days</p>
+                    Email: legal@pageplatform.com<br>
+                    Response time: within 7 days</p>
             </div>
             <div class="legal-modal-footer">
                 <button class="btn-primary" onclick="closeLegalModal('terms')">Close</button>
@@ -339,54 +436,71 @@
 
                 <!-- Mission -->
                 <div class="about-hero-block">
-                    <p class="about-lead">PAGE is a competitive creative platform built for artists who want more than likes — they want recognition, community, and real rewards for their craft.</p>
+                    <p class="about-lead">PAGE is a competitive creative platform built for artists who want more than
+                        likes — they want recognition, community, and real rewards for their craft.</p>
                 </div>
 
                 <h2>Our Story</h2>
-                <p>PAGE was born from a simple frustration: the internet is full of talented artists who never get their moment. Social media rewards follower counts over skill, and most creative competitions are either pay-to-play or hidden behind gatekeepers.</p>
-                <p>We built PAGE to flip that. A place where the work speaks for itself — where a newcomer with raw talent can go head-to-head with a seasoned pro, earn community recognition, and take home real prize money based purely on their art and other things everyone shares.</p>
+                <p>PAGE was born from a simple frustration: the internet is full of talented artists who never get their
+                    moment. Social media rewards follower counts over skill, and most creative competitions are either
+                    pay-to-play or hidden behind gatekeepers.</p>
+                <p>We built PAGE to flip that. A place where the work speaks for itself — where a newcomer with raw
+                    talent can go head-to-head with a seasoned pro, earn community recognition, and take home real prize
+                    money based purely on their art and other things everyone shares.</p>
 
                 <h2>What We Do</h2>
                 <div class="about-features-grid">
                     <div class="about-feature-card">
                         <span class="about-feature-icon"><i class="fas fa-trophy"></i></span>
                         <strong>Challenges</strong>
-                        <p>Weekly and monthly creative challenges across disciplines — illustration, photography, design, digital art, and more. Each one with a clear brief, a prize pool, and a deadline.</p>
+                        <p>Weekly and monthly creative challenges across disciplines — illustration, photography,
+                            design, digital art, and more. Each one with a clear brief, a prize pool, and a deadline.
+                        </p>
                     </div>
                     <div class="about-feature-card">
                         <span class="about-feature-icon"><i class="fas fa-star"></i></span>
                         <strong>Prestige System</strong>
-                        <p>Earn prestige points for every submission, win, and streak. Your rank reflects your consistency and quality — not your follower count.</p>
+                        <p>Earn prestige points for every submission, win, and streak. Your rank reflects your
+                            consistency and quality — not your follower count.</p>
                     </div>
                     <div class="about-feature-card">
                         <span class="about-feature-icon"><i class="fas fa-fire"></i></span>
                         <strong>Streaks</strong>
-                        <p>Show up every day. Build your streak. The longer you stay consistent, the bigger the multipliers on your prestige earnings.</p>
+                        <p>Show up every day. Build your streak. The longer you stay consistent, the bigger the
+                            multipliers on your prestige earnings.</p>
                     </div>
                     <div class="about-feature-card">
                         <span class="about-feature-icon"><i class="fas fa-users"></i></span>
                         <strong>Alliances</strong>
-                        <p>Form crews with other artists. Alliance members compete together in team events, share knowledge, and keep each other accountable.</p>
+                        <p>Form crews with other artists. Alliance members compete together in team events, share
+                            knowledge, and keep each other accountable.</p>
                     </div>
                     <div class="about-feature-card">
                         <span class="about-feature-icon"><i class="fas fa-dollar-sign"></i></span>
                         <strong>Real Prizes</strong>
-                        <p>Cash payouts, not gift cards or exposure. Top finishers in every challenge earn real money, paid out directly to their account within minutes.</p>
+                        <p>Cash payouts, not gift cards or exposure. Top finishers in every challenge earn real money,
+                            paid out directly to their account within minutes.</p>
                     </div>
                     <div class="about-feature-card">
                         <span class="about-feature-icon"><i class="fas fa-shield-alt"></i></span>
                         <strong>Fair Competition</strong>
-                        <p>Transparent judging. Community voting with anti-manipulation safeguards. Every submission gets a fair shot.</p>
+                        <p>Transparent judging. Community voting with anti-manipulation safeguards. Every submission
+                            gets a fair shot.</p>
                     </div>
                 </div>
 
                 <h2>Our Values</h2>
                 <ul>
-                    <li><strong>Skill first.</strong> Rankings and rewards are based on the quality of your work, nothing else.</li>
-                    <li><strong>Community over clout.</strong> We're building a space where artists support each other, not just compete.</li>
-                    <li><strong>Radical transparency.</strong> Prize pools, judging criteria, and platform rules are always visible upfront.</li>
-                    <li><strong>Accessibility.</strong> Free to join, free to compete. No premium tiers that lock you out of prizes.</li>
-                    <li><strong>Original work.</strong> We celebrate human creativity and protect the integrity of every competition.</li>
+                    <li><strong>Skill first.</strong> Rankings and rewards are based on the quality of your work,
+                        nothing else.</li>
+                    <li><strong>Community over clout.</strong> We're building a space where artists support each other,
+                        not just compete.</li>
+                    <li><strong>Radical transparency.</strong> Prize pools, judging criteria, and platform rules are
+                        always visible upfront.</li>
+                    <li><strong>Accessibility.</strong> Free to join, free to compete. No premium tiers that lock you
+                        out of prizes.</li>
+                    <li><strong>Original work.</strong> We celebrate human creativity and protect the integrity of every
+                        competition.</li>
                 </ul>
 
                 <h2>Who It's For</h2>
@@ -400,7 +514,9 @@
                 </ul>
 
                 <h2>Join Us</h2>
-                <p>PAGE is growing fast. Thousands of artists are already competing, building streaks, and forming alliances. Whether you're a hobbyist who wants to take their work seriously or a professional looking for a new competitive outlet — there's a place for you here.</p>
+                <p>PAGE is growing fast. Thousands of artists are already competing, building streaks, and forming
+                    alliances. Whether you're a hobbyist who wants to take their work seriously or a professional
+                    looking for a new competitive outlet — there's a place for you here.</p>
                 <p>Create your account, enter your first challenge, and find out where your skill stands.</p>
 
             </div>
@@ -434,7 +550,8 @@
                         <span class="contact-card-icon"><i class="fas fa-life-ring"></i></span>
                         <div>
                             <strong>General Support</strong>
-                            <p>Account issues, technical problems, billing questions, and anything else that needs attention.</p>
+                            <p>Account issues, technical problems, billing questions, and anything else that needs
+                                attention.</p>
                             <a href="mailto:support@pageplatform.com" class="contact-link">support@pageplatform.com</a>
                         </div>
                     </div>
@@ -443,7 +560,8 @@
                         <div>
                             <strong>Competition Disputes</strong>
                             <p>Questions about judging outcomes, disqualifications, or suspected rule violations.</p>
-                            <a href="mailto:competitions@pageplatform.com" class="contact-link">competitions@pageplatform.com</a>
+                            <a href="mailto:competitions@pageplatform.com"
+                                class="contact-link">competitions@pageplatform.com</a>
                         </div>
                     </div>
                     <div class="contact-card">
@@ -459,7 +577,8 @@
                         <div>
                             <strong>Partnerships &amp; Press</strong>
                             <p>Brand collaborations, sponsorships, media enquiries, and business development.</p>
-                            <a href="mailto:partnerships@pageplatform.com" class="contact-link">partnerships@pageplatform.com</a>
+                            <a href="mailto:partnerships@pageplatform.com"
+                                class="contact-link">partnerships@pageplatform.com</a>
                         </div>
                     </div>
                     <div class="contact-card">
@@ -467,7 +586,8 @@
                         <div>
                             <strong>Bug Reports &amp; Security</strong>
                             <p>Found a bug or a security vulnerability? We take these seriously and respond fast.</p>
-                            <a href="mailto:security@pageplatform.com" class="contact-link">security@pageplatform.com</a>
+                            <a href="mailto:security@pageplatform.com"
+                                class="contact-link">security@pageplatform.com</a>
                         </div>
                     </div>
                 </div>
@@ -496,7 +616,8 @@
                     </div>
                     <div class="input-group">
                         <label for="contactMessage">Message</label>
-                        <textarea id="contactMessage" rows="4" placeholder="Tell us what's going on…" required></textarea>
+                        <textarea id="contactMessage" rows="4" placeholder="Tell us what's going on…"
+                            required></textarea>
                     </div>
                     <button type="submit" class="btn-primary contact-submit-btn">
                         <span class="contact-btn-text">Send Message</span>
@@ -526,281 +647,290 @@
     <!-- Auth Container (Login/Signup Forms) -->
     <div class="auth-container" style="display: none;">
         <div class="auth-card">
-          <div class="auth-card-inner">
+            <div class="auth-card-inner">
 
-            <!-- Logo -->
-            <div class="logo-section">
-                <div class="logo-container">
-                    <div class="logo-mark">
-                        <img src="../images/Page.jpeg" alt="PAGE" class="logo-image">
-                        <div class="logo-ring" aria-hidden="true"></div>
-                    </div>
-                </div>
-                <p class="tagline">Your voice. Your culture. Your world</p>
-            </div>
-
-            <!-- Tab switcher -->
-            <div class="auth-tabs" role="tablist">
-                <button class="auth-tab active" id="tabLogin"   role="tab" aria-selected="true"  onclick="switchToLogin()">Sign In</button>
-                <button class="auth-tab"         id="tabSignup" role="tab" aria-selected="false" onclick="switchToSignup()">Create Account</button>
-                <span class="auth-tab-slider" id="tabSlider" aria-hidden="true"></span>
-            </div>
-
-            <!-- ── LOGIN FORM ── -->
-            <div id="loginForm" class="auth-form active" role="tabpanel">
-                <form onsubmit="handleLogin(event)" novalidate autocomplete="on">
-
-                    <div class="input-group">
-                        <span class="input-icon"><i class="fas fa-user"></i></span>
-                        <input type="text" id="loginUsername" name="username"
-                               autocomplete="username"
-                               placeholder=" " required>
-                        <label for="loginUsername">Email or Username</label>
-                        <span class="input-focus-bar"></span>
-                    </div>
-
-                    <div class="input-group">
-                        <span class="input-icon"><i class="fas fa-lock"></i></span>
-                        <input type="password" id="loginPassword" name="password"
-                               autocomplete="current-password"
-                               placeholder=" " required>
-                        <label for="loginPassword">Password</label>
-                        <button type="button" class="input-eye" onclick="togglePassword('loginPassword', this)" aria-label="Show password" tabindex="-1">
-                            <i class="fas fa-eye"></i>
-                        </button>
-                        <span class="input-focus-bar"></span>
-                    </div>
-
-                    <div class="auth-options">
-                        <label class="remember-me">
-                            <input type="checkbox" id="rememberMe">
-                            <span class="custom-check"></span>
-                            Remember me
-                        </label>
-                        <a href="forgot-password.html" class="forgot-link" tabindex="0">Forgot password?</a>
-                    </div>
-
-                    <button type="submit" class="btn-primary btn-auth">
-                        <span class="btn-auth-text">Sign In</span>
-                        <span class="btn-auth-icon"><i class="fas fa-arrow-right"></i></span>
-                        <span class="btn-shimmer" aria-hidden="true"></span>
-                    </button>
-
-                </form>
-            </div>
-
-            <!-- ── SIGNUP FORM ── -->
-            <div id="signupForm" class="auth-form" role="tabpanel">
-                <form onsubmit="handleSignup(event)" novalidate autocomplete="off">
-
-                    <div class="input-group">
-                        <span class="input-icon"><i class="fas fa-at"></i></span>
-                        <input type="text" id="signupUsername" name="username"
-                               autocomplete="username"
-                               placeholder=" " required minlength="3">
-                        <label for="signupUsername">Username</label>
-                        <span class="input-focus-bar"></span>
-                    </div>
-
-                    <div class="input-group">
-                        <span class="input-icon"><i class="fas fa-envelope"></i></span>
-                        <input type="email" id="signupEmail" name="email"
-                               autocomplete="email"
-                               placeholder=" " required>
-                        <label for="signupEmail">Email Address</label>
-                        <span class="input-focus-bar"></span>
-                    </div>
-
-                    <div class="input-group">
-                        <span class="input-icon"><i class="fas fa-lock"></i></span>
-                        <input type="password" id="signupPassword" name="new-password"
-                               autocomplete="new-password"
-                               placeholder=" " required minlength="6"
-                               oninput="updateStrength(this.value)">
-                        <label for="signupPassword">Password</label>
-                        <button type="button" class="input-eye" onclick="togglePassword('signupPassword', this)" aria-label="Show password" tabindex="-1">
-                            <i class="fas fa-eye"></i>
-                        </button>
-                        <span class="input-focus-bar"></span>
-                    </div>
-
-                    <!-- Password strength meter -->
-                    <div class="strength-meter" aria-live="polite">
-                        <div class="strength-bars">
-                            <span class="sbar" id="sbar1"></span>
-                            <span class="sbar" id="sbar2"></span>
-                            <span class="sbar" id="sbar3"></span>
-                            <span class="sbar" id="sbar4"></span>
+                <!-- Logo -->
+                <div class="logo-section">
+                    <div class="logo-container">
+                        <div class="logo-mark">
+                            <img src="../images/Page.jpeg" alt="PAGE" class="logo-image">
+                            <div class="logo-ring" aria-hidden="true"></div>
                         </div>
-                        <span class="strength-label" id="strengthLabel">Strength</span>
                     </div>
+                    <p class="tagline">Your voice. Your culture. Your world</p>
+                </div>
 
-                    <div class="input-group">
-                        <span class="input-icon"><i class="fas fa-shield-alt"></i></span>
-                        <input type="password" id="signupConfirmPassword" name="confirm-password"
-                               autocomplete="new-password"
-                               placeholder=" " required>
-                        <label for="signupConfirmPassword">Confirm Password</label>
-                        <button type="button" class="input-eye" onclick="togglePassword('signupConfirmPassword', this)" aria-label="Show password" tabindex="-1">
-                            <i class="fas fa-eye"></i>
+                <!-- Tab switcher -->
+                <div class="auth-tabs" role="tablist">
+                    <button class="auth-tab active" id="tabLogin" role="tab" aria-selected="true"
+                        onclick="switchToLogin()">Sign In</button>
+                    <button class="auth-tab" id="tabSignup" role="tab" aria-selected="false"
+                        onclick="switchToSignup()">Create Account</button>
+                    <span class="auth-tab-slider" id="tabSlider" aria-hidden="true"></span>
+                </div>
+
+                <!-- ── LOGIN FORM ── -->
+                <div id="loginForm" class="auth-form active" role="tabpanel">
+                    <form onsubmit="handleLogin(event)" novalidate autocomplete="on">
+
+                        <div class="input-group">
+                            <span class="input-icon"><i class="fas fa-user"></i></span>
+                            <input type="text" id="loginUsername" name="username" autocomplete="username"
+                                placeholder=" " required>
+                            <label for="loginUsername">Email or Username</label>
+                            <span class="input-focus-bar"></span>
+                        </div>
+
+                        <div class="input-group">
+                            <span class="input-icon"><i class="fas fa-lock"></i></span>
+                            <input type="password" id="loginPassword" name="password" autocomplete="current-password"
+                                placeholder=" " required>
+                            <label for="loginPassword">Password</label>
+                            <button type="button" class="input-eye" onclick="togglePassword('loginPassword', this)"
+                                aria-label="Show password" tabindex="-1">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <span class="input-focus-bar"></span>
+                        </div>
+
+                        <div class="auth-options">
+                            <label class="remember-me">
+                                <input type="checkbox" id="rememberMe">
+                                <span class="custom-check"></span>
+                                Remember me
+                            </label>
+                            <a href="forgot-password.html" class="forgot-link" tabindex="0">Forgot password?</a>
+                        </div>
+
+                        <button type="submit" class="btn-primary btn-auth">
+                            <span class="btn-auth-text">Sign In</span>
+                            <span class="btn-auth-icon"><i class="fas fa-arrow-right"></i></span>
+                            <span class="btn-shimmer" aria-hidden="true"></span>
                         </button>
-                        <span class="input-focus-bar"></span>
-                    </div>
 
-                    <p class="terms-note">
-                        By creating an account you agree to our
-                        <a href="#" onclick="openLegalModal('terms'); return false;">Terms</a> and
-                        <a href="#" onclick="openLegalModal('privacy'); return false;">Privacy Policy</a>.
-                    </p>
+                    </form>
+                </div>
 
-                    <button type="submit" class="btn-primary btn-auth">
-                        <span class="btn-auth-text">Create Account</span>
-                        <span class="btn-auth-icon"><i class="fas fa-arrow-right"></i></span>
-                        <span class="btn-shimmer" aria-hidden="true"></span>
-                    </button>
+                <!-- ── SIGNUP FORM ── -->
+                <div id="signupForm" class="auth-form" role="tabpanel">
+                    <form onsubmit="handleSignup(event)" novalidate autocomplete="off">
 
-                </form>
-            </div>
+                        <div class="input-group">
+                            <span class="input-icon"><i class="fas fa-at"></i></span>
+                            <input type="text" id="signupUsername" name="username" autocomplete="username"
+                                placeholder=" " required minlength="3">
+                            <label for="signupUsername">Username</label>
+                            <span class="input-focus-bar"></span>
+                        </div>
 
-        </div><!-- /auth-card-inner -->
+                        <div class="input-group">
+                            <span class="input-icon"><i class="fas fa-envelope"></i></span>
+                            <input type="email" id="signupEmail" name="email" autocomplete="email" placeholder=" "
+                                required>
+                            <label for="signupEmail">Email Address</label>
+                            <span class="input-focus-bar"></span>
+                        </div>
+
+                        <div class="input-group">
+                            <span class="input-icon"><i class="fas fa-lock"></i></span>
+                            <input type="password" id="signupPassword" name="new-password" autocomplete="new-password"
+                                placeholder=" " required minlength="6" oninput="updateStrength(this.value)">
+                            <label for="signupPassword">Password</label>
+                            <button type="button" class="input-eye" onclick="togglePassword('signupPassword', this)"
+                                aria-label="Show password" tabindex="-1">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <span class="input-focus-bar"></span>
+                        </div>
+
+                        <!-- Password strength meter -->
+                        <div class="strength-meter" aria-live="polite">
+                            <div class="strength-bars">
+                                <span class="sbar" id="sbar1"></span>
+                                <span class="sbar" id="sbar2"></span>
+                                <span class="sbar" id="sbar3"></span>
+                                <span class="sbar" id="sbar4"></span>
+                            </div>
+                            <span class="strength-label" id="strengthLabel">Strength</span>
+                        </div>
+
+                        <div class="input-group">
+                            <span class="input-icon"><i class="fas fa-shield-alt"></i></span>
+                            <input type="password" id="signupConfirmPassword" name="confirm-password"
+                                autocomplete="new-password" placeholder=" " required>
+                            <label for="signupConfirmPassword">Confirm Password</label>
+                            <button type="button" class="input-eye"
+                                onclick="togglePassword('signupConfirmPassword', this)" aria-label="Show password"
+                                tabindex="-1">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <span class="input-focus-bar"></span>
+                        </div>
+
+                        <p class="terms-note">
+                            By creating an account you agree to our
+                            <a href="#" onclick="openLegalModal('terms'); return false;">Terms</a> and
+                            <a href="#" onclick="openLegalModal('privacy'); return false;">Privacy Policy</a>.
+                        </p>
+
+                        <button type="submit" class="btn-primary btn-auth">
+                            <span class="btn-auth-text">Create Account</span>
+                            <span class="btn-auth-icon"><i class="fas fa-arrow-right"></i></span>
+                            <span class="btn-shimmer" aria-hidden="true"></span>
+                        </button>
+
+                    </form>
+                </div>
+
+            </div><!-- /auth-card-inner -->
         </div><!-- /auth-card -->
 
-            <div class="features-showcase">
+        <div class="features-showcase">
 
-                <!-- Ambient glow orb -->
-                <div class="showcase-glow" aria-hidden="true"></div>
+            <!-- Ambient glow orb -->
+            <div class="showcase-glow" aria-hidden="true"></div>
 
-                <div class="steps-header">
-                    <div class="steps-label-group">
-                        <span class="steps-eyebrow">How It Works</span>
-                        <span class="steps-title">Your Journey</span>
-                    </div>
-                    <div class="steps-progress-ring" aria-hidden="true">
-                        <svg viewBox="0 0 44 44" width="44" height="44">
-                            <circle class="ring-bg"   cx="22" cy="22" r="18" />
-                            <circle class="ring-fill" cx="22" cy="22" r="18" id="progressRing"/>
-                        </svg>
-                        <span class="ring-label" id="stepsCurrent">1</span>
-                    </div>
+            <div class="steps-header">
+                <div class="steps-label-group">
+                    <span class="steps-eyebrow">How It Works</span>
+                    <span class="steps-title">Your Journey</span>
                 </div>
-
-                <!-- 3-D flip card track -->
-                <div class="steps-scene" id="stepsTrack">
-                    <!-- Card 1 -->
-                    <div class="flip-card active" data-step="1">
-                        <div class="flip-card-inner">
-                            <!-- BACK: shown first, then flips to front -->
-                            <div class="flip-card-back">
-                                <span class="flip-back-number">01</span>
-                                <span class="flip-back-label">Step One</span>
-                            </div>
-                            <!-- FRONT: content -->
-                            <div class="flip-card-front">
-                                <div class="flip-front-header">
-                                    <span class="flip-front-num">01</span>
-                                    <i class="fas fa-brain flip-front-icon"></i>
-                                </div>
-                                <h4>Take a Personality Test</h4>
-                                <p>Answer a quick set of questions. We learn your creative style, strengths, and what kind of challenges fire you up.</p>
-                            </div>
-                        </div>
-                    </div>
-                    <!-- Card 2 -->
-                    <div class="flip-card" data-step="2">
-                        <div class="flip-card-inner">
-                            <div class="flip-card-back">
-                                <span class="flip-back-number">02</span>
-                                <span class="flip-back-label">Step Two</span>
-                            </div>
-                            <div class="flip-card-front">
-                                <div class="flip-front-header">
-                                    <span class="flip-front-num">02</span>
-                                    <i class="fas fa-compass flip-front-icon"></i>
-                                </div>
-                                <h4>Choose an Experience</h4>
-                                <p>Pick your lane — solo challenges, alliance battles, or high-stakes tournaments. Your platform, your pace.</p>
-                            </div>
-                        </div>
-                    </div>
-                    <!-- Card 3 -->
-                    <div class="flip-card" data-step="3">
-                        <div class="flip-card-inner">
-                            <div class="flip-card-back">
-                                <span class="flip-back-number">03</span>
-                                <span class="flip-back-label">Step Three</span>
-                            </div>
-                            <div class="flip-card-front">
-                                <div class="flip-front-header">
-                                    <span class="flip-front-num">03</span>
-                                    <i class="fas fa-users flip-front-icon"></i>
-                                </div>
-                                <h4>Meet Your Matches</h4>
-                                <p>Get paired with artists who share your energy and skill level. Find your people, build your alliance, compete together.</p>
-                            </div>
-                        </div>
-                    </div>
-                    <!-- Card 4 -->
-                    <div class="flip-card" data-step="4">
-                        <div class="flip-card-inner">
-                            <div class="flip-card-back">
-                                <span class="flip-back-number">04</span>
-                                <span class="flip-back-label">Step Four</span>
-                            </div>
-                            <div class="flip-card-front">
-                                <div class="flip-front-header">
-                                    <span class="flip-front-num">04</span>
-                                    <i class="fas fa-sliders-h flip-front-icon"></i>
-                                </div>
-                                <h4>Refine Your Matches</h4>
-                                <p>As you compete, the platform learns. Your recommendations sharpen, rivals level up, and every round gets better.</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Step timeline dots -->
-                <div class="steps-timeline">
-                    <button class="stl-dot active" data-target="1" aria-label="Step 1">
-                        <span class="stl-dot-inner"></span>
-                    </button>
-                    <div class="stl-line"><div class="stl-line-fill" id="timelineFill"></div></div>
-                    <button class="stl-dot" data-target="2" aria-label="Step 2">
-                        <span class="stl-dot-inner"></span>
-                    </button>
-                    <div class="stl-line"><div class="stl-line-fill" id="timelineFill2"></div></div>
-                    <button class="stl-dot" data-target="3" aria-label="Step 3">
-                        <span class="stl-dot-inner"></span>
-                    </button>
-                    <div class="stl-line"><div class="stl-line-fill" id="timelineFill3"></div></div>
-                    <button class="stl-dot" data-target="4" aria-label="Step 4">
-                        <span class="stl-dot-inner"></span>
-                    </button>
-                </div>
-
-                <!-- Prev / Next -->
-                <div class="steps-nav">
-                    <button class="steps-nav-btn" id="stepsPrev" onclick="changeStep(-1)" aria-label="Previous">
-                        <i class="fas fa-chevron-left"></i>
-                    </button>
-                    <button class="steps-nav-btn" id="stepsNext" onclick="changeStep(1)" aria-label="Next">
-                        <i class="fas fa-chevron-right"></i>
-                    </button>
-                </div>
-
-            </div>
-            
-            <!-- Social Media Connections -->
-            <div id="socialConnectionsSection" class="social-connections-section" style="display: none;">
-                <h3><i class="fas fa-share-alt"></i> Connect Your Social Media</h3>
-                <p>Link your social media accounts to bring your followers and get verified</p>
-                <div id="socialConnectionsGrid" class="social-connections-grid">
-                    <!-- Social media icons will be populated here -->
-                </div>
-                <div id="connectedSocialAccounts" class="connected-social-accounts">
-                    <h4>Connected Accounts:</h4>
-                    <div id="connectedAccountsList"></div>
+                <div class="steps-progress-ring" aria-hidden="true">
+                    <svg viewBox="0 0 44 44" width="44" height="44">
+                        <circle class="ring-bg" cx="22" cy="22" r="18" />
+                        <circle class="ring-fill" cx="22" cy="22" r="18" id="progressRing" />
+                    </svg>
+                    <span class="ring-label" id="stepsCurrent">1</span>
                 </div>
             </div>
+
+            <!-- 3-D flip card track -->
+            <div class="steps-scene" id="stepsTrack">
+                <!-- Card 1 -->
+                <div class="flip-card active" data-step="1">
+                    <div class="flip-card-inner">
+                        <!-- BACK: shown first, then flips to front -->
+                        <div class="flip-card-back">
+                            <span class="flip-back-number">01</span>
+                            <span class="flip-back-label">Step One</span>
+                        </div>
+                        <!-- FRONT: content -->
+                        <div class="flip-card-front">
+                            <div class="flip-front-header">
+                                <span class="flip-front-num">01</span>
+                                <i class="fas fa-brain flip-front-icon"></i>
+                            </div>
+                            <h4>Take a Personality Test</h4>
+                            <p>Answer a quick set of questions. We learn your creative style, strengths, and what kind
+                                of challenges fire you up.</p>
+                        </div>
+                    </div>
+                </div>
+                <!-- Card 2 -->
+                <div class="flip-card" data-step="2">
+                    <div class="flip-card-inner">
+                        <div class="flip-card-back">
+                            <span class="flip-back-number">02</span>
+                            <span class="flip-back-label">Step Two</span>
+                        </div>
+                        <div class="flip-card-front">
+                            <div class="flip-front-header">
+                                <span class="flip-front-num">02</span>
+                                <i class="fas fa-compass flip-front-icon"></i>
+                            </div>
+                            <h4>Choose an Experience</h4>
+                            <p>Pick your lane — solo challenges, alliance battles, or high-stakes tournaments. Your
+                                platform, your pace.</p>
+                        </div>
+                    </div>
+                </div>
+                <!-- Card 3 -->
+                <div class="flip-card" data-step="3">
+                    <div class="flip-card-inner">
+                        <div class="flip-card-back">
+                            <span class="flip-back-number">03</span>
+                            <span class="flip-back-label">Step Three</span>
+                        </div>
+                        <div class="flip-card-front">
+                            <div class="flip-front-header">
+                                <span class="flip-front-num">03</span>
+                                <i class="fas fa-users flip-front-icon"></i>
+                            </div>
+                            <h4>Meet Your Matches</h4>
+                            <p>Get paired with artists who share your energy and skill level. Find your people, build
+                                your alliance, compete together.</p>
+                        </div>
+                    </div>
+                </div>
+                <!-- Card 4 -->
+                <div class="flip-card" data-step="4">
+                    <div class="flip-card-inner">
+                        <div class="flip-card-back">
+                            <span class="flip-back-number">04</span>
+                            <span class="flip-back-label">Step Four</span>
+                        </div>
+                        <div class="flip-card-front">
+                            <div class="flip-front-header">
+                                <span class="flip-front-num">04</span>
+                                <i class="fas fa-sliders-h flip-front-icon"></i>
+                            </div>
+                            <h4>Refine Your Matches</h4>
+                            <p>As you compete, the platform learns. Your recommendations sharpen, rivals level up, and
+                                every round gets better.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step timeline dots -->
+            <div class="steps-timeline">
+                <button class="stl-dot active" data-target="1" aria-label="Step 1">
+                    <span class="stl-dot-inner"></span>
+                </button>
+                <div class="stl-line">
+                    <div class="stl-line-fill" id="timelineFill"></div>
+                </div>
+                <button class="stl-dot" data-target="2" aria-label="Step 2">
+                    <span class="stl-dot-inner"></span>
+                </button>
+                <div class="stl-line">
+                    <div class="stl-line-fill" id="timelineFill2"></div>
+                </div>
+                <button class="stl-dot" data-target="3" aria-label="Step 3">
+                    <span class="stl-dot-inner"></span>
+                </button>
+                <div class="stl-line">
+                    <div class="stl-line-fill" id="timelineFill3"></div>
+                </div>
+                <button class="stl-dot" data-target="4" aria-label="Step 4">
+                    <span class="stl-dot-inner"></span>
+                </button>
+            </div>
+
+            <!-- Prev / Next -->
+            <div class="steps-nav">
+                <button class="steps-nav-btn" id="stepsPrev" onclick="changeStep(-1)" aria-label="Previous">
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+                <button class="steps-nav-btn" id="stepsNext" onclick="changeStep(1)" aria-label="Next">
+                    <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
+
+        </div>
+
+        <!-- Social Media Connections -->
+        <div id="socialConnectionsSection" class="social-connections-section" style="display: none;">
+            <h3><i class="fas fa-share-alt"></i> Connect Your Social Media</h3>
+            <p>Link your social media accounts to bring your followers and get verified</p>
+            <div id="socialConnectionsGrid" class="social-connections-grid">
+                <!-- Social media icons will be populated here -->
+            </div>
+            <div id="connectedSocialAccounts" class="connected-social-accounts">
+                <h4>Connected Accounts:</h4>
+                <div id="connectedAccountsList"></div>
+            </div>
+        </div>
     </div>
 
     <script src="../scripts/auth.js"></script>
@@ -809,24 +939,24 @@
            TRUE 3D FLIP CARD STEPPER
         ══════════════════════════════════════════ */
         (function () {
-            const TOTAL        = 4;
-            const AUTO_MS      = 4500;   // ms between auto-advances
-            const FLIP_MS      = 700;    // must match CSS transition
+            const TOTAL = 4;
+            const AUTO_MS = 4500;   // ms between auto-advances
+            const FLIP_MS = 700;    // must match CSS transition
             const BACK_HOLD_MS = 900;    // how long back face shows before flipping to front
 
-            let current   = 1;
-            let timer     = null;
+            let current = 1;
+            let timer = null;
             let animating = false;
 
             /* SVG ring progress */
-            const RING_R         = 18;
-            const RING_CIRCUM    = 2 * Math.PI * RING_R;
-            const ringEl         = document.getElementById('progressRing');
-            ringEl.style.strokeDasharray  = RING_CIRCUM;
+            const RING_R = 18;
+            const RING_CIRCUM = 2 * Math.PI * RING_R;
+            const ringEl = document.getElementById('progressRing');
+            ringEl.style.strokeDasharray = RING_CIRCUM;
             ringEl.style.strokeDashoffset = RING_CIRCUM;
 
             function setRing(step) {
-                const pct    = step / TOTAL;
+                const pct = step / TOTAL;
                 const offset = RING_CIRCUM - pct * RING_CIRCUM;
                 ringEl.style.strokeDashoffset = offset;
             }
@@ -838,8 +968,8 @@
                     fill.style.width = step > i + 1 ? '100%' : '0%';
                 });
                 document.querySelectorAll('.stl-dot').forEach((dot, i) => {
-                    dot.classList.toggle('active',   i + 1 <= step);
-                    dot.classList.toggle('complete', i + 1 <  step);
+                    dot.classList.toggle('active', i + 1 <= step);
+                    dot.classList.toggle('complete', i + 1 < step);
                 });
             }
 
@@ -847,7 +977,7 @@
             function showBack(cardEl) {
                 const inner = cardEl.querySelector('.flip-card-inner');
                 inner.style.transition = 'none';
-                inner.style.transform  = 'rotateY(-180deg)'; // back facing viewer
+                inner.style.transform = 'rotateY(-180deg)'; // back facing viewer
             }
 
             /* Flip from back → front */
@@ -855,7 +985,7 @@
                 return new Promise(resolve => {
                     const inner = cardEl.querySelector('.flip-card-inner');
                     inner.style.transition = `transform ${FLIP_MS}ms cubic-bezier(0.4,0.2,0.2,1)`;
-                    inner.style.transform  = 'rotateY(0deg)';
+                    inner.style.transform = 'rotateY(0deg)';
                     setTimeout(resolve, FLIP_MS);
                 });
             }
@@ -865,7 +995,7 @@
                 return new Promise(resolve => {
                     const inner = cardEl.querySelector('.flip-card-inner');
                     inner.style.transition = `transform ${FLIP_MS}ms cubic-bezier(0.4,0.2,0.2,1)`;
-                    inner.style.transform  = 'rotateY(180deg)'; // flip to back (other side)
+                    inner.style.transform = 'rotateY(180deg)'; // flip to back (other side)
                     setTimeout(resolve, FLIP_MS);
                 });
             }
@@ -880,7 +1010,7 @@
                 clearTimeout(timer);
 
                 const outCard = card(current);
-                const inCard  = card(next);
+                const inCard = card(next);
 
                 // 1. Prep incoming card: show its back face, make it visible
                 showBack(inCard);
@@ -957,62 +1087,62 @@
         /* ── Password visibility toggle ── */
         function togglePassword(fieldId, btn) {
             const field = document.getElementById(fieldId);
-            const icon  = btn.querySelector('i');
-            const show  = field.type === 'password';
-            field.type  = show ? 'text' : 'password';
-            icon.classList.toggle('fa-eye',      !show);
+            const icon = btn.querySelector('i');
+            const show = field.type === 'password';
+            field.type = show ? 'text' : 'password';
+            icon.classList.toggle('fa-eye', !show);
             icon.classList.toggle('fa-eye-slash', show);
         }
 
         /* ── Password strength meter ── */
         function updateStrength(val) {
-            const bars   = [1,2,3,4].map(n => document.getElementById('sbar' + n));
-            const label  = document.getElementById('strengthLabel');
+            const bars = [1, 2, 3, 4].map(n => document.getElementById('sbar' + n));
+            const label = document.getElementById('strengthLabel');
             let score = 0;
-            if (val.length >= 6)                          score++;
-            if (val.length >= 10)                         score++;
-            if (/[A-Z]/.test(val) && /[a-z]/.test(val))  score++;
+            if (val.length >= 6) score++;
+            if (val.length >= 10) score++;
+            if (/[A-Z]/.test(val) && /[a-z]/.test(val)) score++;
             if (/[0-9]/.test(val) && /[^A-Za-z0-9]/.test(val)) score++;
 
             const levels = ['', 'Weak', 'Fair', 'Good', 'Strong'];
             const colors = ['', '#ef4444', '#f59e0b', '#3b82f6', '#22c55e'];
             bars.forEach((bar, i) => {
                 bar.style.background = i < score ? colors[score] : 'rgba(255,255,255,0.1)';
-                bar.style.transform  = i < score ? 'scaleX(1)' : 'scaleX(0.3)';
-                bar.style.opacity    = i < score ? '1' : '0.3';
+                bar.style.transform = i < score ? 'scaleX(1)' : 'scaleX(0.3)';
+                bar.style.opacity = i < score ? '1' : '0.3';
             });
-            label.textContent  = val.length ? levels[score] || 'Weak' : 'Strength';
-            label.style.color  = val.length ? colors[score] : 'rgba(232,232,208,0.35)';
+            label.textContent = val.length ? levels[score] || 'Weak' : 'Strength';
+            label.style.color = val.length ? colors[score] : 'rgba(232,232,208,0.35)';
         }
 
         /* ── Tab slider positioning ── */
         function positionTabSlider(tabId) {
-            const tab    = document.getElementById(tabId);
+            const tab = document.getElementById(tabId);
             const slider = document.getElementById('tabSlider');
             if (!tab || !slider) return;
-            slider.style.width  = tab.offsetWidth + 'px';
-            slider.style.left   = tab.offsetLeft  + 'px';
+            slider.style.width = tab.offsetWidth + 'px';
+            slider.style.left = tab.offsetLeft + 'px';
         }
 
         /* Override switchToLogin / switchToSignup to also move slider */
-        const _origSwitchLogin  = window.switchToLogin;
+        const _origSwitchLogin = window.switchToLogin;
         const _origSwitchSignup = window.switchToSignup;
 
-        window.switchToLogin = function() {
+        window.switchToLogin = function () {
             if (typeof _origSwitchLogin === 'function') _origSwitchLogin();
             document.getElementById('tabLogin')?.classList.add('active');
             document.getElementById('tabSignup')?.classList.remove('active');
-            document.getElementById('tabLogin')?.setAttribute('aria-selected','true');
-            document.getElementById('tabSignup')?.setAttribute('aria-selected','false');
+            document.getElementById('tabLogin')?.setAttribute('aria-selected', 'true');
+            document.getElementById('tabSignup')?.setAttribute('aria-selected', 'false');
             positionTabSlider('tabLogin');
         };
 
-        window.switchToSignup = function() {
+        window.switchToSignup = function () {
             if (typeof _origSwitchSignup === 'function') _origSwitchSignup();
             document.getElementById('tabSignup')?.classList.add('active');
             document.getElementById('tabLogin')?.classList.remove('active');
-            document.getElementById('tabSignup')?.setAttribute('aria-selected','true');
-            document.getElementById('tabLogin')?.setAttribute('aria-selected','false');
+            document.getElementById('tabSignup')?.setAttribute('aria-selected', 'true');
+            document.getElementById('tabLogin')?.setAttribute('aria-selected', 'false');
             positionTabSlider('tabSignup');
         };
 
@@ -1059,7 +1189,7 @@
         /* ── Contact form submit ── */
         function handleContactSubmit(e) {
             e.preventDefault();
-            const btn  = e.target.querySelector('.contact-submit-btn');
+            const btn = e.target.querySelector('.contact-submit-btn');
             const text = btn.querySelector('.contact-btn-text');
             btn.disabled = true;
             text.textContent = 'Sending…';
@@ -1078,7 +1208,7 @@
 
         /* ── Close any modal on backdrop click ── */
         document.querySelectorAll('.legal-modal').forEach(modal => {
-            modal.addEventListener('click', function(e) {
+            modal.addEventListener('click', function (e) {
                 if (e.target === this) {
                     this.classList.remove('legal-modal--open');
                     document.body.style.overflow = '';
@@ -1087,7 +1217,7 @@
         });
 
         /* ── Close on Escape ── */
-        document.addEventListener('keydown', function(e) {
+        document.addEventListener('keydown', function (e) {
             if (e.key === 'Escape') {
                 document.querySelectorAll('.legal-modal--open').forEach(modal => {
                     modal.classList.remove('legal-modal--open');
@@ -1097,4 +1227,5 @@
         });
     </script>
 </body>
+
 </html>

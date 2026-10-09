@@ -16,44 +16,59 @@ const API_BASE_URL = (
 let _firebaseApp  = null;
 let _firebaseAuth = null;
 let _fbReady      = false;   // true once Firebase is initialised
+let _fbInitPromise = null;   // deduplicate concurrent init calls
+
+// Pre-cached SDK module references — avoids re-importing on each auth action
+let _fbAuthModule = null;
 
 /**
  * Lazy-initialise Firebase using the config served by Django.
  * Falls back to legacy Django auth if Firebase is not configured.
+ * Deduplicates concurrent calls so only one init runs at a time.
  */
 async function initFirebase() {
     if (_fbReady) return true;
+    // Return the in-flight promise if init is already running
+    if (_fbInitPromise) return _fbInitPromise;
 
-    try {
-        const res = await fetchWithTimeout(`${API_BASE_URL}/users/firebase-config/`, {
-            headers: getAuthHeaders(),
-        }, 8000);
+    _fbInitPromise = (async () => {
+        try {
+            const res = await fetchWithTimeout(`${API_BASE_URL}/users/firebase-config/`, {
+                headers: getAuthHeaders(),
+            }, 5000); // reduced from 8s
 
-        if (!res.ok) throw new Error('Config endpoint returned ' + res.status);
-        const cfg = await res.json();
+            if (!res.ok) throw new Error('Config endpoint returned ' + res.status);
+            const cfg = await res.json();
 
-        // If the server hasn't set the web API key yet, fall back silently
-        if (!cfg.apiKey || !cfg.projectId) {
-            console.info('Firebase web config not set — using legacy auth.');
+            if (!cfg.apiKey || !cfg.projectId) {
+                console.info('Firebase web config not set — using legacy auth.');
+                return false;
+            }
+
+            // Import both modules in parallel
+            const [appModule, authModule] = await Promise.all([
+                import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js'),
+                import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js'),
+            ]);
+
+            // Cache auth module so login/signup don't re-import it
+            _fbAuthModule = authModule;
+
+            const { initializeApp, getApps } = appModule;
+            const { getAuth } = authModule;
+
+            _firebaseApp  = getApps().length ? getApps()[0] : initializeApp(cfg);
+            _firebaseAuth = getAuth(_firebaseApp);
+            _fbReady      = true;
+            return true;
+        } catch (err) {
+            console.info('Firebase not available — falling back to legacy auth:', err.message);
+            _fbInitPromise = null; // allow retry on next attempt
             return false;
         }
+    })();
 
-        // Dynamic import of the Firebase modular SDK (v10 compat CDN)
-        const { initializeApp, getApps } = await import(
-            'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js'
-        );
-        const { getAuth } = await import(
-            'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js'
-        );
-
-        _firebaseApp  = getApps().length ? getApps()[0] : initializeApp(cfg);
-        _firebaseAuth = getAuth(_firebaseApp);
-        _fbReady      = true;
-        return true;
-    } catch (err) {
-        console.info('Firebase not available — falling back to legacy auth:', err.message);
-        return false;
-    }
+    return _fbInitPromise;
 }
 
 function getAuthHeaders() {
@@ -65,7 +80,7 @@ function getAuthHeaders() {
 document.addEventListener('DOMContentLoaded', () => {
     checkAuthStatus();
     runSplash();
-    // Pre-warm Firebase in the background so the first login is fast
+    // Pre-warm Firebase eagerly — parallel with splash so it's ready when user submits
     initFirebase().catch(() => {});
 });
 
@@ -79,16 +94,16 @@ function runSplash() {
     if (auth)    { auth.style.opacity    = '0'; auth.style.display    = 'none'; }
 
     setTimeout(() => {
-        splash.style.transition = 'opacity 0.5s ease';
+        splash.style.transition = 'opacity 0.4s ease';
         splash.style.opacity    = '0';
         setTimeout(() => {
             splash.remove();
             if (landing) {
-                landing.style.transition = 'opacity 0.55s ease';
+                landing.style.transition = 'opacity 0.4s ease';
                 requestAnimationFrame(() => { landing.style.opacity = '1'; });
             }
-        }, 500);
-    }, 2200);
+        }, 400);
+    }, 1200); // reduced from 2200ms
 }
 
 // ── Already logged in? Skip the auth page ────────────────────
@@ -98,7 +113,7 @@ async function checkAuthStatus() {
     try {
         const res = await fetchWithTimeout(`${API_BASE_URL}/auth/profile/`, {
             headers: { 'Authorization': `Token ${token}` }
-        });
+        }, 5000); // reduced from default 15s
         if (res.ok) {
             window.location.href = '../index.html';
         } else {
@@ -168,7 +183,7 @@ async function handleLogin(event) {
                     ? `Welcome back, ${result.user?.username || 'player'}! (Limited mode — some features offline) 🔥`
                     : `Welcome back, ${result.user?.username || 'player'}! 🔥`;
                 showToast(greeting, 'success');
-                setTimeout(() => { window.location.href = '../index.html'; }, 900);
+                setTimeout(() => { window.location.href = '../index.html'; }, 300);
                 return;
             }
             // If Firebase returned a specific error (wrong password etc), surface it
@@ -184,7 +199,7 @@ async function handleLogin(event) {
             method:  'POST',
             headers: { 'Content-Type': 'application/json' },
             body:    JSON.stringify({ username: identifier, password }),
-        }, 15000);
+        }, 8000); // reduced from 15s
         const data = await res.json().catch(() => ({}));
 
         if (!res.ok) {
@@ -194,7 +209,7 @@ async function handleLogin(event) {
 
         _storeSession(data.token, data.user, 'postgres');
         showToast(`Welcome back, ${data.user?.username || 'player'}! 🔥`, 'success');
-        setTimeout(() => { window.location.href = '../index.html'; }, 900);
+        setTimeout(() => { window.location.href = '../index.html'; }, 300);
 
     } catch (err) {
         showFormError('loginForm', err.name === 'AbortError'
@@ -207,7 +222,8 @@ async function handleLogin(event) {
 
 async function _loginWithFirebase(identifier, password) {
     try {
-        const { signInWithEmailAndPassword } = await import(
+        // Use cached module — avoids a CDN round-trip on every login
+        const { signInWithEmailAndPassword } = _fbAuthModule || await import(
             'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js'
         );
         // Firebase login requires an email; if identifier looks like a username,
@@ -271,7 +287,7 @@ async function handleSignup(event) {
             if (result.success) {
                 _storeSession(result.token, result.user, result.source);
                 showToast('Account created! Welcome to PAGE 🎉', 'success');
-                setTimeout(() => { window.location.href = '../index.html'; }, 1000);
+                setTimeout(() => { window.location.href = '../index.html'; }, 300);
                 return;
             }
             if (result.fatal) {
@@ -285,7 +301,7 @@ async function handleSignup(event) {
             method:  'POST',
             headers: { 'Content-Type': 'application/json' },
             body:    JSON.stringify({ username, email, display_name: username, password, password_confirm: password }),
-        }, 15000);
+        }, 8000); // reduced from 15s
         const data = await res.json().catch(() => ({}));
 
         if (!res.ok) {
@@ -303,7 +319,7 @@ async function handleSignup(event) {
 
         _storeSession(data.token, data.user, 'postgres');
         showToast('Account created! Welcome to PAGE 🎉', 'success');
-        setTimeout(() => { window.location.href = '../index.html'; }, 1000);
+        setTimeout(() => { window.location.href = '../index.html'; }, 300);
 
     } catch (err) {
         showFormError('signupForm', err.name === 'AbortError'
@@ -316,7 +332,8 @@ async function handleSignup(event) {
 
 async function _registerWithFirebase(email, password, username) {
     try {
-        const { createUserWithEmailAndPassword, updateProfile } = await import(
+        // Use cached module — avoids a CDN round-trip on every signup
+        const { createUserWithEmailAndPassword, updateProfile } = _fbAuthModule || await import(
             'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js'
         );
         const credential = await createUserWithEmailAndPassword(_firebaseAuth, email, password);
@@ -353,7 +370,7 @@ async function _exchangeFirebaseToken(idToken) {
             method:  'POST',
             headers: { 'Content-Type': 'application/json' },
             body:    JSON.stringify({ firebase_token: idToken }),
-        }, 15000);
+        }, 8000); // reduced from 15s
         const data = await res.json().catch(() => ({}));
 
         if (res.ok) return { success: true, token: data.token, user: data.user };
@@ -372,14 +389,12 @@ async function _exchangeFirebaseToken(idToken) {
     }
 
     // ── Firestore fallback — works even when Postgres is down ──────────
-    // This lets users log in via Firebase Auth and see their profile from
-    // Firestore when the Render free-tier DB has been suspended.
     try {
         const res  = await fetchWithTimeout(`${API_BASE_URL}/auth/firestore-profile/`, {
             method:  'POST',
             headers: { 'Content-Type': 'application/json' },
             body:    JSON.stringify({ firebase_token: idToken }),
-        }, 12000);
+        }, 6000); // reduced from 12s
         const data = await res.json().catch(() => ({}));
 
         if (res.ok && data.user) {
