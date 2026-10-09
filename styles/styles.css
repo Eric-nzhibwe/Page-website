@@ -640,7 +640,7 @@ body {
 }
 
 .card-content h4 {
-    color: #aaa;
+    color: var(--theme-text-muted);
     font-size: 13px;
     margin-bottom: 8px;
     text-transform: uppercase;
@@ -655,7 +655,7 @@ body {
 
 .card-change {
     font-size: 13px;
-    color: #888;
+    color: var(--theme-text-muted);
 }
 
 .card-change.positive {
@@ -747,7 +747,7 @@ body {
 }
 
 .history-time {
-    color: #888;
+    color: var(--theme-text-muted);
     font-size: 12px;
 }
 
@@ -919,7 +919,7 @@ body {
 .lock-icon {
     font-size: 48px;
     margin-bottom: 10px;
-    color: #888;
+    color: var(--theme-text-muted);
 }
 
 .lock-icon i {
@@ -1008,7 +1008,7 @@ body {
 
 .next-milestone {
     margin-top: 10px;
-    color: #aaa;
+    color: var(--theme-text-muted);
     font-size: 14px;
 }
 
@@ -1066,7 +1066,7 @@ body {
 
 .alliance-benefits li {
     padding: 10px 0;
-    color: #aaa;
+    color: var(--theme-text-muted);
 }
 
 .alliance-benefits li i {
@@ -2000,7 +2000,7 @@ body {
 
 .conversation-time {
     font-size: 11px;
-    color: #888;
+    color: var(--theme-text-muted);
 }
 
 .conversation-preview {

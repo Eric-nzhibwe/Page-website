@@ -2044,7 +2044,7 @@ body {
 
 .social-connections-section p {
     text-align: center;
-    color: #aaa;
+    color: var(--theme-text-muted);
     margin-bottom: 30px;
     font-size: 14px;
 }

@@ -727,13 +727,13 @@ body {
   display: none !important;
 }
 
-/* ── Name label — below the circle, white text ── */
+/* ── Name label — below the circle ── */
 .story-name {
   position: static !important;
   bottom: auto !important;
   left: auto !important;
   right: auto !important;
-  color: #fff !important;
+  color: var(--theme-text, #1c1e21) !important;
   font-size: 11px !important;
   font-weight: 500 !important;
   text-shadow: none !important;
@@ -745,7 +745,7 @@ body {
 }
 
 .create-story .story-name {
-  color: #fff !important;
+  color: var(--theme-text, #1c1e21) !important;
   text-shadow: none !important;
   font-weight: 600 !important;
 }
