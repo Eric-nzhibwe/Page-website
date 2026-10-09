@@ -61,7 +61,36 @@ class PostViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         if _use_fs_social():
             return  # handled in create() override below
-        post = serializer.save(author=self.request.user)
+
+        # Convert uploaded image to base64 data URI so it survives re-deploys
+        request    = self.request
+        media_file = request.FILES.get('media_file')
+        extra      = {}
+        if media_file and media_file.content_type.startswith('image/'):
+            try:
+                from PIL import Image
+                import io, base64
+                img = Image.open(media_file)
+                if img.mode not in ('RGB',):
+                    img = img.convert('RGB')
+                max_side = 1024
+                w, h = img.size
+                if max(w, h) > max_side:
+                    scale = max_side / max(w, h)
+                    img = img.resize((int(w * scale), int(h * scale)), Image.LANCZOS)
+                buf = io.BytesIO()
+                img.save(buf, format='JPEG', quality=85, optimize=True)
+                encoded = base64.b64encode(buf.getvalue()).decode('utf-8')
+                extra = {
+                    'media_url':  f'data:image/jpeg;base64,{encoded}',
+                    'media_type': 'image',
+                    'media_file': None,   # don't save the raw file
+                }
+            except Exception as exc:
+                import logging
+                logging.getLogger(__name__).error(f'Post image base64 failed: {exc}')
+
+        post = serializer.save(author=request.user, **extra)
         self._broadcast_new_post(post)
 
     def create(self, request, *args, **kwargs):
@@ -76,22 +105,59 @@ class PostViewSet(viewsets.ModelViewSet):
 
     def _create_firestore(self, request):
         from .firestore_social_service import create_post
-        from django.core.files.storage import default_storage
-        from django.core.files.base import ContentFile
-        import os
 
         data      = request.data
         media_url = None
+        media_type = ''
 
-        # Handle file upload if present
-        media_file = request.FILES.get('media')
+        # Process uploaded image → base64 data URI (survives Render re-deploys,
+        # no external storage needed; stored directly in the Firestore document)
+        media_file = request.FILES.get('media_file')
         if media_file:
-            ext       = os.path.splitext(media_file.name)[1].lower()
-            safe_name = f"posts/{request.user.id}_{uuid.uuid4().hex}{ext}"
-            path      = default_storage.save(safe_name, ContentFile(media_file.read()))
-            media_url = request.build_absolute_uri(default_storage.url(path))
+            media_type = 'video' if media_file.content_type.startswith('video') else 'image'
+            if media_type == 'image':
+                try:
+                    from PIL import Image
+                    import io, base64
+                    img = Image.open(media_file)
+                    # Normalise to RGB for JPEG
+                    if img.mode in ('RGBA', 'LA', 'P'):
+                        bg = Image.new('RGB', img.size, (255, 255, 255))
+                        if img.mode == 'P':
+                            img = img.convert('RGBA')
+                        bg.paste(img, mask=img.split()[-1] if img.mode in ('RGBA',) else None)
+                        img = bg
+                    elif img.mode != 'RGB':
+                        img = img.convert('RGB')
+                    # Cap longest side at 1024px
+                    max_side = 1024
+                    w, h = img.size
+                    if max(w, h) > max_side:
+                        scale = max_side / max(w, h)
+                        img = img.resize((int(w * scale), int(h * scale)), Image.LANCZOS)
+                    buf = io.BytesIO()
+                    img.save(buf, format='JPEG', quality=85, optimize=True)
+                    encoded  = base64.b64encode(buf.getvalue()).decode('utf-8')
+                    media_url = f'data:image/jpeg;base64,{encoded}'
+                except Exception as exc:
+                    import logging
+                    logging.getLogger(__name__).error(f'Post image processing failed: {exc}')
+            else:
+                # Videos are too large for Firestore docs — store via default_storage
+                import os
+                from django.core.files.storage import default_storage
+                from django.core.files.base import ContentFile
+                ext       = os.path.splitext(media_file.name)[1].lower() or '.mp4'
+                safe_name = f"posts/{request.user.id}_{uuid.uuid4().hex}{ext}"
+                try:
+                    path      = default_storage.save(safe_name, ContentFile(media_file.read()))
+                    media_url = request.build_absolute_uri(default_storage.url(path))
+                except Exception as exc:
+                    import logging
+                    logging.getLogger(__name__).error(f'Post video upload failed: {exc}')
 
-        post = create_post(request.user, dict(data), media_url=media_url)
+        post = create_post(request.user, dict(data),
+                           media_url=media_url, media_type=media_type)
         if not post:
             return Response({'error': 'Failed to create post.'},
                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)

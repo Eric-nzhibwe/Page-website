@@ -71,7 +71,8 @@ BATCH_SIZE      = 400
 #  Posts — write
 # ─────────────────────────────────────────────────────────────────────────────
 
-def create_post(author, validated_data: dict, media_url: str = None) -> dict:
+def create_post(author, validated_data: dict,
+                media_url: str = None, media_type: str = '') -> dict:
     """Save a new post document.  Returns the formatted dict."""
     db = get_firestore()
     if db is None:
@@ -79,6 +80,13 @@ def create_post(author, validated_data: dict, media_url: str = None) -> dict:
 
     post_id = str(uuid.uuid4())
     now     = datetime.now(tz=timezone.utc)
+
+    # media_type from caller takes priority; fall back to validated_data
+    resolved_media_type = (
+        media_type
+        or validated_data.get('media_type', '')
+        or ('image' if media_url and media_url.startswith('data:image') else '')
+    )
 
     doc = {
         'id':               post_id,
@@ -89,7 +97,7 @@ def create_post(author, validated_data: dict, media_url: str = None) -> dict:
         'content':          validated_data.get('content', ''),
         'post_type':        validated_data.get('post_type', 'text'),
         'media_url':        media_url or validated_data.get('media_url') or None,
-        'media_type':       validated_data.get('media_type', ''),
+        'media_type':       resolved_media_type,
         'achievement_badge': validated_data.get('achievement_badge', {}),
         'challenge_id':     validated_data.get('challenge_id', ''),
         'reaction_count':   0,
@@ -474,26 +482,30 @@ def _avatar(user) -> str | None:
 
 
 def _fmt_post(d: dict) -> dict:
+    media_url = d.get('media_url')
     return {
         'id':               d.get('id', ''),
         'author': {
-            'id':            d.get('author_id', ''),
-            'username':      d.get('author_username', ''),
-            'profile_image': d.get('author_avatar'),
-            'access_tier':   d.get('author_tier', 'Bronze'),
+            'id':                d.get('author_id', ''),
+            'username':          d.get('author_username', ''),
+            'display_name':      d.get('author_username', ''),
+            'profile_image':     d.get('author_avatar'),
+            'profile_image_url': d.get('author_avatar'),
+            'access_tier':       d.get('author_tier', 'Bronze'),
         },
-        'content':          d.get('content', ''),
-        'post_type':        d.get('post_type', 'text'),
-        'media_url':        d.get('media_url'),
-        'media_type':       d.get('media_type', ''),
-        'achievement_badge': d.get('achievement_badge', {}),
-        'challenge_id':     d.get('challenge_id', ''),
-        'reaction_count':   d.get('reaction_count', 0),
-        'comment_count':    d.get('comment_count', 0),
-        'share_count':      d.get('share_count', 0),
-        'user_reaction':    d.get('user_reaction'),
-        'created_at':       _ts(d.get('created_at')),
-        'updated_at':       _ts(d.get('updated_at')),
+        'content':              d.get('content', ''),
+        'post_type':            d.get('post_type', 'text'),
+        'media_url':            media_url,
+        'resolved_media_url':   media_url,   # frontend uses this field
+        'media_type':           d.get('media_type', ''),
+        'achievement_badge':    d.get('achievement_badge', {}),
+        'challenge_id':         d.get('challenge_id', ''),
+        'reaction_count':       d.get('reaction_count', 0),
+        'comment_count':        d.get('comment_count', 0),
+        'share_count':          d.get('share_count', 0),
+        'user_reaction':        d.get('user_reaction'),
+        'created_at':           _ts(d.get('created_at')),
+        'updated_at':           _ts(d.get('updated_at')),
     }
 
 
