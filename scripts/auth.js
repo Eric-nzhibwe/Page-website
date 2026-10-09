@@ -173,10 +173,34 @@ async function handleLogin(event) {
     setLoading(btn, true, 'Signing in…');
 
     try {
-        // ── Try Firebase Auth first ────────────────────────────────────
+        const isEmail = identifier.includes('@');
+
+        // ── If Firebase is ready, resolve username → email so Firebase can auth it
         const fbReady = await initFirebase();
-        if (fbReady) {
-            const result = await _loginWithFirebase(identifier, password);
+        let firebaseIdentifier = identifier;
+
+        if (!isEmail && fbReady) {
+            // Ask Django to resolve the username to its email address.
+            // Firebase Auth requires an email — it never stores usernames.
+            // This is safe: Firebase still requires the correct password to sign in.
+            try {
+                const res = await fetchWithTimeout(`${API_BASE_URL}/auth/resolve-email/`, {
+                    method:  'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body:    JSON.stringify({ username: identifier }),
+                }, 4000);
+                const data = await res.json().catch(() => ({}));
+                if (res.ok && data.email) {
+                    firebaseIdentifier = data.email;
+                }
+            } catch (_) {
+                // Resolution failed — Firebase path will be skipped, legacy handles it
+            }
+        }
+
+        // ── Try Firebase Auth (email login, or username that resolved to an email)
+        if (fbReady && firebaseIdentifier.includes('@')) {
+            const result = await _loginWithFirebase(firebaseIdentifier, password);
             if (result.success) {
                 _storeSession(result.token, result.user, result.source);
                 const greeting = result.source === 'firestore'
@@ -186,20 +210,20 @@ async function handleLogin(event) {
                 setTimeout(() => { window.location.href = '../index.html'; }, 300);
                 return;
             }
-            // If Firebase returned a specific error (wrong password etc), surface it
+            // Fatal Firebase error (wrong password, account disabled, rate-limited)
             if (result.fatal) {
                 showFormError('loginForm', result.message);
                 return;
             }
-            // Otherwise fall through to legacy auth
+            // Non-fatal (account not in Firebase) — fall through to Django legacy
         }
 
-        // ── Fallback: legacy Django email/password auth ────────────────
+        // ── Fallback: Django legacy auth — handles both email and username natively
         const res  = await fetchWithTimeout(`${API_BASE_URL}/auth/login/`, {
             method:  'POST',
             headers: { 'Content-Type': 'application/json' },
             body:    JSON.stringify({ username: identifier, password }),
-        }, 8000); // reduced from 15s
+        }, 8000);
         const data = await res.json().catch(() => ({}));
 
         if (!res.ok) {

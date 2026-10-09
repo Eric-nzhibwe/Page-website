@@ -10,6 +10,8 @@ urlpatterns = [
     path('firebase-login/', views.firebase_token_login_view, name='firebase-login'),
     # Returns public Firebase web config for the JS SDK initialisation
     path('firebase-config/', views.firebase_config_view, name='firebase-config'),
+    # Resolves a username → email so Firebase SDK can sign in with email+password
+    path('resolve-email/', views.resolve_email_view, name='resolve-email'),
     # Postgres-free profile lookup via Firestore (DB-down fallback)
     path('firestore-profile/', views.firestore_profile_view, name='firestore-profile'),
 

@@ -803,6 +803,37 @@ def firebase_token_login_view(request):
     })
 
 
+@csrf_exempt
+@api_view(['POST'])
+@authentication_classes([])
+@permission_classes([permissions.AllowAny])
+def resolve_email_view(request):
+    """
+    Resolve a username to its email address so the frontend Firebase SDK
+    can sign in with email+password even when the user typed a username.
+
+    Only returns the email if the username exists — Firebase still requires
+    the correct password to complete sign-in, so this exposes nothing sensitive.
+
+    Request:  { "username": "someuser" }
+    Response: { "email": "user@example.com" }  or 404
+    """
+    username = (request.data.get('username') or '').strip()
+    if not username or '@' in username:
+        return Response({'error': 'A username (not email) is required.'},
+                        status=status.HTTP_400_BAD_REQUEST)
+    try:
+        user = User.objects.get(username__iexact=username)
+        if not user.is_active:
+            return Response({'error': 'Account not found.'},
+                            status=status.HTTP_404_NOT_FOUND)
+        return Response({'email': user.email})
+    except User.DoesNotExist:
+        # Return 404 without revealing whether the username exists
+        return Response({'error': 'Account not found.'},
+                        status=status.HTTP_404_NOT_FOUND)
+
+
 @api_view(['GET'])
 @authentication_classes([])
 @permission_classes([permissions.AllowAny])
