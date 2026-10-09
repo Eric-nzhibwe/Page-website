@@ -52,6 +52,7 @@
 /* "Your story" card ring → flat border, no gradient */
 .create-story .story-ring-wrap {
     background: var(--theme-border, #e0e0e0) !important;
+    color: black;
 }
 
 /* ── Inner circle — the actual photo ── */
