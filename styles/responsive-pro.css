@@ -9,14 +9,14 @@
 :root {
   --page-green:       var(--page-primary,    #556b2f);
   --page-green-light: var(--page-primary-lt, #6b8a3a);
-  --page-green-faint: #f0f6e8;
+  --page-green-faint: var(--theme-surface2, #f5f5f5);
   --page-gold:        #f5c518;
   --page-accent:      #e8534a;
   --page-bg:          #f2f4f0;
-  --page-surface:     #ffffff;
-  --page-border:      #e2e8d8;
-  --page-text:        #1a1a1a;
-  --page-muted:       #6b7280;
+  --page-surface:     var(--theme-surface, #ffffff);
+  --page-border:      var(--theme-border, #e4e6ea);
+  --page-text:        var(--theme-text, #1a1a1a);
+  --page-muted:       var(--theme-text-muted, #6b7280);
   --page-shadow-sm:   0 1px 4px rgba(0,0,0,.08);
   --page-shadow-md:   0 4px 16px rgba(0,0,0,.10);
   --page-shadow-lg:   0 8px 32px rgba(0,0,0,.13);
@@ -932,6 +932,70 @@ body {
 .post-content {
   font-size: 15px !important;
   line-height: 1.6 !important;
+  color: var(--page-text) !important;
+  margin-bottom: 10px !important;
+  word-break: break-word !important;
+}
+
+/* ── Post media (images / videos / audio) ── */
+.post-media {
+  margin: 0 -16px 10px !important;   /* bleed to card edges */
+  overflow: hidden !important;
+}
+
+.post-media img,
+.post-media video {
+  width: 100% !important;
+  max-height: 520px !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+/* Grid layout for multi-image posts */
+.post-media-grid {
+  display: grid !important;
+  gap: 2px !important;
+}
+
+.post-media-grid:has(.post-media-item:nth-child(2)) {
+  grid-template-columns: 1fr 1fr !important;
+}
+
+.post-media-item img,
+.post-media-item video {
+  width: 100% !important;
+  height: 260px !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+/* Audio / voice note */
+.voice-note-player {
+  width: 100% !important;
+  margin: 8px 0 !important;
+}
+
+/* Achievement badge inside media area */
+.achievement-badge-large {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 24px !important;
+  background: linear-gradient(135deg, var(--page-green), var(--page-green-light)) !important;
+  color: #fff !important;
+  text-align: center !important;
+}
+
+@media (min-width: 1024px) {
+  .post-media {
+    margin: 0 0 10px !important;
+    border-radius: 10px !important;
+    overflow: hidden !important;
+  }
+}
+
+.post-content-text {
   color: var(--page-text) !important;
   margin-bottom: 12px !important;
 }
