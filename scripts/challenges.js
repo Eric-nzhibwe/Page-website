@@ -3,13 +3,13 @@
  */
 
 // ── State ─────────────────────────────────────────────────────────────────────
-let currentUserId    = null;
-let player           = null;
-let challenges       = [];
-let mySubmissions    = [];
-let myChallenges     = [];
+let currentUserId = null;
+let player = null;
+let challenges = [];
+let mySubmissions = [];
+let myChallenges = [];
 let currentChallenge = null;
-let challengeTimer   = null;
+let challengeTimer = null;
 let challengeStartTime = null;
 let realtimeUpdateInterval = null;
 
@@ -23,6 +23,57 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderMySubmissions();
     renderMyChallenges();
 
+    (function _avatarBoot() {
+        function _stamp(imgUrl) {
+            if (!imgUrl) return;
+            const imgTag = `<img src="${imgUrl}" alt="avatar"
+            style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;"
+            onerror="this.style.display='none';this.parentElement.innerHTML='<i class=\\'fas fa-circle-user\\'></i>'">`;
+
+            // IDs
+            ['avatarDisplay', 'modalAvatar', 'umAvatar', 'navAvatar',
+                'smAvatarImg', 'heroAvatar', 'profileAvatar', 'settingsAvatarPreview'
+            ].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.innerHTML = imgTag;
+            });
+
+            // Classes / attributes
+            document.querySelectorAll([
+                '.user-avatar-btn',
+                '.user-menu-avatar',
+                '.nav-avatar',
+                '.header-avatar',
+                '.profile-avatar',
+                '.current-user-avatar',
+                '.post-avatar.current-user',
+                '.post-creator-avatar',
+                '.page-composer-avatar',
+                '[data-avatar="current-user"]',
+                '[data-current-user-avatar]',
+            ].join(', ')).forEach(el => { el.innerHTML = imgTag; });
+        }
+
+        // Stamp as soon as DOM is ready
+        document.addEventListener('DOMContentLoaded', () => {
+            try {
+                const u = JSON.parse(localStorage.getItem('pageUser') || '{}');
+                const url = u.profile_image_url || u.profile_image || null;
+                if (url) _stamp(url);
+            } catch (_) { /* non-critical */ }
+        });
+
+        // Live update when photo changes (upload on any page)
+        window.addEventListener('page:avatarChanged', e => {
+            const url = e.detail?.url;
+            if (url) _stamp(url);
+        });
+
+        // Expose so other scripts can call it directly if needed
+        window._stampCurrentUserAvatar = window._stampCurrentUserAvatar || _stamp;
+    })();
+
+
     // ── Auto-refresh challenges list every 45s ─────────────────────────────
     // Re-fetches active challenges and patches participant counts + new cards
     // without wiping the user's current filter/search state.
@@ -34,9 +85,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (!fresh.length) return;
 
             // Detect if anything actually changed before re-rendering
-            const oldIds  = new Set(challenges.map(c => String(c.id)));
-            const newIds  = new Set(fresh.map(c => String(c.id)));
-            const added   = fresh.filter(c => !oldIds.has(String(c.id)));
+            const oldIds = new Set(challenges.map(c => String(c.id)));
+            const newIds = new Set(fresh.map(c => String(c.id)));
+            const added = fresh.filter(c => !oldIds.has(String(c.id)));
             const changed = fresh.filter(c => {
                 const old = challenges.find(o => String(o.id) === String(c.id));
                 return old && old.submission_count !== c.submission_count;
@@ -62,8 +113,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const pill = card.querySelector('.card-count-pill');
                 if (pill) pill.innerHTML = `<i class="fas fa-users"></i> ${c.submission_count}`;
                 // Flash subtle ring to signal new activity
-                card.style.transition  = 'box-shadow 0.4s ease';
-                card.style.boxShadow   = '0 0 0 3px rgba(85,107,47,0.35)';
+                card.style.transition = 'box-shadow 0.4s ease';
+                card.style.boxShadow = '0 0 0 3px rgba(85,107,47,0.35)';
                 setTimeout(() => { card.style.boxShadow = ''; }, 900);
                 card.dataset.cachedParticipants = c.submission_count;
             });
@@ -150,7 +201,7 @@ async function loadMyChallenges() {
 
 // ── Filter ────────────────────────────────────────────────────────────────────
 let _activeFilter = 'all';
-let _searchQuery  = '';
+let _searchQuery = '';
 
 function filterChallenges(difficulty, event) {
     document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
@@ -191,36 +242,36 @@ function renderChallenges() {
 
     container.innerHTML = filtered.map(c => {
         // ── Social challenge types rendered with their own card layout ────────
-        if (c.challenge_type === 'debate')  return _renderDebateCard(c);
-        if (c.challenge_type === 'poll')    return _renderPollCard(c);
-        if (c.challenge_type === 'qa')      return _renderQACard(c);
+        if (c.challenge_type === 'debate') return _renderDebateCard(c);
+        if (c.challenge_type === 'poll') return _renderPollCard(c);
+        if (c.challenge_type === 'qa') return _renderQACard(c);
 
-        const isImgInterp  = c.challenge_type === 'image_interpretation';
+        const isImgInterp = c.challenge_type === 'image_interpretation';
         const hasSubmitted = isImgInterp
             ? mySubmissions.some(s => s.challenge === c.id) || c.user_has_img_submitted
             : mySubmissions.some(s => s.challenge === c.id) || c.user_has_submitted;
 
         // Time remaining with urgency class
-        const timeLeft     = getTimeRemaining(c.ends_at);
-        const timeUrgent   = timeLeft.includes('h left') && !timeLeft.includes('d');
-        const timeClass    = timeUrgent ? 'meta-item time-urgent' : 'meta-item';
+        const timeLeft = getTimeRemaining(c.ends_at);
+        const timeUrgent = timeLeft.includes('h left') && !timeLeft.includes('d');
+        const timeClass = timeUrgent ? 'meta-item time-urgent' : 'meta-item';
 
         // Progress bar — submissions as % of a soft cap (100 feels "full")
-        const progressPct  = Math.min(100, Math.round((c.submission_count / 100) * 100));
+        const progressPct = Math.min(100, Math.round((c.submission_count / 100) * 100));
 
         return `
         <article class="challenge-card ${hasSubmitted ? 'card-submitted' : ''}" role="listitem" data-id="${c.id}" data-challenge-type="${c.challenge_type || 'text_interpretation'}">
 
             <!-- Image banner -->
-            <div class="challenge-image-wrap" onclick="openChallengeWithFeeCheck('${c.id}','${c.challenge_type||"text_interpretation"}')">
+            <div class="challenge-image-wrap" onclick="openChallengeWithFeeCheck('${c.id}','${c.challenge_type || "text_interpretation"}')">
                 ${isImgInterp ? `
                 <!-- Image interpretation: always blurred on card — only revealed inside the game -->
                 <img src="${escHtml(c.image_url || '')}" alt="${escHtml(c.title)}" class="challenge-image card-img-blurred" loading="lazy">
                 <div class="challenge-image-overlay"></div>
                 <div class="card-blur-lock-overlay">
                     ${c.image_url
-                        ? '<i class="fas fa-eye-slash"></i><span>Revealed when you play</span>'
-                        : '<i class="fas fa-lock"></i><span>Deposit K10 to unlock</span>'}
+                    ? '<i class="fas fa-eye-slash"></i><span>Revealed when you play</span>'
+                    : '<i class="fas fa-lock"></i><span>Deposit K10 to unlock</span>'}
                 </div>` : `
                 <img src="${escHtml(c.image_url)}" alt="${escHtml(c.title)}" class="challenge-image" loading="lazy">
                 <div class="challenge-image-overlay"></div>`}
@@ -244,7 +295,7 @@ function renderChallenges() {
             </div>
 
             <!-- Body -->
-            <div class="challenge-body" onclick="openChallengeWithFeeCheck('${c.id}','${c.challenge_type||"text_interpretation"}')">
+            <div class="challenge-body" onclick="openChallengeWithFeeCheck('${c.id}','${c.challenge_type || "text_interpretation"}')">
                 <h3 class="challenge-title">${escHtml(c.title)}</h3>
                 <p class="challenge-description">${escHtml(c.description)}</p>
 
@@ -258,8 +309,8 @@ function renderChallenges() {
                     </span>
                     <span class="meta-item">
                         ${isImgInterp
-                            ? `<i class="fas fa-eye"></i> Image`
-                            : `<i class="fas fa-align-left"></i> ${c.min_word_count}–${c.max_word_count}w`}
+                ? `<i class="fas fa-eye"></i> Image`
+                : `<i class="fas fa-align-left"></i> ${c.min_word_count}–${c.max_word_count}w`}
                     </span>
                 </div>
 
@@ -278,10 +329,10 @@ function renderChallenges() {
                         data-action="participate" data-id="${c.id}" data-type="${c.challenge_type || 'text_interpretation'}"
                         ${hasSubmitted ? 'disabled' : ''}>
                     ${hasSubmitted
-                        ? '<i class="fas fa-check-circle"></i> Submitted'
-                        : isImgInterp
-                            ? '<i class="fas fa-gamepad"></i> Play'
-                            : '<i class="fas fa-play"></i> Participate'}
+                ? '<i class="fas fa-check-circle"></i> Submitted'
+                : isImgInterp
+                    ? '<i class="fas fa-gamepad"></i> Play'
+                    : '<i class="fas fa-play"></i> Participate'}
                 </button>
             </div>
         </article>`;
@@ -303,12 +354,12 @@ function renderChallenges() {
 function getTimeRemaining(endDate) {
     const diff = new Date(endDate) - Date.now();
     if (diff <= 0) return 'Ended';
-    const days  = Math.floor(diff / 86400000);
+    const days = Math.floor(diff / 86400000);
     const hours = Math.floor((diff % 86400000) / 3600000);
-    const mins  = Math.floor((diff % 3600000) / 60000);
-    if (days > 0)  return `${days}d ${hours}h left`;
+    const mins = Math.floor((diff % 3600000) / 60000);
+    if (days > 0) return `${days}d ${hours}h left`;
     if (hours > 0) return `${hours}h ${mins}m left`;
-    if (mins > 0)  return `${mins}m left`;
+    if (mins > 0) return `${mins}m left`;
     return 'Ending soon';
 }
 
@@ -316,7 +367,7 @@ function getTimeRemaining(endDate) {
 // Shows a confirmation modal when the challenge has an entry fee.
 // If balance is sufficient → deduct then open game.
 // If balance is insufficient → offer to top up (link to wallet).
-let _pendingChallengeId   = null;
+let _pendingChallengeId = null;
 let _pendingChallengeType = null;
 
 async function openChallengeWithFeeCheck(challengeId, type) {
@@ -342,17 +393,17 @@ async function openChallengeWithFeeCheck(challengeId, type) {
     }
 
     // Paid challenge — show fee gate modal
-    _pendingChallengeId   = challengeId;
+    _pendingChallengeId = challengeId;
     _pendingChallengeType = type;
 
     // Populate modal
     const feeEl = document.getElementById('feeGateAmount');
     const titleEl = document.getElementById('feeGateTitle');
     const prizeEl = document.getElementById('feeGatePrize');
-    const balEl   = document.getElementById('feeGateBalance');
+    const balEl = document.getElementById('feeGateBalance');
 
     if (titleEl) titleEl.textContent = challenge.title;
-    if (feeEl)   feeEl.textContent   = `K${entryFee.toFixed(2)}`;
+    if (feeEl) feeEl.textContent = `K${entryFee.toFixed(2)}`;
 
     const prize = parseFloat(challenge.prize_amount || 0);
     if (prizeEl) {
@@ -364,8 +415,8 @@ async function openChallengeWithFeeCheck(challengeId, type) {
     let balance = 0;
     try {
         const raw = localStorage.getItem('pageUser') || localStorage.getItem('pageUser');
-        const u   = raw ? JSON.parse(raw) : {};
-        balance   = parseFloat(u.wallet_balance || 0);
+        const u = raw ? JSON.parse(raw) : {};
+        balance = parseFloat(u.wallet_balance || 0);
     } catch { /* fallback to 0 */ }
 
     const hasFunds = balance >= entryFee;
@@ -374,17 +425,17 @@ async function openChallengeWithFeeCheck(challengeId, type) {
         balEl.style.color = hasFunds ? 'var(--accent-green)' : 'var(--accent-pink)';
     }
 
-    const payBtn     = document.getElementById('feeGatePayBtn');
-    const topUpBtn   = document.getElementById('feeGateTopUpBtn');
-    if (payBtn)   { payBtn.style.display   = hasFunds ? 'flex'   : 'none'; }
-    if (topUpBtn) { topUpBtn.style.display = hasFunds ? 'none'   : 'flex'; }
+    const payBtn = document.getElementById('feeGatePayBtn');
+    const topUpBtn = document.getElementById('feeGateTopUpBtn');
+    if (payBtn) { payBtn.style.display = hasFunds ? 'flex' : 'none'; }
+    if (topUpBtn) { topUpBtn.style.display = hasFunds ? 'none' : 'flex'; }
 
     document.getElementById('feeGateModal').style.display = 'flex';
 }
 
 function closeFeeGateModal() {
     document.getElementById('feeGateModal').style.display = 'none';
-    _pendingChallengeId   = null;
+    _pendingChallengeId = null;
     _pendingChallengeType = null;
 }
 
@@ -395,7 +446,7 @@ async function confirmFeeAndEnter() {
 
     try {
         const challenge = await apiService.getChallenge(_pendingChallengeId);
-        const entryFee  = parseFloat(challenge.entry_fee || 0);
+        const entryFee = parseFloat(challenge.entry_fee || 0);
 
         if (entryFee > 0) {
             await apiService.deductEntryFee(entryFee, _pendingChallengeId,
@@ -405,7 +456,7 @@ async function confirmFeeAndEnter() {
         // Update local wallet balance
         try {
             const raw = localStorage.getItem('pageUser') || localStorage.getItem('pageUser');
-            const u   = raw ? JSON.parse(raw) : {};
+            const u = raw ? JSON.parse(raw) : {};
             u.wallet_balance = Math.max(0, (parseFloat(u.wallet_balance || 0) - entryFee));
             const key = localStorage.getItem('pageUser') ? 'pageUser' : 'pageUser';
             localStorage.setItem(key, JSON.stringify(u));
@@ -415,7 +466,7 @@ async function confirmFeeAndEnter() {
             if (menuBal) menuBal.textContent = `K${Math.floor(u.wallet_balance)}`;
         } catch { /* non-critical */ }
 
-        const id   = _pendingChallengeId;
+        const id = _pendingChallengeId;
         const type = _pendingChallengeType;
         closeFeeGateModal();
 
@@ -433,7 +484,7 @@ async function confirmFeeAndEnter() {
 function goTopUpWallet() {
     // Store pending challenge so user can come back after topping up
     if (_pendingChallengeId) {
-        sessionStorage.setItem('pendingChallengeId',   _pendingChallengeId);
+        sessionStorage.setItem('pendingChallengeId', _pendingChallengeId);
         sessionStorage.setItem('pendingChallengeType', _pendingChallengeType || 'text_interpretation');
     }
     window.location.href = 'payment.html';
@@ -441,7 +492,7 @@ function goTopUpWallet() {
 
 // On page load, check if user is returning from wallet top-up
 document.addEventListener('DOMContentLoaded', () => {
-    const pendingId   = sessionStorage.getItem('pendingChallengeId');
+    const pendingId = sessionStorage.getItem('pendingChallengeId');
     const pendingType = sessionStorage.getItem('pendingChallengeType');
     if (pendingId) {
         sessionStorage.removeItem('pendingChallengeId');
@@ -528,7 +579,7 @@ function closeChallengeModal() {
     document.getElementById('challengeModal').style.display = 'none';
     if (challengeTimer) { clearInterval(challengeTimer); challengeTimer = null; }
     if (currentChallenge) realtimeService.unsubscribeFromChallengeUpdates(currentChallenge.id);
-    currentChallenge  = null;
+    currentChallenge = null;
     challengeStartTime = null;
 }
 
@@ -560,12 +611,12 @@ function updateTimerDisplay(el, seconds) {
 // ── Word count ────────────────────────────────────────────────────────────────
 function updateWordCount() {
     if (!currentChallenge) return;
-    const text  = document.getElementById('interpretationText').value;
+    const text = document.getElementById('interpretationText').value;
     const count = text.trim() === '' ? 0 : text.trim().split(/\s+/).length;
-    const el    = document.getElementById('wordCount');
+    const el = document.getElementById('wordCount');
     if (!el) return;
     el.textContent = `${count} / ${currentChallenge.max_word_count} words`;
-    el.className   = 'word-count ' + (count < currentChallenge.min_word_count ? 'warn' : count > currentChallenge.max_word_count ? 'bad' : 'ok');
+    el.className = 'word-count ' + (count < currentChallenge.min_word_count ? 'warn' : count > currentChallenge.max_word_count ? 'bad' : 'ok');
 }
 
 // ── Submit interpretation ─────────────────────────────────────────────────────
@@ -620,12 +671,12 @@ async function viewChallengeDetails(challengeId) {
         const detailImageHTML = isImgDetail
             ? `<div class="detail-blur-wrap">
                     ${challenge.image_url
-                        ? `<img src="${escHtml(challenge.image_url)}" alt="${escHtml(challenge.title)}" class="challenge-detail-image detail-img-blurred">`
-                        : ''}
+                ? `<img src="${escHtml(challenge.image_url)}" alt="${escHtml(challenge.title)}" class="challenge-detail-image detail-img-blurred">`
+                : ''}
                     <div class="detail-blur-overlay">
                         ${challenge.image_url
-                            ? '<i class="fas fa-eye-slash"></i><span>Image hidden — revealed only during gameplay</span>'
-                            : '<i class="fas fa-lock"></i><span>Deposit K10 minimum to unlock this challenge</span>'}
+                ? '<i class="fas fa-eye-slash"></i><span>Image hidden — revealed only during gameplay</span>'
+                : '<i class="fas fa-lock"></i><span>Deposit K10 minimum to unlock this challenge</span>'}
                     </div>
                </div>`
             : `<img src="${escHtml(challenge.image_url)}" alt="${escHtml(challenge.title)}" class="challenge-detail-image">`;
@@ -649,8 +700,8 @@ async function viewChallengeDetails(challengeId) {
                 <div class="challenge-rules" style="margin:0;"><ul>${rules}</ul>
                     <p style="margin-top:12px;color:var(--text-muted);font-size:13px;">
                         ${isImgDetail
-                            ? `Hidden points: ${Array.isArray(challenge.hidden_points) ? challenge.hidden_points.length : '?'} &nbsp;|&nbsp;`
-                            : `Words: ${challenge.min_word_count}–${challenge.max_word_count} &nbsp;|&nbsp;`}
+                ? `Hidden points: ${Array.isArray(challenge.hidden_points) ? challenge.hidden_points.length : '?'} &nbsp;|&nbsp;`
+                : `Words: ${challenge.min_word_count}–${challenge.max_word_count} &nbsp;|&nbsp;`}
                         ${challenge.is_active ? '🟢 Active' : '🔴 Inactive'} &nbsp;|&nbsp; ${getTimeRemaining(challenge.ends_at)}
                     </p>
                 </div>
@@ -659,8 +710,8 @@ async function viewChallengeDetails(challengeId) {
                 <h3><i class="fas fa-sliders"></i> Scoring</h3>
                 <div style="background:var(--bg-elevated);padding:16px 18px;border-radius:var(--radius-md);border:1px solid var(--border);">
                     ${buildScoringBar('Creativity', challenge.creativity_weight, '#667eea')}
-                    ${buildScoringBar('Relevance',  challenge.relevance_weight,  '#764ba2')}
-                    ${buildScoringBar('Detail',     challenge.detail_weight,     '#f093fb')}
+                    ${buildScoringBar('Relevance', challenge.relevance_weight, '#764ba2')}
+                    ${buildScoringBar('Detail', challenge.detail_weight, '#f093fb')}
                 </div>
             </div>
             <div class="details-section">
@@ -737,11 +788,11 @@ async function loadActivityFeed() {
             return;
         }
         container.innerHTML = `<div class="activity-feed">${activities.slice(0, 10).map(a => {
-            const username  = a.user?.username || 'Unknown';
-            const initial   = username.charAt(0).toUpperCase();
+            const username = a.user?.username || 'Unknown';
+            const initial = username.charAt(0).toUpperCase();
             // Generate a deterministic hue from the username for varied avatar colours
-            const hue       = username.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0) % 360;
-            const avatarBg  = `hsl(${hue}, 55%, 42%)`;
+            const hue = username.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0) % 360;
+            const avatarBg = `hsl(${hue}, 55%, 42%)`;
             return `
             <div class="activity-item">
                 <div class="activity-avatar" style="background:${avatarBg};">${initial}</div>
@@ -762,7 +813,7 @@ async function updateChallengeStats() {
     try {
         await apiService.getChallengeStats(currentChallenge.id);
         if (document.getElementById('leaderboardContent')) loadLeaderboard();
-        if (document.getElementById('activityContent'))   loadActivityFeed();
+        if (document.getElementById('activityContent')) loadActivityFeed();
     } catch (e) { /* silent */ }
 }
 
@@ -775,9 +826,9 @@ function renderMySubmissions() {
     }
     const sorted = [...mySubmissions].sort((a, b) => new Date(b.submitted_at) - new Date(a.submitted_at));
     container.innerHTML = sorted.map(s => {
-        const cls  = s.status === 'scored' ? 'status-scored' : s.status === 'rejected' ? 'status-rejected' : 'status-pending';
+        const cls = s.status === 'scored' ? 'status-scored' : s.status === 'rejected' ? 'status-rejected' : 'status-pending';
         const icon = s.status === 'scored' ? 'check' : s.status === 'rejected' ? 'times' : 'clock';
-        const col  = s.status === 'scored' ? 'var(--accent-green)' : s.status === 'rejected' ? 'var(--accent-pink)' : 'var(--accent-orange)';
+        const col = s.status === 'scored' ? 'var(--accent-green)' : s.status === 'rejected' ? 'var(--accent-pink)' : 'var(--accent-orange)';
         return `<div class="submission-item">
             <div class="submission-status ${cls}"><i class="fas fa-${icon}"></i></div>
             <div class="submission-info">
@@ -838,7 +889,7 @@ function switchUploadTab(tab) {
     }
 }
 
-function previewUploadImage(event)    { previewImageInto(event, 'uploadPreview'); }
+function previewUploadImage(event) { previewImageInto(event, 'uploadPreview'); }
 function previewChallengeImage(event) {
     const file = event.target.files[0];
     if (!file) return;
@@ -852,7 +903,7 @@ function previewChallengeImage(event) {
         const src = e.target.result;
         // Drop zone preview
         const drop = document.getElementById('ccImageDrop');
-        const ph   = document.getElementById('ccDropPlaceholder');
+        const ph = document.getElementById('ccDropPlaceholder');
         const prev = document.getElementById('challengeImagePreview');
         if (ph) ph.style.display = 'none';
         if (prev) { prev.innerHTML = `<img src="${src}" alt="Preview" style="max-height:220px;border-radius:8px;object-fit:cover;">`; }
@@ -864,7 +915,7 @@ function previewChallengeImage(event) {
 }
 function previewImageInto(event, id) {
     const file = event.target.files[0];
-    const el   = document.getElementById(id);
+    const el = document.getElementById(id);
     if (!file || !el) return;
     const reader = new FileReader();
     reader.onload = e => { el.innerHTML = `<img src="${e.target.result}" alt="Preview">`; };
@@ -874,9 +925,9 @@ function previewImageInto(event, id) {
 async function uploadContent(event) {
     event.preventDefault();
     const title = document.getElementById('uploadTitle').value.trim();
-    const desc  = document.getElementById('uploadDescription').value.trim();
-    const cat   = document.getElementById('uploadCategory').value;
-    const img   = document.getElementById('uploadImage').files[0];
+    const desc = document.getElementById('uploadDescription').value.trim();
+    const cat = document.getElementById('uploadCategory').value;
+    const img = document.getElementById('uploadImage').files[0];
     if (!title || !desc || !img) { showToast('Please fill in all fields and select an image.', 'error'); return; }
     const btn = event.target.querySelector('button[type="submit"]');
     if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading…'; }
@@ -894,18 +945,18 @@ async function uploadContent(event) {
 }
 
 function validateWeights() {
-    const c  = parseInt(document.getElementById('creativityWeight').value) || 0;
-    const r  = parseInt(document.getElementById('relevanceWeight').value)  || 0;
-    const d  = parseInt(document.getElementById('detailWeight').value)     || 0;
-    const t  = c + r + d;
+    const c = parseInt(document.getElementById('creativityWeight').value) || 0;
+    const r = parseInt(document.getElementById('relevanceWeight').value) || 0;
+    const d = parseInt(document.getElementById('detailWeight').value) || 0;
+    const t = c + r + d;
     const el = document.getElementById('weightTotal');
     el.style.color = t === 100 ? 'var(--accent-green)' : 'var(--accent-pink)';
     el.textContent = t === 100 ? `Total: ${t}% ✓` : `Total: ${t}% (must equal 100%)`;
     // Update visual bars
     const setBar = (id, val) => { const b = document.getElementById(id); if (b) b.style.width = val + '%'; };
     setBar('barCreativity', c);
-    setBar('barRelevance',  r);
-    setBar('barDetail',     d);
+    setBar('barRelevance', r);
+    setBar('barDetail', d);
 }
 
 // ── Create Challenge wizard helpers ───────────────────────────────────────────
@@ -959,7 +1010,7 @@ function ccSetDuration(days) {
         if (hint) hint.style.display = 'block';
         if (label) {
             const end = new Date(Date.now() + days * 86400000);
-            label.textContent = `in ${days} day${days > 1 ? 's' : ''} — ${end.toLocaleDateString(undefined, { month:'short', day:'numeric' })}`;
+            label.textContent = `in ${days} day${days > 1 ? 's' : ''} — ${end.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`;
         }
     }
 }
@@ -967,8 +1018,8 @@ function ccSetDuration(days) {
 function ccAutoBalance() {
     const vals = [33, 33, 34]; // creativity, relevance, detail
     document.getElementById('creativityWeight').value = vals[0];
-    document.getElementById('relevanceWeight').value  = vals[1];
-    document.getElementById('detailWeight').value     = vals[2];
+    document.getElementById('relevanceWeight').value = vals[1];
+    document.getElementById('detailWeight').value = vals[2];
     validateWeights();
 }
 
@@ -992,7 +1043,7 @@ function ccGoStep(step) {
     for (let i = 1; i <= 3; i++) {
         const s = document.getElementById(`ccStep${i}`);
         if (!s) continue;
-        if (i < step)  s.classList.add('done');
+        if (i < step) s.classList.add('done');
         if (i === step) s.classList.add('active');
     }
 
@@ -1011,9 +1062,8 @@ function ccShowPageError(page) {
 function ccValidatePage1() {
     let ok = true;
     const title = document.getElementById('challengeTitle')?.value.trim() || '';
-    const desc  = document.getElementById('challengeDescription')?.value.trim() || '';
-    const diff  = document.getElementById('challengeDifficulty')?.value || '';
-    const time  = parseInt(document.getElementById('challengeTimeLimit')?.value || '0');
+    const desc = document.getElementById('challengeDescription')?.value.trim() || '';
+    const time = parseInt(document.getElementById('challengeTimeLimit')?.value || '0');
     const minPt = parseInt(document.getElementById('challengeMinPoints')?.value || '0');
     const maxPt = parseInt(document.getElementById('challengeMaxPoints')?.value || '0');
 
@@ -1022,8 +1072,6 @@ function ccValidatePage1() {
 
     if (!desc) { ccShowError('challengeDescription', 'Description is required.'); ok = false; }
     else if (desc.length < 20) { ccShowError('challengeDescription', 'Description must be at least 20 characters.'); ok = false; }
-
-    if (!diff || diff === 'select') { ccShowError('challengeDifficulty', 'Please select a difficulty.'); ok = false; }
 
     if (!time || time < 5 || time > 120) { ccShowError('challengeTimeLimit', 'Enter a time between 5 and 120 minutes.'); ok = false; }
     if (!minPt || minPt < 1) { ccShowError('challengeMinPoints', 'Minimum points must be at least 1.'); ok = false; }
@@ -1045,8 +1093,8 @@ function ccValidatePage2() {
     const maxW = parseInt(document.getElementById('challengeMaxWords')?.value || '0');
     const rules = (document.getElementById('challengeRules')?.value || '').split('\n').map(r => r.trim()).filter(Boolean);
     const c = parseInt(document.getElementById('creativityWeight')?.value) || 0;
-    const r = parseInt(document.getElementById('relevanceWeight')?.value)  || 0;
-    const d = parseInt(document.getElementById('detailWeight')?.value)     || 0;
+    const r = parseInt(document.getElementById('relevanceWeight')?.value) || 0;
+    const d = parseInt(document.getElementById('detailWeight')?.value) || 0;
 
     if (!minW || minW < 10) { ccShowError('challengeMinWords', 'Min words must be at least 10.'); ok = false; }
     if (!maxW || maxW <= minW) { ccShowError('challengeMaxWords', 'Max words must be greater than min words.'); ok = false; }
@@ -1062,31 +1110,21 @@ function ccUpdatePreview() {
     const get = id => document.getElementById(id);
     const setText = (id, val) => { const el = get(id); if (el) el.textContent = val || ''; };
 
-    const title  = get('challengeTitle')?.value.trim()       || 'Challenge Title';
-    const desc   = get('challengeDescription')?.value.trim() || 'Your description will appear here.';
-    const diff   = get('challengeDifficulty')?.value         || 'medium';
-    const time   = get('challengeTimeLimit')?.value          || '20';
-    const minW   = get('challengeMinWords')?.value           || '50';
-    const maxW   = get('challengeMaxWords')?.value           || '200';
-    const minPt  = get('challengeMinPoints')?.value          || '10';
-    const maxPt  = get('challengeMaxPoints')?.value          || '50';
-    const prize  = parseFloat(get('challengePrize')?.value   || '0');
+    const title = get('challengeTitle')?.value.trim() || 'Challenge Title';
+    const desc = get('challengeDescription')?.value.trim() || 'Your description will appear here.';
+    const time = get('challengeTimeLimit')?.value || '20';
+    const minW = get('challengeMinWords')?.value || '50';
+    const maxW = get('challengeMaxWords')?.value || '200';
+    const minPt = get('challengeMinPoints')?.value || '10';
+    const maxPt = get('challengeMaxPoints')?.value || '50';
 
     setText('ccPreviewTitle', title);
-    setText('ccPreviewDesc',  desc.length > 120 ? desc.slice(0,117) + '…' : desc);
-    setText('ccPreviewTime',  time);
+    setText('ccPreviewDesc', desc.length > 120 ? desc.slice(0, 117) + '…' : desc);
+    setText('ccPreviewTime', time);
     setText('ccPreviewWords', `${minW}–${maxW}`);
-
-    const diffEl = get('ccPreviewDiff');
-    if (diffEl) { diffEl.textContent = diff; diffEl.className = `difficulty-badge difficulty-${diff}`; }
 
     const ptsEl = get('ccPreviewPts');
     if (ptsEl) ptsEl.innerHTML = `<i class="fas fa-bolt"></i> ${minPt}–${maxPt} pts`;
-
-    const prizeRow = get('ccPreviewPrize');
-    const prizeVal = get('ccPreviewPrizeVal');
-    if (prizeRow) prizeRow.style.display = prize > 0 ? 'flex' : 'none';
-    if (prizeVal) prizeVal.textContent = prize.toFixed(2);
 }
 
 // Drag & drop for challenge image
@@ -1133,28 +1171,27 @@ async function createChallenge(event) {
         }
 
         const c = parseInt(document.getElementById('creativityWeight').value) || 0;
-        const r = parseInt(document.getElementById('relevanceWeight').value)  || 0;
-        const d = parseInt(document.getElementById('detailWeight').value)     || 0;
-        const prize = parseFloat(document.getElementById('challengePrize')?.value || '0') || 0;
+        const r = parseInt(document.getElementById('relevanceWeight').value) || 0;
+        const d = parseInt(document.getElementById('detailWeight').value) || 0;
 
         const fd = new FormData();
-        fd.append('title',             document.getElementById('challengeTitle').value.trim());
-        fd.append('description',       document.getElementById('challengeDescription').value.trim());
-        fd.append('difficulty',        document.getElementById('challengeDifficulty').value);
-        fd.append('time_limit',        document.getElementById('challengeTimeLimit').value);
-        fd.append('min_word_count',    document.getElementById('challengeMinWords').value);
-        fd.append('max_word_count',    document.getElementById('challengeMaxWords').value);
-        fd.append('min_points',        document.getElementById('challengeMinPoints').value);
-        fd.append('max_points',        document.getElementById('challengeMaxPoints').value);
+        fd.append('title', document.getElementById('challengeTitle').value.trim());
+        fd.append('description', document.getElementById('challengeDescription').value.trim());
+        fd.append('difficulty', 'medium');   // simplified — no longer user-facing
+        fd.append('time_limit', document.getElementById('challengeTimeLimit').value);
+        fd.append('min_word_count', document.getElementById('challengeMinWords').value);
+        fd.append('max_word_count', document.getElementById('challengeMaxWords').value);
+        fd.append('min_points', document.getElementById('challengeMinPoints').value);
+        fd.append('max_points', document.getElementById('challengeMaxPoints').value);
         fd.append('creativity_weight', c);
-        fd.append('relevance_weight',  r);
-        fd.append('detail_weight',     d);
-        fd.append('prize_amount',      prize.toFixed(2));
-        fd.append('submission_rules',  JSON.stringify(rules));
-        fd.append('image',             img);
-        fd.append('starts_at',         new Date().toISOString());
-        fd.append('ends_at',           endsAt);
-        fd.append('status',            'draft');
+        fd.append('relevance_weight', r);
+        fd.append('detail_weight', d);
+        fd.append('prize_amount', '0.00');     // simplified — no longer user-facing
+        fd.append('submission_rules', JSON.stringify(rules));
+        fd.append('image', img);
+        fd.append('starts_at', new Date().toISOString());
+        fd.append('ends_at', endsAt);
+        fd.append('status', 'draft');
 
         const createdChallenge = await apiService.createChallenge(fd);
         showToast('Challenge created! Publishing it now…', 'info');
@@ -1192,15 +1229,15 @@ function renderMyChallenges() {
     }
 
     const statusMeta = {
-        active:  { label: 'Live',   cls: 'mc-status-active',  icon: 'circle' },
-        draft:   { label: 'Draft',  cls: 'mc-status-draft',   icon: 'pen' },
-        paused:  { label: 'Paused', cls: 'mc-status-paused',  icon: 'pause-circle' },
-        ended:   { label: 'Ended',  cls: 'mc-status-ended',   icon: 'stop-circle' },
+        active: { label: 'Live', cls: 'mc-status-active', icon: 'circle' },
+        draft: { label: 'Draft', cls: 'mc-status-draft', icon: 'pen' },
+        paused: { label: 'Paused', cls: 'mc-status-paused', icon: 'pause-circle' },
+        ended: { label: 'Ended', cls: 'mc-status-ended', icon: 'stop-circle' },
     };
 
     container.innerHTML = myChallenges.map(c => {
         const sm = statusMeta[c.status] || statusMeta.draft;
-        const canPublish   = c.status === 'draft'  || c.status === 'paused';
+        const canPublish = c.status === 'draft' || c.status === 'paused';
         const canUnpublish = c.status === 'active';
 
         return `<div class="mc-item" data-id="${c.id}">
@@ -1263,7 +1300,7 @@ async function toggleChallengePublish(challengeId, action) {
 function openMessenger() { showToast('Messenger coming soon!', 'info'); }
 
 document.getElementById('challengeModal')?.addEventListener('click', e => { if (e.target === e.currentTarget) closeChallengeModal(); });
-document.getElementById('uploadModal')?.addEventListener('click',    e => { if (e.target === e.currentTarget) closeUploadModal(); });
+document.getElementById('uploadModal')?.addEventListener('click', e => { if (e.target === e.currentTarget) closeUploadModal(); });
 
 // ── Toast ─────────────────────────────────────────────────────────────────────
 function showToast(message, type = 'info') {
@@ -1280,49 +1317,49 @@ function showToast(message, type = 'info') {
 // ── Utilities ─────────────────────────────────────────────────────────────────
 function escHtml(str) {
     if (str == null) return '';
-    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 function setEl(id, v) { const el = document.getElementById(id); if (el) el.textContent = v; }
-function show(id)     { const el = document.getElementById(id); if (el) el.style.display = 'flex'; }
+function show(id) { const el = document.getElementById(id); if (el) el.style.display = 'flex'; }
 function formatDate(iso) {
     if (!iso) return '';
-    return new Date(iso).toLocaleString(undefined, { month:'short', day:'numeric', year:'numeric', hour:'2-digit', minute:'2-digit' });
+    return new Date(iso).toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
-function formatTime(iso) { return iso ? new Date(iso).toLocaleTimeString(undefined, { hour:'2-digit', minute:'2-digit' }) : ''; }
+function formatTime(iso) { return iso ? new Date(iso).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }) : ''; }
 
 // ── Global exports ────────────────────────────────────────────────────────────
 window.openChallengeWithFeeCheck = openChallengeWithFeeCheck;
-window.closeFeeGateModal         = closeFeeGateModal;
-window.confirmFeeAndEnter        = confirmFeeAndEnter;
-window.goTopUpWallet             = goTopUpWallet;
-window.openMessenger             = openMessenger;
-window.showUploadModal       = showUploadModal;
-window.searchChallenges      = searchChallenges;
-window.closeUploadModal      = closeUploadModal;
-window.switchUploadTab       = switchUploadTab;
-window.previewUploadImage    = previewUploadImage;
+window.closeFeeGateModal = closeFeeGateModal;
+window.confirmFeeAndEnter = confirmFeeAndEnter;
+window.goTopUpWallet = goTopUpWallet;
+window.openMessenger = openMessenger;
+window.showUploadModal = showUploadModal;
+window.searchChallenges = searchChallenges;
+window.closeUploadModal = closeUploadModal;
+window.switchUploadTab = switchUploadTab;
+window.previewUploadImage = previewUploadImage;
 window.previewChallengeImage = previewChallengeImage;
-window.validateWeights       = validateWeights;
-window.createChallenge       = createChallenge;
-window.uploadContent         = uploadContent;
-window.logout                = logout;
-window.filterChallenges      = filterChallenges;
-window.openChallenge         = openChallenge;
-window.viewChallengeDetails  = viewChallengeDetails;
-window.closeChallengeModal   = closeChallengeModal;
-window.updateWordCount       = updateWordCount;
-window.submitInterpretation  = submitInterpretation;
+window.validateWeights = validateWeights;
+window.createChallenge = createChallenge;
+window.uploadContent = uploadContent;
+window.logout = logout;
+window.filterChallenges = filterChallenges;
+window.openChallenge = openChallenge;
+window.viewChallengeDetails = viewChallengeDetails;
+window.closeChallengeModal = closeChallengeModal;
+window.updateWordCount = updateWordCount;
+window.submitInterpretation = submitInterpretation;
 window.toggleChallengePublish = toggleChallengePublish;
 // Wizard helpers
-window.ccGoStep              = ccGoStep;
-window.ccSetDuration         = ccSetDuration;
-window.ccAutoBalance         = ccAutoBalance;
-window.ccCharCount           = ccCharCount;
-window.ccClearError          = ccClearError;
-window.ccRuleCount           = ccRuleCount;
-window.ccDragOver            = ccDragOver;
-window.ccDragLeave           = ccDragLeave;
-window.ccDrop                = ccDrop;
+window.ccGoStep = ccGoStep;
+window.ccSetDuration = ccSetDuration;
+window.ccAutoBalance = ccAutoBalance;
+window.ccCharCount = ccCharCount;
+window.ccClearError = ccClearError;
+window.ccRuleCount = ccRuleCount;
+window.ccDragOver = ccDragOver;
+window.ccDragLeave = ccDragLeave;
+window.ccDrop = ccDrop;
 
 // ── Social challenge card renderers (debate / poll / Q&A) ─────────────────────
 // These challenge types live in separate DB models (PollChallenge, DebateChallenge,
@@ -1333,20 +1370,20 @@ window.ccDrop                = ccDrop;
 function _fmtDur(days) {
     if (!days && days !== 0) return '—';
     const d = parseFloat(days);
-    if (d < 1/24)  return `${Math.round(d * 24 * 60)}m`;
-    if (d < 1)     return `${Math.round(d * 24)}h`;
+    if (d < 1 / 24) return `${Math.round(d * 24 * 60)}m`;
+    if (d < 1) return `${Math.round(d * 24)}h`;
     return `${d}d`;
 }
 
 function _renderDebateCard(c) {
-    const dur      = _fmtDur(c.duration_days);
-    const sideA    = escHtml(c.side_a || 'For');
-    const sideB    = escHtml(c.side_b || 'Against');
-    const title    = escHtml(c.title);
-    const id       = c.id;
+    const dur = _fmtDur(c.duration_days);
+    const sideA = escHtml(c.side_a || 'For');
+    const sideB = escHtml(c.side_b || 'Against');
+    const title = escHtml(c.title);
+    const id = c.id;
 
     const seedA = [{ user: 'Alex', text: `${c.side_a} is the clear winner 🔥` }];
-    const seedB = [{ user: 'Mia',  text: `${c.side_b} all the way 💪` }];
+    const seedB = [{ user: 'Mia', text: `${c.side_b} all the way 💪` }];
 
     const mkComment = (u, t, side) => {
         const shade = side === 'a' ? 'hsl(0,60%,42%)' : 'hsl(140,50%,35%)';
@@ -1414,13 +1451,13 @@ function _renderDebateCard(c) {
 }
 
 function _renderPollCard(c) {
-    const id   = c.id;
+    const id = c.id;
     const opts = (c.options || []);
     const optionsHTML = opts.map((opt, i) => `
         <button class="poll-vote-btn" onclick="_chCastPollVote('${id}', ${i}, this)">
-            <div class="poll-vote-bar" style="width:${c.vote_counts ? Math.round((c.vote_counts[i]||0)/(c.total_votes||1)*100) : 0}%"></div>
+            <div class="poll-vote-bar" style="width:${c.vote_counts ? Math.round((c.vote_counts[i] || 0) / (c.total_votes || 1) * 100) : 0}%"></div>
             <span class="poll-option-label">${escHtml(opt)}</span>
-            <span class="poll-vote-pct">${c.vote_counts && c.total_votes ? Math.round((c.vote_counts[i]||0)/c.total_votes*100)+'%' : '0%'}</span>
+            <span class="poll-vote-pct">${c.vote_counts && c.total_votes ? Math.round((c.vote_counts[i] || 0) / c.total_votes * 100) + '%' : '0%'}</span>
         </button>`).join('');
 
     return `<div class="challenge-card" data-status="active" data-category="polls" data-id="${id}">
@@ -1503,13 +1540,13 @@ async function _chJoinDebate(id, e) {
 
 async function _chSubmitDebate(id) {
     const input = document.getElementById(`debateInput_${id}`);
-    const text  = input?.value.trim();
+    const text = input?.value.trim();
     if (!text) return;
     const username = (() => { try { return JSON.parse(localStorage.getItem('pageUser') || '{}').username || 'You'; } catch { return 'You'; } })();
     // Optimistic UI
-    const side  = 'b';
+    const side = 'b';
     const shade = 'hsl(140,50%,35%)';
-    const feed  = document.getElementById(`debateFeedB_${id}`);
+    const feed = document.getElementById(`debateFeedB_${id}`);
     if (feed) {
         const el = document.createElement('div');
         el.className = 'debate-comment';
@@ -1519,7 +1556,7 @@ async function _chSubmitDebate(id) {
         feed.scrollTop = feed.scrollHeight;
     }
     input.value = '';
-    await _chPost(`${_CH_API}/debates/${id}/comment/`, { text, side }).catch(() => {});
+    await _chPost(`${_CH_API}/debates/${id}/comment/`, { text, side }).catch(() => { });
 }
 
 async function _chCastPollVote(id, optionIndex, btn) {
@@ -1541,7 +1578,7 @@ async function _chCastPollVote(id, optionIndex, btn) {
 
 async function _chSubmitQA(id) {
     const input = document.getElementById(`qaInput_${id}`);
-    const text  = input?.value.trim();
+    const text = input?.value.trim();
     if (!text) return;
     const username = (() => { try { return JSON.parse(localStorage.getItem('pageUser') || '{}').username || 'You'; } catch { return 'You'; } })();
     const hue = username.split('').reduce((s, c) => s + c.charCodeAt(0), 0) % 360;
@@ -1555,6 +1592,6 @@ async function _chSubmitQA(id) {
         pane.scrollTop = pane.scrollHeight;
     }
     input.value = '';
-    await _chPost(`${_CH_API}/qa/${id}/answer/`, { text }).catch(() => {});
+    await _chPost(`${_CH_API}/qa/${id}/answer/`, { text }).catch(() => { });
     showToast('+0.5 xP for answering! 💬', 'success');
 }

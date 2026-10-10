@@ -373,18 +373,6 @@
 
                     <div class="form-row">
                         <div class="form-group">
-                            <label for="challengeDifficulty">Difficulty <span class="cc-required">*</span></label>
-                            <select id="challengeDifficulty" style="border-radius: 15px; border: 1px solid lightgreen;" required
-                                onchange="ccClearError('challengeDifficulty')">
-                                <option value="select">Please select difficulty</option>
-                                <option value="easy" style="border-radius: 15px; border: 1px solid lightgreen;">🟢 Easy</option>
-                                <option value="medium" style="border-radius: 15px; border: 1px solid lightgreen;" selected>🟡 Medium</option>
-                                <option value="hard" style="border-radius: 15px; border: 1px solid lightgreen;">🔴 Hard</option>
-                                <option value="expert" style="border-radius: 15px; border: 1px solid lightgreen;">🟣 Expert</option>
-                            </select>
-                            <span class="cc-error" id="challengeDifficultyErr"></span>
-                        </div>
-                        <div class="form-group">
                             <label for="challengeTimeLimit">Time Limit (minutes) <span class="cc-required">*</span></label>
                             <input type="number" style="border-radius: 15px; border: 1px solid lightgreen;" id="challengeTimeLimit" required min="5" max="120" value="20"
                                 oninput="ccClearError('challengeTimeLimit')">
@@ -420,18 +408,6 @@
                                 oninput="ccClearError('challengeMaxPoints')">
                             <span class="cc-error" id="challengeMaxPointsErr"></span>
                         </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="challengePrize">
-                            Cash Prize (ZMW) <span class="cc-optional">optional</span>
-                        </label>
-                        <div class="cc-prize-input">
-                            <span class="cc-prize-prefix">K</span>
-                            <input type="number" style="border-radius: 15px; border: 1px solid lightgreen;" id="challengePrize" min="0" step="0.01" value="0"
-                                placeholder="0.00">
-                        </div>
-                        <p class="cc-hint">Leave at 0 for prestige-only rewards.</p>
                     </div>
 
                     <div class="cc-step-nav">
@@ -556,7 +532,6 @@
                             </div>
                             <div class="cc-preview-body">
                                 <div class="cc-preview-badges">
-                                    <span class="difficulty-badge difficulty-medium" id="ccPreviewDiff">medium</span>
                                     <span class="card-points-pill" id="ccPreviewPts" style="position:static;backdrop-filter:none;">
                                         <i class="fas fa-bolt"></i> 10–50 pts
                                     </span>
@@ -566,7 +541,6 @@
                                 <div class="cc-preview-meta">
                                     <span><i class="fas fa-clock"></i> <span id="ccPreviewTime">20</span> min</span>
                                     <span><i class="fas fa-align-left"></i> <span id="ccPreviewWords">50–200</span>w</span>
-                                    <span id="ccPreviewPrize" style="display:none"><i class="fas fa-coins"></i> K<span id="ccPreviewPrizeVal">0</span></span>
                                 </div>
                             </div>
                         </div>
@@ -774,6 +748,7 @@
 <script src="../scripts/api-service.js"></script>
 <script src="../scripts/app.js"></script>
 <script src="../scripts/realtime-service.js"></script>
+<script src="..scripts/challenges-enhanced.js"></script>
 <script src="../scripts/challenges.js"></script>
 <script src="../scripts/image-interpretation.js"></script>
 <script>
