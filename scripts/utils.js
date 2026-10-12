@@ -251,12 +251,19 @@ window.truncateText = truncateText;
  */
 function getAvatarUrl(user) {
     if (!user) return null;
-    // profile_image_url is the server-side-verified field added in UserProfileSerializer
-    const url = user.profile_image_url || user.profile_image || null;
-    if (!url) return null;
-    // Reject bare /media/ paths that are known to 404 on Render
-    if (url.startsWith('/media/')) return null;
-    return url;
+    // Check all known avatar fields, most reliable first
+    const candidates = [
+        user.profile_image_url,   // serializer-resolved: avatar_url → profile_image
+        user.avatar_url,          // base64 data URI or CDN URL (direct field)
+        user.profile_image,       // legacy ImageField URL
+    ];
+    for (const url of candidates) {
+        if (!url || typeof url !== 'string') continue;
+        // Reject bare /media/ paths — ephemeral on Render, will 404
+        if (url.startsWith('/media/')) continue;
+        return url;
+    }
+    return null;
 }
 
 /**
