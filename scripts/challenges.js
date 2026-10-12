@@ -24,11 +24,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderMyChallenges();
 
     (function _avatarBoot() {
-        function _stamp(imgUrl) {
-            if (!imgUrl) return;
-            const imgTag = `<img src="${imgUrl}" alt="avatar"
-            style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;"
-            onerror="this.style.display='none';this.parentElement.innerHTML='<i class=\\'fas fa-circle-user\\'></i>'">`;
+        function _stamp(imgUrl, username) {
+            const initial = (username || '?').charAt(0).toUpperCase();
+            const colours = ['#6c63ff','#e74c3c','#2ecc71','#f39c12','#1abc9c','#9b59b6','#3498db','#e67e22'];
+            const colour  = colours[initial.charCodeAt(0) % colours.length];
+            const imgTag = imgUrl
+                ? `<img src="${imgUrl}" alt="avatar"
+                    style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;"
+                    onerror="this.replaceWith((function(){var s=document.createElement('span');s.style.cssText='display:inline-flex;align-items:center;justify-content:center;width:100%;height:100%;border-radius:50%;background:${colour};color:#fff;font-weight:700;font-size:14px;';s.textContent='${initial}';return s;})())">`
+                : `<span style="display:inline-flex;align-items:center;justify-content:center;width:100%;height:100%;border-radius:50%;background:${colour};color:#fff;font-weight:700;font-size:14px;">${initial}</span>`;
 
             // IDs
             ['avatarDisplay', 'modalAvatar', 'umAvatar', 'navAvatar',
@@ -58,15 +62,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.addEventListener('DOMContentLoaded', () => {
             try {
                 const u = JSON.parse(localStorage.getItem('pageUser') || '{}');
-                const url = u.profile_image_url || u.profile_image || null;
-                if (url) _stamp(url);
+                const url = u.profile_image_url || u.avatar_url || u.profile_image || null;
+                _stamp(url, u.username || u.display_name || '');
             } catch (_) { /* non-critical */ }
         });
 
         // Live update when photo changes (upload on any page)
         window.addEventListener('page:avatarChanged', e => {
-            const url = e.detail?.url;
-            if (url) _stamp(url);
+            try {
+                const u = JSON.parse(localStorage.getItem('pageUser') || '{}');
+                _stamp(e.detail?.url || null, u.username || '');
+            } catch (_) { _stamp(e.detail?.url || null, ''); }
         });
 
         // Expose so other scripts can call it directly if needed

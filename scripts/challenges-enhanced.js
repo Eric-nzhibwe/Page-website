@@ -391,7 +391,9 @@ function buildDebateCard(id, title, description, sideA, sideB, prize, duration, 
                     <span class="debate-pane-team-name">${sideA}</span>
                 </div>
                 <div class="debate-pane-feed" id="debateFeedA_${id}">
-                    ${commentsA}
+                    <div class="debate-feed-inner" id="debateFeedInnerA_${id}">
+                        ${commentsA}
+                    </div>
                 </div>
             </div>
             <!-- Team B side — green -->
@@ -401,7 +403,9 @@ function buildDebateCard(id, title, description, sideA, sideB, prize, duration, 
                     <span class="debate-pane-team-name">${sideB}</span>
                 </div>
                 <div class="debate-pane-feed" id="debateFeedB_${id}">
-                    ${commentsB}
+                    <div class="debate-feed-inner" id="debateFeedInnerB_${id}">
+                        ${commentsB}
+                    </div>
                 </div>
             </div>
         </div>
@@ -587,11 +591,10 @@ async function joinDebate(challengeId, e) {
 }
 
 function addLiveDebateComment(challengeId, user, text, side) {
-    // side: 'a' → Team A (red), 'b' → Team B (green), default 'b'
     side = side || 'b';
-    const paneId = side === 'a' ? `debateFeedA_${challengeId}` : `debateFeedB_${challengeId}`;
-    const pane = document.getElementById(paneId);
-    if (!pane) return;
+    const innerId = side === 'a' ? `debateFeedInnerA_${challengeId}` : `debateFeedInnerB_${challengeId}`;
+    const inner   = document.getElementById(innerId);
+    if (!inner) return;
 
     const shade = side === 'a' ? 'hsl(0,60%,42%)' : 'hsl(140,50%,35%)';
     const el = document.createElement('div');
@@ -602,10 +605,17 @@ function addLiveDebateComment(challengeId, user, text, side) {
             <span class="comment-user">${user}</span>
             <span class="comment-text">${text}</span>
         </div>`;
-    pane.appendChild(el);
-    pane.scrollTop = pane.scrollHeight;
-    const comments = pane.querySelectorAll('.debate-comment');
-    if (comments.length > 8) comments[0].remove();
+
+    inner.appendChild(el);
+
+    // Trim: fade out and remove oldest comment when too many are stacked
+    const MAX_VISIBLE = 6;
+    const comments = inner.querySelectorAll('.debate-comment');
+    if (comments.length > MAX_VISIBLE) {
+        const oldest = comments[0];
+        oldest.classList.add('comment-exit');
+        oldest.addEventListener('animationend', () => oldest.remove(), { once: true });
+    }
 }
 
 async function submitDebateComment(challengeId) {

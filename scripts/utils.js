@@ -276,11 +276,21 @@ function avatarHTML(user, extraStyle = 'width:100%;height:100%;object-fit:cover;
     if (url) {
         const escaped = escapeHTML(url);
         const alt     = escapeHTML(name);
-        // onerror replaces the broken img with a letter-avatar span
         return `<img src="${escaped}" alt="${alt}" style="${extraStyle}"
                     onerror="this.replaceWith(pageLetterAvatar('${escapeHTML(initial)}'))">`;
     }
-    return `<i class="fas fa-user-circle" aria-label="${escapeHTML(name)}"></i>`;
+    // No URL — render letter-circle directly, never a bare icon
+    return pageLetterAvatarHTML(initial);
+}
+
+/**
+ * Return an HTML string for a letter-avatar (for use inside innerHTML).
+ */
+function pageLetterAvatarHTML(letter) {
+    const colours = ['#6c63ff','#e74c3c','#2ecc71','#f39c12','#1abc9c','#9b59b6','#3498db','#e67e22'];
+    const colour  = colours[(letter || '?').charCodeAt(0) % colours.length];
+    const l       = escapeHTML((letter || '?').toUpperCase());
+    return `<span style="display:inline-flex;align-items:center;justify-content:center;width:100%;height:100%;border-radius:50%;background:${colour};color:#fff;font-weight:700;font-size:14px;user-select:none;">${l}</span>`;
 }
 
 /**
@@ -320,6 +330,7 @@ function patchBrokenAvatars() {
 window.getAvatarUrl         = getAvatarUrl;
 window.avatarHTML            = avatarHTML;
 window.pageLetterAvatar      = pageLetterAvatar;
+window.pageLetterAvatarHTML  = pageLetterAvatarHTML;
 window.patchBrokenAvatars    = patchBrokenAvatars;
 
 // Patch any avatars that were already in the DOM when this script loaded

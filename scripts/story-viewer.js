@@ -74,10 +74,14 @@ class StoryViewer {
         const _authorAvatarUrl = (story.author?.profile_image_url || story.author?.avatar_url)
             || (story.author?.profile_image && !story.author.profile_image.startsWith('/media/')
                 ? story.author.profile_image : null);
+        const _authorInit = (story.author?.display_name || story.author?.username || '?').charAt(0).toUpperCase();
         const avHTML = _authorAvatarUrl
             ? `<img src="${this._esc(_authorAvatarUrl)}" alt="${this._esc(story.author?.username || 'User')}"
-                   onerror="this.style.display='none';this.parentElement.innerHTML='<i class=\\'fas fa-user-circle\\'></i>'">`
-            : `<i class="fas fa-user-circle"></i>`;
+                   style="width:100%;height:100%;object-fit:cover;border-radius:50%"
+                   onerror="this.replaceWith(window.pageLetterAvatar('${_authorInit}'))">`
+            : (window.pageLetterAvatarHTML
+                ? window.pageLetterAvatarHTML(_authorInit)
+                : `<span style="display:inline-flex;align-items:center;justify-content:center;width:100%;height:100%;border-radius:50%;background:#6c63ff;color:#fff;font-weight:700;font-size:16px;">${_authorInit}</span>`);
 
         modal.querySelector('.story-author-avatar').innerHTML = avHTML;
         modal.querySelector('.story-author-name').textContent = story.author?.display_name || story.author?.username || 'User';
@@ -284,8 +288,21 @@ class StoryViewer {
         const btn   = document.getElementById('storyReactBtn');
         btn?.classList.toggle('reacted');
         const liked = btn?.classList.contains('reacted');
-        // Send a DM to the story author with a heart reaction
-        await this._sendInboxMessage(story, liked ? '❤️ Reacted to your story' : null);
+
+        if (liked) {
+            // Call the react endpoint — records reaction + sends notification to author
+            const token = localStorage.getItem('djangoAuthToken');
+            const API   = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+                ? 'http://localhost:8000/api' : `${location.origin}/api`;
+            try {
+                await fetch(`${API}/social/stories/${story.id}/react/`, {
+                    method:  'POST',
+                    headers: { 'Authorization': `Token ${token}`, 'Content-Type': 'application/json' },
+                    body:    JSON.stringify({ reaction: '❤️' }),
+                });
+            } catch { /* silent */ }
+        }
+
         if (typeof socialToast === 'function') {
             socialToast(liked ? '❤️ Reaction sent!' : 'Reaction removed', 'info');
         }
@@ -298,11 +315,24 @@ class StoryViewer {
         const story = this.stories[this.currentIndex];
         if (!story) return;
 
-        const sent = await this._sendInboxMessage(story, msg);
-        if (sent) {
-            input.value = '';
-            if (typeof socialToast === 'function') socialToast('Reply sent to their inbox 📨', 'success');
-        } else {
+        const token = localStorage.getItem('djangoAuthToken');
+        const API   = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+            ? 'http://localhost:8000/api' : `${location.origin}/api`;
+
+        // Send reply via dedicated endpoint — handles DM + notification atomically
+        try {
+            const res = await fetch(`${API}/social/stories/${story.id}/reply/`, {
+                method:  'POST',
+                headers: { 'Authorization': `Token ${token}`, 'Content-Type': 'application/json' },
+                body:    JSON.stringify({ message: msg }),
+            });
+            if (res.ok) {
+                input.value = '';
+                if (typeof socialToast === 'function') socialToast('Reply sent to their inbox 📨', 'success');
+            } else {
+                if (typeof socialToast === 'function') socialToast('Could not send reply', 'error');
+            }
+        } catch {
             if (typeof socialToast === 'function') socialToast('Could not send reply', 'error');
         }
     }
@@ -361,10 +391,41 @@ class StoryViewer {
         const API = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
             ? 'http://localhost:8000/api' : `${location.origin}/api`;
         try {
-            await fetch(`${API}/social/stories/${storyId}/view/`, {
+            const res = await fetch(`${API}/social/stories/${storyId}/view/`, {
                 method: 'POST',
                 headers: { 'Authorization': `Token ${token}`, 'Content-Type': 'application/json' },
             });
+            if (res.ok) {
+                // Refresh viewer count and list after marking viewed
+                this._loadViewers(storyId, API, token);
+            }
+        } catch { /* silent */ }
+    }
+
+    async _loadViewers(storyId, API, token) {
+        try {
+            const res = await fetch(`${API}/social/stories/${storyId}/viewers/`, {
+                headers: { 'Authorization': `Token ${token}` },
+            });
+            if (!res.ok) return;
+            const viewers = await res.json();
+            const countEl = document.getElementById('viewerCount');
+            const listEl  = document.getElementById('viewersList');
+            if (countEl) countEl.textContent = viewers.length;
+            if (listEl) {
+                if (!viewers.length) {
+                    listEl.innerHTML = '<p class="loading" style="color:rgba(255,255,255,.5);font-size:12px;text-align:center;padding:16px;">No viewers yet</p>';
+                    return;
+                }
+                listEl.innerHTML = viewers.map(v => `
+                    <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.08);">
+                        <div style="width:28px;height:28px;border-radius:50%;background:var(--page-primary);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;flex-shrink:0;">
+                            ${this._esc((v.username || '?')[0].toUpperCase())}
+                        </div>
+                        <span style="font-size:12px;color:rgba(255,255,255,.85);">${this._esc(v.username || 'User')}</span>
+                        <span style="font-size:10px;color:rgba(255,255,255,.4);margin-left:auto;">${this._timeAgo(v.viewed_at)}</span>
+                    </div>`).join('');
+            }
         } catch { /* silent */ }
     }
 

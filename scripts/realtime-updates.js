@@ -75,9 +75,9 @@ function _rtAvatarHTML(user, cls = 'page-user-avatar-img') {
         return `<img src="${_rtEsc(url)}" alt="${_rtEsc(name)}" class="${cls}"
                     onerror="this.replaceWith(window._rtLetterAvatar('${_rtEsc(init)}'))">`;
     }
-    // Letter-circle (no fa-user icon — consistent look across user types)
+    // Letter-circle — never a bare icon
     return window._rtLetterAvatar ? window._rtLetterAvatar(init).outerHTML
-        : `<i class="fas fa-user-circle"></i>`;
+        : `<span style="display:inline-flex;align-items:center;justify-content:center;width:100%;height:100%;border-radius:50%;background:#6c63ff;color:#fff;font-weight:700;font-size:14px;">${init}</span>`;
 }
 
 /**
@@ -529,10 +529,12 @@ function _buildPostCard(post) {
     const when     = _rtTimeAgo(post.created_at);
     const content  = _rtEsc(post.content || '');
 
+    const _rtInit    = (author.display_name || author.username || '?').charAt(0).toUpperCase();
     const avatarHTML = (author.profile_image_url || author.profile_image)
         ? `<img src="${_rtEsc(author.profile_image_url || author.profile_image)}" alt="${name}" class="page-user-avatar-img"
-               onerror="this.style.display='none'">`
-        : `<i class="fas fa-user-circle"></i>`;
+               onerror="this.replaceWith(window._rtLetterAvatar('${_rtInit}'))">`
+        : (window._rtLetterAvatar ? window._rtLetterAvatar(_rtInit).outerHTML
+            : `<span style="display:inline-flex;align-items:center;justify-content:center;width:100%;height:100%;border-radius:50%;background:#6c63ff;color:#fff;font-weight:700;font-size:14px;">${_rtInit}</span>`);
 
     // Prefer resolved_media_url (server file) over legacy media_url
     const mediaSrc = post.resolved_media_url || post.media_url || null;

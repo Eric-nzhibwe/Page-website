@@ -159,11 +159,15 @@ function loadUserSettings() {
     // Avatar preview — prefer profile_image_url (server-verified absolute URL)
     const avPrev = document.getElementById('settingsAvatarPreview');
     if (avPrev) {
-        const imgUrl = user.profile_image_url || user.profile_image || null;
+        const imgUrl  = user.profile_image_url || user.avatar_url || user.profile_image || null;
+        const initial = (user.display_name || user.username || '?').charAt(0).toUpperCase();
         if (imgUrl) {
-            avPrev.innerHTML = `<img src="${imgUrl}" alt="Avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+            avPrev.innerHTML = `<img src="${imgUrl}" alt="Avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"
+                onerror="this.replaceWith(window.pageLetterAvatar && window.pageLetterAvatar('${initial}') || (()=>{var s=document.createElement('span');s.style='display:inline-flex;align-items:center;justify-content:center;width:100%;height:100%;border-radius:50%;background:#6c63ff;color:#fff;font-weight:700;font-size:20px;';s.textContent='${initial}';return s;})())">`;
         } else {
-            avPrev.innerHTML = '<i class="fas fa-user-circle"></i>';
+            avPrev.innerHTML = window.pageLetterAvatarHTML
+                ? window.pageLetterAvatarHTML(initial)
+                : `<span style="display:inline-flex;align-items:center;justify-content:center;width:100%;height:100%;border-radius:50%;background:#6c63ff;color:#fff;font-weight:700;font-size:20px;">${initial}</span>`;
         }
     }
     const avName = document.getElementById('settingsAvatarName');
@@ -798,7 +802,7 @@ function _applyAvatarEverywhere(imgUrl) {
 
     const imgTag = `<img src="${imgUrl}" alt="Avatar"
         style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;"
-        onerror="this.style.display='none';this.parentElement.innerHTML='<i class=\\'fas fa-circle-user\\'></i>'">`;
+        onerror="this.replaceWith(window.pageLetterAvatar ? window.pageLetterAvatar('?') : (()=>{var s=document.createElement('span');s.style='display:inline-flex;align-items:center;justify-content:center;width:100%;height:100%;border-radius:50%;background:#6c63ff;color:#fff;font-weight:700;font-size:14px;';s.textContent='?';return s;})())">`;
 
     // Named IDs
     [

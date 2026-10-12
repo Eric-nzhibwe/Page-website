@@ -643,13 +643,14 @@ function _insertPostCard(post) {
     const avatarHTML_str = (typeof avatarHTML === 'function')
         ? avatarHTML(author)
         : (() => {
-            const url = author.profile_image_url || author.avatar_url
+            const url  = author.profile_image_url || author.avatar_url
                 || (author.profile_image && !author.profile_image.startsWith('/media/')
                     ? author.profile_image : null);
+            const init = (author.display_name || author.username || '?').charAt(0).toUpperCase();
             return url
                 ? `<img src="${_esc(url)}" alt="${name}" style="width:100%;height:100%;object-fit:cover;border-radius:50%"
-                       onerror="this.style.display='none';this.parentElement.innerHTML='<i class=\\'fas fa-user-circle\\'></i>'">`
-                : `<i class="fas fa-user-circle"></i>`;
+                       onerror="this.replaceWith(window.pageLetterAvatar('${init}'))">`
+                : (window.pageLetterAvatarHTML ? window.pageLetterAvatarHTML(init) : `<span style="display:inline-flex;align-items:center;justify-content:center;width:100%;height:100%;border-radius:50%;background:#6c63ff;color:#fff;font-weight:700;font-size:14px;">${init}</span>`);
         })();
 
     let mediaHTML = '';
@@ -1113,13 +1114,14 @@ function _appendPostCard(post, container) {
     const avatarHTML_str = (typeof avatarHTML === 'function')
         ? avatarHTML(author)
         : (() => {
-            const url = author.profile_image_url || author.avatar_url
+            const url  = author.profile_image_url || author.avatar_url
                 || (author.profile_image && !author.profile_image.startsWith('/media/')
                     ? author.profile_image : null);
+            const init = (author.display_name || author.username || '?').charAt(0).toUpperCase();
             return url
                 ? `<img src="${_esc(url)}" alt="${name}" style="width:100%;height:100%;object-fit:cover;border-radius:50%"
-                       onerror="this.style.display='none';this.parentElement.innerHTML='<i class=\\'fas fa-user-circle\\'></i>'">`
-                : `<i class="fas fa-user-circle"></i>`;
+                       onerror="this.replaceWith(window.pageLetterAvatar('${init}'))">`
+                : (window.pageLetterAvatarHTML ? window.pageLetterAvatarHTML(init) : `<span style="display:inline-flex;align-items:center;justify-content:center;width:100%;height:100%;border-radius:50%;background:#6c63ff;color:#fff;font-weight:700;font-size:14px;">${init}</span>`);
         })();
 
     // Prefer resolved_media_url (uploaded file) over legacy media_url
@@ -1197,81 +1199,93 @@ function _appendPostCard(post, container) {
 
 /**
  * Fetch real stories from the API and render them in the stories bar.
+ * Shows cached stories instantly on reload, then refreshes from API.
  */
+const _STORY_CACHE_KEY = 'page_stories_cache';
+
 async function loadRealStories() {
     const token = localStorage.getItem('djangoAuthToken');
     if (!token) return;
 
+    const container = document.querySelector('.stories-container');
+    if (!container) return;
+
+    // ── Show cached stories immediately so the bar isn't empty on reload ──
     try {
-        const res  = await fetch(`${_SOCIAL_API}/stories/feed/`, {
+        const cached = JSON.parse(localStorage.getItem(_STORY_CACHE_KEY) || '[]');
+        if (cached.length) _renderStoryCards(cached, container, /*fromCache=*/true);
+    } catch (_) { /* corrupt cache — ignore */ }
+
+    try {
+        const res = await fetch(`${_SOCIAL_API}/stories/feed/`, {
             headers: { 'Authorization': `Token ${token}` }
         });
         if (!res.ok) throw new Error(res.status);
         const stories = await res.json();
 
-        const container  = document.querySelector('.stories-container');
-        if (!container) return;
+        // Persist for next reload
+        try { localStorage.setItem(_STORY_CACHE_KEY, JSON.stringify(stories)); } catch (_) {}
 
-        // Remove any existing real story cards (keep the "Add Story" card)
-        container.querySelectorAll('.story-card:not(.create-story)').forEach(c => c.remove());
-
-        if (!stories.length) return;
-
-        // Group stories by author
-        const byAuthor = {};
-        stories.forEach(s => {
-            const uid = s.author?.id || s.author?.username;
-            if (!byAuthor[uid]) byAuthor[uid] = { author: s.author, stories: [] };
-            byAuthor[uid].stories.push(s);
-        });
-
-        Object.values(byAuthor).forEach(({ author, stories: authorStories }) => {
-            const name   = _esc(author.display_name || author.username || 'User');
-            const card   = document.createElement('div');
-            card.className = 'story-card flex-shrink-0';
-
-            // Use the most recent story's media as the card thumbnail
-            const latestStory = authorStories[0];
-            const mediaSrc    = latestStory.resolved_media_url || latestStory.media_url || null;
-            const isVideo     = latestStory.media_type === 'video';
-
-            // Avatar fallback — profile image or gradient initial
-            // prefer profile_image_url (avatar_url/base64) over legacy profile_image
-            const authorAvatarUrl = author.profile_image_url || author.avatar_url
-                || (author.profile_image && !author.profile_image.startsWith('/media/')
-                    ? author.profile_image : null);
-            const avatarStyle = (mediaSrc && !isVideo)
-                ? `background-image:url('${_esc(mediaSrc)}');background-size:cover;background-position:center`
-                : (authorAvatarUrl
-                    ? `background:url('${_esc(authorAvatarUrl)}') center/cover`
-                    : `background:linear-gradient(135deg,#556b2f,#8bc34a)`);
-
-            const multiCount = authorStories.length > 1
-                ? `<span class="story-count-badge">${authorStories.length}</span>` : '';
-
-            card.innerHTML = `
-                <div class="story-ring-wrap" title="${name}">
-                    <div class="story-image" style="${avatarStyle}">
-                        ${isVideo && mediaSrc
-                            ? `<video src="${_esc(mediaSrc)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;position:absolute;inset:0;" muted playsinline></video>`
-                            : ''}
-                    </div>
-                    ${multiCount}
-                </div>
-                <span class="story-name">${name}</span>`;
-
-            card.addEventListener('click', () => {
-                if (typeof storyViewer !== 'undefined') {
-                    storyViewer.openStory(authorStories[0].id, authorStories);
-                }
-            });
-
-            container.appendChild(card);
-        });
-
+        _renderStoryCards(stories, container, /*fromCache=*/false);
     } catch (err) {
         console.warn('Stories load error:', err);
     }
+}
+
+function _renderStoryCards(stories, container, fromCache) {
+    // Remove any existing real story cards (keep the "Add Story" card)
+    container.querySelectorAll('.story-card:not(.create-story)').forEach(c => c.remove());
+
+    if (!stories.length) return;
+
+    // Group stories by author
+    const byAuthor = {};
+    stories.forEach(s => {
+        const uid = s.author?.id || s.author?.username;
+        if (!byAuthor[uid]) byAuthor[uid] = { author: s.author, stories: [] };
+        byAuthor[uid].stories.push(s);
+    });
+
+    Object.values(byAuthor).forEach(({ author, stories: authorStories }) => {
+        const name   = _esc(author.display_name || author.username || 'User');
+        const card   = document.createElement('div');
+        card.className = 'story-card flex-shrink-0';
+
+        const latestStory = authorStories[0];
+        const mediaSrc    = latestStory.resolved_media_url || latestStory.media_url || null;
+        const isVideo     = latestStory.media_type === 'video';
+
+        const authorAvatarUrl = author.profile_image_url || author.avatar_url
+            || (author.profile_image && !author.profile_image.startsWith('/media/')
+                ? author.profile_image : null);
+        const avatarStyle = (mediaSrc && !isVideo)
+            ? `background-image:url('${_esc(mediaSrc)}');background-size:cover;background-position:center`
+            : (authorAvatarUrl
+                ? `background:url('${_esc(authorAvatarUrl)}') center/cover`
+                : `background:linear-gradient(135deg,var(--page-primary),var(--page-accent))`);
+
+        const multiCount = authorStories.length > 1
+            ? `<span class="story-count-badge">${authorStories.length}</span>` : '';
+
+        card.innerHTML = `
+            <div class="story-ring-wrap" title="${name}">
+                <div class="story-image" style="${avatarStyle}">
+                    ${isVideo && mediaSrc
+                        ? `<video src="${_esc(mediaSrc)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;position:absolute;inset:0;" muted playsinline></video>`
+                        : ''}
+                </div>
+                ${multiCount}
+            </div>
+            <span class="story-name">${name}</span>`;
+
+        card.addEventListener('click', () => {
+            if (typeof storyViewer !== 'undefined') {
+                storyViewer.openStory(authorStories[0].id, authorStories);
+            }
+        });
+
+        container.appendChild(card);
+    });
 }
 
 /** Infinite scroll — load next page when user reaches bottom of feed */

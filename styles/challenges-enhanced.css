@@ -1452,7 +1452,7 @@
 .debate-arena {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    min-height: 190px;
+    min-height: 220px;
     border-top: 1px solid #e4e6ea;
     border-bottom: 1px solid #e4e6ea;
     position: relative;
@@ -1463,10 +1463,11 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    position: relative;
 }
 
-.debate-pane-a { border-right: 1px solid #e4e6ea; background: #fff8f8; }
-.debate-pane-b { background: #f6fff8; }
+.debate-pane-a { border-right: 1px solid #e4e6ea; background: transparent; }
+.debate-pane-b { background: transparent; }
 
 /* Pane header strip */
 .debate-pane-header {
@@ -1476,10 +1477,14 @@
     padding: 7px 10px 6px;
     border-bottom: 1px solid rgba(0,0,0,0.06);
     gap: 1px;
+    position: relative;
+    z-index: 2;
+    background: rgba(255,255,255,0.85);
+    backdrop-filter: blur(4px);
 }
 
-.pane-header-a { background: rgba(220,50,50,0.07); border-bottom-color: rgba(220,50,50,0.15); }
-.pane-header-b { background: rgba(40,167,69,0.07);  border-bottom-color: rgba(40,167,69,0.15); }
+.pane-header-a { border-bottom-color: rgba(220,50,50,0.15); }
+.pane-header-b { border-bottom-color: rgba(40,167,69,0.15); }
 
 .debate-pane-team-label {
     font-size: 9px;
@@ -1493,77 +1498,76 @@
 .debate-pane-team-name {
     font-size: 11px;
     font-weight: 600;
-    color: #444;
+    color: var(--theme-text, #444);
     text-align: center;
     line-height: 1.2;
 }
 
-/* Feed inside each pane */
+/* ── Live stream comment feed ── */
 .debate-pane-feed {
     flex: 1;
+    position: relative;
+    overflow: hidden;
+    min-height: 160px;
+    /* No background — fully transparent so card bg shows through */
+    background: transparent;
+}
+
+/* Top fade mask — comments fade out as they reach the top */
+.debate-pane-feed::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 48px;
+    background: linear-gradient(to bottom,
+        var(--theme-surface, #fff) 0%,
+        transparent 100%);
+    z-index: 3;
+    pointer-events: none;
+}
+
+/* Inner scroll container — new comments come in at the bottom */
+.debate-feed-inner {
+    position: absolute;
+    inset: 0;
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    justify-content: flex-end;
     padding: 8px 8px 6px;
-    overflow-y: auto;
-    max-height: 140px;
+    gap: 5px;
+    overflow: hidden;
 }
 
-/* Scrollbar minimal */
-.debate-pane-feed::-webkit-scrollbar { width: 3px; }
-.debate-pane-feed::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 3px; }
-
-/* Remove the old .debate-image-wrap and .debate-live-comments — replaced by panes above */
-.debate-image-wrap { display: none; }
-.debate-live-comments { display: none; }
-
-.debate-live-header {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    margin-bottom: 4px;
-    flex-shrink: 0;
-}
-
-.live-dot {
-    width: 7px;
-    height: 7px;
-    background: #e63946;
-    border-radius: 50%;
-    animation: livePulse 1.2s ease-in-out infinite;
-}
-
-@keyframes livePulse {
-    0%, 100% { opacity: 1; transform: scale(1); }
-    50% { opacity: 0.4; transform: scale(0.7); }
-}
-
-.live-label {
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 1.5px;
-    color: #e63946;
-    text-transform: uppercase;
-}
-
+/* Individual floating comment */
 .debate-comment {
     display: flex;
     align-items: flex-start;
     gap: 7px;
-    animation: commentSlideIn 0.35s ease;
     flex-shrink: 0;
+    animation: commentFloat 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+    will-change: transform, opacity;
 }
 
-@keyframes commentSlideIn {
-    from { opacity: 0; transform: translateY(8px); }
+/* Comments animate in from below */
+@keyframes commentFloat {
+    from { opacity: 0; transform: translateY(12px); }
     to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Comments fade out when pushed off the top */
+.debate-comment.comment-exit {
+    animation: commentFadeOut 0.5s ease forwards;
+}
+
+@keyframes commentFadeOut {
+    from { opacity: 1; transform: translateY(0); }
+    to   { opacity: 0; transform: translateY(-10px); }
 }
 
 .debate-comment-avatar {
     width: 22px;
     height: 22px;
     border-radius: 50%;
-    background: linear-gradient(135deg, var(--page-primary), var(--page-primary-lt, #4b5563));
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1583,13 +1587,13 @@
 .comment-user {
     font-size: 10px;
     font-weight: 700;
-    color: #555;
+    color: var(--theme-text-muted, #555);
     margin-bottom: 1px;
 }
 
 .comment-text {
     font-size: 12px;
-    color: #333;
+    color: var(--theme-text, #333);
     line-height: 1.45;
     word-break: break-word;
 }

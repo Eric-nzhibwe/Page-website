@@ -289,10 +289,9 @@ function setAvatarImg(src) {
 function applyAvatarEverywhere(imgUrl) {
     if (!imgUrl) return;
 
-    // onerror replaces broken img with a simple user icon so nothing looks broken
     const imgTag = `<img src="${imgUrl}" alt="avatar"
         style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;"
-        onerror="this.style.display='none';this.parentElement.innerHTML='<i class=\\'fas fa-circle-user\\' style=\\'font-size:inherit;\\'></i>'">`;
+        onerror="this.replaceWith(window.pageLetterAvatar ? window.pageLetterAvatar('?') : (()=>{var s=document.createElement('span');s.style='display:inline-flex;align-items:center;justify-content:center;width:100%;height:100%;border-radius:50%;background:#6c63ff;color:#fff;font-weight:700;font-size:inherit;';s.textContent='?';return s;})())">`;
 
     // ── Named IDs ─────────────────────────────────────────────
     [

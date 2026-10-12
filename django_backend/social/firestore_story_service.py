@@ -113,7 +113,9 @@ def delete_story(story_id: str, user_id: str) -> bool:
 def mark_viewed(story_id: str, viewer) -> dict:
     """
     Record that `viewer` has viewed the story.
-    Atomically increments view_count on the story doc.
+    Atomically increments view_count only when:
+      - it's the first time this viewer has viewed the story, AND
+      - the viewer is not the story author (authors don't count as viewers)
     Returns {'story_id', 'viewer_id', 'viewed_at', 'created': bool}.
     """
     db = get_firestore()
@@ -125,6 +127,16 @@ def mark_viewed(story_id: str, viewer) -> dict:
     view_ref = ref.collection('views').document(str(viewer.id))
 
     try:
+        # Check if viewer is the author — don't inflate their own count
+        story_snap = ref.get()
+        if story_snap.exists:
+            author_id = story_snap.to_dict().get('author_id', '')
+            if str(viewer.id) == str(author_id):
+                # Still record the view doc so the author can see it in their own list
+                # but don't increment the public count
+                view_ref.set({'user_id': str(viewer.id), 'username': viewer.username, 'viewed_at': now})
+                return {'story_id': story_id, 'viewer_id': str(viewer.id), 'viewed_at': now.isoformat(), 'created': False}
+
         existing = view_ref.get()
         is_new   = not existing.exists
 

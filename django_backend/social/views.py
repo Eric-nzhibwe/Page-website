@@ -62,10 +62,12 @@ class PostViewSet(viewsets.ModelViewSet):
         if _use_fs_social():
             return  # handled in create() override below
 
-        # Convert uploaded image to base64 data URI so it survives re-deploys
         request    = self.request
         media_file = request.FILES.get('media_file')
+        voice_file = request.FILES.get('voice_file')
         extra      = {}
+
+        # Convert uploaded image → base64 data URI (survives re-deploys)
         if media_file and media_file.content_type.startswith('image/'):
             try:
                 from PIL import Image
@@ -84,11 +86,31 @@ class PostViewSet(viewsets.ModelViewSet):
                 extra = {
                     'media_url':  f'data:image/jpeg;base64,{encoded}',
                     'media_type': 'image',
-                    'media_file': None,   # don't save the raw file
+                    'media_file': None,
                 }
             except Exception as exc:
                 import logging
                 logging.getLogger(__name__).error(f'Post image base64 failed: {exc}')
+
+        # Voice files are saved via default_storage and the URL stored in media_url
+        # so they persist across re-deploys (or via Cloudinary if configured).
+        elif voice_file:
+            try:
+                import os
+                from django.core.files.storage import default_storage
+                from django.core.files.base import ContentFile
+                ext       = os.path.splitext(voice_file.name)[1].lower() or '.webm'
+                safe_name = f"posts/voice/{request.user.id}_{uuid.uuid4().hex}{ext}"
+                path      = default_storage.save(safe_name, ContentFile(voice_file.read()))
+                voice_url = request.build_absolute_uri(default_storage.url(path))
+                extra = {
+                    'media_url':  voice_url,
+                    'media_type': 'audio',
+                    'voice_file': None,   # don't save raw file again via FileField
+                }
+            except Exception as exc:
+                import logging
+                logging.getLogger(__name__).error(f'Voice file upload failed: {exc}')
 
         post = serializer.save(author=request.user, **extra)
         self._broadcast_new_post(post)
@@ -106,13 +128,13 @@ class PostViewSet(viewsets.ModelViewSet):
     def _create_firestore(self, request):
         from .firestore_social_service import create_post
 
-        data      = request.data
-        media_url = None
+        data       = request.data
+        media_url  = None
         media_type = ''
 
-        # Process uploaded image → base64 data URI (survives Render re-deploys,
-        # no external storage needed; stored directly in the Firestore document)
         media_file = request.FILES.get('media_file')
+        voice_file = request.FILES.get('voice_file')
+
         if media_file:
             media_type = 'video' if media_file.content_type.startswith('video') else 'image'
             if media_type == 'image':
@@ -120,7 +142,6 @@ class PostViewSet(viewsets.ModelViewSet):
                     from PIL import Image
                     import io, base64
                     img = Image.open(media_file)
-                    # Normalise to RGB for JPEG
                     if img.mode in ('RGBA', 'LA', 'P'):
                         bg = Image.new('RGB', img.size, (255, 255, 255))
                         if img.mode == 'P':
@@ -129,7 +150,6 @@ class PostViewSet(viewsets.ModelViewSet):
                         img = bg
                     elif img.mode != 'RGB':
                         img = img.convert('RGB')
-                    # Cap longest side at 1024px
                     max_side = 1024
                     w, h = img.size
                     if max(w, h) > max_side:
@@ -137,13 +157,13 @@ class PostViewSet(viewsets.ModelViewSet):
                         img = img.resize((int(w * scale), int(h * scale)), Image.LANCZOS)
                     buf = io.BytesIO()
                     img.save(buf, format='JPEG', quality=85, optimize=True)
-                    encoded  = base64.b64encode(buf.getvalue()).decode('utf-8')
+                    encoded   = base64.b64encode(buf.getvalue()).decode('utf-8')
                     media_url = f'data:image/jpeg;base64,{encoded}'
                 except Exception as exc:
                     import logging
                     logging.getLogger(__name__).error(f'Post image processing failed: {exc}')
             else:
-                # Videos are too large for Firestore docs — store via default_storage
+                # Video — store via default_storage
                 import os
                 from django.core.files.storage import default_storage
                 from django.core.files.base import ContentFile
@@ -155,6 +175,22 @@ class PostViewSet(viewsets.ModelViewSet):
                 except Exception as exc:
                     import logging
                     logging.getLogger(__name__).error(f'Post video upload failed: {exc}')
+
+        elif voice_file:
+            # Voice note — store via default_storage, URL goes into media_url
+            # Firestore documents have a 1 MB limit so base64 audio is not viable
+            import os
+            from django.core.files.storage import default_storage
+            from django.core.files.base import ContentFile
+            ext       = os.path.splitext(voice_file.name)[1].lower() or '.webm'
+            safe_name = f"posts/voice/{request.user.id}_{uuid.uuid4().hex}{ext}"
+            try:
+                path      = default_storage.save(safe_name, ContentFile(voice_file.read()))
+                media_url = request.build_absolute_uri(default_storage.url(path))
+                media_type = 'audio'
+            except Exception as exc:
+                import logging
+                logging.getLogger(__name__).error(f'Voice post upload failed: {exc}')
 
         post = create_post(request.user, dict(data),
                            media_url=media_url, media_type=media_type)
@@ -790,6 +826,127 @@ class StoryViewSet(viewsets.ModelViewSet):
         views      = story.views.all().order_by('-viewed_at')
         serializer = StoryViewSerializer(views, many=True)
         return Response(serializer.data)
+
+    # ── react ─────────────────────────────────────────────────────────────────
+
+    @action(detail=True, methods=['post'])
+    def react(self, request, pk=None):
+        """
+        Record a reaction to a story and notify the author.
+        { "reaction": "❤️" }
+        """
+        reaction = request.data.get('reaction', '❤️')
+        reactor  = request.user
+
+        # Fetch story to get the author
+        story_author = None
+        if self._use_firestore():
+            from .firestore_story_service import get_story
+            story_data = get_story(pk)
+            if story_data:
+                # Look up Django User for notifications
+                author_id = story_data.get('author', {}).get('id')
+                if author_id:
+                    try:
+                        from users.models import User as _User
+                        story_author = _User.objects.get(id=author_id)
+                    except Exception:
+                        pass
+        else:
+            try:
+                story = self.get_object()
+                story_author = story.author
+            except Exception:
+                pass
+
+        # Send in-app notification to story author
+        if story_author and story_author != reactor:
+            try:
+                from notifications.views import create_notification
+                create_notification(
+                    recipient=story_author,
+                    actor=reactor,
+                    notif_type='story_react',
+                    title=f'{reactor.username} reacted {reaction} to your story',
+                    message='',
+                    link='/',
+                )
+            except Exception:
+                pass
+
+        return Response({'status': 'reaction recorded'}, status=status.HTTP_200_OK)
+
+    # ── reply ─────────────────────────────────────────────────────────────────
+
+    @action(detail=True, methods=['post'])
+    def reply(self, request, pk=None):
+        """
+        Send a reply to a story: creates a DM conversation + sends an
+        in-app notification to the story author.
+        { "message": "your reply text" }
+        """
+        message = (request.data.get('message') or '').strip()
+        if not message:
+            return Response({'error': 'message is required.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        reactor = request.user
+
+        # Fetch story author
+        story_author = None
+        if self._use_firestore():
+            from .firestore_story_service import get_story
+            story_data = get_story(pk)
+            if story_data:
+                author_id = story_data.get('author', {}).get('id')
+                if author_id:
+                    try:
+                        from users.models import User as _User
+                        story_author = _User.objects.get(id=author_id)
+                    except Exception:
+                        pass
+        else:
+            try:
+                story = self.get_object()
+                story_author = story.author
+            except Exception:
+                pass
+
+        if not story_author:
+            return Response({'error': 'Story not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        if story_author == reactor:
+            return Response({'error': 'Cannot reply to your own story.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Send DM via messenger
+        dm_sent = False
+        try:
+            from messenger.models import Conversation, Message
+            conv, _ = Conversation.objects.get_or_create_for_users(reactor, story_author)
+            Message.objects.create(
+                conversation=conv,
+                sender=reactor,
+                text=f'💬 Story reply: {message}',
+            )
+            dm_sent = True
+        except Exception:
+            pass
+
+        # Send in-app notification
+        try:
+            from notifications.views import create_notification
+            create_notification(
+                recipient=story_author,
+                actor=reactor,
+                notif_type='story_reply',
+                title=f'{reactor.username} replied to your story',
+                message=message[:120],
+                link='/',
+            )
+        except Exception:
+            pass
+
+        return Response({'status': 'reply sent', 'dm_sent': dm_sent}, status=status.HTTP_200_OK)
 
     # ── destroy ───────────────────────────────────────────────────────────────
 

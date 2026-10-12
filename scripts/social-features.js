@@ -366,7 +366,6 @@ function _buildCommentModal() {
         <!-- Composer -->
         <div class="page-composer">
           <div class="page-composer-avatar" data-current-user-avatar>
-            <i class="fas fa-user-circle"></i>
           </div>
           <div class="page-composer-inner">
             <textarea id="pageCommentInput" class="page-composer-textarea"
@@ -393,8 +392,8 @@ function _buildCommentModal() {
     // Stamp the current user's avatar in the composer immediately after building
     try {
         const user = JSON.parse(localStorage.getItem('pageUser') || '{}');
-        const url  = user.profile_image_url || user.profile_image || null;
-        if (url && window._stampCurrentUserAvatar) window._stampCurrentUserAvatar(url);
+        const url  = user.profile_image_url || user.avatar_url || user.profile_image || null;
+        if (window._stampCurrentUserAvatar) window._stampCurrentUserAvatar(url, user.username || '');
     } catch (_) { /* non-critical */ }
 
     return el;
@@ -502,9 +501,11 @@ function _makeCommentEl(c) {
     div.innerHTML = `
       <div class="page-comment-avatar">
         ${avatarUrl
-            ? `<img src="${esc(avatarUrl)}" alt="${name}"
-                   onerror="this.style.display='none';this.parentElement.innerHTML='<i class=\\'fas fa-user-circle\\'></i>'">`
-            : `<i class="fas fa-user-circle"></i>`}
+            ? `<img src="${esc(avatarUrl)}" alt="${name}" style="width:100%;height:100%;object-fit:cover;border-radius:50%"
+                   onerror="this.replaceWith(window.pageLetterAvatar('${esc(name.charAt(0).toUpperCase())}'))">`
+            : (window.pageLetterAvatarHTML
+                ? window.pageLetterAvatarHTML(name.charAt(0).toUpperCase())
+                : `<span style="display:inline-flex;align-items:center;justify-content:center;width:100%;height:100%;border-radius:50%;background:#6c63ff;color:#fff;font-weight:700;font-size:13px;">${esc(name.charAt(0).toUpperCase())}</span>`)}
       </div>
       <div class="page-comment-body">
         <div class="page-comment-bubble">
