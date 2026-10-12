@@ -28,17 +28,17 @@
     <!-- Theme engine — must load before any other JS so color applies before first paint -->
     <script src="scripts/theme.js"></script>
     <script>
-    // Sync the active swatch to the saved color as soon as DOM is ready
-    document.addEventListener('DOMContentLoaded', function() {
-        try {
-            var saved = JSON.parse(localStorage.getItem('userPreferences') || '{}').accentColor;
-            if (saved) {
-                document.querySelectorAll('.color-swatch').forEach(function(s) {
-                    s.classList.toggle('active', s.dataset.color === saved);
-                });
-            }
-        } catch(e) {}
-    });
+        // Sync the active swatch to the saved color as soon as DOM is ready
+        document.addEventListener('DOMContentLoaded', function () {
+            try {
+                var saved = JSON.parse(localStorage.getItem('userPreferences') || '{}').accentColor;
+                if (saved) {
+                    document.querySelectorAll('.color-swatch').forEach(function (s) {
+                        s.classList.toggle('active', s.dataset.color === saved);
+                    });
+                }
+            } catch (e) { }
+        });
     </script>
     <!-- Social Modals -->
     <link rel="stylesheet" href="styles/social-modals.css">
@@ -47,128 +47,129 @@
 <body>
     <!-- Header with Bootstrap -->
     <header class="header w-100">
-            <div class="header-left d-flex align-items-center">
-                <div class="logo"><i class="fas fa-fire-flame-curved"></i>PAGE</div>
-                <div class="search-bar d-none d-md-flex align-items-center">
-                    <i class="fas fa-magnifying-glass"></i>
-                    <input type="text" placeholder="Search PAGE..." id="headerSearch">
-                </div>
+        <div class="header-left d-flex align-items-center">
+            <div class="logo"><i class="fas fa-fire-flame-curved"></i>PAGE</div>
+            <div class="search-bar d-none d-md-flex align-items-center">
+                <i class="fas fa-magnifying-glass"></i>
+                <input type="text" placeholder="Search PAGE..." id="headerSearch">
             </div>
+        </div>
 
-            <nav class="icon-nav d-flex justify-content-center flex-grow-1">
-                <button class="icon-nav-btn active" data-view="social-feed" title="Home" onclick="switchView('social-feed')">
-                    <i class="fas fa-house"></i>
-                </button>
-                <button class="icon-nav-btn" title="Challenges" onclick="window.location.href='pages/challenges.html'">
+        <nav class="icon-nav d-flex justify-content-center flex-grow-1">
+            <button class="icon-nav-btn active" data-view="social-feed" title="Home"
+                onclick="switchView('social-feed')">
+                <i class="fas fa-house"></i>
+            </button>
+            <button class="icon-nav-btn" title="Challenges" onclick="window.location.href='pages/challenges.html'">
+                <i class="fas fa-trophy"></i>
+                <span class="notification-badge" id="challengesBadge" style="display: none;">0</span>
+            </button>
+            <button class="icon-nav-btn" title="Messages" onclick="window.location.href='pages/messenger.html'">
+                <i class="fas fa-comment-dots"></i>
+            </button>
+            <button class="icon-nav-btn" onclick="window.location.href='pages/user.html'" title="Profile">
+                <i class="fas fa-circle-user"></i>
+            </button>
+        </nav>
+
+        <!-- Right Side Icons -->
+        <div class="header-right d-flex align-items-center">
+            <button class="header-icon-btn" onclick="showNotifications()" title="Notifications">
+                <i class="fas fa-bell"></i>
+                <span class="notification-badge" id="notificationBadge" style="display: none;">0</span>
+            </button>
+            <button class="header-icon-btn" onclick="toggleQuickMenu()" title="Menu">
+                <i class="fas fa-grid-2"></i>
+            </button>
+            <div class="user-avatar-btn" onclick="toggleUserMenu()">
+                <i class="fas fa-circle-user"></i>
+            </div>
+        </div>
+
+        <!-- Quick Menu Dropdown -->
+        <div class="quick-menu-dropdown" id="quickMenuDropdown">
+            <div class="quick-menu-header">
+                <h3>Quick Access</h3>
+            </div>
+            <div class="quick-menu-grid">
+                <a href="#" onclick="showDashboardView(); return false;" class="quick-menu-item">
+                    <i class="fas fa-chart-line"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="pages/community.html" class="quick-menu-item">
+                    <i class="fas fa-people-group"></i>
+                    <span>Community</span>
+                </a>
+                <a href="pages/challenges.html" class="quick-menu-item">
                     <i class="fas fa-trophy"></i>
-                    <span class="notification-badge" id="challengesBadge" style="display: none;">0</span>
-                </button>
-                <button class="icon-nav-btn" title="Messages" onclick="window.location.href='pages/messenger.html'">
+                    <span>Challenges</span>
+                </a>
+                <a href="pages/payment.html" class="quick-menu-item">
+                    <i class="fas fa-wallet"></i>
+                    <span>Wallet</span>
+                </a>
+                <a href="pages/chatbot.html" class="quick-menu-item">
+                    <i class="fas fa-robot"></i>
+                    <span>PAGE AI</span>
+                </a>
+                <a href="pages/messenger.html" class="quick-menu-item">
                     <i class="fas fa-comment-dots"></i>
-                </button>
-                <button class="icon-nav-btn" onclick="window.location.href='pages/user.html'" title="Profile">
-                    <i class="fas fa-circle-user"></i>
-                </button>
-            </nav>
+                    <span>Messages</span>
+                </a>
+                <a href="pages/influencers.html" class="quick-menu-item">
+                    <i class="fas fa-star"></i>
+                    <span>Influencers</span>
+                </a>
+            </div>
+        </div>
 
-            <!-- Right Side Icons -->
-            <div class="header-right d-flex align-items-center">
-                <button class="header-icon-btn" onclick="showNotifications()" title="Notifications">
-                    <i class="fas fa-bell"></i>
-                    <span class="notification-badge" id="notificationBadge" style="display: none;">0</span>
-                </button>
-                <button class="header-icon-btn" onclick="toggleQuickMenu()" title="Menu">
-                    <i class="fas fa-grid-2"></i>
-                </button>
-                <div class="user-avatar-btn" onclick="toggleUserMenu()">
+        <!-- User Menu Dropdown -->
+        <div class="user-menu-dropdown" id="userMenuDropdown">
+            <div class="user-menu-header">
+                <div class="user-menu-avatar">
                     <i class="fas fa-circle-user"></i>
                 </div>
-            </div>
-
-            <!-- Quick Menu Dropdown -->
-            <div class="quick-menu-dropdown" id="quickMenuDropdown">
-                <div class="quick-menu-header">
-                    <h3>Quick Access</h3>
-                </div>
-                <div class="quick-menu-grid">
-                    <a href="#" onclick="showDashboardView(); return false;" class="quick-menu-item">
-                        <i class="fas fa-chart-line"></i>
-                        <span>Dashboard</span>
-                    </a>
-                    <a href="pages/community.html" class="quick-menu-item">
-                        <i class="fas fa-people-group"></i>
-                        <span>Community</span>
-                    </a>
-                    <a href="pages/challenges.html" class="quick-menu-item">
-                        <i class="fas fa-trophy"></i>
-                        <span>Challenges</span>    
-                    </a>
-                    <a href="pages/payment.html" class="quick-menu-item">
-                        <i class="fas fa-wallet"></i>
-                        <span>Wallet</span>
-                    </a>
-                    <a href="pages/chatbot.html" class="quick-menu-item">
-                        <i class="fas fa-robot"></i>
-                        <span>PAGE AI</span>
-                    </a>
-                    <a href="pages/messenger.html" class="quick-menu-item">
-                        <i class="fas fa-comment-dots"></i>
-                        <span>Messages</span>
-                    </a>
-                    <a href="pages/influencers.html" class="quick-menu-item">
-                        <i class="fas fa-star"></i>
-                        <span>Influencers</span>
-                    </a>
+                <div class="user-menu-info">
+                    <h4 id="userMenuName">Player</h4>
+                    <p id="userMenuTier">Bronze Tier</p>
                 </div>
             </div>
-
-            <!-- User Menu Dropdown -->
-            <div class="user-menu-dropdown" id="userMenuDropdown">
-                <div class="user-menu-header">
-                    <div class="user-menu-avatar">
-                        <i class="fas fa-circle-user"></i>
-                    </div>
-                    <div class="user-menu-info">
-                        <h4 id="userMenuName">Player</h4>
-                        <p id="userMenuTier">Bronze Tier</p>
-                    </div>
+            <div class="user-menu-stats">
+                <div class="user-menu-stat">
+                    <i class="fas fa-bolt-lightning"></i>
+                    <span id="userMenuStreak">0</span>
                 </div>
-                <div class="user-menu-stats">
-                    <div class="user-menu-stat">
-                        <i class="fas fa-bolt-lightning"></i>
-                        <span id="userMenuStreak">0</span>
-                    </div>
-                    <div class="user-menu-stat">
-                        <i class="fas fa-star"></i>
-                        <span id="userMenuPrestige">0</span>
-                    </div>
-                    <div class="user-menu-stat">
-                        <i class="fas fa-wallet"></i>
-                        <span id="userMenuBalance">K0.00</span>
-                    </div>
+                <div class="user-menu-stat">
+                    <i class="fas fa-star"></i>
+                    <span id="userMenuPrestige">0</span>
                 </div>
-                <div class="user-menu-links">
-                    <a href="pages/user.html">
-                        <i class="fas fa-id-card"></i> View Profile
-                    </a>
-                    <a href="pages/challenges.html">
-                        <i class="fas fa-trophy"></i> Challenges
-                    </a>
-                    <a href="pages/chatbot.html">
-                        <i class="fas fa-robot"></i> PAGE AI
-                    </a>
-                    <a href="pages/payment.html">
-                        <i class="fas fa-wallet"></i> My Wallet
-                    </a>
-                    <a href="#" onclick="showSettings(); return false;">
-                        <i class="fas fa-gear"></i> Settings
-                    </a>
-                    <a href="#" onclick="logout(); return false;" class="logout-link">
-                        <i class="fas fa-right-from-bracket"></i> Logout
-                    </a>
+                <div class="user-menu-stat">
+                    <i class="fas fa-wallet"></i>
+                    <span id="userMenuBalance">K0.00</span>
                 </div>
             </div>
-        </header>
+            <div class="user-menu-links">
+                <a href="pages/user.html">
+                    <i class="fas fa-id-card"></i> View Profile
+                </a>
+                <a href="pages/challenges.html">
+                    <i class="fas fa-trophy"></i> Challenges
+                </a>
+                <a href="pages/chatbot.html">
+                    <i class="fas fa-robot"></i> PAGE AI
+                </a>
+                <a href="pages/payment.html">
+                    <i class="fas fa-wallet"></i> My Wallet
+                </a>
+                <a href="#" onclick="showSettings(); return false;">
+                    <i class="fas fa-gear"></i> Settings
+                </a>
+                <a href="#" onclick="logout(); return false;" class="logout-link">
+                    <i class="fas fa-right-from-bracket"></i> Logout
+                </a>
+            </div>
+        </div>
+    </header>
 
     <div class="container-fluid p-0 m-0">
         <!-- Social Feed View (New Main View) -->
@@ -248,13 +249,14 @@
                     <!-- Create Post Card -->
                     <div class="create-post-card w-100 bg-white shadow-sm mb-3 p-3">
                         <div class="create-post-header d-flex gap-3 mb-3">
-                            <div class="post-avatar rounded-circle d-flex align-items-center justify-content-center">
-                                <i class="fas fa-user-circle"></i>
+                            <div class="post-avatar rounded-circle d-flex align-items-center justify-content-center"
+                                data-current-user-avatar>
                             </div>
                             <div class="post-input-wrap">
-                                <input type="text" class="post-input form-control rounded-pill" placeholder="What's on your mind?"
-                                    onclick="openCreatePostModal()">
-                                <button class="voice-record-btn" id="voiceRecordBtn" onclick="toggleVoiceRecording(event)" title="Record voice message">
+                                <input type="text" class="post-input form-control rounded-pill"
+                                    placeholder="What's on your mind?" onclick="openCreatePostModal()">
+                                <button class="voice-record-btn" id="voiceRecordBtn"
+                                    onclick="toggleVoiceRecording(event)" title="Record voice message">
                                     <i class="fas fa-microphone" id="voiceRecordIcon"></i>
                                 </button>
                             </div>
@@ -262,31 +264,35 @@
                         <!-- Voice recording status bar -->
                         <div class="voice-recording-bar" id="voiceRecordingBar" style="display:none;">
                             <span class="voice-rec-dot" id="voiceRecDot"></span>
-                            <span class="voice-rec-label" id="voiceRecLabel">Recording… <span id="voiceRecTimer">0:00</span></span>
+                            <span class="voice-rec-label" id="voiceRecLabel">Recording… <span
+                                    id="voiceRecTimer">0:00</span></span>
                             <!-- Live waveform canvas (shown while recording) -->
                             <canvas id="voiceWaveCanvas" width="120" height="32"
                                 style="display:none;border-radius:8px;background:rgba(239,68,68,0.06);flex-shrink:0;"></canvas>
                             <audio id="voicePreviewPlayer" controls style="display:none;"></audio>
                             <!-- Caption — shown after recording stops, before posting -->
-                            <input type="text" id="voiceCaption"
-                                placeholder="Add a caption (optional)…"
-                                style="display:none;flex:1;min-width:0;border:1px solid #ddd;
+                            <input type="text" id="voiceCaption" placeholder="Add a caption (optional)…" style="display:none;flex:1;min-width:0;border:1px solid #ddd;
                                        border-radius:20px;padding:6px 14px;font-size:13px;outline:none;">
                             <div class="voice-rec-actions">
-                                <button class="voice-discard-btn" onclick="discardVoiceRecording()"><i class="fas fa-trash"></i> Discard</button>
-                                <button class="voice-post-btn" id="voicePostBtn" style="display:none;" onclick="postVoiceRecording()"><i class="fas fa-paper-plane"></i> Post</button>
+                                <button class="voice-discard-btn" onclick="discardVoiceRecording()"><i
+                                        class="fas fa-trash"></i> Discard</button>
+                                <button class="voice-post-btn" id="voicePostBtn" style="display:none;"
+                                    onclick="postVoiceRecording()"><i class="fas fa-paper-plane"></i> Post</button>
                             </div>
                         </div>
                         <div class="create-post-actions d-flex gap-2">
-                            <button class="post-action-btn btn btn-light flex-fill" onclick="openCreatePostModal('photo')">
+                            <button class="post-action-btn btn btn-light flex-fill"
+                                onclick="openCreatePostModal('photo')">
                                 <i class="fas fa-image me-2"></i>
                                 <span class="d-none d-sm-inline">Photo</span>
                             </button>
-                            <button class="post-action-btn btn btn-light flex-fill" onclick="openCreatePostModal('video')">
+                            <button class="post-action-btn btn btn-light flex-fill"
+                                onclick="openCreatePostModal('video')">
                                 <i class="fas fa-video me-2"></i>
                                 <span class="d-none d-sm-inline">Video</span>
                             </button>
-                            <button class="post-action-btn btn btn-light flex-fill" onclick="openCreatePostModal('achievement')">
+                            <button class="post-action-btn btn btn-light flex-fill"
+                                onclick="openCreatePostModal('achievement')">
                                 <i class="fas fa-trophy me-2"></i>
                                 <span class="d-none d-sm-inline">Achievement</span>
                             </button>
@@ -351,7 +357,8 @@
                         <div class="user-search-container">
                             <div class="user-search-box">
                                 <i class="fas fa-search"></i>
-                                <input type="text" id="userSearchInput" placeholder="Search users..." onkeyup="searchUsers(this.value)">
+                                <input type="text" id="userSearchInput" placeholder="Search users..."
+                                    onkeyup="searchUsers(this.value)">
                             </div>
                         </div>
                         <div id="discoverUsersList" class="discover-users-list">
@@ -429,8 +436,10 @@
                         </div>
                     </div>
                     <div class="xpoints-rules">
-                        <span class="xpoints-rule"><i class="fas fa-arrow-down"></i> <strong>1.5 xP</strong> entry to participate</span>
-                        <span class="xpoints-rule"><i class="fas fa-arrow-up"></i> <strong>+0.5 xP</strong> earned per challenge</span>
+                        <span class="xpoints-rule"><i class="fas fa-arrow-down"></i> <strong>1.5 xP</strong> entry to
+                            participate</span>
+                        <span class="xpoints-rule"><i class="fas fa-arrow-up"></i> <strong>+0.5 xP</strong> earned per
+                            challenge</span>
                     </div>
                 </div>
 
@@ -501,7 +510,8 @@
                                 <span class="debate-meta-item"><i class="fas fa-clock"></i> 7d</span>
                             </div>
                             <div style="display:flex;gap:8px;align-items:center;">
-                                <button class="share-challenge-btn" onclick="shareChallenge('IS THIS HAIR STYLE?','5','debate')" title="Share">
+                                <button class="share-challenge-btn"
+                                    onclick="shareChallenge('IS THIS HAIR STYLE?','5','debate')" title="Share">
                                     <i class="fas fa-share-alt"></i>
                                 </button>
                                 <button class="xpoints-cost" onclick="joinDebate('5', event)">
@@ -548,7 +558,9 @@
                                 <span><i class="fas fa-bolt"></i> 1.5 xP</span>
                             </div>
                             <div style="display:flex;gap:8px;align-items:center;">
-                                <button class="share-challenge-btn" onclick="shareChallenge('Best Programming Language in 2026?','6','poll')" title="Share">
+                                <button class="share-challenge-btn"
+                                    onclick="shareChallenge('Best Programming Language in 2026?','6','poll')"
+                                    title="Share">
                                     <i class="fas fa-share-alt"></i>
                                 </button>
                                 <span class="poll-prize-badge">K200</span>
@@ -586,8 +598,7 @@
                             </div>
                         </div>
                         <div class="qa-input-row">
-                            <input class="qa-type-input" placeholder="Type something..."
-                                id="qaInput_7"
+                            <input class="qa-type-input" placeholder="Type something..." id="qaInput_7"
                                 onkeydown="if(event.key==='Enter') submitQAAnswer('7')">
                             <button class="qa-send-btn" onclick="submitQAAnswer('7')">
                                 <i class="fas fa-paper-plane"></i>
@@ -599,7 +610,8 @@
                                 <span><i class="fas fa-bolt"></i> 1.5 xP</span>
                             </div>
                             <div style="display:flex;gap:8px;align-items:center;">
-                                <button class="share-challenge-btn" onclick="shareChallenge('Gunna or Dave?','7','Q&A')" title="Share">
+                                <button class="share-challenge-btn" onclick="shareChallenge('Gunna or Dave?','7','Q&A')"
+                                    title="Share">
                                     <i class="fas fa-share-alt"></i>
                                 </button>
                                 <span class="qa-prize-badge">K150</span>
@@ -686,16 +698,9 @@
                     </div>
 
                     <!-- Sample Challenge 3 — Image Interpretation -->
-                    <div class="challenge-card"
-                         data-status="active"
-                         data-id="3"
-                         data-category="image-interpretation"
-                         data-image="https://picsum.photos/seed/page3/600/340"
-                         data-prize="250"
-                         data-entry-fee="25"
-                         data-difficulty="easy"
-                         data-participants="8"
-                         data-answer-numbers="7,3,19">
+                    <div class="challenge-card" data-status="active" data-id="3" data-category="image-interpretation"
+                        data-image="https://picsum.photos/seed/page3/600/340" data-prize="250" data-entry-fee="25"
+                        data-difficulty="easy" data-participants="8" data-answer-numbers="7,3,19">
                         <!-- Prize top-right, Entry fee top-left -->
                         <div class="challenge-badge prize">K250 Prize</div>
                         <div class="challenge-badge entry-fee-badge">K25 Entry</div>
@@ -709,12 +714,12 @@
                             </div>
                         </div>
                         <h3 class="challenge-title">Image Interpretation Challenge</h3>
-                        <p class="challenge-description">Pay the entry fee to reveal the image for 30 seconds. Spot the hidden numbers and submit them to win!</p>
+                        <p class="challenge-description">Pay the entry fee to reveal the image for 30 seconds. Spot the
+                            hidden numbers and submit them to win!</p>
                         <!-- Blurred image preview -->
                         <div class="challenge-image-blurred-wrap">
-                            <img src="https://picsum.photos/seed/page3/600/340"
-                                 alt="Hidden challenge image"
-                                 class="challenge-card-img img-blurred-card">
+                            <img src="https://picsum.photos/seed/page3/600/340" alt="Hidden challenge image"
+                                class="challenge-card-img img-blurred-card">
                             <div class="blurred-img-overlay">
                                 <i class="fas fa-lock"></i>
                                 <span>Pay to reveal</span>
@@ -1121,13 +1126,11 @@
             </div>
             <div class="modal-body">
                 <div class="post-creator-header">
-                    <div class="post-avatar">
-                        <i class="fas fa-user-circle"></i>
-                    </div>
+                    <div class="post-avatar" data-current-user-avatar></div>
                     <div class="post-creator-info">
                         <h4 id="postCreatorName">Player</h4>
                         <select class="post-privacy">
-                            <option value="public">🌍 Public</option>
+                            <option value="public">🌍 Publ ic</option>
                             <option value="friends">👥 Friends</option>
                             <option value="alliance">🛡️ Alliance Only</option>
                         </select>
@@ -1284,7 +1287,8 @@
 
                     <div class="form-group">
                         <label>Challenge Title <span class="required">*</span></label>
-                        <input type="text" id="challengeTitle" class="modal-input" placeholder="e.g., Best programming language?" required>
+                        <input type="text" id="challengeTitle" class="modal-input"
+                            placeholder="e.g., Best programming language?" required>
                     </div>
 
                     <div class="form-group">
@@ -1298,15 +1302,18 @@
                     </div>
 
                     <div class="form-group" id="challengePrizeGroup">
-                        <label>Prize Money (ZMW) <span class="optional" style="font-size:11px;color:#999;font-weight:400;">(optional)</span></label>
-                        <input type="number" id="challengePrize" class="modal-input" placeholder="e.g., 500" step="0.01" min="0" value="0">
+                        <label>Prize Money (ZMW) <span class="optional"
+                                style="font-size:11px;color:#999;font-weight:400;">(optional)</span></label>
+                        <input type="number" id="challengePrize" class="modal-input" placeholder="e.g., 500" step="0.01"
+                            min="0" value="0">
                         <small>Leave at 0 for prestige-only reward.</small>
                     </div>
 
                     <div class="form-group">
                         <label>Duration <span class="required">*</span></label>
                         <div style="display:flex;gap:8px;align-items:center;">
-                            <input type="number" id="challengeDuration" class="modal-input" placeholder="e.g. 30" min="1" max="9999" required style="flex:1;">
+                            <input type="number" id="challengeDuration" class="modal-input" placeholder="e.g. 30"
+                                min="1" max="9999" required style="flex:1;">
                             <select id="challengeDurationUnit" class="modal-input" style="width:110px;flex-shrink:0;">
                                 <option value="minutes">Minutes</option>
                                 <option value="hours">Hours</option>
@@ -1318,7 +1325,8 @@
 
                     <div class="form-group">
                         <label>Description <span class="required">*</span></label>
-                        <textarea id="challengeDescription" class="modal-textarea" placeholder="Describe the challenge..." rows="4" required></textarea>
+                        <textarea id="challengeDescription" class="modal-textarea"
+                            placeholder="Describe the challenge..." rows="4" required></textarea>
                     </div>
 
                     <!-- Q&A: optional image upload -->
@@ -1329,7 +1337,8 @@
                             <p>Upload an image for your Q&amp;A</p>
                             <small>JPG, PNG, or GIF (Max 5MB)</small>
                         </div>
-                        <input type="file" id="challengeImage" accept="image/*" style="display: none;" onchange="handleChallengeImage(event)">
+                        <input type="file" id="challengeImage" accept="image/*" style="display: none;"
+                            onchange="handleChallengeImage(event)">
                         <div id="challengeImagePreview" class="image-preview-single"></div>
                     </div>
 
@@ -1433,10 +1442,13 @@
                     <div class="img-interp-rules-box">
                         <h4><i class="fas fa-list-ul"></i> How it works</h4>
                         <ul>
-                            <li><i class="fas fa-image"></i> A blurred image will be revealed for <strong>30 seconds</strong> after you pay the entry fee.</li>
-                            <li><i class="fas fa-search"></i> Study the image closely and pick out the numbers or points you see.</li>
+                            <li><i class="fas fa-image"></i> A blurred image will be revealed for <strong>30
+                                    seconds</strong> after you pay the entry fee.</li>
+                            <li><i class="fas fa-search"></i> Study the image closely and pick out the numbers or points
+                                you see.</li>
                             <li><i class="fas fa-pen"></i> Enter those numbers as your answer before time runs out.</li>
-                            <li><i class="fas fa-trophy"></i> Correct answers win the prize money — wrong answers lose the entry fee.</li>
+                            <li><i class="fas fa-trophy"></i> Correct answers win the prize money — wrong answers lose
+                                the entry fee.</li>
                         </ul>
                     </div>
 
@@ -1494,7 +1506,8 @@
 
             <div class="img-interp-answer-section" id="imgInterpAnswerSection">
                 <p class="img-interp-answer-hint">
-                    <i class="fas fa-lightbulb"></i> Enter the numbers / points you spotted in the image, separated by commas.
+                    <i class="fas fa-lightbulb"></i> Enter the numbers / points you spotted in the image, separated by
+                    commas.
                 </p>
                 <div class="img-interp-input-row">
                     <input type="text" id="imgInterpAnswer" class="img-interp-answer-input"
@@ -1626,7 +1639,8 @@
                         <span class="nav-label">Privacy</span>
                         <span class="nav-arrow"><i class="fas fa-chevron-right"></i></span>
                     </button>
-                    <button class="settings-nav-btn" onclick="showSettingsTab('notifications')" data-tab="notifications">
+                    <button class="settings-nav-btn" onclick="showSettingsTab('notifications')"
+                        data-tab="notifications">
                         <span class="nav-icon"><i class="fas fa-bell"></i></span>
                         <span class="nav-label">Notifications</span>
                         <span class="nav-arrow"><i class="fas fa-chevron-right"></i></span>
@@ -1664,14 +1678,16 @@
                                     <label for="settingsUsername">Username</label>
                                     <div class="input-icon-wrap">
                                         <i class="fas fa-at"></i>
-                                        <input type="text" id="settingsUsername" class="modal-input" placeholder="Your username">
+                                        <input type="text" id="settingsUsername" class="modal-input"
+                                            placeholder="Your username">
                                     </div>
                                 </div>
                                 <div class="form-group">
                                     <label for="settingsEmail">Email Address</label>
                                     <div class="input-icon-wrap">
                                         <i class="fas fa-envelope"></i>
-                                        <input type="email" id="settingsEmail" class="modal-input" placeholder="you@email.com">
+                                        <input type="email" id="settingsEmail" class="modal-input"
+                                            placeholder="you@email.com">
                                     </div>
                                 </div>
                             </div>
@@ -1680,7 +1696,8 @@
                                     <label for="settingsPhone">Phone Number</label>
                                     <div class="input-icon-wrap">
                                         <i class="fas fa-phone"></i>
-                                        <input type="tel" id="settingsPhone" class="modal-input" placeholder="+260 XXX XXX XXX">
+                                        <input type="tel" id="settingsPhone" class="modal-input"
+                                            placeholder="+260 XXX XXX XXX">
                                     </div>
                                 </div>
                                 <div class="form-group">
@@ -1700,7 +1717,8 @@
                             <div class="settings-card-title danger-title">
                                 <i class="fas fa-exclamation-triangle"></i> Danger Zone
                             </div>
-                            <p class="danger-desc">These actions are irreversible. Please be certain before proceeding.</p>
+                            <p class="danger-desc">These actions are irreversible. Please be certain before proceeding.
+                            </p>
                             <div class="danger-actions">
                                 <button class="btn-danger-outline" onclick="deactivateAccount()">
                                     <i class="fas fa-user-slash"></i> Deactivate Account
@@ -1748,26 +1766,30 @@
                                 <label for="settingsDisplayName">Display Name</label>
                                 <div class="input-icon-wrap">
                                     <i class="fas fa-signature"></i>
-                                    <input type="text" id="settingsDisplayName" class="modal-input" placeholder="How others see you">
+                                    <input type="text" id="settingsDisplayName" class="modal-input"
+                                        placeholder="How others see you">
                                 </div>
                             </div>
                             <div class="form-group">
                                 <label for="settingsBio">Bio</label>
-                                <textarea id="settingsBio" class="modal-textarea" placeholder="Tell others about yourself..." rows="3"></textarea>
+                                <textarea id="settingsBio" class="modal-textarea"
+                                    placeholder="Tell others about yourself..." rows="3"></textarea>
                             </div>
                             <div class="form-row-2">
                                 <div class="form-group">
                                     <label for="settingsLocation">Location</label>
                                     <div class="input-icon-wrap">
                                         <i class="fas fa-map-marker-alt"></i>
-                                        <input type="text" id="settingsLocation" class="modal-input" placeholder="City, Country">
+                                        <input type="text" id="settingsLocation" class="modal-input"
+                                            placeholder="City, Country">
                                     </div>
                                 </div>
                                 <div class="form-group">
                                     <label for="settingsWebsite">Website</label>
                                     <div class="input-icon-wrap">
                                         <i class="fas fa-globe"></i>
-                                        <input type="url" id="settingsWebsite" class="modal-input" placeholder="https://yoursite.com">
+                                        <input type="url" id="settingsWebsite" class="modal-input"
+                                            placeholder="https://yoursite.com">
                                     </div>
                                 </div>
                             </div>
@@ -1788,32 +1810,43 @@
                         </div>
                         <div class="settings-card">
                             <div class="settings-card-title">Social Platforms</div>
-                            <p class="card-desc">Link your accounts to show them on your public profile and unlock social features.</p>
+                            <p class="card-desc">Link your accounts to show them on your public profile and unlock
+                                social features.</p>
                             <div id="linkedAccountsList" class="linked-accounts-list">
                                 <div class="linked-platform-row" data-platform="twitter">
                                     <span class="lp-icon" style="color:#1da1f2"><i class="fab fa-twitter"></i></span>
-                                    <div class="lp-info"><strong>X (Twitter)</strong><span class="lp-handle" id="lpHandleTwitter">Not connected</span></div>
-                                    <button class="lp-btn" id="lpBtnTwitter" onclick="toggleSocialLink('twitter')">Connect</button>
+                                    <div class="lp-info"><strong>X (Twitter)</strong><span class="lp-handle"
+                                            id="lpHandleTwitter">Not connected</span></div>
+                                    <button class="lp-btn" id="lpBtnTwitter"
+                                        onclick="toggleSocialLink('twitter')">Connect</button>
                                 </div>
                                 <div class="linked-platform-row" data-platform="instagram">
                                     <span class="lp-icon" style="color:#e1306c"><i class="fab fa-instagram"></i></span>
-                                    <div class="lp-info"><strong>Instagram</strong><span class="lp-handle" id="lpHandleInstagram">Not connected</span></div>
-                                    <button class="lp-btn" id="lpBtnInstagram" onclick="toggleSocialLink('instagram')">Connect</button>
+                                    <div class="lp-info"><strong>Instagram</strong><span class="lp-handle"
+                                            id="lpHandleInstagram">Not connected</span></div>
+                                    <button class="lp-btn" id="lpBtnInstagram"
+                                        onclick="toggleSocialLink('instagram')">Connect</button>
                                 </div>
                                 <div class="linked-platform-row" data-platform="youtube">
                                     <span class="lp-icon" style="color:#ff0000"><i class="fab fa-youtube"></i></span>
-                                    <div class="lp-info"><strong>YouTube</strong><span class="lp-handle" id="lpHandleYoutube">Not connected</span></div>
-                                    <button class="lp-btn" id="lpBtnYoutube" onclick="toggleSocialLink('youtube')">Connect</button>
+                                    <div class="lp-info"><strong>YouTube</strong><span class="lp-handle"
+                                            id="lpHandleYoutube">Not connected</span></div>
+                                    <button class="lp-btn" id="lpBtnYoutube"
+                                        onclick="toggleSocialLink('youtube')">Connect</button>
                                 </div>
                                 <div class="linked-platform-row" data-platform="tiktok">
                                     <span class="lp-icon" style="color:#333"><i class="fab fa-tiktok"></i></span>
-                                    <div class="lp-info"><strong>TikTok</strong><span class="lp-handle" id="lpHandleTiktok">Not connected</span></div>
-                                    <button class="lp-btn" id="lpBtnTiktok" onclick="toggleSocialLink('tiktok')">Connect</button>
+                                    <div class="lp-info"><strong>TikTok</strong><span class="lp-handle"
+                                            id="lpHandleTiktok">Not connected</span></div>
+                                    <button class="lp-btn" id="lpBtnTiktok"
+                                        onclick="toggleSocialLink('tiktok')">Connect</button>
                                 </div>
                                 <div class="linked-platform-row" data-platform="facebook">
                                     <span class="lp-icon" style="color:#1877f2"><i class="fab fa-facebook"></i></span>
-                                    <div class="lp-info"><strong>Facebook</strong><span class="lp-handle" id="lpHandleFacebook">Not connected</span></div>
-                                    <button class="lp-btn" id="lpBtnFacebook" onclick="toggleSocialLink('facebook')">Connect</button>
+                                    <div class="lp-info"><strong>Facebook</strong><span class="lp-handle"
+                                            id="lpHandleFacebook">Not connected</span></div>
+                                    <button class="lp-btn" id="lpBtnFacebook"
+                                        onclick="toggleSocialLink('facebook')">Connect</button>
                                 </div>
                             </div>
                         </div>
@@ -1866,7 +1899,8 @@
                             <div class="settings-card-title">Activity &amp; Status</div>
                             <div class="setting-row">
                                 <div class="setting-row-info">
-                                    <span class="setting-row-icon"><i class="fas fa-circle" style="color:#4caf50;"></i></span>
+                                    <span class="setting-row-icon"><i class="fas fa-circle"
+                                            style="color:#4caf50;"></i></span>
                                     <div>
                                         <h4>Show Online Status</h4>
                                         <p>Let others see when you're online</p>
@@ -1930,7 +1964,8 @@
                                         <p>Receive notifications on your device</p>
                                     </div>
                                 </div>
-                                <label class="toggle-switch"><input type="checkbox" id="pushNotifications" checked><span class="toggle-slider"></span></label>
+                                <label class="toggle-switch"><input type="checkbox" id="pushNotifications" checked><span
+                                        class="toggle-slider"></span></label>
                             </div>
                             <div class="setting-row">
                                 <div class="setting-row-info">
@@ -1940,7 +1975,8 @@
                                         <p>Get updates via email</p>
                                     </div>
                                 </div>
-                                <label class="toggle-switch"><input type="checkbox" id="emailNotifications" checked><span class="toggle-slider"></span></label>
+                                <label class="toggle-switch"><input type="checkbox" id="emailNotifications"
+                                        checked><span class="toggle-slider"></span></label>
                             </div>
                             <div class="setting-row">
                                 <div class="setting-row-info">
@@ -1950,7 +1986,8 @@
                                         <p>Play sounds for notifications</p>
                                     </div>
                                 </div>
-                                <label class="toggle-switch"><input type="checkbox" id="soundEffects" checked><span class="toggle-slider"></span></label>
+                                <label class="toggle-switch"><input type="checkbox" id="soundEffects" checked><span
+                                        class="toggle-slider"></span></label>
                             </div>
                         </div>
 
@@ -1964,7 +2001,8 @@
                                         <p>New challenges and results</p>
                                     </div>
                                 </div>
-                                <label class="toggle-switch"><input type="checkbox" id="challengeNotifications" checked><span class="toggle-slider"></span></label>
+                                <label class="toggle-switch"><input type="checkbox" id="challengeNotifications"
+                                        checked><span class="toggle-slider"></span></label>
                             </div>
                             <div class="setting-row">
                                 <div class="setting-row-info">
@@ -1974,7 +2012,8 @@
                                         <p>When you receive a new message</p>
                                     </div>
                                 </div>
-                                <label class="toggle-switch"><input type="checkbox" id="messageNotifications" checked><span class="toggle-slider"></span></label>
+                                <label class="toggle-switch"><input type="checkbox" id="messageNotifications"
+                                        checked><span class="toggle-slider"></span></label>
                             </div>
                             <div class="setting-row">
                                 <div class="setting-row-info">
@@ -1984,7 +2023,8 @@
                                         <p>Updates from your alliance</p>
                                     </div>
                                 </div>
-                                <label class="toggle-switch"><input type="checkbox" id="allianceNotifications" checked><span class="toggle-slider"></span></label>
+                                <label class="toggle-switch"><input type="checkbox" id="allianceNotifications"
+                                        checked><span class="toggle-slider"></span></label>
                             </div>
                             <div class="setting-row">
                                 <div class="setting-row-info">
@@ -1994,7 +2034,8 @@
                                         <p>Upcoming tournament alerts</p>
                                     </div>
                                 </div>
-                                <label class="toggle-switch"><input type="checkbox" id="tournamentNotifications" checked><span class="toggle-slider"></span></label>
+                                <label class="toggle-switch"><input type="checkbox" id="tournamentNotifications"
+                                        checked><span class="toggle-slider"></span></label>
                             </div>
                         </div>
 
@@ -2051,7 +2092,9 @@
                                         <p>Enable UI animations and transitions</p>
                                     </div>
                                 </div>
-                                <label class="toggle-switch"><input type="checkbox" id="enableAnimations" checked onchange="toggleAnimationsSetting(this)"><span class="toggle-slider"></span></label>
+                                <label class="toggle-switch"><input type="checkbox" id="enableAnimations" checked
+                                        onchange="toggleAnimationsSetting(this)"><span
+                                        class="toggle-slider"></span></label>
                             </div>
                             <div class="setting-row">
                                 <div class="setting-row-info">
@@ -2061,7 +2104,9 @@
                                         <p>Show more content with tighter spacing</p>
                                     </div>
                                 </div>
-                                <label class="toggle-switch"><input type="checkbox" id="compactMode" onchange="toggleCompactModeSetting(this)"><span class="toggle-slider"></span></label>
+                                <label class="toggle-switch"><input type="checkbox" id="compactMode"
+                                        onchange="toggleCompactModeSetting(this)"><span
+                                        class="toggle-slider"></span></label>
                             </div>
                         </div>
 
@@ -2069,17 +2114,37 @@
                             <div class="settings-card-title">Accent Color</div>
                             <p class="card-desc">Choose a color that highlights interactive elements</p>
                             <div class="color-picker-grid">
-                                <button class="color-swatch active" data-color="#ffffff" data-accent-swatch="#ffffff" style="background:#ffffff;border:2px solid #ccc;" onclick="selectAccentColor('#ffffff')" aria-label="Classic White"></button>
-                                <button class="color-swatch" data-color="#90ee90" data-accent-swatch="#90ee90" style="background:#90ee90;" onclick="selectAccentColor('#90ee90')" aria-label="Forest Green"></button>
-                                <button class="color-swatch" data-color="#4facfe" data-accent-swatch="#4facfe" style="background:#4facfe;" onclick="selectAccentColor('#4facfe')" aria-label="Ocean Blue"></button>
-                                <button class="color-swatch" data-color="#f093fb" data-accent-swatch="#f093fb" style="background:#f093fb;" onclick="selectAccentColor('#f093fb')" aria-label="Rose Pink"></button>
-                                <button class="color-swatch" data-color="#ffd700" data-accent-swatch="#ffd700" style="background:#ffd700;" onclick="selectAccentColor('#ffd700')" aria-label="Gold"></button>
-                                <button class="color-swatch" data-color="#ff6b6b" data-accent-swatch="#ff6b6b" style="background:#ff6b6b;" onclick="selectAccentColor('#ff6b6b')" aria-label="Crimson Red"></button>
-                                <button class="color-swatch" data-color="#a78bfa" data-accent-swatch="#a78bfa" style="background:#a78bfa;" onclick="selectAccentColor('#a78bfa')" aria-label="Deep Purple"></button>
-                                <button class="color-swatch" data-color="#d4b483" data-accent-swatch="#d4b483" style="background:#d4b483;" onclick="selectAccentColor('#d4b483')" aria-label="Warm Beige"></button>
-                                <button class="color-swatch" data-color="#a0522d" data-accent-swatch="#a0522d" style="background:#a0522d;" onclick="selectAccentColor('#a0522d')" aria-label="Sienna Brown"></button>
+                                <button class="color-swatch active" data-color="#ffffff" data-accent-swatch="#ffffff"
+                                    style="background:#ffffff;border:2px solid #ccc;"
+                                    onclick="selectAccentColor('#ffffff')" aria-label="Classic White"></button>
+                                <button class="color-swatch" data-color="#90ee90" data-accent-swatch="#90ee90"
+                                    style="background:#90ee90;" onclick="selectAccentColor('#90ee90')"
+                                    aria-label="Forest Green"></button>
+                                <button class="color-swatch" data-color="#4facfe" data-accent-swatch="#4facfe"
+                                    style="background:#4facfe;" onclick="selectAccentColor('#4facfe')"
+                                    aria-label="Ocean Blue"></button>
+                                <button class="color-swatch" data-color="#f093fb" data-accent-swatch="#f093fb"
+                                    style="background:#f093fb;" onclick="selectAccentColor('#f093fb')"
+                                    aria-label="Rose Pink"></button>
+                                <button class="color-swatch" data-color="#ffd700" data-accent-swatch="#ffd700"
+                                    style="background:#ffd700;" onclick="selectAccentColor('#ffd700')"
+                                    aria-label="Gold"></button>
+                                <button class="color-swatch" data-color="#ff6b6b" data-accent-swatch="#ff6b6b"
+                                    style="background:#ff6b6b;" onclick="selectAccentColor('#ff6b6b')"
+                                    aria-label="Crimson Red"></button>
+                                <button class="color-swatch" data-color="#a78bfa" data-accent-swatch="#a78bfa"
+                                    style="background:#a78bfa;" onclick="selectAccentColor('#a78bfa')"
+                                    aria-label="Deep Purple"></button>
+                                <button class="color-swatch" data-color="#d4b483" data-accent-swatch="#d4b483"
+                                    style="background:#d4b483;" onclick="selectAccentColor('#d4b483')"
+                                    aria-label="Warm Beige"></button>
+                                <button class="color-swatch" data-color="#a0522d" data-accent-swatch="#a0522d"
+                                    style="background:#a0522d;" onclick="selectAccentColor('#a0522d')"
+                                    aria-label="Sienna Brown"></button>
                             </div>
-                            <div id="smAccentLabel" style="font-size:11px;font-weight:700;text-align:center;margin-top:6px;opacity:0;transition:opacity .3s;"></div>
+                            <div id="smAccentLabel"
+                                style="font-size:11px;font-weight:700;text-align:center;margin-top:6px;opacity:0;transition:opacity .3s;">
+                            </div>
                         </div>
 
                         <button class="btn-settings-save" onclick="saveAppearanceSettings()">
@@ -2103,8 +2168,11 @@
                                 <label for="currentPassword">Current Password</label>
                                 <div class="input-icon-wrap">
                                     <i class="fas fa-lock"></i>
-                                    <input type="password" id="currentPassword" class="modal-input" placeholder="Enter current password">
-                                    <button type="button" class="toggle-pw-btn" onclick="togglePasswordVisibility('currentPassword', this)" aria-label="Show password">
+                                    <input type="password" id="currentPassword" class="modal-input"
+                                        placeholder="Enter current password">
+                                    <button type="button" class="toggle-pw-btn"
+                                        onclick="togglePasswordVisibility('currentPassword', this)"
+                                        aria-label="Show password">
                                         <i class="fas fa-eye"></i>
                                     </button>
                                 </div>
@@ -2114,8 +2182,12 @@
                                     <label for="newPassword">New Password</label>
                                     <div class="input-icon-wrap">
                                         <i class="fas fa-key"></i>
-                                        <input type="password" id="newPassword" class="modal-input" placeholder="Enter new password" oninput="checkPasswordStrength(this.value)">
-                                        <button type="button" class="toggle-pw-btn" onclick="togglePasswordVisibility('newPassword', this)" aria-label="Show password">
+                                        <input type="password" id="newPassword" class="modal-input"
+                                            placeholder="Enter new password"
+                                            oninput="checkPasswordStrength(this.value)">
+                                        <button type="button" class="toggle-pw-btn"
+                                            onclick="togglePasswordVisibility('newPassword', this)"
+                                            aria-label="Show password">
                                             <i class="fas fa-eye"></i>
                                         </button>
                                     </div>
@@ -2128,8 +2200,11 @@
                                     <label for="confirmPassword">Confirm New Password</label>
                                     <div class="input-icon-wrap">
                                         <i class="fas fa-key"></i>
-                                        <input type="password" id="confirmPassword" class="modal-input" placeholder="Confirm new password">
-                                        <button type="button" class="toggle-pw-btn" onclick="togglePasswordVisibility('confirmPassword', this)" aria-label="Show password">
+                                        <input type="password" id="confirmPassword" class="modal-input"
+                                            placeholder="Confirm new password">
+                                        <button type="button" class="toggle-pw-btn"
+                                            onclick="togglePasswordVisibility('confirmPassword', this)"
+                                            aria-label="Show password">
                                             <i class="fas fa-eye"></i>
                                         </button>
                                     </div>
@@ -2150,7 +2225,8 @@
                                         <p>Add an extra layer of security to your account</p>
                                     </div>
                                 </div>
-                                <label class="toggle-switch"><input type="checkbox" id="enable2FA"><span class="toggle-slider"></span></label>
+                                <label class="toggle-switch"><input type="checkbox" id="enable2FA"><span
+                                        class="toggle-slider"></span></label>
                             </div>
                             <button class="btn-settings-secondary" onclick="setup2FA()">
                                 <i class="fas fa-qrcode"></i> Setup Authenticator App
@@ -2160,7 +2236,8 @@
                         <div class="settings-card">
                             <div class="settings-card-title">Active Sessions</div>
                             <div id="sessionsList" class="sessions-list">
-                                <div class="sessions-loading"><i class="fas fa-spinner fa-spin"></i> Loading sessions...</div>
+                                <div class="sessions-loading"><i class="fas fa-spinner fa-spin"></i> Loading sessions...
+                                </div>
                             </div>
                             <button class="btn-danger-outline" onclick="logoutAllDevices()">
                                 <i class="fas fa-sign-out-alt"></i> Logout All Devices
@@ -2194,61 +2271,61 @@
     </nav>
 
     <script>
-    // Sync both the header icon-nav and bottom mobile nav active states
-    function switchView(viewName) {
-        showView(viewName);
-        // Update icon-nav-btns in both header and bottom nav
-        document.querySelectorAll('.icon-nav-btn[data-view]').forEach(function(btn) {
-            btn.classList.toggle('active', btn.getAttribute('data-view') === viewName);
-        });
-    }
-
-    // Mobile bottom-nav "More" — opens the user menu anchored above the nav bar
-    function toggleMobileMoreMenu(btn) {
-        const dropdown = document.getElementById('userMenuDropdown');
-        const quickMenu = document.getElementById('quickMenuDropdown');
-
-        // Close quick menu if open
-        if (quickMenu && quickMenu.classList.contains('show')) {
-            quickMenu.classList.remove('show');
+        // Sync both the header icon-nav and bottom mobile nav active states
+        function switchView(viewName) {
+            showView(viewName);
+            // Update icon-nav-btns in both header and bottom nav
+            document.querySelectorAll('.icon-nav-btn[data-view]').forEach(function (btn) {
+                btn.classList.toggle('active', btn.getAttribute('data-view') === viewName);
+            });
         }
 
-        if (!dropdown) return;
+        // Mobile bottom-nav "More" — opens the user menu anchored above the nav bar
+        function toggleMobileMoreMenu(btn) {
+            const dropdown = document.getElementById('userMenuDropdown');
+            const quickMenu = document.getElementById('quickMenuDropdown');
 
-        const isOpen = dropdown.classList.contains('show');
+            // Close quick menu if open
+            if (quickMenu && quickMenu.classList.contains('show')) {
+                quickMenu.classList.remove('show');
+            }
 
-        if (isOpen) {
-            dropdown.classList.remove('show');
-            dropdown.style.removeProperty('top');
-            dropdown.style.removeProperty('bottom');
-            dropdown.style.removeProperty('right');
-            dropdown.style.removeProperty('position');
-        } else {
-            // Position above the bottom nav
-            const navH = document.getElementById('mobileBottomNav').offsetHeight;
-            dropdown.style.position  = 'fixed';
-            dropdown.style.bottom    = (navH + 8) + 'px';
-            dropdown.style.top       = 'auto';
-            dropdown.style.right     = '8px';
-            dropdown.classList.add('show');
-        }
-    }
+            if (!dropdown) return;
 
-    // Close mobile more menu when clicking outside
-    document.addEventListener('click', function(e) {
-        const dropdown = document.getElementById('userMenuDropdown');
-        if (dropdown && dropdown.classList.contains('show') && dropdown.style.bottom) {
-            // Only handle closing when opened from the bottom nav (has inline bottom style)
-            const moreBtn = document.querySelector('.mobile-bottom-nav .icon-nav-btn[title="More"]');
-            if (!dropdown.contains(e.target) && (!moreBtn || !moreBtn.contains(e.target))) {
+            const isOpen = dropdown.classList.contains('show');
+
+            if (isOpen) {
                 dropdown.classList.remove('show');
                 dropdown.style.removeProperty('top');
                 dropdown.style.removeProperty('bottom');
                 dropdown.style.removeProperty('right');
                 dropdown.style.removeProperty('position');
+            } else {
+                // Position above the bottom nav
+                const navH = document.getElementById('mobileBottomNav').offsetHeight;
+                dropdown.style.position = 'fixed';
+                dropdown.style.bottom = (navH + 8) + 'px';
+                dropdown.style.top = 'auto';
+                dropdown.style.right = '8px';
+                dropdown.classList.add('show');
             }
         }
-    });
+
+        // Close mobile more menu when clicking outside
+        document.addEventListener('click', function (e) {
+            const dropdown = document.getElementById('userMenuDropdown');
+            if (dropdown && dropdown.classList.contains('show') && dropdown.style.bottom) {
+                // Only handle closing when opened from the bottom nav (has inline bottom style)
+                const moreBtn = document.querySelector('.mobile-bottom-nav .icon-nav-btn[title="More"]');
+                if (!dropdown.contains(e.target) && (!moreBtn || !moreBtn.contains(e.target))) {
+                    dropdown.classList.remove('show');
+                    dropdown.style.removeProperty('top');
+                    dropdown.style.removeProperty('bottom');
+                    dropdown.style.removeProperty('right');
+                    dropdown.style.removeProperty('position');
+                }
+            }
+        });
     </script>
 
     <script src="scripts/websocket-client.js"></script>
@@ -2262,7 +2339,7 @@
     <script src="scripts/story-viewer.js"></script>
     <!-- Firebase real-time listeners: notifications badge + messenger badge -->
     <script src="scripts/firebase-realtime.js"></script>
-    
+
     <!-- Bootstrap JS Bundle (includes Popper) -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>

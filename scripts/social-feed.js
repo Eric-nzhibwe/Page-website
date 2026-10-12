@@ -474,6 +474,15 @@ function openCreatePostModal(type = null) {
     const nameEl = document.getElementById('postCreatorName');
     if (nameEl) nameEl.textContent = name;
 
+    // Stamp the current user's avatar in the modal each time it opens
+    try {
+        const u = JSON.parse(localStorage.getItem('pageUser') || '{}');
+        const url = u.profile_image_url || u.avatar_url || u.profile_image || null;
+        if (window._stampCurrentUserAvatar) {
+            window._stampCurrentUserAvatar(url, u.username || name);
+        }
+    } catch (_) { /* non-critical */ }
+
     if (type === 'photo')       triggerMediaUpload('image');
     else if (type === 'video')  triggerMediaUpload('video');
     else if (type === 'achievement') addAchievement();
