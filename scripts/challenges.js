@@ -1442,7 +1442,7 @@ function _renderDebateCard(c) {
     return `<div class="challenge-card" data-status="active" data-category="debates" data-id="${id}">
         <div class="debate-card-header">
             <span class="debate-type-label"><i class="fas fa-gavel"></i> Debate</span>
-            <span style="font-size:11px;color:#888;">${dur} · ${escHtml(c.difficulty || 'medium')}</span>
+            <span style="font-size:11px;color:#888;">${dur}</span>
         </div>
         <p class="debate-card-title" style="padding:0 16px 10px;margin:0;">${title.toUpperCase()}</p>
         <div class="debate-arena">
@@ -1529,7 +1529,6 @@ function _renderPollCard(c) {
                 <span><i class="fas fa-clock"></i> ${_fmtDur(c.duration_days)} left</span>
             </div>
             <div style="display:flex;align-items:center;gap:8px;">
-                <span class="poll-prize-badge">${c.prize_amount > 0 ? `K${parseFloat(c.prize_amount).toFixed(2)}` : 'Prestige'}</span>
                 ${deleteBtn}
             </div>
         </div>
@@ -1574,7 +1573,6 @@ function _renderQACard(c) {
                 <span><i class="fas fa-clock"></i> ${_fmtDur(c.duration_days)} left</span>
             </div>
             <div style="display:flex;align-items:center;gap:8px;">
-                <span class="qa-prize-badge">${c.prize_amount > 0 ? `K${parseFloat(c.prize_amount).toFixed(2)}` : 'Prestige'}</span>
                 ${deleteBtn}
             </div>
         </div>
