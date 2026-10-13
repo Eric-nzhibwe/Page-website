@@ -15,7 +15,8 @@ from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
-GROQ_MODEL   = "meta-llama/llama-4-scout-17b-16e-instruct"  # Updated: llama-3.3-70b-versatile retired Aug 16 2026
+GROQ_MODEL   = "meta-llama/llama-4-scout-17b-16e-instruct"  # Groq model ID (verify at console.groq.com/docs/models)
+GROQ_MODEL_FALLBACK = "llama3-70b-8192"  # Reliable fallback if primary model is unavailable
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 
 # ── System prompt ─────────────────────────────────────────────────────────────
@@ -100,24 +101,41 @@ def _groq_response(
 
         messages.append({"role": "user", "content": message})
 
-        response = http.post(
-            GROQ_API_URL,
-            headers={
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type":  "application/json",
-            },
-            json={
-                "model":       GROQ_MODEL,
-                "messages":    messages,
-                "temperature": 0.75,
-                "max_tokens":  700,
-                "top_p":       0.95,
-            },
-            timeout=30,
-        )
+        def _call_model(model_id):
+            return http.post(
+                GROQ_API_URL,
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type":  "application/json",
+                },
+                json={
+                    "model":       model_id,
+                    "messages":    messages,
+                    "temperature": 0.75,
+                    "max_tokens":  700,
+                    "top_p":       0.95,
+                },
+                timeout=30,
+            )
+
+        response = _call_model(GROQ_MODEL)
+
+        # If primary model is 404/400, auto-retry with the fallback model
+        if response.status_code in (400, 404):
+            logger.warning(
+                f"Primary model '{GROQ_MODEL}' returned {response.status_code} — "
+                f"retrying with fallback '{GROQ_MODEL_FALLBACK}'"
+            )
+            response = _call_model(GROQ_MODEL_FALLBACK)
 
         if response.status_code != 200:
-            logger.error(f"Groq API returned {response.status_code}: {response.text[:300]}")
+            error_body = response.text[:500]
+            logger.error(f"Groq API returned {response.status_code}: {error_body}")
+            if response.status_code in (400, 401, 404):
+                logger.error(
+                    f"Groq config error ({response.status_code}) — check GROQ_API_KEY and GROQ_MODEL. "
+                    f"Valid models: https://console.groq.com/docs/models"
+                )
             return None
 
         data = response.json()

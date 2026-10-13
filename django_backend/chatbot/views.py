@@ -220,11 +220,13 @@ def conversation_new_view(request):
 @permission_classes([permissions.IsAuthenticated])
 def ai_status_view(request):
     """
-    Fast config-only check — does NOT make a live Groq API call.
-    Just confirms GROQ_API_KEY is set and returns the model info.
-    Keeps the chatbot page load snappy even on Render free-tier cold starts.
+    Live Groq ping — sends a minimal 1-token request to verify the key AND
+    model are both valid. Falls back to 'limited' if the ping fails.
+    Cached for 60s per user to avoid hammering Groq on every page load.
     """
     from django.conf import settings as django_settings
+    from django.core.cache import cache
+    import requests as http
 
     groq_key = getattr(django_settings, 'GROQ_API_KEY', '').strip()
 
@@ -235,12 +237,79 @@ def ai_status_view(request):
             'status': 'limited',
             'label':  'Basic Mode',
             'tested': False,
+            'reason': 'GROQ_API_KEY not set in environment',
         })
 
-    return Response({
-        'engine': 'groq',
-        'model':  'llama-4-scout-17b',
-        'status': 'online',
-        'label':  'PAGE AI',
-        'tested': False,
-    })
+    # Cache the result per-user for 60s — avoids a Groq hit on every chatbot open
+    cache_key = f'groq_status_{request.user.id}'
+    cached    = cache.get(cache_key)
+    if cached:
+        return Response(cached)
+
+    try:
+        def _ping(model_id):
+            return http.post(
+                'https://api.groq.com/openai/v1/chat/completions',
+                headers={
+                    'Authorization': f'Bearer {groq_key}',
+                    'Content-Type':  'application/json',
+                },
+                json={
+                    'model':      model_id,
+                    'messages':   [{'role': 'user', 'content': 'ping'}],
+                    'max_tokens': 1,
+                },
+                timeout=10,
+            )
+
+        resp = _ping('meta-llama/llama-4-scout-17b-16e-instruct')
+        active_model = 'llama-4-scout-17b'
+
+        # If primary model rejected, try the reliable fallback
+        if resp.status_code in (400, 404):
+            resp = _ping('llama3-70b-8192')
+            active_model = 'llama3-70b'
+
+        if resp.status_code == 200:
+            result = {
+                'engine': 'groq',
+                'model':  active_model,
+                'status': 'online',
+                'label':  'PAGE AI',
+                'tested': True,
+            }
+            cache.set(cache_key, result, 60)
+            return Response(result)
+
+        # Key is set but API rejected — expose the reason
+        error_detail = ''
+        try:
+            error_detail = resp.json().get('error', {}).get('message', resp.text[:200])
+        except Exception:
+            error_detail = resp.text[:200]
+
+        logger.error(f"Groq status ping failed ({resp.status_code}): {error_detail}")
+        result = {
+            'engine': 'fallback',
+            'model':  'rule-based',
+            'status': 'error',
+            'label':  'Basic Mode',
+            'tested': True,
+            'reason': f'Groq API error {resp.status_code}: {error_detail}',
+        }
+        cache.set(cache_key, result, 30)
+        return Response(result)
+
+    except Exception as e:
+        logger.error(f"Groq status check exception: {e}")
+        # Network error / timeout — don't punish the user, assume online
+        result = {
+            'engine': 'groq',
+            'model':  'llama-4-scout-17b',
+            'status': 'online',
+            'label':  'PAGE AI',
+            'tested': False,
+            'reason': 'Status check timed out — assuming online',
+        }
+        cache.set(cache_key, result, 30)
+        return Response(result)

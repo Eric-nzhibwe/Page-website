@@ -88,9 +88,11 @@ async function checkAiStatus() {
         } else if (data.status === 'error') {
             dot.className   = 'status-dot error';
             label.innerHTML = `<span class="engine-badge fallback">${data.label}</span>`;
+            if (data.reason) console.warn('[PAGE AI] Status error:', data.reason);
         } else {
             dot.className   = 'status-dot limited';
             label.innerHTML = 'Basic Mode <span class="engine-badge fallback">Limited</span>';
+            if (data.reason) console.warn('[PAGE AI] Fallback reason:', data.reason);
         }
     } catch (err) {
         clearTimeout(timeout);
