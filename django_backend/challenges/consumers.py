@@ -132,3 +132,36 @@ class QAConsumer(AsyncWebsocketConsumer):
             'type':    'qa_answer',
             'payload': event.get('payload', {}),
         }))
+
+
+class PollConsumer(AsyncWebsocketConsumer):
+    """
+    Real-time vote-count stream for a poll challenge.
+    ws://<host>/ws/poll/<poll_id>/
+
+    Server sends:
+      { "type": "poll_vote", "payload": { "poll_id": "...", "vote_counts": {...}, "total_votes": N } }
+    """
+
+    async def connect(self):
+        self.poll_id    = self.scope['url_route']['kwargs']['poll_id']
+        self.group_name = f'poll_{self.poll_id}'
+        await self.channel_layer.group_add(self.group_name, self.channel_name)
+        await self.accept()
+
+    async def disconnect(self, close_code):
+        await self.channel_layer.group_discard(self.group_name, self.channel_name)
+
+    async def receive(self, text_data):
+        try:
+            data = json.loads(text_data)
+        except (json.JSONDecodeError, TypeError):
+            return
+        if data.get('action') == 'ping':
+            await self.send(text_data=json.dumps({'type': 'pong'}))
+
+    async def poll_vote(self, event):
+        await self.send(text_data=json.dumps({
+            'type':    'poll_vote',
+            'payload': event.get('payload', {}),
+        }))

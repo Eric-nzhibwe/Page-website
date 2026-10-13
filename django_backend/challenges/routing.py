@@ -17,4 +17,8 @@ websocket_urlpatterns = [
         r"^ws/qa/(?P<qa_id>[0-9a-f-]+)/$",
         consumers.QAConsumer.as_asgi(),
     ),
+    re_path(
+        r"^ws/poll/(?P<poll_id>[0-9a-f-]+)/$",
+        consumers.PollConsumer.as_asgi(),
+    ),
 ]

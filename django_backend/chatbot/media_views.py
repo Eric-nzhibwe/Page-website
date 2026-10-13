@@ -33,7 +33,10 @@ from .views import _call_ai, _chat_postgres, _chat_firestore, _use_firestore
 logger = logging.getLogger(__name__)
 
 GROQ_WHISPER_URL  = 'https://api.groq.com/openai/v1/audio/transcriptions'
-GROQ_VISION_MODEL = 'meta-llama/llama-4-scout-17b-16e-instruct'  # supports vision + text
+# Vision model: meta-llama/llama-4-maverick is Groq's current vision-capable model.
+# The GPT-OSS series (120b/20b) handles text only; vision requires a multimodal model.
+GROQ_VISION_MODEL         = 'meta-llama/llama-4-maverick-17b-128e-instruct'
+GROQ_VISION_MODEL_FALLBACK = 'meta-llama/llama-4-scout-17b-16e-instruct'
 GROQ_API_URL      = 'https://api.groq.com/openai/v1/chat/completions'
 
 MAX_AUDIO_MB  = 25     # Groq Whisper limit
@@ -228,15 +231,15 @@ def _call_vision_ai(message, image_b64, image_mime, user, groq_key):
     from .ai_service import _build_system
     system_prompt = _build_system(user_context)
 
-    try:
-        resp = http.post(
+    def _vision_request(model_id):
+        return http.post(
             GROQ_API_URL,
             headers={
                 'Authorization': f'Bearer {groq_key}',
                 'Content-Type':  'application/json',
             },
             json={
-                'model':    GROQ_VISION_MODEL,
+                'model':    model_id,
                 'messages': [
                     {'role': 'system', 'content': system_prompt},
                     {
@@ -258,13 +261,24 @@ def _call_vision_ai(message, image_b64, image_mime, user, groq_key):
             timeout=45,
         )
 
+    try:
+        resp = _vision_request(GROQ_VISION_MODEL)
+
+        # Auto-retry with fallback vision model if primary is unavailable
+        if resp.status_code in (400, 404):
+            logger.warning(
+                f"Primary vision model '{GROQ_VISION_MODEL}' returned {resp.status_code} — "
+                f"retrying with '{GROQ_VISION_MODEL_FALLBACK}'"
+            )
+            resp = _vision_request(GROQ_VISION_MODEL_FALLBACK)
+
         if resp.status_code == 200:
             content = resp.json()['choices'][0]['message']['content'].strip()
             return content, 'groq-vision'
 
         err = resp.json().get('error', {}).get('message', resp.text[:200])
         logger.error(f'Groq vision error: {err}')
-        # Fall back to text-only description
+        # Fall back to text-only with image description hint
         return _call_ai(f'User sent an image and said: {message}', [], user)[0], 'groq'
 
     except Exception as e:
@@ -312,6 +326,7 @@ def _persist_and_respond_postgres(request, user_msg_text, ai_response, ai_source
 
     return Response({
         'conversation_id': conversation.id,
+        'reply':           ai_response,
         'user_message':    ChatMessageSerializer(user_message).data,
         'ai_message':      ChatMessageSerializer(ai_message).data,
         'ai_source':       ai_source,
@@ -338,6 +353,7 @@ def _persist_and_respond_firestore(request, user_msg_text, ai_response, ai_sourc
 
     return Response({
         'conversation_id': conversation_id,
+        'reply':           ai_response,
         'user_message':    user_msg,
         'ai_message':      ai_msg,
         'ai_source':       ai_source,

@@ -2147,6 +2147,52 @@
 .qa-image-wrap { width: 100%; overflow: hidden; }
 .qa-image-wrap img { width: 100%; display: block; object-fit: cover; }
 
+/* ── Q&A image preview (toggle) ── */
+.qa-img-preview-wrap {
+    padding: 0 14px 4px;
+    background: #fff;
+}
+
+.qa-img-toggle-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+    padding: 7px 12px;
+    background: #f2f3f5;
+    border: 1px solid #e4e6ea;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #444;
+    cursor: pointer;
+    transition: background 0.18s, color 0.18s;
+    justify-content: center;
+}
+
+.qa-img-toggle-btn:hover {
+    background: #e8e9eb;
+    color: var(--page-primary, #4caf50);
+}
+
+.qa-img-toggle-btn i { font-size: 13px; }
+
+.qa-img-panel {
+    margin-top: 8px;
+    border-radius: 10px;
+    overflow: hidden;
+    animation: fadeIn 0.25s ease;
+}
+
+.qa-preview-img {
+    width: 100%;
+    display: block;
+    object-fit: cover;
+    max-height: 240px;
+    border-radius: 10px;
+    border: 1px solid #e4e6ea;
+}
+
 
 /* ============================================
    XPOINTS BADGE (top of challenges section)

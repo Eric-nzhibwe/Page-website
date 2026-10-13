@@ -469,11 +469,24 @@ function buildQACard(id, title, description, imgSrc, duration) {
     const username = document.getElementById('username')?.textContent || 'You';
     const initial = username[0].toUpperCase();
 
+    const imgSection = imgSrc ? `
+        <div class="qa-img-preview-wrap" id="qaImgWrap_${id}">
+            <button class="qa-img-toggle-btn" onclick="toggleQAImage('${id}')" aria-expanded="false">
+                <i class="fas fa-image"></i> View Image
+            </button>
+            <div class="qa-img-panel" id="qaImgPanel_${id}" style="display:none;">
+                <img src="${imgSrc}" alt="Challenge image" class="qa-preview-img"
+                    loading="lazy"
+                    onerror="this.closest('.qa-img-panel').style.display='none'">
+            </div>
+        </div>` : '';
+
     return `
         <div class="qa-creator-avatar-wrap">
             <div class="qa-creator-avatar">${initial}</div>
         </div>
         <p class="qa-question">${title}</p>
+        ${imgSection}
         <div class="qa-live-pane" id="qaLive_${id}">
         </div>
         <div class="qa-input-row">
@@ -655,23 +668,15 @@ async function castPollVote(challengeId, optionIndex, btn) {
         return;
     }
 
-    // Render real vote distribution from DB
-    const total = data.total_votes || 1;
+    // Apply fresh counts from server and mark chosen option
+    _applyPollUpdate(challengeId, data.vote_counts, data.total_votes);
     allBtns.forEach((b, i) => {
-        const count = data.vote_counts?.[i] || 0;
-        const pct = Math.round((count / total) * 100);
-        const bar = b.querySelector('.poll-vote-bar');
-        const pctEl = b.querySelector('.poll-vote-pct');
-        if (pctEl) { pctEl.style.display = 'inline'; pctEl.textContent = `${pct}%`; }
-        setTimeout(() => { if (bar) bar.style.width = `${pct}%`; }, 50);
         if (i === optionIndex) b.classList.add('voted');
+        b.disabled = true;
     });
 
-    const footer = btn.closest('.challenge-card').querySelector('.poll-card-footer .poll-meta');
-    if (footer) {
-        const votesEl = footer.querySelector('span:first-child');
-        if (votesEl) votesEl.innerHTML = '<i class="fas fa-check-circle" style="color:#1b7f3a"></i> Voted! +0.5 xP';
-    }
+    const card = btn.closest('.challenge-card');
+    _updatePollFooterCount(card, data.total_votes, true);
 
     renderXPointsBanner(data.balance);
     showNotification('+0.5 xP earned for voting! 📊');
@@ -1269,9 +1274,13 @@ async function loadAndRenderChallenges() {
         card.setAttribute('data-from-db', '1');
         card.innerHTML = buildPollCard(p.id, p.title, p.description, p.options,
             p.duration_days);
-        if (p.user_voted) {
-            setTimeout(() => restorePollState(card, p), 100);
-        }
+        // Always restore current vote counts — whether the user voted or not
+        setTimeout(() => restorePollState(card, p), 100);
+        // Start polling for live vote updates from other users
+        setTimeout(() => {
+            _startPollVoteSync(p.id);
+            openPollWS(p.id);
+        }, 200);
         fragment.appendChild(card);
     });
 
@@ -1314,16 +1323,84 @@ async function loadAndRenderChallenges() {
 
 function restorePollState(card, pollData) {
     const allBtns = card.querySelectorAll('.poll-vote-btn');
-    const total = pollData.total_votes || 1;
+    const total = pollData.total_votes || 0;
+
     allBtns.forEach((b, i) => {
         const count = pollData.vote_counts?.[i] || 0;
-        const pct = Math.round((count / total) * 100);
+        const pct = total > 0 ? Math.round((count / total) * 100) : 0;
         const bar = b.querySelector('.poll-vote-bar');
         const pctEl = b.querySelector('.poll-vote-pct');
+
         if (pctEl) { pctEl.style.display = 'inline'; pctEl.textContent = `${pct}%`; }
-        if (bar) bar.style.width = `${pct}%`;
-        b.disabled = true;
+        setTimeout(() => { if (bar) bar.style.width = `${pct}%`; }, 60);
+
+        if (pollData.user_voted) b.disabled = true;
     });
+
+    // Update the vote count in the footer
+    _updatePollFooterCount(card, total, pollData.user_voted);
+}
+
+/** Apply fresh vote data to a poll card already in the DOM. */
+function _applyPollUpdate(pollId, voteCounts, totalVotes) {
+    const card = document.querySelector(`.challenge-card[data-id="${pollId}"]`);
+    if (!card) return;
+
+    const allBtns = card.querySelectorAll('.poll-vote-btn');
+    allBtns.forEach((b, i) => {
+        const count = voteCounts?.[i] || 0;
+        const pct = totalVotes > 0 ? Math.round((count / totalVotes) * 100) : 0;
+        const bar = b.querySelector('.poll-vote-bar');
+        const pctEl = b.querySelector('.poll-vote-pct');
+
+        if (pctEl) { pctEl.style.display = 'inline'; pctEl.textContent = `${pct}%`; }
+        if (bar) {
+            bar.style.transition = 'width 0.5s ease';
+            bar.style.width = `${pct}%`;
+        }
+    });
+
+    _updatePollFooterCount(card, totalVotes, false);
+}
+
+function _updatePollFooterCount(card, total, userVoted) {
+    const meta = card.querySelector('.poll-card-footer .poll-meta');
+    if (!meta) return;
+    const votesEl = meta.querySelector('span:first-child');
+    if (!votesEl) return;
+
+    if (userVoted) {
+        votesEl.innerHTML = '<i class="fas fa-check-circle" style="color:#1b7f3a"></i> Voted!';
+    } else {
+        votesEl.innerHTML = `<i class="fas fa-users"></i> ${total} vote${total !== 1 ? 's' : ''}`;
+    }
+}
+
+/* ── Poll vote sync — polls every 10s for live vote counts from other users ── */
+const _pollSyncIntervals = {};
+
+function _startPollVoteSync(pollId) {
+    if (!pollId || pollId.length < 10) return;
+    if (_pollSyncIntervals[pollId]) return;   // already running
+
+    _pollSyncIntervals[pollId] = setInterval(async () => {
+        // Stop syncing if the card has been removed from the DOM
+        const card = document.querySelector(`.challenge-card[data-id="${pollId}"]`);
+        if (!card) {
+            clearInterval(_pollSyncIntervals[pollId]);
+            delete _pollSyncIntervals[pollId];
+            return;
+        }
+        // Don't fetch if the tab is hidden
+        if (document.hidden) return;
+
+        try {
+            const polls = await apiGet(`${API}/polls/`);
+            const fresh = (polls || []).find(p => String(p.id) === String(pollId));
+            if (!fresh) return;
+            _applyPollUpdate(pollId, fresh.vote_counts, fresh.total_votes);
+        } catch (_) { /* silent — network hiccup */ }
+    }, 10_000);   // every 10 seconds
 }
 
 /* ── WebSocket connections for live comments ── */
@@ -1353,8 +1430,51 @@ async function _checkWsSupport() {
     return _wsSupported;
 }
 
-function openDebateWS(debateId) {
-    // Don't open WS for static sample IDs (non-UUID single chars)
+function openPollWS(pollId) {
+    if (!pollId || pollId.length < 10) return;
+    if (_wsSockets[`poll_${pollId}`]) return;
+
+    _checkWsSupport().then(supported => {
+        if (!supported) {
+            // Already covered by _startPollVoteSync interval
+            return;
+        }
+        const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+        const ws = new WebSocket(`${proto}://${location.host}/ws/poll/${pollId}/`);
+
+        ws.onmessage = (e) => {
+            try {
+                const msg = JSON.parse(e.data);
+                if (msg.type === 'poll_vote' && msg.payload) {
+                    const { poll_id, vote_counts, total_votes } = msg.payload;
+                    // Only apply if the user on this device hasn't voted yet
+                    // (if they voted, the buttons are already disabled with correct counts)
+                    const card = document.querySelector(`.challenge-card[data-id="${poll_id}"]`);
+                    const hasVoted = card?.querySelector('.poll-vote-btn.voted');
+                    if (!hasVoted) {
+                        _applyPollUpdate(poll_id, vote_counts, total_votes);
+                        _updatePollFooterCount(card, total_votes, false);
+                    }
+                }
+            } catch (_) { }
+        };
+
+        ws.onerror = () => {
+            _wsSupported = false;
+            delete _wsSockets[`poll_${pollId}`];
+            // Polling sync already running as fallback
+        };
+
+        ws.onclose = () => {
+            delete _wsSockets[`poll_${pollId}`];
+            if (_wsSupported) setTimeout(() => openPollWS(pollId), 5000);
+        };
+
+        _wsSockets[`poll_${pollId}`] = ws;
+    });
+}
+
+function openDebateWS(debateId) {    // Don't open WS for static sample IDs (non-UUID single chars)
     if (!debateId || debateId.length < 10) return;
     if (_wsSockets[`debate_${debateId}`]) return;
 

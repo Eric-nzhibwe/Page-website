@@ -367,7 +367,7 @@ async function sendMediaMessage(message, file) {
         }
 
         if (data.conversation_id) conversationId = data.conversation_id;
-        const content = data?.ai_message?.content;
+        const content = data?.ai_message?.content || data?.reply;
         const source  = data?.ai_source || currentAiSource;
         if (content) appendMessage(content, 'bot', source);
         else appendMessage('No response received. Please try again.', 'bot', 'fallback', true);

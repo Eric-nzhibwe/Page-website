@@ -1399,6 +1399,7 @@ window.submitInterpretation = submitInterpretation;
 window.toggleChallengePublish = toggleChallengePublish;
 window.deleteChallenge = deleteChallenge;
 window.deleteSocialChallenge = deleteSocialChallenge;
+window.toggleQAImage = toggleQAImage;
 // Wizard helpers
 window.ccGoStep = ccGoStep;
 window.ccSetDuration = ccSetDuration;
@@ -1542,6 +1543,19 @@ function _renderQACard(c) {
     const deleteBtn = isOwner
         ? `<button class="social-card-delete-btn" onclick="deleteSocialChallenge('qa','${id}','${escHtml(c.title)}')" title="Delete Q&A"><i class="fas fa-trash"></i></button>`
         : '';
+
+    const imgSection = c.image_url ? `
+        <div class="qa-img-preview-wrap" id="qaImgWrap_${id}">
+            <button class="qa-img-toggle-btn" onclick="toggleQAImage('${id}')" aria-expanded="false">
+                <i class="fas fa-image"></i> View Image
+            </button>
+            <div class="qa-img-panel" id="qaImgPanel_${id}" style="display:none;">
+                <img src="${escHtml(c.image_url)}" alt="Challenge image" class="qa-preview-img"
+                    loading="lazy"
+                    onerror="this.closest('.qa-img-panel').style.display='none'">
+            </div>
+        </div>` : '';
+
     const answersHTML = answers.slice(-3).map(a => {
         const hue = a.user.split('').reduce((s, ch) => s + ch.charCodeAt(0), 0) % 360;
         return `<div class="qa-live-msg">
@@ -1558,6 +1572,7 @@ function _renderQACard(c) {
             <div class="qa-creator-avatar"><i class="fas fa-question"></i></div>
         </div>
         <p class="qa-question">${escHtml(c.title)}</p>
+        ${imgSection}
         <div class="qa-live-pane" id="qaLive_${id}">
             ${answersHTML || '<p style="color:var(--text-muted);font-size:12px;padding:8px;">No answers yet — be first!</p>'}
         </div>
@@ -1577,6 +1592,20 @@ function _renderQACard(c) {
             </div>
         </div>
     </div>`;
+}
+
+function toggleQAImage(id) {
+    const panel = document.getElementById(`qaImgPanel_${id}`);
+    const btn   = document.querySelector(`#qaImgWrap_${id} .qa-img-toggle-btn`);
+    if (!panel) return;
+    const isOpen = panel.style.display !== 'none';
+    panel.style.display = isOpen ? 'none' : 'block';
+    if (btn) {
+        btn.setAttribute('aria-expanded', String(!isOpen));
+        btn.innerHTML = isOpen
+            ? '<i class="fas fa-image"></i> View Image'
+            : '<i class="fas fa-eye-slash"></i> Hide Image';
+    }
 }
 
 // ── Interaction handlers for social cards on challenges.html ──────────────────

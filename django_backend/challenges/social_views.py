@@ -128,6 +128,10 @@ def cast_poll_vote(request, poll_id):
 
     counts = poll.vote_counts()
     total  = poll.total_votes()
+
+    # Broadcast live vote update to all listeners on this poll
+    _broadcast_poll_vote(str(poll_id), counts, total)
+
     return Response({
         'voted':       True,
         'balance':     ledger.balance,
@@ -321,6 +325,26 @@ def _broadcast_debate(debate_id: str, payload: dict):
         )
     except Exception as exc:
         logger.warning(f'Debate WS broadcast failed: {exc}')
+
+
+def _broadcast_poll_vote(poll_id: str, vote_counts: dict, total_votes: int):
+    """Broadcast updated vote counts to all listeners on this poll."""
+    if channel_layer is None:
+        return
+    try:
+        async_to_sync(channel_layer.group_send)(
+            f'poll_{poll_id}',
+            {
+                'type':        'poll_vote',
+                'payload': {
+                    'poll_id':     poll_id,
+                    'vote_counts': vote_counts,
+                    'total_votes': total_votes,
+                },
+            },
+        )
+    except Exception as exc:
+        logger.warning(f'Poll WS broadcast failed: {exc}')
 
 
 @api_view(['DELETE'])
