@@ -1,8 +1,9 @@
 """
-PAGE AI Service — powered by Groq (llama-3.3-70b-versatile)
+PAGE AI Service — powered by Groq (GPT-OSS series)
 ================================================
-Primary:  Groq REST API — called directly with `requests` (no extra SDK needed)
-Fallback: Smart rule-based responses
+Primary:  openai/gpt-oss-120b  — Groq's flagship GPT-OSS model
+Fallback: openai/gpt-oss-20b   — lighter, faster fallback
+Safety:   openai/gpt-oss-safeguard-20b is available if needed
 
 Setup:
   1. Get a FREE key at https://console.groq.com/keys
@@ -15,9 +16,9 @@ from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
-GROQ_MODEL   = "meta-llama/llama-4-scout-17b-16e-instruct"  # Groq model ID (verify at console.groq.com/docs/models)
-GROQ_MODEL_FALLBACK = "llama3-70b-8192"  # Reliable fallback if primary model is unavailable
-GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
+GROQ_MODEL          = "openai/gpt-oss-120b"   # Primary: Groq GPT-OSS 120B
+GROQ_MODEL_FALLBACK = "openai/gpt-oss-20b"    # Fallback: Groq GPT-OSS 20B
+GROQ_API_URL        = "https://api.groq.com/openai/v1/chat/completions"
 
 # ── System prompt ─────────────────────────────────────────────────────────────
 SYSTEM_PROMPT = """You are PAGE AI, the smart assistant built into the PAGE competitive gaming platform.
@@ -248,8 +249,8 @@ def _rule_based_response(message: str, user_context: dict | None) -> str:
 
 class AIService:
     """
-    Primary:  Groq GPT-OSS 20B (requires GROQ_API_KEY in .env)
-    Fallback: Smart rule-based responses
+    Primary:  Groq GPT-OSS 120B (requires GROQ_API_KEY in .env)
+    Fallback: Groq GPT-OSS 20B → Smart rule-based responses
     """
 
     def get_response(

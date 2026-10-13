@@ -26,8 +26,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     (function _avatarBoot() {
         function _stamp(imgUrl, username) {
             const initial = (username || '?').charAt(0).toUpperCase();
-            const colours = ['#6c63ff','#e74c3c','#2ecc71','#f39c12','#1abc9c','#9b59b6','#3498db','#e67e22'];
-            const colour  = colours[initial.charCodeAt(0) % colours.length];
+            const colours = ['#6c63ff', '#e74c3c', '#2ecc71', '#f39c12', '#1abc9c', '#9b59b6', '#3498db', '#e67e22'];
+            const colour = colours[initial.charCodeAt(0) % colours.length];
             const imgTag = imgUrl
                 ? `<img src="${imgUrl}" alt="avatar"
                     style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;"
@@ -1428,7 +1428,20 @@ function _renderDebateCard(c) {
                 </div>
             </div>
         </div>
-        <div class="debate-input-row">
+        <!-- Side picker — shown before joining; hidden after -->
+        <div class="debate-side-picker" id="debatePicker_${id}">
+            <p class="debate-pick-label">Pick your side to join:</p>
+            <div class="debate-pick-btns">
+                <button class="debate-pick-btn pick-a" onclick="_chJoinDebate('${id}', 'a', this)">
+                    <span class="pick-side-tag">A</span> ${sideA}
+                </button>
+                <button class="debate-pick-btn pick-b" onclick="_chJoinDebate('${id}', 'b', this)">
+                    <span class="pick-side-tag">B</span> ${sideB}
+                </button>
+            </div>
+        </div>
+        <!-- Comment input — shown after joining -->
+        <div class="debate-input-row" id="debateInputRow_${id}" style="display:none;">
             <input class="debate-text-input" placeholder="Share your take…" id="debateInput_${id}"
                 onkeydown="if(event.key==='Enter') _chSubmitDebate('${id}')">
             <button class="debate-send-btn" onclick="_chSubmitDebate('${id}')">
@@ -1439,19 +1452,19 @@ function _renderDebateCard(c) {
             <div class="debate-team team-a">
                 <span class="debate-team-label">Team A</span>
                 <span class="debate-team-desc">${sideA}</span>
-                <span class="debate-team-count"><i class="fas fa-user-friends"></i> ${(c.participants?.a || 0)} joined</span>
+                <span class="debate-team-count" id="debateCountA_${id}"><i class="fas fa-user-friends"></i> ${(c.participants?.a || 0)} joined</span>
             </div>
             <div class="debate-team team-b">
                 <span class="debate-team-label">Team B</span>
                 <span class="debate-team-desc">${sideB}</span>
-                <span class="debate-team-count"><i class="fas fa-user-friends"></i> ${(c.participants?.b || 0)} joined</span>
+                <span class="debate-team-count" id="debateCountB_${id}"><i class="fas fa-user-friends"></i> ${(c.participants?.b || 0)} joined</span>
             </div>
         </div>
         <div class="debate-card-footer">
             <span style="font-size:11px;color:#888;"><i class="fas fa-clock" style="color:var(--page-primary);margin-right:3px;"></i>${dur} left</span>
-            <button class="xpoints-cost" onclick="_chJoinDebate('${id}', event)">
-                <i class="fas fa-bolt"></i> Join
-            </button>
+            <span class="debate-joined-badge" id="debateJoinedBadge_${id}" style="display:none;font-size:11px;color:#1b7f3a;font-weight:700;">
+                <i class="fas fa-check-circle"></i> Joined
+            </span>
         </div>
     </div>`;
 }
@@ -1535,34 +1548,94 @@ async function _chPost(url, body) {
     return { ok: r.ok, data: await r.json().catch(() => ({})) };
 }
 
-async function _chJoinDebate(id, e) {
-    const btn = e.currentTarget;
-    btn.disabled = true;
-    const { ok, data } = await _chPost(`${_CH_API}/debates/${id}/join/`, { side: 'a' });
-    if (!ok) { showToast(data.error || 'Could not join.', 'error'); btn.disabled = false; return; }
-    btn.innerHTML = '<i class="fas fa-check"></i> Joined!';
-    btn.style.background = '#1b7f3a';
+async function _chJoinDebate(id, side, btn) {
+    // Disable both picker buttons immediately
+    const picker = document.getElementById(`debatePicker_${id}`);
+    if (picker) picker.querySelectorAll('.debate-pick-btn').forEach(b => b.disabled = true);
+
+    const { ok, data } = await _chPost(`${_CH_API}/debates/${id}/join/`, { side });
+
+    if (!ok) {
+        showToast(data.error || 'Could not join.', 'error');
+        if (picker) picker.querySelectorAll('.debate-pick-btn').forEach(b => b.disabled = false);
+        return;
+    }
+
+    // Store the user's chosen side on the card for routing comments
+    const card = document.querySelector(`.challenge-card[data-id="${id}"]`);
+    if (card) card.dataset.userSide = side;
+
+    // Hide picker, show input row
+    if (picker) picker.style.display = 'none';
+    const inputRow = document.getElementById(`debateInputRow_${id}`);
+    if (inputRow) inputRow.style.display = 'flex';
+
+    // Show joined badge
+    const badge = document.getElementById(`debateJoinedBadge_${id}`);
+    if (badge) badge.style.display = 'inline-flex';
+
+    // Highlight the chosen side's pane header
+    const paneHeader = document.querySelector(
+        `#debatePaneA_${id} .debate-pane-header, #debatePaneB_${id} .debate-pane-header`
+    );
+    const chosenPane = document.getElementById(`debatePane${side.toUpperCase()}_${id}`);
+    if (chosenPane) chosenPane.classList.add('pane-active');
+
+    // Update participant counts
+    if (data.participants) {
+        const aEl = document.getElementById(`debateCountA_${id}`);
+        const bEl = document.getElementById(`debateCountB_${id}`);
+        if (aEl) aEl.innerHTML = `<i class="fas fa-user-friends"></i> ${data.participants.a || 0} joined`;
+        if (bEl) bEl.innerHTML = `<i class="fas fa-user-friends"></i> ${data.participants.b || 0} joined`;
+    }
+
+    showToast(`Joined Team ${side.toUpperCase()}! +0.5 xP 🔥`, 'success');
+
+    // Immediately add an intro comment to the joined side's feed
+    const username = (() => { try { return JSON.parse(localStorage.getItem('pageUser') || '{}').username || 'You'; } catch { return 'You'; } })();
+    _chAddDebateComment(id, username, `Just joined Team ${side.toUpperCase()}! 🔥`, side);
 }
 
 async function _chSubmitDebate(id) {
     const input = document.getElementById(`debateInput_${id}`);
     const text = input?.value.trim();
     if (!text) return;
+
+    const card = document.querySelector(`.challenge-card[data-id="${id}"]`);
+    // Fall back to 'a' if somehow side isn't set (shouldn't happen after join)
+    const side = card?.dataset.userSide || 'a';
     const username = (() => { try { return JSON.parse(localStorage.getItem('pageUser') || '{}').username || 'You'; } catch { return 'You'; } })();
-    // Optimistic UI
-    const side = 'b';
-    const shade = 'hsl(140,50%,35%)';
-    const feed = document.getElementById(`debateFeedB_${id}`);
-    if (feed) {
-        const el = document.createElement('div');
-        el.className = 'debate-comment';
-        el.innerHTML = `<div class="debate-comment-avatar" style="background:${shade};">${username[0]}</div>
-            <div class="debate-comment-body"><span class="comment-user">${escHtml(username)}</span><span class="comment-text">${escHtml(text)}</span></div>`;
-        feed.appendChild(el);
-        feed.scrollTop = feed.scrollHeight;
-    }
+
+    // Optimistic UI — add to the correct side's feed immediately
+    _chAddDebateComment(id, username, text, side);
     input.value = '';
-    await _chPost(`${_CH_API}/debates/${id}/comment/`, { text, side }).catch(() => { });
+
+    await _chPost(`${_CH_API}/debates/${id}/comment/`, { text, side }).catch(() => {});
+}
+
+function _chAddDebateComment(id, username, text, side) {
+    const feedId = side === 'a' ? `debateFeedA_${id}` : `debateFeedB_${id}`;
+    const feed = document.getElementById(feedId);
+    if (!feed) return;
+
+    const shade = side === 'a' ? 'hsl(0,60%,42%)' : 'hsl(140,50%,35%)';
+    const el = document.createElement('div');
+    el.className = 'debate-comment comment-enter';
+    el.innerHTML = `<div class="debate-comment-avatar" style="background:${shade};">${username[0].toUpperCase()}</div>
+        <div class="debate-comment-body">
+            <span class="comment-user">${escHtml(username)}</span>
+            <span class="comment-text">${escHtml(text)}</span>
+        </div>`;
+    feed.appendChild(el);
+    feed.scrollTop = feed.scrollHeight;
+
+    // Trim old comments — max 8 visible per side
+    const all = feed.querySelectorAll('.debate-comment');
+    if (all.length > 8) {
+        const oldest = all[0];
+        oldest.classList.add('comment-exit');
+        oldest.addEventListener('animationend', () => oldest.remove(), { once: true });
+    }
 }
 
 async function _chCastPollVote(id, optionIndex, btn) {

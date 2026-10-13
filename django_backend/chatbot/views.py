@@ -262,13 +262,13 @@ def ai_status_view(request):
                 timeout=10,
             )
 
-        resp = _ping('meta-llama/llama-4-scout-17b-16e-instruct')
-        active_model = 'llama-4-scout-17b'
+        resp = _ping('openai/gpt-oss-120b')
+        active_model = 'gpt-oss-120b'
 
         # If primary model rejected, try the reliable fallback
         if resp.status_code in (400, 404):
-            resp = _ping('llama3-70b-8192')
-            active_model = 'llama3-70b'
+            resp = _ping('openai/gpt-oss-20b')
+            active_model = 'gpt-oss-20b'
 
         if resp.status_code == 200:
             result = {
@@ -305,7 +305,7 @@ def ai_status_view(request):
         # Network error / timeout — don't punish the user, assume online
         result = {
             'engine': 'groq',
-            'model':  'llama-4-scout-17b',
+            'model':  'gpt-oss-120b',
             'status': 'online',
             'label':  'PAGE AI',
             'tested': False,

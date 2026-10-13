@@ -347,34 +347,8 @@ function buildDebateCard(id, title, description, sideA, sideB, prize, duration, 
     // We store raw value + unit string for display
     const durLabel = _fmtDuration(duration);
 
-    // Seed Team A comments (sideA supporters)
-    const seedA = [
-        { user: 'Alex', text: `${sideA} is the clear winner 🔥` },
-        { user: 'Sam',  text: `Facts! ${sideA} makes more sense.` },
-    ];
-    // Seed Team B comments (sideB supporters)
-    const seedB = [
-        { user: 'Mia', text: `No way! ${sideB} all the way 💪` },
-        { user: 'Jay', text: `${sideB} is undeniable, period.` },
-    ];
-
-    const makeComment = (c, side) => {
-        const hue = side === 'a' ? 0 : 140; // red for A, green for B
-        const shade = side === 'a'
-            ? `hsl(0,60%,42%)`
-            : `hsl(140,50%,35%)`;
-        return `
-        <div class="debate-comment">
-            <div class="debate-comment-avatar" style="background:${shade};">${c.user[0]}</div>
-            <div class="debate-comment-body">
-                <span class="comment-user">${c.user}</span>
-                <span class="comment-text">${c.text}</span>
-            </div>
-        </div>`;
-    };
-
-    const commentsA = seedA.map(c => makeComment(c, 'a')).join('');
-    const commentsB = seedB.map(c => makeComment(c, 'b')).join('');
+    const commentsA = '';
+    const commentsB = '';
 
     return `
         <div class="debate-card-header">
@@ -509,27 +483,12 @@ function buildQACard(id, title, description, imgSrc, prize, duration, difficulty
     const username = document.getElementById('username')?.textContent || 'You';
     const initial = username[0].toUpperCase();
 
-    // Seed comments — shows the Q&A already has engagement
-    const seed = [
-        { user: 'Bright',   text: 'Definitely Gunna, no debate 🔥' },
-        { user: 'Mia',      text: 'Dave has better bars though 🎤' },
-    ];
-    const seedHTML = seed.map(c => `
-        <div class="qa-live-msg">
-            <div class="qa-live-avatar">${c.user[0]}</div>
-            <div class="qa-live-bubble">
-                <span class="qa-live-user">${c.user}</span>
-                <span class="qa-live-text">${c.text}</span>
-            </div>
-        </div>`).join('');
-
     return `
         <div class="qa-creator-avatar-wrap">
             <div class="qa-creator-avatar">${initial}</div>
         </div>
         <p class="qa-question">${title}</p>
         <div class="qa-live-pane" id="qaLive_${id}">
-            ${seedHTML}
         </div>
         <div class="qa-input-row">
             <input class="qa-type-input" placeholder="Type something..." id="qaInput_${id}"
@@ -1263,10 +1222,6 @@ document.addEventListener('DOMContentLoaded', async function() {
             loadAndRenderChallenges();
         }
     };
-
-    // Start live demo tickers on static sample cards (fallback for logged-out visitors)
-    startDebateLiveComments('5');
-    startQALiveTicker('7');
 
     updateChallengeStats();
 });
