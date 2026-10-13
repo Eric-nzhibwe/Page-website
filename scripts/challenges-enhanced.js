@@ -2,7 +2,7 @@
 // All xPoints, votes, comments and answers are persisted to the backend.
 
 let currentChallengeId = null;
-let submissionFiles    = [];
+let submissionFiles = [];
 
 // ─── API helpers ────────────────────────────────────────────────────────────
 const API = '/api/challenges';
@@ -42,9 +42,9 @@ async function apiGet(url) {
 
 async function apiPost(url, body) {
     const r = await fetch(url, {
-        method:  'POST',
+        method: 'POST',
         headers: authHeaders(),
-        body:    JSON.stringify(body),
+        body: JSON.stringify(body),
     });
     const data = await r.json().catch(() => ({}));
     return { ok: r.ok, status: r.status, data };
@@ -52,7 +52,7 @@ async function apiPost(url, body) {
 
 // ─── xPoints — DB-backed ────────────────────────────────────────────────────
 const XPOINTS_EARN_PER_CHALLENGE = 0.5;
-const XPOINTS_ENTRY_COST         = 1.5;
+const XPOINTS_ENTRY_COST = 1.5;
 
 async function refreshXPoints() {
     const data = await apiGet(`${API}/xpoints/`);
@@ -84,15 +84,15 @@ function showNotification(msg) {
 function filterChallenges(filter) {
     const challenges = document.querySelectorAll('.challenge-card');
     const filterBtns = document.querySelectorAll('.challenge-filters .filter-btn');
-    
+
     // Update active filter
     filterBtns.forEach(btn => btn.classList.remove('active'));
     event.target.classList.add('active');
-    
+
     // Filter logic
     challenges.forEach(challenge => {
         const status = challenge.getAttribute('data-status');
-        
+
         if (filter === 'all') {
             challenge.style.display = 'block';
         } else if (filter === 'active' && status === 'active') {
@@ -105,7 +105,7 @@ function filterChallenges(filter) {
         } else {
             challenge.style.display = 'none';
         }
-        
+
         if (challenge.style.display === 'block') {
             challenge.style.animation = 'fadeIn 0.3s';
         }
@@ -113,7 +113,7 @@ function filterChallenges(filter) {
 }
 
 // Handle category change in create challenge modal (legacy - no longer used)
-function handleCategoryChange() {}
+function handleCategoryChange() { }
 
 
 
@@ -123,25 +123,25 @@ let challengeImageData = null;
 function handleChallengeImage(event) {
     const file = event.target.files[0];
     if (!file) return;
-    
+
     // Validate file size (5MB max)
     if (file.size > 5 * 1024 * 1024) {
         alert('Image size must be less than 5MB');
         event.target.value = '';
         return;
     }
-    
+
     // Validate file type
     if (!file.type.startsWith('image/')) {
         alert('Please upload an image file');
         event.target.value = '';
         return;
     }
-    
+
     const reader = new FileReader();
-    reader.onload = function(e) {
+    reader.onload = function (e) {
         challengeImageData = e.target.result;
-        
+
         // Show preview
         const preview = document.getElementById('challengeImagePreview');
         preview.innerHTML = `
@@ -191,10 +191,6 @@ function selectChallengeCategory(category) {
         document.getElementById('debateSidesGroup').style.display = 'block';
     }
 
-    // Hide prize field for debates (not needed)
-    const prizeGroup = document.getElementById('challengePrizeGroup');
-    if (prizeGroup) prizeGroup.style.display = category === 'debates' ? 'none' : 'block';
-
     // Transition to step 2
     document.getElementById('createChallengeStep1').style.display = 'none';
     document.getElementById('createChallengeStep2').style.display = 'block';
@@ -211,12 +207,13 @@ function closeCreateChallengeModal() {
     const modal = document.getElementById('createChallengeModal');
     if (modal) {
         modal.style.display = 'none';
-        document.getElementById('createChallengeForm').reset();
+        document.getElementById('socialChallengeForm')?.reset();
         // Reset category hidden field
         document.getElementById('challengeCategory').value = '';
         // Clear image state
         challengeImageData = null;
-        document.getElementById('challengeImagePreview').innerHTML = '';
+        const prev = document.getElementById('challengeImagePreview');
+        if (prev) prev.innerHTML = '';
         document.getElementById('challengeImageGroup').style.display = 'none';
         document.getElementById('pollOptionsGroup').style.display = 'none';
         document.getElementById('debateSidesGroup').style.display = 'none';
@@ -228,26 +225,24 @@ async function publishChallenge(event) {
     event.preventDefault();
     if (!requireAuth('create a challenge')) return;
 
-    const title       = document.getElementById('challengeTitle').value.trim();
-    const category    = document.getElementById('challengeCategory').value;
-    const difficulty  = document.getElementById('challengeDifficulty').value;
-    const prize       = parseFloat(document.getElementById('challengePrize').value) || 0;
-    const durVal      = document.getElementById('challengeDuration').value.trim();
-    const durUnit     = document.getElementById('challengeDurationUnit')?.value || 'days';
-    const description = document.getElementById('challengeDescription').value.trim();
+    const title = document.getElementById('socialChallengeTitle').value.trim();
+    const category = document.getElementById('challengeCategory').value;
+    const durVal = document.getElementById('challengeDuration').value.trim();
+    const durUnit = document.getElementById('challengeDurationUnit')?.value || 'days';
+    const description = document.getElementById('socialChallengeDescription').value.trim();
 
     // Convert to fractional days for the backend; keep raw string for display
     let durationDays;
     let durationDisplay;
     const durNum = parseFloat(durVal) || 1;
     if (durUnit === 'minutes') {
-        durationDays    = durNum / (24 * 60);
+        durationDays = durNum / (24 * 60);
         durationDisplay = `${durNum}m`;
     } else if (durUnit === 'hours') {
-        durationDays    = durNum / 24;
+        durationDays = durNum / 24;
         durationDisplay = `${durNum}h`;
     } else {
-        durationDays    = durNum;
+        durationDays = durNum;
         durationDisplay = `${durNum}d`;
     }
 
@@ -271,17 +266,17 @@ async function publishChallenge(event) {
             return;
         }
         endpoint = `${API}/polls/create/`;
-        body = { title, description, prize_amount: prize, difficulty, duration_days: durationDays, options };
+        body = { title, description, duration_days: durationDays, options };
 
     } else if (category === 'debates') {
         const side_a = document.getElementById('debateSideA').value.trim() || 'For';
         const side_b = document.getElementById('debateSideB').value.trim() || 'Against';
         endpoint = `${API}/debates/create/`;
-        body = { title, description, side_a, side_b, prize_amount: prize, difficulty, duration_days: durationDays };
+        body = { title, description, side_a, side_b, duration_days: durationDays };
 
     } else if (category === 'qa') {
         endpoint = `${API}/qa/create/`;
-        body = { title, description, prize_amount: prize, difficulty, duration_days: durationDays };
+        body = { title, description, duration_days: durationDays };
     }
 
     const { ok, data } = await apiPost(endpoint, body);
@@ -296,18 +291,17 @@ async function publishChallenge(event) {
     closeCreateChallengeModal();
     showNotification('Challenge created! 🏆');
 
-    // Immediately inject the new card at the top of the grid using the
-    // ID returned by the API — no full page reload needed.
-    _injectNewCard(category, data, title, description, prize, durationDisplay, difficulty, body);
+    // Immediately inject the new card at the top of the grid
+    _injectNewCard(category, data, title, description, durationDisplay, body);
 }
 
 
 /* ─── Inject a newly created card instantly at the top of the grid ─── */
-function _injectNewCard(category, apiResponse, title, description, prize, duration, difficulty, body) {
+function _injectNewCard(category, apiResponse, title, description, duration, body) {
     const grid = document.getElementById('challengesGrid');
     if (!grid) return;
 
-    const id   = apiResponse.id;
+    const id = apiResponse.id;
     const card = document.createElement('div');
     card.className = 'challenge-card';
     card.setAttribute('data-status', 'active');
@@ -320,17 +314,15 @@ function _injectNewCard(category, apiResponse, title, description, prize, durati
         card.innerHTML = buildDebateCard(
             id, title, description,
             body.side_a, body.side_b,
-            prize, duration, difficulty, null
+            duration, null
         );
-        // Open live WebSocket for this debate immediately
         setTimeout(() => openDebateWS(id), 200);
 
     } else if (category === 'polls') {
-        card.innerHTML = buildPollCard(id, title, description, body.options, prize, duration, difficulty);
+        card.innerHTML = buildPollCard(id, title, description, body.options, duration);
 
     } else if (category === 'qa') {
-        card.innerHTML = buildQACard(id, title, description, null, prize, duration, difficulty);
-        // Open live WebSocket for this Q&A immediately
+        card.innerHTML = buildQACard(id, title, description, null, duration);
         setTimeout(() => openQAWS(id), 200);
     }
 
@@ -342,9 +334,7 @@ function _injectNewCard(category, apiResponse, title, description, prize, durati
 
 /* ── Card builders ── */
 
-function buildDebateCard(id, title, description, sideA, sideB, prize, duration, difficulty, imgSrc) {
-    // duration can be minutes (e.g. 30) or days (e.g. 1, 3, 7)
-    // We store raw value + unit string for display
+function buildDebateCard(id, title, description, sideA, sideB, duration, imgSrc) {
     const durLabel = _fmtDuration(duration);
 
     const commentsA = '';
@@ -353,7 +343,7 @@ function buildDebateCard(id, title, description, sideA, sideB, prize, duration, 
     return `
         <div class="debate-card-header">
             <span class="debate-type-label"><i class="fas fa-gavel"></i> Debate</span>
-            <span style="font-size:11px;color:#888;">${durLabel} · ${difficulty}</span>
+            <span style="font-size:11px;color:#888;">${durLabel}</span>
         </div>
         <p class="debate-card-title" style="padding:0 16px 10px;margin:0;">${title.toUpperCase()}</p>
 
@@ -414,7 +404,7 @@ function buildDebateCard(id, title, description, sideA, sideB, prize, duration, 
                 <span style="font-size:11px;color:#888;"><i class="fas fa-clock" style="color:var(--page-primary);margin-right:3px;"></i>${durLabel} left</span>
             </div>
             <div style="display:flex;gap:8px;align-items:center;">
-                <button class="share-challenge-btn" onclick="shareChallenge('${title.replace(/'/g,"\\'")}','${id}','debate')" title="Share">
+                <button class="share-challenge-btn" onclick="shareChallenge('${title.replace(/'/g, "\\'")}','${id}','debate')" title="Share">
                     <i class="fas fa-share-alt"></i>
                 </button>
                 <button class="xpoints-cost" onclick="joinDebate('${id}', event)">
@@ -439,13 +429,13 @@ function _fmtDuration(val) {
         val = parseFloat(val);
     }
     if (!val || isNaN(val)) return '—';
-    if (val < 1/24)       return `${Math.round(val * 24 * 60)}m`;  // sub-hour
-    if (val < 1)          return `${Math.round(val * 24)}h`;        // sub-day
-    if (val === 1)        return '1d';
+    if (val < 1 / 24) return `${Math.round(val * 24 * 60)}m`;  // sub-hour
+    if (val < 1) return `${Math.round(val * 24)}h`;        // sub-day
+    if (val === 1) return '1d';
     return `${val}d`;
 }
 
-function buildPollCard(id, title, description, options, prize, duration, difficulty) {
+function buildPollCard(id, title, description, options, duration) {
     const username = document.getElementById('username')?.textContent || 'You';
     const avatarInitial = username[0].toUpperCase();
 
@@ -467,19 +457,15 @@ function buildPollCard(id, title, description, options, prize, duration, difficu
         <div class="poll-card-footer">
             <div class="poll-meta">
                 <span><i class="fas fa-users"></i> 0 votes</span>
-                <span><i class="fas fa-clock"></i> ${duration}d left</span>
-                <span><i class="fas fa-bolt"></i> 1.5 xP</span>
+                <span><i class="fas fa-clock"></i> ${duration} left</span>
             </div>
-            <div style="display:flex;gap:8px;align-items:center;">
-                <button class="share-challenge-btn" onclick="shareChallenge('${title.replace(/'/g,"\\'")}','${id}','poll')" title="Share">
-                    <i class="fas fa-share-alt"></i>
-                </button>
-                <span class="poll-prize-badge">K${prize.toFixed(2)}</span>
-            </div>
+            <button class="share-challenge-btn" onclick="shareChallenge('${title.replace(/'/g, "\\'")}','${id}','poll')" title="Share">
+                <i class="fas fa-share-alt"></i>
+            </button>
         </div>`;
 }
 
-function buildQACard(id, title, description, imgSrc, prize, duration, difficulty) {
+function buildQACard(id, title, description, imgSrc, duration) {
     const username = document.getElementById('username')?.textContent || 'You';
     const initial = username[0].toUpperCase();
 
@@ -499,15 +485,11 @@ function buildQACard(id, title, description, imgSrc, prize, duration, difficulty
         </div>
         <div class="qa-card-footer">
             <div class="qa-meta">
-                <span><i class="fas fa-clock"></i> ${duration}d left</span>
-                <span><i class="fas fa-bolt"></i> 1.5 xP</span>
+                <span><i class="fas fa-clock"></i> ${duration} left</span>
             </div>
-            <div style="display:flex;gap:8px;align-items:center;">
-                <button class="share-challenge-btn" onclick="shareChallenge('${title.replace(/'/g,"\\'")}','${id}','Q&A')" title="Share">
-                    <i class="fas fa-share-alt"></i>
-                </button>
-                <span class="qa-prize-badge">K${prize.toFixed(2)}</span>
-            </div>
+            <button class="share-challenge-btn" onclick="shareChallenge('${title.replace(/'/g, "\\'")}','${id}','Q&A')" title="Share">
+                <i class="fas fa-share-alt"></i>
+            </button>
         </div>`;
 }
 
@@ -552,7 +534,7 @@ async function joinDebate(challengeId, e) {
 function addLiveDebateComment(challengeId, user, text, side) {
     side = side || 'b';
     const innerId = side === 'a' ? `debateFeedInnerA_${challengeId}` : `debateFeedInnerB_${challengeId}`;
-    const inner   = document.getElementById(innerId);
+    const inner = document.getElementById(innerId);
     if (!inner) return;
 
     const shade = side === 'a' ? 'hsl(0,60%,42%)' : 'hsl(140,50%,35%)';
@@ -579,7 +561,7 @@ function addLiveDebateComment(challengeId, user, text, side) {
 
 async function submitDebateComment(challengeId) {
     const input = document.getElementById(`debateInput_${challengeId}`);
-    const text  = input?.value.trim();
+    const text = input?.value.trim();
     if (!text) return;
     if (!requireAuth('comment on a debate')) return;
 
@@ -594,7 +576,7 @@ async function submitDebateComment(challengeId) {
     addLiveDebateComment(challengeId, username, text, side);
     input.value = '';
 
-    await apiPost(`${API}/debates/${challengeId}/comment/`, { text, side }).catch(() => {});
+    await apiPost(`${API}/debates/${challengeId}/comment/`, { text, side }).catch(() => { });
 }
 
 // Voice note recording for debates
@@ -625,7 +607,7 @@ function toggleDebateVoice(challengeId) {
 
     navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
         const recorder = new MediaRecorder(stream);
-        const chunks   = [];
+        const chunks = [];
         recorder.ondataavailable = e => chunks.push(e.data);
         recorder.onstop = async () => {
             const blob = new Blob(chunks, { type: 'audio/webm' });
@@ -642,7 +624,7 @@ function toggleDebateVoice(challengeId) {
                 method: 'POST',
                 headers: token ? { 'Authorization': `Token ${token}` } : {},
                 body: fd,
-            }).catch(() => {});
+            }).catch(() => { });
         };
         recorder.start();
         _debateVoiceState[challengeId] = { recorder, stream, recording: true };
@@ -661,7 +643,7 @@ function toggleDebateVoice(challengeId) {
 
 async function castPollVote(challengeId, optionIndex, btn) {
     if (!requireAuth('vote on a poll')) return;
-    const list    = btn.closest('.poll-options-list');
+    const list = btn.closest('.poll-options-list');
     const allBtns = list.querySelectorAll('.poll-vote-btn');
     allBtns.forEach(b => b.disabled = true);
 
@@ -677,8 +659,8 @@ async function castPollVote(challengeId, optionIndex, btn) {
     const total = data.total_votes || 1;
     allBtns.forEach((b, i) => {
         const count = data.vote_counts?.[i] || 0;
-        const pct   = Math.round((count / total) * 100);
-        const bar   = b.querySelector('.poll-vote-bar');
+        const pct = Math.round((count / total) * 100);
+        const bar = b.querySelector('.poll-vote-bar');
         const pctEl = b.querySelector('.poll-vote-pct');
         if (pctEl) { pctEl.style.display = 'inline'; pctEl.textContent = `${pct}%`; }
         setTimeout(() => { if (bar) bar.style.width = `${pct}%`; }, 50);
@@ -698,7 +680,7 @@ async function castPollVote(challengeId, optionIndex, btn) {
 async function submitQAAnswer(challengeId) {
     if (!requireAuth('answer a question')) return;
     const input = document.getElementById(`qaInput_${challengeId}`);
-    const text  = input?.value.trim();
+    const text = input?.value.trim();
     if (!text) return;
 
     const { ok, data } = await apiPost(`${API}/qa/${challengeId}/answer/`, { text });
@@ -736,29 +718,29 @@ async function submitQAAnswer(challengeId) {
 // Attempt challenge
 function attemptChallenge(challengeId) {
     currentChallengeId = challengeId;
-    
+
     // Get challenge details
     const challengeCard = document.querySelector(`[data-id="${challengeId}"]`);
     if (!challengeCard) return;
-    
+
     const title = challengeCard.querySelector('.challenge-title').textContent;
     const description = challengeCard.querySelector('.challenge-description').textContent;
     const prizeText = challengeCard.querySelector('.challenge-badge').textContent;
     const category = challengeCard.getAttribute('data-category') || 'general';
     const challengeImage = challengeCard.getAttribute('data-image');
-    
+
     // Populate modal
     document.getElementById('attemptChallengeTitle').textContent = title;
     document.getElementById('attemptChallengeDescription').textContent = description;
     document.getElementById('attemptChallengePrize').textContent = prizeText.replace('Prize', '').trim();
-    
+
     // Show challenge image if it's an image interpretation challenge
     const modalBody = document.querySelector('#attemptChallengeModal .modal-body');
     const existingImage = modalBody.querySelector('.challenge-image-display');
     if (existingImage) {
         existingImage.remove();
     }
-    
+
     if (category === 'image-interpretation' && challengeImage) {
         const imageDisplay = document.createElement('div');
         imageDisplay.className = 'challenge-image-display';
@@ -772,10 +754,10 @@ function attemptChallenge(challengeId) {
                 <i class="fas fa-info-circle"></i> Provide a detailed interpretation (minimum 100 words)
             </p>
         `;
-        
+
         const form = modalBody.querySelector('form');
         form.insertBefore(imageDisplay, form.firstChild);
-        
+
         // Update submission placeholder for image interpretation
         const submissionText = document.getElementById('submissionText');
         submissionText.placeholder = 'Write your detailed interpretation of the image (minimum 100 words)...';
@@ -786,7 +768,7 @@ function attemptChallenge(challengeId) {
         submissionText.placeholder = 'Describe your solution or provide links...';
         submissionText.rows = 4;
     }
-    
+
     // Open modal
     const modal = document.getElementById('attemptChallengeModal');
     if (modal) {
@@ -809,16 +791,16 @@ function closeAttemptChallengeModal() {
 function handleSubmissionFiles(event) {
     const files = Array.from(event.target.files);
     const preview = document.getElementById('submissionFilesPreview');
-    
+
     files.forEach(file => {
         submissionFiles.push(file);
-        
+
         const fileItem = document.createElement('div');
         fileItem.className = 'file-preview-item';
-        
+
         if (file.type.startsWith('image/')) {
             const reader = new FileReader();
-            reader.onload = function(e) {
+            reader.onload = function (e) {
                 fileItem.innerHTML = `
                     <img src="${e.target.result}" alt="Preview">
                     <button class="remove-file-btn" onclick="removeSubmissionFile(${submissionFiles.length - 1})">
@@ -829,7 +811,7 @@ function handleSubmissionFiles(event) {
             reader.readAsDataURL(file);
         } else if (file.type.startsWith('video/')) {
             const reader = new FileReader();
-            reader.onload = function(e) {
+            reader.onload = function (e) {
                 fileItem.innerHTML = `
                     <video src="${e.target.result}"></video>
                     <button class="remove-file-btn" onclick="removeSubmissionFile(${submissionFiles.length - 1})">
@@ -846,7 +828,7 @@ function handleSubmissionFiles(event) {
                 </button>
             `;
         }
-        
+
         preview.appendChild(fileItem);
     });
 }
@@ -854,18 +836,18 @@ function handleSubmissionFiles(event) {
 // Remove submission file
 function removeSubmissionFile(index) {
     submissionFiles.splice(index, 1);
-    
+
     // Rebuild preview
     const preview = document.getElementById('submissionFilesPreview');
     preview.innerHTML = '';
-    
+
     submissionFiles.forEach((file, idx) => {
         const fileItem = document.createElement('div');
         fileItem.className = 'file-preview-item';
-        
+
         if (file.type.startsWith('image/')) {
             const reader = new FileReader();
-            reader.onload = function(e) {
+            reader.onload = function (e) {
                 fileItem.innerHTML = `
                     <img src="${e.target.result}" alt="Preview">
                     <button class="remove-file-btn" onclick="removeSubmissionFile(${idx})">
@@ -876,7 +858,7 @@ function removeSubmissionFile(index) {
             reader.readAsDataURL(file);
         } else if (file.type.startsWith('video/')) {
             const reader = new FileReader();
-            reader.onload = function(e) {
+            reader.onload = function (e) {
                 fileItem.innerHTML = `
                     <video src="${e.target.result}"></video>
                     <button class="remove-file-btn" onclick="removeSubmissionFile(${idx})">
@@ -893,7 +875,7 @@ function removeSubmissionFile(index) {
                 </button>
             `;
         }
-        
+
         preview.appendChild(fileItem);
     });
 }
@@ -901,24 +883,24 @@ function removeSubmissionFile(index) {
 // Submit challenge attempt
 async function submitChallengeAttempt(event) {
     event.preventDefault();
-    
+
     const submissionText = document.getElementById('submissionText').value;
     const submissionLink = document.getElementById('submissionLink').value;
-    
+
     // Get challenge details
     const challengeCard = document.querySelector(`[data-id="${currentChallengeId}"]`);
     if (!challengeCard) return;
-    
+
     const challengeTitle = challengeCard.querySelector('.challenge-title').textContent;
     const prizeText = document.getElementById('attemptChallengePrize').textContent;
     const prizeAmount = parseFloat(prizeText.replace('K', '').replace('Prize', '').trim());
-    
+
     // Show loading
     const submitBtn = event.target.querySelector('button[type="submit"]');
     const originalBtnText = submitBtn.innerHTML;
     submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verifying...';
     submitBtn.disabled = true;
-    
+
     try {
         // Verify challenge submission with backend
         const isVerified = await verifyChallengeSubmission({
@@ -928,21 +910,21 @@ async function submitChallengeAttempt(event) {
             submissionLink: submissionLink,
             files: submissionFiles
         });
-        
+
         if (isVerified) {
             // Mark as completed
             challengeCard.setAttribute('data-status', 'completed');
             challengeCard.classList.add('challenge-success');
-            
+
             // Add money to wallet via backend
             await addMoneyToWalletBackend(prizeAmount, currentChallengeId);
-            
+
             // Update stats
             updateChallengeStats();
-            
+
             // Close modal
             closeAttemptChallengeModal();
-            
+
             // Show success with money earned
             showSuccessModal(prizeAmount);
         } else {
@@ -951,7 +933,7 @@ async function submitChallengeAttempt(event) {
             submitBtn.innerHTML = originalBtnText;
             submitBtn.disabled = false;
         }
-        
+
     } catch (error) {
         console.error('Challenge submission error:', error);
         alert(`❌ Submission failed: ${error.message}`);
@@ -965,27 +947,27 @@ async function verifyChallengeSubmission(submission) {
     // Get challenge card to determine type
     const challengeCard = document.querySelector(`[data-id="${submission.challengeId}"]`);
     if (!challengeCard) return false;
-    
+
     // Get challenge category from card
     const categoryIcon = challengeCard.querySelector('.challenge-icon i');
     let challengeType = 'general';
-    
+
     if (categoryIcon) {
         if (categoryIcon.classList.contains('fa-code')) challengeType = 'coding';
         else if (categoryIcon.classList.contains('fa-brain')) challengeType = 'trivia';
         else if (categoryIcon.classList.contains('fa-gamepad')) challengeType = 'gaming';
         else if (categoryIcon.classList.contains('fa-palette')) challengeType = 'creative';
     }
-    
+
     // Validate submission has content
     if (!submission.submissionText && !submission.submissionLink && submission.files.length === 0) {
         throw new Error('Please provide a submission (text, link, or files)');
     }
-    
+
     // For now, use client-side verification
     // In production, this should call Django backend API
     const token = localStorage.getItem('djangoAuthToken');
-    
+
     if (token) {
         // Try to verify with backend
         try {
@@ -1005,7 +987,7 @@ async function verifyChallengeSubmission(submission) {
                     has_files: submission.files.length > 0
                 })
             });
-            
+
             if (response.ok) {
                 const data = await response.json();
                 return data.verified === true;
@@ -1014,25 +996,25 @@ async function verifyChallengeSubmission(submission) {
             console.warn('Backend verification unavailable, using client-side validation:', error);
         }
     }
-    
+
     // Fallback: Client-side verification rules
     switch (challengeType) {
         case 'trivia':
             // For trivia, require text answer
             return submission.submissionText && submission.submissionText.length >= 3;
-            
+
         case 'coding':
             // For coding, require link or files
             return submission.submissionLink || submission.files.length > 0;
-            
+
         case 'creative':
             // For creative, require files (images/videos)
             return submission.files.length > 0;
-            
+
         case 'gaming':
             // For gaming, require proof (screenshot/video)
             return submission.files.length > 0 || submission.submissionLink;
-            
+
         case 'image-interpretation':
             // For image interpretation, require text (min 100 words)
             if (!submission.submissionText) return false;
@@ -1041,7 +1023,7 @@ async function verifyChallengeSubmission(submission) {
                 throw new Error('Image interpretation must be at least 100 words');
             }
             return true;
-            
+
         default:
             // General challenges require any submission
             return submission.submissionText || submission.submissionLink || submission.files.length > 0;
@@ -1051,7 +1033,7 @@ async function verifyChallengeSubmission(submission) {
 // Add money to wallet via backend
 async function addMoneyToWalletBackend(amount, challengeId) {
     const token = localStorage.getItem('djangoAuthToken');
-    
+
     if (token) {
         // Add earnings via Django backend
         try {
@@ -1069,15 +1051,15 @@ async function addMoneyToWalletBackend(amount, challengeId) {
                     game_id: challengeId
                 })
             });
-            
+
             if (response.ok) {
                 const data = await response.json();
-                
+
                 // Update UI with backend wallet data
                 if (data.wallet) {
                     updateWalletUI(data.wallet.available_balance);
                 }
-                
+
                 return true;
             } else {
                 console.warn('Backend wallet update failed, using localStorage fallback');
@@ -1086,7 +1068,7 @@ async function addMoneyToWalletBackend(amount, challengeId) {
             console.warn('Backend unavailable, using localStorage fallback:', error);
         }
     }
-    
+
     // Fallback: Update localStorage
     addMoneyToWalletLocal(amount, challengeId);
     return true;
@@ -1097,16 +1079,16 @@ function addMoneyToWalletLocal(amount, challengeId) {
     // Get current balance
     const balanceElement = document.getElementById('walletBalance');
     const currentBalance = parseFloat(balanceElement?.textContent.replace('K', '') || '0');
-    
+
     // Add prize money
     const newBalance = currentBalance + amount;
-    
+
     // Update UI
     updateWalletUI(newBalance);
-    
+
     // Store in localStorage
     localStorage.setItem('walletBalance', newBalance.toFixed(2));
-    
+
     // Create transaction record
     const transaction = {
         type: 'challenge_reward',
@@ -1115,7 +1097,7 @@ function addMoneyToWalletLocal(amount, challengeId) {
         description: 'Challenge completion reward',
         challenge_id: challengeId
     };
-    
+
     // Store transaction
     const transactions = JSON.parse(localStorage.getItem('transactions') || '[]');
     transactions.unshift(transaction);
@@ -1128,13 +1110,13 @@ function updateWalletUI(balance) {
     if (balanceElement) {
         balanceElement.textContent = `K${parseFloat(balance).toFixed(2)}`;
     }
-    
+
     // Update wallet badge
     const walletBadge = document.getElementById('walletBalanceBadge');
     if (walletBadge) {
         walletBadge.style.display = 'flex';
     }
-    
+
     // Update user menu balance
     const userMenuBalance = document.getElementById('userMenuBalance');
     if (userMenuBalance) {
@@ -1163,9 +1145,9 @@ function showSuccessModal(amount) {
             </button>
         </div>
     `;
-    
+
     document.body.appendChild(modal);
-    
+
     // Auto-remove after 5 seconds
     setTimeout(() => {
         modal.style.animation = 'fadeOut 0.3s';
@@ -1177,14 +1159,14 @@ function showSuccessModal(amount) {
 function updateChallengeStats() {
     const completedChallenges = document.querySelectorAll('[data-status="completed"]').length;
     const activeChallenges = document.querySelectorAll('[data-status="active"]').length;
-    
+
     // Get total earned from localStorage
     const balance = parseFloat(localStorage.getItem('walletBalance') || '0');
-    
+
     // Calculate success rate
     const totalAttempts = completedChallenges + 5; // Assuming some failed attempts
     const successRate = totalAttempts > 0 ? Math.round((completedChallenges / totalAttempts) * 100) : 0;
-    
+
     // Update displays
     document.getElementById('completedChallenges').textContent = completedChallenges;
     document.getElementById('activeChallenges').textContent = activeChallenges;
@@ -1198,7 +1180,7 @@ function viewChallengeDetails(challengeId) {
 }
 
 // Initialize
-document.addEventListener('DOMContentLoaded', async function() {
+document.addEventListener('DOMContentLoaded', async function () {
     // Load wallet balance from localStorage
     const savedBalance = localStorage.getItem('walletBalance');
     if (savedBalance) {
@@ -1216,7 +1198,7 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     // Hook into switchView so challenges reload fresh whenever the tab is opened
     const _originalSwitchView = window.switchView;
-    window.switchView = function(viewName) {
+    window.switchView = function (viewName) {
         if (_originalSwitchView) _originalSwitchView(viewName);
         if (viewName === 'challenges') {
             loadAndRenderChallenges();
@@ -1269,7 +1251,7 @@ async function loadAndRenderChallenges() {
         card.setAttribute('data-id', d.id);
         card.setAttribute('data-from-db', '1');
         card.innerHTML = buildDebateCard(d.id, d.title, d.description, d.side_a, d.side_b,
-            parseFloat(d.prize_amount), d.duration_days, d.difficulty, d.image_url || null);
+            d.duration_days, d.image_url || null);
         setTimeout(() => {
             (d.comments || []).slice(-5).forEach(c => addLiveDebateComment(d.id, c.user, c.text));
             openDebateWS(d.id);
@@ -1286,7 +1268,7 @@ async function loadAndRenderChallenges() {
         card.setAttribute('data-id', p.id);
         card.setAttribute('data-from-db', '1');
         card.innerHTML = buildPollCard(p.id, p.title, p.description, p.options,
-            parseFloat(p.prize_amount), p.duration_days, p.difficulty);
+            p.duration_days);
         if (p.user_voted) {
             setTimeout(() => restorePollState(card, p), 100);
         }
@@ -1302,7 +1284,7 @@ async function loadAndRenderChallenges() {
         card.setAttribute('data-id', q.id);
         card.setAttribute('data-from-db', '1');
         card.innerHTML = buildQACard(q.id, q.title, q.description, q.image_url || null,
-            parseFloat(q.prize_amount), q.duration_days, q.difficulty);
+            q.duration_days);
         setTimeout(() => {
             const pane = document.getElementById(`qaLive_${q.id}`);
             if (pane) {
@@ -1332,21 +1314,21 @@ async function loadAndRenderChallenges() {
 
 function restorePollState(card, pollData) {
     const allBtns = card.querySelectorAll('.poll-vote-btn');
-    const total   = pollData.total_votes || 1;
+    const total = pollData.total_votes || 1;
     allBtns.forEach((b, i) => {
         const count = pollData.vote_counts?.[i] || 0;
-        const pct   = Math.round((count / total) * 100);
-        const bar   = b.querySelector('.poll-vote-bar');
+        const pct = Math.round((count / total) * 100);
+        const bar = b.querySelector('.poll-vote-bar');
         const pctEl = b.querySelector('.poll-vote-pct');
         if (pctEl) { pctEl.style.display = 'inline'; pctEl.textContent = `${pct}%`; }
-        if (bar)   bar.style.width = `${pct}%`;
+        if (bar) bar.style.width = `${pct}%`;
         b.disabled = true;
     });
 }
 
 /* ── WebSocket connections for live comments ── */
-const _wsSockets   = {};
-let   _wsSupported = null;   // null = unknown, true/false after first probe
+const _wsSockets = {};
+let _wsSupported = null;   // null = unknown, true/false after first probe
 
 async function _checkWsSupport() {
     if (_wsSupported !== null) return _wsSupported;
@@ -1383,7 +1365,7 @@ function openDebateWS(debateId) {
             return;
         }
         const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-        const ws    = new WebSocket(`${proto}://${location.host}/ws/debate/${debateId}/`);
+        const ws = new WebSocket(`${proto}://${location.host}/ws/debate/${debateId}/`);
 
         ws.onmessage = (e) => {
             try {
@@ -1391,7 +1373,7 @@ function openDebateWS(debateId) {
                 if (msg.type === 'debate_comment' && msg.payload) {
                     addLiveDebateComment(debateId, msg.payload.user, msg.payload.text);
                 }
-            } catch (_) {}
+            } catch (_) { }
         };
 
         ws.onerror = () => {
@@ -1423,7 +1405,7 @@ function openQAWS(qaId) {
             return;
         }
         const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-        const ws    = new WebSocket(`${proto}://${location.host}/ws/qa/${qaId}/`);
+        const ws = new WebSocket(`${proto}://${location.host}/ws/qa/${qaId}/`);
 
         ws.onmessage = (e) => {
             try {
@@ -1444,7 +1426,7 @@ function openQAWS(qaId) {
                     const msgs = pane.querySelectorAll('.qa-live-msg');
                     if (msgs.length > 12) msgs[0].remove();
                 }
-            } catch (_) {}
+            } catch (_) { }
         };
 
         ws.onerror = () => {
@@ -1525,11 +1507,11 @@ function _pollQAAnswers(qaId) {
 
 /* ── Share Challenge ── */
 function shareChallenge(title, id, category) {
-    const url  = `${location.origin}${location.pathname}#challenge-${id}`;
+    const url = `${location.origin}${location.pathname}#challenge-${id}`;
     const text = `Check out this ${category} challenge on PAGE: "${title}"`;
 
     if (navigator.share) {
-        navigator.share({ title: `PAGE — ${title}`, text, url }).catch(() => {});
+        navigator.share({ title: `PAGE — ${title}`, text, url }).catch(() => { });
         return;
     }
 
@@ -1564,13 +1546,13 @@ function shareChallenge(title, id, category) {
 
 /* Simulate live comments flowing in on a debate card */
 const DEMO_COMMENTS = [
-    { user: 'Bright',   text: 'Team A is dominating right now 🏆' },
+    { user: 'Bright', text: 'Team A is dominating right now 🏆' },
     { user: 'Chileshe', text: 'Nah Team B has the better argument 🤔' },
-    { user: 'Mumba',    text: 'This is heating up 🔥' },
-    { user: 'Zed',      text: 'I voted Team A, let\'s go!' },
-    { user: 'Ludo',     text: 'Team B making valid points tbh' },
-    { user: 'Grace',    text: 'Both sides are strong wow' },
-    { user: 'Neo',      text: 'Already earned my 0.5 xP 💪' },
+    { user: 'Mumba', text: 'This is heating up 🔥' },
+    { user: 'Zed', text: 'I voted Team A, let\'s go!' },
+    { user: 'Ludo', text: 'Team B making valid points tbh' },
+    { user: 'Grace', text: 'Both sides are strong wow' },
+    { user: 'Neo', text: 'Already earned my 0.5 xP 💪' },
 ];
 let _commentIdx = 0;
 
@@ -1583,12 +1565,12 @@ function startDebateLiveComments(cardId) {
 }
 
 const QA_DEMO_RESPONSES = [
-    { user: 'Mumba',    text: 'Gunna dropped too many hits to ignore 🎶' },
-    { user: 'Ludo',     text: 'Dave spits facts every verse, no cap 🧠' },
-    { user: 'Grace',    text: 'Both legends but Gunna in a different lane' },
-    { user: 'Neo',      text: 'Dave is poetry, Gunna is energy. Different ✨' },
+    { user: 'Mumba', text: 'Gunna dropped too many hits to ignore 🎶' },
+    { user: 'Ludo', text: 'Dave spits facts every verse, no cap 🧠' },
+    { user: 'Grace', text: 'Both legends but Gunna in a different lane' },
+    { user: 'Neo', text: 'Dave is poetry, Gunna is energy. Different ✨' },
     { user: 'Chileshe', text: 'Can I say neither? 😂 jk Dave wins' },
-    { user: 'Zuba',     text: 'Gunna brought the melody game to a whole level' },
+    { user: 'Zuba', text: 'Gunna brought the melody game to a whole level' },
 ];
 let _qaIdx = 0;
 
@@ -1615,14 +1597,14 @@ function startQALiveTicker(cardId) {
 
 
 // Close modals when clicking outside
-window.addEventListener('click', function(event) {
+window.addEventListener('click', function (event) {
     const createModal = document.getElementById('createChallengeModal');
     const attemptModal = document.getElementById('attemptChallengeModal');
-    
+
     if (event.target === createModal) {
         closeCreateChallengeModal();
     }
-    
+
     if (event.target === attemptModal) {
         closeAttemptChallengeModal();
     }

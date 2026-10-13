@@ -674,36 +674,20 @@
                     style="background:none;border:none;color:var(--page-primary);font-size:13px;cursor:pointer;margin-bottom:12px;padding:0;">
                     <i class="fas fa-arrow-left"></i> Back
                 </button>
-                <form id="createChallengeForm" onsubmit="publishChallenge(event)" novalidate>
+                <form id="socialChallengeForm" onsubmit="publishChallenge(event)" novalidate>
                     <input type="hidden" id="challengeCategory" value="">
 
                     <div class="form-group">
-                        <label for="challengeTitle">Title <span style="color:var(--accent-pink)">*</span></label>
-                        <input type="text" id="challengeTitle" required maxlength="120"
+                        <label for="socialChallengeTitle">Title <span style="color:var(--accent-pink)">*</span></label>
+                        <input type="text" id="socialChallengeTitle" required maxlength="120"
                             placeholder="e.g. Who's the better rapper?"
                             style="border-radius:10px;border:1px solid lightgreen;">
                     </div>
 
                     <div class="form-group">
-                        <label for="challengeDescription">Description</label>
-                        <textarea id="challengeDescription" rows="3" placeholder="Give some context…"
+                        <label for="socialChallengeDescription">Description</label>
+                        <textarea id="socialChallengeDescription" rows="3" placeholder="Give some context…"
                             style="border-radius:10px;border:1px solid lightgreen;"></textarea>
-                    </div>
-
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="challengeDifficulty">Difficulty</label>
-                            <select id="challengeDifficulty" style="border-radius:10px;border:1px solid lightgreen;">
-                                <option value="easy">Easy</option>
-                                <option value="medium" selected>Medium</option>
-                                <option value="hard">Hard</option>
-                            </select>
-                        </div>
-                        <div class="form-group" id="challengePrizeGroup">
-                            <label for="challengePrize">Prize (K)</label>
-                            <input type="number" id="challengePrize" min="0" step="0.01" value="0"
-                                style="border-radius:10px;border:1px solid lightgreen;">
-                        </div>
                     </div>
 
                     <div class="form-row">
