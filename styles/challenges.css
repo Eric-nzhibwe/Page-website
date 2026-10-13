@@ -652,7 +652,23 @@
     color: var(--accent-purple);
 }
 .mc-btn-pause:hover { background: rgba(102,126,234,0.22); }
+.mc-btn-delete {
+    background: rgba(231,76,60,0.1); border: 1px solid rgba(231,76,60,0.3);
+    color: #e74c3c;
+}
+.mc-btn-delete:hover { background: rgba(231,76,60,0.22); }
 .mc-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none !important; }
+
+/* Delete button on social cards (debate / poll / Q&A) — only visible to creator */
+.social-card-delete-btn {
+    background: none; border: 1px solid rgba(231,76,60,0.35);
+    color: #e74c3c; border-radius: 6px;
+    padding: 4px 8px; font-size: 12px; cursor: pointer;
+    transition: background 0.18s, border-color 0.18s;
+    flex-shrink: 0;
+}
+.social-card-delete-btn:hover { background: rgba(231,76,60,0.15); border-color: rgba(231,76,60,0.6); }
+.social-card-delete-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 .mc-ended-label { font-size: 12px; color: var(--text-muted); text-align: center; padding: 4px 0; }
 .my-submissions h2 i { color: var(--accent-purple); margin-right: 8px; }
 .submissions-list { display: flex; flex-direction: column; gap: 12px; }

@@ -342,6 +342,27 @@ class APIService {
     }
 
     /**
+     * Permanently delete a challenge. Only the creator can do this.
+     */
+    deleteChallenge(challengeId) {
+        return this.request(`/challenges/${challengeId}/`, {
+            method: 'DELETE',
+            headers: this.token ? { 'Authorization': `Token ${this.token}` } : {},
+        });
+    }
+
+    /**
+     * Delete a social challenge (poll / debate / Q&A) by type and ID.
+     * type: 'polls' | 'debates' | 'qa'
+     */
+    deleteSocialChallenge(type, challengeId) {
+        return this.request(`/challenges/${type}/${challengeId}/delete/`, {
+            method: 'DELETE',
+            headers: this.token ? { 'Authorization': `Token ${this.token}` } : {},
+        });
+    }
+
+    /**
      * Get all challenges created by the current user (drafts + active + paused).
      */
     getMyChallenges() {

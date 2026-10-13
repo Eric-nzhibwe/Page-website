@@ -362,6 +362,33 @@ class ChallengeViewSet(viewsets.ModelViewSet):
         updated = update_challenge_status(challenge_id, 'paused')
         return Response({'message': 'Challenge paused.', 'challenge': updated})
 
+    def destroy(self, request, *args, **kwargs):
+        """Delete a challenge — only the creator can do this."""
+        if _use_fs_challenges():
+            return self._destroy_firestore(request, kwargs.get('pk'))
+
+        challenge = self.get_object()
+        if challenge.created_by != request.user:
+            return Response(
+                {'error': 'Only the creator can delete this challenge.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        challenge.delete()
+        return Response({'message': 'Challenge deleted.'}, status=status.HTTP_200_OK)
+
+    def _destroy_firestore(self, request, challenge_id):
+        from .firestore_challenge_service import get_challenge, delete_challenge
+        doc = get_challenge(challenge_id)
+        if doc is None:
+            return Response({'error': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
+        if doc.get('created_by_id') != str(request.user.id):
+            return Response(
+                {'error': 'Only the creator can delete this challenge.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        delete_challenge(challenge_id)
+        return Response({'message': 'Challenge deleted.'}, status=status.HTTP_200_OK)
+
     @action(detail=True, methods=['get'], permission_classes=[AllowAny])
     def stats(self, request, pk=None):
         """Get challenge statistics (always from PostgreSQL for now)."""

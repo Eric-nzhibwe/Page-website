@@ -1276,6 +1276,9 @@ function renderMyChallenges() {
                 </button>` : ''}
                 ${c.status === 'ended' ? `
                 <span class="mc-ended-label"><i class="fas fa-check-circle"></i> Ended</span>` : ''}
+                <button class="mc-btn mc-btn-delete" onclick="deleteChallenge('${c.id}', '${escHtml(c.title)}')">
+                    <i class="fas fa-trash"></i> Delete
+                </button>
             </div>
         </div>`;
     }).join('');
@@ -1299,6 +1302,44 @@ async function toggleChallengePublish(challengeId, action) {
     } catch (e) {
         showToast(e.message || 'Action failed. Try again.', 'error');
         if (btn) { btn.disabled = false; btn.innerHTML = action === 'publish' ? '<i class="fas fa-rocket"></i> Publish' : '<i class="fas fa-pause"></i> Pause'; }
+    }
+}
+
+async function deleteChallenge(challengeId, title) {
+    if (!confirm(`Delete "${title}"? This cannot be undone.`)) return;
+
+    const btn = document.querySelector(`.mc-item[data-id="${challengeId}"] .mc-btn-delete`);
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; }
+
+    try {
+        await apiService.deleteChallenge(challengeId);
+        showToast('Challenge deleted.', 'success');
+        // Remove card from grid immediately without full reload
+        document.querySelector(`.mc-item[data-id="${challengeId}"]`)?.remove();
+        document.querySelector(`[data-id="${challengeId}"]`)?.remove();
+        myChallenges = myChallenges.filter(c => String(c.id) !== String(challengeId));
+        challenges   = challenges.filter(c => String(c.id) !== String(challengeId));
+        renderChallenges();
+    } catch (e) {
+        showToast(e.message || 'Delete failed. Try again.', 'error');
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-trash"></i> Delete'; }
+    }
+}
+
+async function deleteSocialChallenge(type, challengeId, title) {
+    if (!confirm(`Delete "${title}"? This cannot be undone.`)) return;
+
+    const btn = document.querySelector(`.challenge-card[data-id="${challengeId}"] .social-card-delete-btn`);
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; }
+
+    try {
+        await apiService.deleteSocialChallenge(type, challengeId);
+        showToast('Deleted.', 'success');
+        document.querySelector(`.challenge-card[data-id="${challengeId}"]`)?.remove();
+        challenges = challenges.filter(c => String(c.id) !== String(challengeId));
+    } catch (e) {
+        showToast(e.message || 'Delete failed. Try again.', 'error');
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-trash"></i>'; }
     }
 }
 
@@ -1356,6 +1397,8 @@ window.closeChallengeModal = closeChallengeModal;
 window.updateWordCount = updateWordCount;
 window.submitInterpretation = submitInterpretation;
 window.toggleChallengePublish = toggleChallengePublish;
+window.deleteChallenge = deleteChallenge;
+window.deleteSocialChallenge = deleteSocialChallenge;
 // Wizard helpers
 window.ccGoStep = ccGoStep;
 window.ccSetDuration = ccSetDuration;
@@ -1381,26 +1424,20 @@ function _fmtDur(days) {
     return `${d}d`;
 }
 
+function _currentUsername() {
+    try { return JSON.parse(localStorage.getItem('pageUser') || '{}').username || ''; } catch { return ''; }
+}
+
 function _renderDebateCard(c) {
     const dur = _fmtDur(c.duration_days);
     const sideA = escHtml(c.side_a || 'For');
     const sideB = escHtml(c.side_b || 'Against');
     const title = escHtml(c.title);
     const id = c.id;
-
-    const seedA = [{ user: 'Alex', text: `${c.side_a} is the clear winner 🔥` }];
-    const seedB = [{ user: 'Mia', text: `${c.side_b} all the way 💪` }];
-
-    const mkComment = (u, t, side) => {
-        const shade = side === 'a' ? 'hsl(0,60%,42%)' : 'hsl(140,50%,35%)';
-        return `<div class="debate-comment">
-            <div class="debate-comment-avatar" style="background:${shade};">${u[0]}</div>
-            <div class="debate-comment-body">
-                <span class="comment-user">${escHtml(u)}</span>
-                <span class="comment-text">${escHtml(t)}</span>
-            </div>
-        </div>`;
-    };
+    const isOwner = c.created_by === _currentUsername();
+    const deleteBtn = isOwner
+        ? `<button class="social-card-delete-btn" onclick="deleteSocialChallenge('debates','${id}','${escHtml(c.title)}')" title="Delete challenge"><i class="fas fa-trash"></i></button>`
+        : '';
 
     return `<div class="challenge-card" data-status="active" data-category="debates" data-id="${id}">
         <div class="debate-card-header">
@@ -1414,21 +1451,16 @@ function _renderDebateCard(c) {
                     <span class="debate-pane-team-label">Team A</span>
                     <span class="debate-pane-team-name">${sideA}</span>
                 </div>
-                <div class="debate-pane-feed" id="debateFeedA_${id}">
-                    ${seedA.map(s => mkComment(s.user, s.text, 'a')).join('')}
-                </div>
+                <div class="debate-pane-feed" id="debateFeedA_${id}"></div>
             </div>
             <div class="debate-team-pane debate-pane-b" id="debatePaneB_${id}">
                 <div class="debate-pane-header pane-header-b">
                     <span class="debate-pane-team-label">Team B</span>
                     <span class="debate-pane-team-name">${sideB}</span>
                 </div>
-                <div class="debate-pane-feed" id="debateFeedB_${id}">
-                    ${seedB.map(s => mkComment(s.user, s.text, 'b')).join('')}
-                </div>
+                <div class="debate-pane-feed" id="debateFeedB_${id}"></div>
             </div>
         </div>
-        <!-- Side picker — shown before joining; hidden after -->
         <div class="debate-side-picker" id="debatePicker_${id}">
             <p class="debate-pick-label">Pick your side to join:</p>
             <div class="debate-pick-btns">
@@ -1440,7 +1472,6 @@ function _renderDebateCard(c) {
                 </button>
             </div>
         </div>
-        <!-- Comment input — shown after joining -->
         <div class="debate-input-row" id="debateInputRow_${id}" style="display:none;">
             <input class="debate-text-input" placeholder="Share your take…" id="debateInput_${id}"
                 onkeydown="if(event.key==='Enter') _chSubmitDebate('${id}')">
@@ -1462,9 +1493,12 @@ function _renderDebateCard(c) {
         </div>
         <div class="debate-card-footer">
             <span style="font-size:11px;color:#888;"><i class="fas fa-clock" style="color:var(--page-primary);margin-right:3px;"></i>${dur} left</span>
-            <span class="debate-joined-badge" id="debateJoinedBadge_${id}" style="display:none;font-size:11px;color:#1b7f3a;font-weight:700;">
-                <i class="fas fa-check-circle"></i> Joined
-            </span>
+            <div style="display:flex;align-items:center;gap:8px;">
+                <span class="debate-joined-badge" id="debateJoinedBadge_${id}" style="display:none;font-size:11px;color:#1b7f3a;font-weight:700;">
+                    <i class="fas fa-check-circle"></i> Joined
+                </span>
+                ${deleteBtn}
+            </div>
         </div>
     </div>`;
 }
@@ -1472,6 +1506,10 @@ function _renderDebateCard(c) {
 function _renderPollCard(c) {
     const id = c.id;
     const opts = (c.options || []);
+    const isOwner = c.created_by === _currentUsername();
+    const deleteBtn = isOwner
+        ? `<button class="social-card-delete-btn" onclick="deleteSocialChallenge('polls','${id}','${escHtml(c.title)}')" title="Delete poll"><i class="fas fa-trash"></i></button>`
+        : '';
     const optionsHTML = opts.map((opt, i) => `
         <button class="poll-vote-btn" onclick="_chCastPollVote('${id}', ${i}, this)">
             <div class="poll-vote-bar" style="width:${c.vote_counts ? Math.round((c.vote_counts[i] || 0) / (c.total_votes || 1) * 100) : 0}%"></div>
@@ -1490,7 +1528,10 @@ function _renderPollCard(c) {
                 <span><i class="fas fa-users"></i> ${c.total_votes || 0} votes</span>
                 <span><i class="fas fa-clock"></i> ${_fmtDur(c.duration_days)} left</span>
             </div>
-            <span class="poll-prize-badge">${c.prize_amount > 0 ? `K${parseFloat(c.prize_amount).toFixed(2)}` : 'Prestige'}</span>
+            <div style="display:flex;align-items:center;gap:8px;">
+                <span class="poll-prize-badge">${c.prize_amount > 0 ? `K${parseFloat(c.prize_amount).toFixed(2)}` : 'Prestige'}</span>
+                ${deleteBtn}
+            </div>
         </div>
     </div>`;
 }
@@ -1498,6 +1539,10 @@ function _renderPollCard(c) {
 function _renderQACard(c) {
     const id = c.id;
     const answers = (c.answers || []);
+    const isOwner = c.created_by === _currentUsername();
+    const deleteBtn = isOwner
+        ? `<button class="social-card-delete-btn" onclick="deleteSocialChallenge('qa','${id}','${escHtml(c.title)}')" title="Delete Q&A"><i class="fas fa-trash"></i></button>`
+        : '';
     const answersHTML = answers.slice(-3).map(a => {
         const hue = a.user.split('').reduce((s, ch) => s + ch.charCodeAt(0), 0) % 360;
         return `<div class="qa-live-msg">
@@ -1528,7 +1573,10 @@ function _renderQACard(c) {
             <div class="qa-meta">
                 <span><i class="fas fa-clock"></i> ${_fmtDur(c.duration_days)} left</span>
             </div>
-            <span class="qa-prize-badge">${c.prize_amount > 0 ? `K${parseFloat(c.prize_amount).toFixed(2)}` : 'Prestige'}</span>
+            <div style="display:flex;align-items:center;gap:8px;">
+                <span class="qa-prize-badge">${c.prize_amount > 0 ? `K${parseFloat(c.prize_amount).toFixed(2)}` : 'Prestige'}</span>
+                ${deleteBtn}
+            </div>
         </div>
     </div>`;
 }

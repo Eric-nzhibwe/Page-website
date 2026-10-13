@@ -136,6 +136,22 @@ def cast_poll_vote(request, poll_id):
     })
 
 
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def delete_poll(request, poll_id):
+    """Delete a poll — only the creator can do this."""
+    try:
+        poll = PollChallenge.objects.get(id=poll_id)
+    except PollChallenge.DoesNotExist:
+        return Response({'error': 'Poll not found.'}, status=404)
+
+    if poll.created_by != request.user:
+        return Response({'error': 'Only the creator can delete this poll.'}, status=403)
+
+    poll.delete()
+    return Response({'message': 'Poll deleted.'}, status=200)
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 #  Debates
 # ─────────────────────────────────────────────────────────────────────────────
@@ -307,6 +323,22 @@ def _broadcast_debate(debate_id: str, payload: dict):
         logger.warning(f'Debate WS broadcast failed: {exc}')
 
 
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def delete_debate(request, debate_id):
+    """Delete a debate — only the creator can do this."""
+    try:
+        debate = DebateChallenge.objects.get(id=debate_id)
+    except DebateChallenge.DoesNotExist:
+        return Response({'error': 'Debate not found.'}, status=404)
+
+    if debate.created_by != request.user:
+        return Response({'error': 'Only the creator can delete this debate.'}, status=403)
+
+    debate.delete()
+    return Response({'message': 'Debate deleted.'}, status=200)
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 #  Q&A
 # ─────────────────────────────────────────────────────────────────────────────
@@ -415,3 +447,19 @@ def _broadcast_qa(qa_id: str, payload: dict):
         )
     except Exception as exc:
         logger.warning(f'QA WS broadcast failed: {exc}')
+
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def delete_qa(request, qa_id):
+    """Delete a Q&A challenge — only the creator can do this."""
+    try:
+        qa = QAChallenge.objects.get(id=qa_id)
+    except QAChallenge.DoesNotExist:
+        return Response({'error': 'Q&A not found.'}, status=404)
+
+    if qa.created_by != request.user:
+        return Response({'error': 'Only the creator can delete this Q&A.'}, status=403)
+
+    qa.delete()
+    return Response({'message': 'Q&A deleted.'}, status=200)
