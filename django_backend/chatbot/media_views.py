@@ -33,10 +33,10 @@ from .views import _call_ai, _chat_postgres, _chat_firestore, _use_firestore
 logger = logging.getLogger(__name__)
 
 GROQ_WHISPER_URL  = 'https://api.groq.com/openai/v1/audio/transcriptions'
-# Vision model: meta-llama/llama-4-maverick is Groq's current vision-capable model.
-# The GPT-OSS series (120b/20b) handles text only; vision requires a multimodal model.
-GROQ_VISION_MODEL         = 'meta-llama/llama-4-maverick-17b-128e-instruct'
-GROQ_VISION_MODEL_FALLBACK = 'meta-llama/llama-4-scout-17b-16e-instruct'
+# Groq vision-capable models (verified at console.groq.com/docs/models)
+# Both support image_url content in messages.
+GROQ_VISION_MODEL          = 'meta-llama/llama-4-scout-17b-16e-instruct'   # fastest, free tier
+GROQ_VISION_MODEL_FALLBACK = 'meta-llama/llama-4-maverick-17b-128e-instruct'  # higher quality
 GROQ_API_URL      = 'https://api.groq.com/openai/v1/chat/completions'
 
 MAX_AUDIO_MB  = 25     # Groq Whisper limit
@@ -260,7 +260,8 @@ def _call_vision_ai(message, image_b64, image_mime, user, groq_key):
                             {
                                 'type':      'image_url',
                                 'image_url': {
-                                    'url': f'data:{image_mime};base64,{image_b64}',
+                                    'url':    f'data:{image_mime};base64,{image_b64}',
+                                    'detail': 'auto',
                                 },
                             },
                             {'type': 'text', 'text': message},
@@ -268,40 +269,49 @@ def _call_vision_ai(message, image_b64, image_mime, user, groq_key):
                     },
                 ],
                 'temperature': 0.7,
-                'max_tokens':  800,
+                'max_tokens':  1024,
             },
-            timeout=45,
+            timeout=60,
         )
 
     try:
         resp = _vision_request(GROQ_VISION_MODEL)
+        logger.info(f'Vision model {GROQ_VISION_MODEL!r} → status {resp.status_code}')
 
-        # Auto-retry with fallback vision model if primary is unavailable
+        # If primary model rejected, try fallback before giving up
         if resp.status_code in (400, 404):
             logger.warning(
                 f"Primary vision model '{GROQ_VISION_MODEL}' returned {resp.status_code} — "
                 f"retrying with '{GROQ_VISION_MODEL_FALLBACK}'"
             )
             resp = _vision_request(GROQ_VISION_MODEL_FALLBACK)
+            logger.info(f'Fallback vision model {GROQ_VISION_MODEL_FALLBACK!r} → status {resp.status_code}')
 
         if resp.status_code == 200:
             content = resp.json()['choices'][0]['message']['content'].strip()
             return content, 'groq-vision'
 
-        # Log the full error body so it's visible in Render/Django logs
+        # Log the full error so it appears in Render/Django logs
         try:
             err_body = resp.json()
-            err      = err_body.get('error', {}).get('message', str(err_body)[:300])
+            err_msg  = err_body.get('error', {}).get('message', str(err_body)[:400])
         except Exception:
-            err = resp.text[:300]
-        logger.error(f'Groq vision error (status {resp.status_code}): {err}')
+            err_msg = resp.text[:400]
 
-        # Fall back to text-only with image description hint
-        fallback_reply, _ = _call_ai(f'User sent an image and said: {message}', [], user)
-        return fallback_reply, 'groq'
+        logger.error(
+            f'Groq vision failed (status {resp.status_code}) '
+            f'model={GROQ_VISION_MODEL_FALLBACK!r}: {err_msg}'
+        )
+
+        # Tell the user vision failed rather than pretending we saw the image
+        return (
+            f"I couldn't analyse the image right now (vision model returned an error). "
+            f"Try describing what's in the image and I'll help you from there! 🖼️",
+            'fallback'
+        )
 
     except Exception as e:
-        logger.error(f'Vision API error: {e}')
+        logger.error(f'Vision API exception: {e}')
         return 'I had trouble analysing the image. Please try again.', 'fallback'
 
 

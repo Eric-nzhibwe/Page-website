@@ -294,19 +294,31 @@ function handleFileAttach(event) {
     const file = event.target.files[0];
     if (!file) return;
 
-    const maxMb = file.type.startsWith('image/') ? 10 : 5;
+    // Derive type from extension if browser doesn't report it
+    let fileType = file.type;
+    if (!fileType) {
+        const ext = file.name.split('.').pop().toLowerCase();
+        const extMap = { png:'image/png', jpg:'image/jpeg', jpeg:'image/jpeg',
+                         gif:'image/gif', webp:'image/webp', bmp:'image/bmp' };
+        fileType = extMap[ext] || 'application/octet-stream';
+    }
+
+    const isImage = fileType.startsWith('image/');
+    const maxMb   = isImage ? 10 : 5;
     if (file.size > maxMb * 1024 * 1024) {
         alert(`File too large. Max ${maxMb} MB.`);
         event.target.value = '';
         return;
     }
 
-    _attachedFile = file;
+    // Store corrected type on the file object reference we'll use later
+    _attachedFile      = file;
+    _attachedFile._resolvedType = fileType;
 
     const preview = document.getElementById('attachmentPreview');
     preview.style.display = 'flex';
 
-    if (file.type.startsWith('image/')) {
+    if (isImage) {
         const url = URL.createObjectURL(file);
         _attachedPreviewUrl = url;
         preview.innerHTML = `
@@ -340,10 +352,11 @@ function clearAttachment() {
 async function sendMediaMessage(message, file) {
     hideWelcome();
 
-    // Show user bubble — image preview for images, chip for other files
-    const isImage = file.type.startsWith('image/');
+    // Use the resolved type (handles browsers that leave file.type empty)
+    const resolvedType = file._resolvedType || file.type || '';
+    const isImage = resolvedType.startsWith('image/');
+
     if (isImage) {
-        // Show actual image in the bubble so the user can see what was sent
         const previewUrl = URL.createObjectURL(file);
         const feed = document.getElementById('chatMessages');
         const row  = document.createElement('div');
@@ -374,7 +387,14 @@ async function sendMediaMessage(message, file) {
         const token    = localStorage.getItem('djangoAuthToken');
         const formData = new FormData();
         if (message) formData.append('message', message);
-        formData.append('file', file, file.name);
+
+        // Re-wrap the file as a Blob with the correct type so the backend
+        // gets the right Content-Type in the multipart form (fixes empty type bug)
+        const blob = resolvedType && resolvedType !== file.type
+            ? new Blob([await file.arrayBuffer()], { type: resolvedType })
+            : file;
+        formData.append('file', blob, file.name);
+
         if (conversationId) formData.append('conversation_id', conversationId);
 
         const res = await fetch(`${CHAT_API}/chatbot/media-chat/`, {
