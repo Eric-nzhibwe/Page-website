@@ -1,4 +1,4 @@
-0"""
+"""
 Chatbot media views — voice transcription + image/file chat
 ============================================================
 POST /api/chatbot/transcribe/
