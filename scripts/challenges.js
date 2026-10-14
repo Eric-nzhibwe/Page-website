@@ -1318,7 +1318,7 @@ async function deleteChallenge(challengeId, title) {
         document.querySelector(`.mc-item[data-id="${challengeId}"]`)?.remove();
         document.querySelector(`[data-id="${challengeId}"]`)?.remove();
         myChallenges = myChallenges.filter(c => String(c.id) !== String(challengeId));
-        challenges   = challenges.filter(c => String(c.id) !== String(challengeId));
+        challenges = challenges.filter(c => String(c.id) !== String(challengeId));
         renderChallenges();
     } catch (e) {
         showToast(e.message || 'Delete failed. Try again.', 'error');
@@ -1400,227 +1400,6 @@ window.toggleChallengePublish = toggleChallengePublish;
 window.deleteChallenge = deleteChallenge;
 window.deleteSocialChallenge = deleteSocialChallenge;
 window.toggleQAImage = toggleQAImage;
-
-// ── Debate Live Modal ─────────────────────────────────────────────────────────
-let _dlm = {
-    id: null, sideA: '', sideB: '',
-    userSide: null,    // 'a' | 'b' | null
-    ws: null,
-    pollInterval: null,
-    viewerCount: 0,
-};
-
-function openDebateLiveModal(id, title, sideA, sideB) {
-    _dlm.id    = id;
-    _dlm.sideA = sideA;
-    _dlm.sideB = sideB;
-    _dlm.userSide = null;
-
-    // Populate header
-    const setEl = (elId, val) => { const e = document.getElementById(elId); if (e) e.textContent = val; };
-    setEl('dlmTitle',      title);
-    setEl('dlmLabelA',     sideA);
-    setEl('dlmLabelB',     sideB);
-    setEl('dlmPickLabelA', sideA);
-    setEl('dlmPickLabelB', sideB);
-    setEl('dlmScoreA',     '0');
-    setEl('dlmScoreB',     '0');
-    setEl('dlmViewerCount','—');
-
-    // Clear streams
-    const streamA = document.getElementById('dlmStreamA');
-    const streamB = document.getElementById('dlmStreamB');
-    if (streamA) streamA.innerHTML = '';
-    if (streamB) streamB.innerHTML = '';
-
-    // Reset join state — check if user already joined via the card
-    const card = document.querySelector(`.challenge-card[data-id="${id}"]`);
-    const joined = card?.dataset.userSide;
-    if (joined) {
-        _dlm.userSide = joined;
-        _dlmShowInputBar(joined);
-    } else {
-        document.getElementById('dlmSidePicker').style.display = 'flex';
-        document.getElementById('dlmInputBar').style.display   = 'none';
-    }
-
-    // Show modal
-    const modal = document.getElementById('debateLiveModal');
-    if (modal) modal.style.display = 'flex';
-    document.body.style.overflow = 'hidden';
-
-    // Load existing comments from the card feeds
-    _dlmLoadExistingComments(id);
-
-    // Load participant counts
-    _dlmRefreshCounts(id);
-
-    // Connect to WS / start polling
-    _dlmStartSync(id);
-}
-
-function closeDebateLiveModal() {
-    const modal = document.getElementById('debateLiveModal');
-    if (modal) modal.style.display = 'none';
-    document.body.style.overflow = '';
-    _dlmStopSync();
-    _dlm.id = null;
-}
-
-function _dlmLoadExistingComments(id) {
-    // Pull comments already rendered in the card feeds
-    ['a','b'].forEach(side => {
-        const feedId = side === 'a' ? `debateFeedA_${id}` : `debateFeedB_${id}`;
-        const feed   = document.getElementById(feedId);
-        if (!feed) return;
-        feed.querySelectorAll('.debate-comment').forEach(node => {
-            const user = node.querySelector('.comment-user')?.textContent || '?';
-            const text = node.querySelector('.comment-text')?.textContent  || '';
-            _dlmAddComment(user, text, side, false);
-        });
-    });
-}
-
-async function _dlmRefreshCounts(id) {
-    try {
-        const data = await fetch(`${_CH_API}/debates/`, {
-            headers: { Authorization: `Token ${localStorage.getItem('djangoAuthToken') || ''}` }
-        }).then(r => r.json());
-        const debate = (data || []).find(d => String(d.id) === String(id));
-        if (!debate) return;
-        const a = debate.participants?.a || 0;
-        const b = debate.participants?.b || 0;
-        document.getElementById('dlmScoreA').textContent     = a;
-        document.getElementById('dlmScoreB').textContent     = b;
-        document.getElementById('dlmViewerCount').textContent = a + b;
-    } catch (_) {}
-}
-
-function _dlmStartSync(id) {
-    _dlmStopSync();
-    // Re-use the existing WS already opened on the card if available
-    // Otherwise poll every 5s for new comments
-    _dlm.pollInterval = setInterval(() => _dlmRefreshCounts(id), 8000);
-}
-
-function _dlmStopSync() {
-    if (_dlm.pollInterval) { clearInterval(_dlm.pollInterval); _dlm.pollInterval = null; }
-}
-
-async function dlmJoinSide(side) {
-    const btn = document.getElementById(side === 'a' ? 'dlmPickBtnA' : 'dlmPickBtnB');
-    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; }
-
-    const token = localStorage.getItem('djangoAuthToken') || '';
-    try {
-        const r = await fetch(`${_CH_API}/debates/${_dlm.id}/join/`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: `Token ${token}` },
-            body: JSON.stringify({ side }),
-        });
-        const data = await r.json();
-        if (!r.ok) {
-            showToast(data.error || 'Could not join.', 'error');
-            if (btn) { btn.disabled = false; btn.innerHTML = side === 'a' ? _dlm.sideA : _dlm.sideB; }
-            return;
-        }
-
-        // Sync card
-        const card = document.querySelector(`.challenge-card[data-id="${_dlm.id}"]`);
-        if (card) card.dataset.userSide = side;
-        // Update picker on card too
-        const picker = document.getElementById(`debatePicker_${_dlm.id}`);
-        if (picker) picker.style.display = 'none';
-        const inputRow = document.getElementById(`debateInputRow_${_dlm.id}`);
-        if (inputRow) inputRow.style.display = 'flex';
-
-        _dlm.userSide = side;
-        _dlmShowInputBar(side);
-
-        if (data.participants) {
-            document.getElementById('dlmScoreA').textContent = data.participants.a || 0;
-            document.getElementById('dlmScoreB').textContent = data.participants.b || 0;
-            document.getElementById('dlmViewerCount').textContent = (data.participants.a||0) + (data.participants.b||0);
-        }
-
-        const username = _currentUsername() || 'You';
-        _dlmAddComment(username, `Joined Team ${side.toUpperCase()}! 🔥`, side, true);
-
-    } catch (e) {
-        showToast('Join failed.', 'error');
-        if (btn) { btn.disabled = false; btn.innerHTML = side === 'a' ? _dlm.sideA : _dlm.sideB; }
-    }
-}
-
-function _dlmShowInputBar(side) {
-    document.getElementById('dlmSidePicker').style.display = 'none';
-    document.getElementById('dlmInputBar').style.display   = 'flex';
-    const tag  = document.getElementById('dlmJoinedTag');
-    const name = side === 'a' ? _dlm.sideA : _dlm.sideB;
-    if (tag) {
-        tag.textContent  = `Team ${side.toUpperCase()}: ${name}`;
-        tag.style.background = side === 'a' ? 'rgba(231,76,60,0.15)' : 'rgba(39,174,96,0.15)';
-        tag.style.color      = side === 'a' ? '#e74c3c' : '#27ae60';
-    }
-    const input = document.getElementById('dlmCommentInput');
-    if (input) { input.placeholder = `Argue for ${name}…`; input.focus(); }
-}
-
-async function dlmSubmitComment() {
-    if (!_dlm.id || !_dlm.userSide) return;
-    const input = document.getElementById('dlmCommentInput');
-    const text  = input?.value.trim();
-    if (!text) return;
-    input.value = '';
-
-    const username = _currentUsername() || 'You';
-    // Optimistic add
-    _dlmAddComment(username, text, _dlm.userSide, true);
-    // Also push into the card feed
-    _chAddDebateComment(_dlm.id, username, text, _dlm.userSide);
-
-    const token = localStorage.getItem('djangoAuthToken') || '';
-    fetch(`${_CH_API}/debates/${_dlm.id}/comment/`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Token ${token}` },
-        body: JSON.stringify({ text, side: _dlm.userSide }),
-    }).catch(() => {});
-}
-
-// Expose so the WS handler can push messages into the modal
-function dlmReceiveComment(user, text, side) {
-    if (!document.getElementById('debateLiveModal') ||
-        document.getElementById('debateLiveModal').style.display === 'none') return;
-    _dlmAddComment(user, text, side, false);
-}
-
-function _dlmAddComment(user, text, side, isOwn) {
-    const streamId = side === 'a' ? 'dlmStreamA' : 'dlmStreamB';
-    const stream   = document.getElementById(streamId);
-    if (!stream) return;
-
-    const hue = user.split('').reduce((s, c) => s + c.charCodeAt(0), 0) % 360;
-    const el  = document.createElement('div');
-    el.className = `dlm-comment dlm-comment-${side}${isOwn ? ' dlm-own' : ''}`;
-    el.innerHTML = `
-        <span class="dlm-comment-avatar" style="background:hsl(${hue},55%,45%);">${user[0].toUpperCase()}</span>
-        <span class="dlm-comment-body">
-            <span class="dlm-comment-user">${escHtml(user)}</span>
-            <span class="dlm-comment-text">${escHtml(text)}</span>
-        </span>`;
-
-    stream.appendChild(el);
-
-    // Float-up and fade-out after 6 seconds
-    requestAnimationFrame(() => el.classList.add('dlm-float'));
-    setTimeout(() => el.remove(), 6200);
-}
-
-window.openDebateLiveModal = openDebateLiveModal;
-window.closeDebateLiveModal = closeDebateLiveModal;
-window.dlmJoinSide = dlmJoinSide;
-window.dlmSubmitComment = dlmSubmitComment;
-window.dlmReceiveComment = dlmReceiveComment;
 // Wizard helpers
 window.ccGoStep = ccGoStep;
 window.ccSetDuration = ccSetDuration;
@@ -1667,7 +1446,7 @@ function _renderDebateCard(c) {
             <span style="font-size:11px;color:#888;">${dur}</span>
         </div>
         <!-- Clickable title area opens the live modal -->
-        <div class="debate-card-open-area" onclick="openDebateLiveModal('${id}','${escHtml(c.title).replace(/'/g,"\\'")}','${escHtml(c.side_a||'For').replace(/'/g,"\\'")}','${escHtml(c.side_b||'Against').replace(/'/g,"\\'")}')">
+        <div class="debate-card-open-area" onclick="openDebateLiveModal('${id}','${escHtml(c.title).replace(/'/g, "\\'")}','${escHtml(c.side_a || 'For').replace(/'/g, "\\'")}','${escHtml(c.side_b || 'Against').replace(/'/g, "\\'")}')">
             <p class="debate-card-title">${title.toUpperCase()}</p>
             <span class="debate-card-live-hint"><i class="fas fa-circle"></i> Watch Live</span>
         </div>
@@ -1821,7 +1600,7 @@ function _renderQACard(c) {
 
 function toggleQAImage(id) {
     const panel = document.getElementById(`qaImgPanel_${id}`);
-    const btn   = document.querySelector(`#qaImgWrap_${id} .qa-img-toggle-btn`);
+    const btn = document.querySelector(`#qaImgWrap_${id} .qa-img-toggle-btn`);
     if (!panel) return;
     const isOpen = panel.style.display !== 'none';
     panel.style.display = isOpen ? 'none' : 'block';
@@ -1910,7 +1689,7 @@ async function _chSubmitDebate(id) {
     _chAddDebateComment(id, username, text, side);
     input.value = '';
 
-    await _chPost(`${_CH_API}/debates/${id}/comment/`, { text, side }).catch(() => {});
+    await _chPost(`${_CH_API}/debates/${id}/comment/`, { text, side }).catch(() => { });
 }
 
 function _chAddDebateComment(id, username, text, side) {
@@ -1979,3 +1758,250 @@ async function _chSubmitQA(id) {
     await _chPost(`${_CH_API}/qa/${id}/answer/`, { text }).catch(() => { });
     showToast('+0.5 xP for answering! 💬', 'success');
 }
+
+// ── Debate Live Modal ─────────────────────────────────────────────────────────
+const _dlm = {
+    id: null, sideA: '', sideB: '',
+    userSide: null,
+    pollInterval: null,
+};
+
+function openDebateLiveModal(id, title, sideA, sideB) {
+    _dlm.id = id;
+    _dlm.sideA = sideA;
+    _dlm.sideB = sideB;
+    _dlm.userSide = null;
+
+    const set = (elId, val) => { const e = document.getElementById(elId); if (e) e.textContent = val; };
+    set('dlmTitle', title);
+    set('dlmLabelA', sideA);
+    set('dlmLabelB', sideB);
+    set('dlmPickLabelA', sideA);
+    set('dlmPickLabelB', sideB);
+    set('dlmScoreA', '0');
+    set('dlmScoreB', '0');
+    set('dlmViewerCount', '—');
+
+    // Clear streams
+    const streamA = document.getElementById('dlmStreamA');
+    const streamB = document.getElementById('dlmStreamB');
+    if (streamA) streamA.innerHTML = '';
+    if (streamB) streamB.innerHTML = '';
+
+    // Reset join state — check if user already joined via the card
+    const card = document.querySelector(`.challenge-card[data-id="${id}"]`);
+    const joined = card?.dataset.userSide;
+    if (joined) {
+        _dlm.userSide = joined;
+        _dlmShowInputBar(joined);
+    } else {
+        const picker = document.getElementById('dlmSidePicker');
+        const bar = document.getElementById('dlmInputBar');
+        if (picker) picker.style.display = 'flex';
+        if (bar) bar.style.display = 'none';
+        // Re-enable pick buttons
+        const btnA = document.getElementById('dlmPickBtnA');
+        const btnB = document.getElementById('dlmPickBtnB');
+        if (btnA) { btnA.disabled = false; btnA.innerHTML = `<span id="dlmPickLabelA">${escHtml(sideA)}</span>`; }
+        if (btnB) { btnB.disabled = false; btnB.innerHTML = `<span id="dlmPickLabelB">${escHtml(sideB)}</span>`; }
+    }
+
+    // Show modal
+    const modal = document.getElementById('debateLiveModal');
+    if (modal) modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+
+    // Load existing comments from card feeds
+    _dlmLoadExistingComments(id);
+    _dlmRefreshCounts(id);
+
+    // Poll for count updates every 8s
+    _dlm.pollInterval = setInterval(() => _dlmRefreshCounts(id), 8000);
+}
+
+function closeDebateLiveModal() {
+    const modal = document.getElementById('debateLiveModal');
+    if (modal) modal.style.display = 'none';
+    document.body.style.overflow = '';
+    if (_dlm.pollInterval) { clearInterval(_dlm.pollInterval); _dlm.pollInterval = null; }
+    _dlm.id = null;
+}
+
+function _dlmLoadExistingComments(id) {
+    ['a', 'b'].forEach(side => {
+        const feedId = side === 'a' ? `debateFeedA_${id}` : `debateFeedB_${id}`;
+        const feed = document.getElementById(feedId);
+        if (!feed) return;
+        feed.querySelectorAll('.debate-comment').forEach(node => {
+            const user = node.querySelector('.comment-user')?.textContent || '?';
+            const text = node.querySelector('.comment-text')?.textContent || '';
+            _dlmAddComment(user, text, side, false);
+        });
+    });
+}
+
+async function _dlmRefreshCounts(id) {
+    try {
+        const token = localStorage.getItem('djangoAuthToken') || '';
+        const resp = await fetch(`${_CH_API}/debates/`, {
+            headers: { Authorization: `Token ${token}` },
+        });
+        const data = await resp.json();
+        const debate = (data || []).find(d => String(d.id) === String(id));
+        if (!debate) return;
+        const a = debate.participants?.a || 0;
+        const b = debate.participants?.b || 0;
+        const set = (elId, val) => { const e = document.getElementById(elId); if (e) e.textContent = val; };
+        set('dlmScoreA', a);
+        set('dlmScoreB', b);
+        set('dlmViewerCount', a + b);
+    } catch (_) { }
+}
+
+async function dlmJoinSide(side) {
+    const btnA = document.getElementById('dlmPickBtnA');
+    const btnB = document.getElementById('dlmPickBtnB');
+    const btn = side === 'a' ? btnA : btnB;
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; }
+
+    const token = localStorage.getItem('djangoAuthToken') || '';
+    try {
+        const r = await fetch(`${_CH_API}/debates/${_dlm.id}/join/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Token ${token}` },
+            body: JSON.stringify({ side }),
+        });
+        const data = await r.json();
+        if (!r.ok) {
+            // "Already joined" is fine — just switch to input bar
+            if (!data.error?.includes('Already')) {
+                showToast(data.error || 'Could not join.', 'error');
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = `<span>${escHtml(side === 'a' ? _dlm.sideA : _dlm.sideB)}</span>`;
+                }
+                return;
+            }
+        }
+
+        // Sync card
+        const card = document.querySelector(`.challenge-card[data-id="${_dlm.id}"]`);
+        if (card) card.dataset.userSide = side;
+        const picker = document.getElementById(`debatePicker_${_dlm.id}`);
+        const inputRow = document.getElementById(`debateInputRow_${_dlm.id}`);
+        if (picker) picker.style.display = 'none';
+        if (inputRow) inputRow.style.display = 'flex';
+
+        _dlm.userSide = side;
+        _dlmShowInputBar(side);
+
+        if (data.participants) {
+            const set = (elId, val) => { const e = document.getElementById(elId); if (e) e.textContent = val; };
+            set('dlmScoreA', data.participants.a || 0);
+            set('dlmScoreB', data.participants.b || 0);
+            set('dlmViewerCount', (data.participants.a || 0) + (data.participants.b || 0));
+        }
+
+        const username = _currentUsername() || 'You';
+        _dlmAddComment(username, `Joined Team ${side.toUpperCase()}! 🔥`, side, true);
+
+    } catch (e) {
+        showToast('Join failed.', 'error');
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = `<span>${escHtml(side === 'a' ? _dlm.sideA : _dlm.sideB)}</span>`;
+        }
+    }
+}
+
+function _dlmShowInputBar(side) {
+    const picker = document.getElementById('dlmSidePicker');
+    const bar = document.getElementById('dlmInputBar');
+    if (picker) picker.style.display = 'none';
+    if (bar) bar.style.display = 'flex';
+
+    const tag = document.getElementById('dlmJoinedTag');
+    const name = side === 'a' ? _dlm.sideA : _dlm.sideB;
+    if (tag) {
+        tag.textContent = `Team ${side.toUpperCase()}: ${name}`;
+        tag.style.background = side === 'a' ? 'rgba(231,76,60,0.12)' : 'rgba(39,174,96,0.12)';
+        tag.style.color = side === 'a' ? '#e74c3c' : '#27ae60';
+        tag.style.border = `1px solid ${side === 'a' ? 'rgba(231,76,60,0.3)' : 'rgba(39,174,96,0.3)'}`;
+        tag.style.borderRadius = '20px';
+        tag.style.padding = '3px 10px';
+        tag.style.fontSize = '11px';
+        tag.style.fontWeight = '700';
+    }
+
+    const input = document.getElementById('dlmCommentInput');
+    if (input) {
+        input.placeholder = `Argue for ${name}…`;
+        input.focus();
+    }
+}
+
+async function dlmSubmitComment() {
+    if (!_dlm.id || !_dlm.userSide) return;
+    const input = document.getElementById('dlmCommentInput');
+    const text = input?.value.trim();
+    if (!text) return;
+    input.value = '';
+
+    const username = _currentUsername() || 'You';
+    // Optimistic — add to modal and card feed
+    _dlmAddComment(username, text, _dlm.userSide, true);
+    _chAddDebateComment(_dlm.id, username, text, _dlm.userSide);
+
+    const token = localStorage.getItem('djangoAuthToken') || '';
+    fetch(`${_CH_API}/debates/${_dlm.id}/comment/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Token ${token}` },
+        body: JSON.stringify({ text, side: _dlm.userSide }),
+    }).catch(() => { });
+}
+
+// Called by the WS handler when a remote comment arrives
+function dlmReceiveComment(user, text, side) {
+    const modal = document.getElementById('debateLiveModal');
+    if (!modal || modal.style.display === 'none') return;
+    _dlmAddComment(user, text, side, false);
+}
+
+function _dlmAddComment(user, text, side, isOwn) {
+    const streamId = side === 'a' ? 'dlmStreamA' : 'dlmStreamB';
+    const stream = document.getElementById(streamId);
+    if (!stream) return;
+
+    const hue = user.split('').reduce((s, c) => s + c.charCodeAt(0), 0) % 360;
+    const el = document.createElement('div');
+    el.className = `dlm-comment dlm-comment-${side}${isOwn ? ' dlm-own' : ''}`;
+    el.innerHTML = `
+        <span class="dlm-comment-avatar" style="background:hsl(${hue},55%,45%);">${user[0].toUpperCase()}</span>
+        <span class="dlm-comment-body">
+            <span class="dlm-comment-user">${escHtml(user)}</span>
+            <span class="dlm-comment-text">${escHtml(text)}</span>
+        </span>`;
+    stream.appendChild(el);
+
+    // Trigger float animation on next frame
+    requestAnimationFrame(() => el.classList.add('dlm-float'));
+
+    // Remove after animation ends
+    setTimeout(() => el.remove(), 6400);
+}
+
+// Close on backdrop click (outside the card)
+document.addEventListener('DOMContentLoaded', () => {
+    const modal = document.getElementById('debateLiveModal');
+    if (modal) {
+        modal.addEventListener('click', e => {
+            if (e.target === modal) closeDebateLiveModal();
+        });
+    }
+});
+
+window.openDebateLiveModal = openDebateLiveModal;
+window.closeDebateLiveModal = closeDebateLiveModal;
+window.dlmJoinSide = dlmJoinSide;
+window.dlmSubmitComment = dlmSubmitComment;
+window.dlmReceiveComment = dlmReceiveComment;

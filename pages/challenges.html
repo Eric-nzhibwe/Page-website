@@ -1063,6 +1063,75 @@
             }, 600);
         });
     </script>
+
+    <!-- ═══════════════════════════════════════════════════════════
+         DEBATE LIVE MODAL  — Instagram-Live style, light card
+    ════════════════════════════════════════════════════════════ -->
+    <div id="debateLiveModal" class="dlm-backdrop" style="display:none;" role="dialog" aria-modal="true" aria-label="Debate Live">
+        <div class="dlm-card">
+
+            <!-- Top bar -->
+            <div class="dlm-topbar">
+                <button class="dlm-back-btn" onclick="closeDebateLiveModal()" aria-label="Close">
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+                <div class="dlm-title-wrap">
+                    <span class="dlm-live-badge"><i class="fas fa-circle"></i> LIVE</span>
+                    <span class="dlm-title" id="dlmTitle">Debate</span>
+                </div>
+                <div class="dlm-viewer-count">
+                    <i class="fas fa-eye"></i>
+                    <span id="dlmViewerCount">0</span>
+                </div>
+            </div>
+
+            <!-- Two-column comment stream -->
+            <div class="dlm-arena">
+                <div class="dlm-side dlm-side-a">
+                    <div class="dlm-side-label dlm-label-a" id="dlmLabelA">Team A</div>
+                    <div class="dlm-comment-stream" id="dlmStreamA"></div>
+                </div>
+                <div class="dlm-side dlm-side-b">
+                    <div class="dlm-side-label dlm-label-b" id="dlmLabelB">Team B</div>
+                    <div class="dlm-comment-stream" id="dlmStreamB"></div>
+                </div>
+            </div>
+
+            <!-- Scoreboard -->
+            <div class="dlm-scorebar">
+                <div class="dlm-score-a" id="dlmScoreA">0</div>
+                <div class="dlm-score-vs">vs</div>
+                <div class="dlm-score-b" id="dlmScoreB">0</div>
+            </div>
+
+            <!-- Side picker — shown before joining -->
+            <div class="dlm-side-picker" id="dlmSidePicker">
+                <p class="dlm-pick-prompt">Pick your side</p>
+                <div class="dlm-pick-row">
+                    <button class="dlm-pick-btn dlm-pick-a" id="dlmPickBtnA" onclick="dlmJoinSide('a')">
+                        <span id="dlmPickLabelA">Team A</span>
+                    </button>
+                    <button class="dlm-pick-btn dlm-pick-b" id="dlmPickBtnB" onclick="dlmJoinSide('b')">
+                        <span id="dlmPickLabelB">Team B</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Comment input — shown after joining -->
+            <div class="dlm-input-bar" id="dlmInputBar" style="display:none;">
+                <div class="dlm-joined-tag" id="dlmJoinedTag"></div>
+                <div class="dlm-input-row">
+                    <input class="dlm-input" id="dlmCommentInput" placeholder="Share your take…"
+                        onkeydown="if(event.key==='Enter') dlmSubmitComment()">
+                    <button class="dlm-send-btn" onclick="dlmSubmitComment()">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
+
+        </div><!-- /dlm-card -->
+    </div>
+
 </body>
 
 </html>
