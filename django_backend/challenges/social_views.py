@@ -197,6 +197,7 @@ def debate_list(request):
                 {
                     'user':       c.user.username,
                     'text':       c.text,
+                    'side':       c.side,
                     'created_at': c.created_at.isoformat(),
                 }
                 for c in reversed(comments)
@@ -295,12 +296,21 @@ def post_debate_comment(request, debate_id):
         DebateParticipant.objects.get_or_create(debate=debate, user=request.user, defaults={'side': 'a'})
         ledger.earn(XPOINTS_EARN)
 
-    comment = DebateComment.objects.create(debate=debate, user=request.user, text=text)
+    comment = DebateComment.objects.create(
+        debate=debate,
+        user=request.user,
+        text=text,
+        side=side if not is_participant else (
+            DebateParticipant.objects.filter(debate=debate, user=request.user)
+            .values_list('side', flat=True).first() or 'a'
+        ),
+    )
 
     # Broadcast via WebSocket to debate group
     payload = {
         'user':       request.user.username,
         'text':       text,
+        'side':       side if is_participant else 'a',   # include side so frontend can route correctly
         'created_at': comment.created_at.isoformat(),
     }
     _broadcast_debate(str(debate_id), payload)

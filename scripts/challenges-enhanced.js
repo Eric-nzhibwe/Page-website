@@ -1258,7 +1258,7 @@ async function loadAndRenderChallenges() {
         card.innerHTML = buildDebateCard(d.id, d.title, d.description, d.side_a, d.side_b,
             d.duration_days, d.image_url || null);
         setTimeout(() => {
-            (d.comments || []).slice(-5).forEach(c => addLiveDebateComment(d.id, c.user, c.text));
+            (d.comments || []).slice(-5).forEach(c => addLiveDebateComment(d.id, c.user, c.text, c.side || 'b'));
             openDebateWS(d.id);
         }, 100);
         fragment.appendChild(card);
@@ -1491,7 +1491,16 @@ function openDebateWS(debateId) {    // Don't open WS for static sample IDs (non
             try {
                 const msg = JSON.parse(e.data);
                 if (msg.type === 'debate_comment' && msg.payload) {
-                    addLiveDebateComment(debateId, msg.payload.user, msg.payload.text);
+                    const { user, text, side } = msg.payload;
+                    const resolvedSide = side || 'b';
+
+                    // Update the card's inline feed
+                    addLiveDebateComment(debateId, user, text, resolvedSide);
+
+                    // Mirror into the live modal if it's open for this debate
+                    if (typeof _chAddDebateComment === 'function') {
+                        _chAddDebateComment(debateId, user, text, resolvedSide);
+                    }
                 }
             } catch (_) { }
         };
@@ -1572,19 +1581,27 @@ function _pollDebateComments(debateId) {
     let lastCount = 0;
 
     _pollIntervals[`debate_${debateId}`] = setInterval(async () => {
-        const pane = document.getElementById(`debateComments_${debateId}`);
-        if (!pane) {
+        // Stop if the card is gone from the DOM
+        const card = document.querySelector(`.challenge-card[data-id="${debateId}"]`);
+        if (!card) {
             clearInterval(_pollIntervals[`debate_${debateId}`]);
             delete _pollIntervals[`debate_${debateId}`];
             return;
         }
+        if (document.hidden) return;
+
         const data = await apiGet(`${API}/debates/`);
-        const debate = (data || []).find(d => d.id === debateId);
+        const debate = (data || []).find(d => String(d.id) === String(debateId));
         if (!debate) return;
         const comments = debate.comments || [];
         if (comments.length > lastCount) {
-            // Add only the new ones
-            comments.slice(lastCount).forEach(c => addLiveDebateComment(debateId, c.user, c.text));
+            comments.slice(lastCount).forEach(c => {
+                const side = c.side || 'b';
+                addLiveDebateComment(debateId, c.user, c.text, side);
+                if (typeof _chAddDebateComment === 'function') {
+                    _chAddDebateComment(debateId, c.user, c.text, side);
+                }
+            });
             lastCount = comments.length;
         }
     }, 8000);

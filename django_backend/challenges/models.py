@@ -591,6 +591,12 @@ class DebateComment(models.Model):
     debate    = models.ForeignKey(DebateChallenge, on_delete=models.CASCADE, related_name='comments')
     user      = models.ForeignKey(User, on_delete=models.CASCADE, related_name='debate_comments')
     text      = models.CharField(max_length=500)
+    side      = models.CharField(
+        max_length=1,
+        choices=[('a', 'Side A'), ('b', 'Side B')],
+        default='b',
+        help_text='Which side of the debate this comment supports',
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

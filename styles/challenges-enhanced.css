@@ -2428,3 +2428,348 @@
     border-color: var(--theme-border);
     color: var(--theme-text);
 }
+
+
+/* ═══════════════════════════════════════════════════════════
+   DEBATE CARD — clickable live area
+   ═══════════════════════════════════════════════════════════ */
+.debate-card-open-area {
+    cursor: pointer;
+    padding: 0 16px 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    transition: opacity 0.15s;
+}
+.debate-card-open-area:hover { opacity: 0.82; }
+
+.debate-card-title {
+    font-size: 14px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-align: center;
+    margin: 0;
+    color: var(--text-primary, #1c1e21);
+}
+
+.debate-card-live-hint {
+    font-size: 11px;
+    font-weight: 700;
+    color: #e74c3c;
+    letter-spacing: 0.06em;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    animation: livePulse 1.6s ease-in-out infinite;
+}
+.debate-card-live-hint i { font-size: 8px; }
+
+@keyframes livePulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.45; }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   DEBATE LIVE MODAL
+   ═══════════════════════════════════════════════════════════ */
+.dlm-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 3000;
+    background: linear-gradient(160deg, #0d0d0d 0%, #1a1a2e 100%);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* ── Top bar ── */
+.dlm-topbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 16px 10px;
+    flex-shrink: 0;
+}
+
+.dlm-back-btn {
+    background: rgba(255,255,255,0.1);
+    border: none;
+    color: #fff;
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 16px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    transition: background 0.18s;
+}
+.dlm-back-btn:hover { background: rgba(255,255,255,0.2); }
+
+.dlm-title-wrap {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+
+.dlm-live-badge {
+    background: #e74c3c;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    padding: 3px 7px;
+    border-radius: 4px;
+    flex-shrink: 0;
+    display: flex; align-items: center; gap: 4px;
+    animation: livePulse 1.6s ease-in-out infinite;
+}
+.dlm-live-badge i { font-size: 7px; }
+
+.dlm-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.dlm-viewer-count {
+    font-size: 13px;
+    font-weight: 600;
+    color: rgba(255,255,255,0.65);
+    display: flex; align-items: center; gap: 5px;
+    flex-shrink: 0;
+}
+
+/* ── Two-column comment arena ── */
+.dlm-arena {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    position: relative;
+    overflow: hidden;
+    padding: 0 4px;
+    min-height: 0;
+}
+
+.dlm-side {
+    display: flex;
+    flex-direction: column;
+    padding: 0 6px;
+    overflow: hidden;
+    position: relative;
+}
+
+.dlm-side-label {
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    padding: 4px 0 6px;
+    text-align: center;
+    flex-shrink: 0;
+}
+.dlm-label-a { color: #e74c3c; }
+.dlm-label-b { color: #27ae60; }
+
+/* Comment stream — where floaters live */
+.dlm-comment-stream {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    gap: 6px;
+    padding-bottom: 8px;
+}
+
+/* Individual floating comment */
+.dlm-comment {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    padding: 6px 8px;
+    border-radius: 14px;
+    max-width: 100%;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.35s ease, transform 0.35s ease;
+}
+/* Side A — slight red tint */
+.dlm-comment-a {
+    background: rgba(231, 76, 60, 0.12);
+    border: 1px solid rgba(231,76,60,0.25);
+}
+/* Side B — slight green tint */
+.dlm-comment-b {
+    background: rgba(39, 174, 96, 0.12);
+    border: 1px solid rgba(39,174,96,0.25);
+}
+/* Own comment — slightly brighter */
+.dlm-comment.dlm-own.dlm-comment-a { background: rgba(231,76,60,0.22); }
+.dlm-comment.dlm-own.dlm-comment-b { background: rgba(39,174,96,0.22); }
+
+/* Float-up animation trigger class */
+.dlm-comment.dlm-float {
+    opacity: 1;
+    transform: translateY(0);
+    animation: dlmFloat 6.2s ease forwards;
+}
+
+@keyframes dlmFloat {
+    0%   { opacity: 0;   transform: translateY(20px); }
+    8%   { opacity: 1;   transform: translateY(0); }
+    70%  { opacity: 1;   transform: translateY(-30px); }
+    100% { opacity: 0;   transform: translateY(-80px); }
+}
+
+.dlm-comment-avatar {
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 700;
+    color: #fff;
+}
+
+.dlm-comment-body {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+.dlm-comment-user {
+    font-size: 10px;
+    font-weight: 700;
+    color: rgba(255,255,255,0.55);
+    margin-bottom: 1px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.dlm-comment-text {
+    font-size: 12px;
+    color: #fff;
+    line-height: 1.35;
+    word-break: break-word;
+}
+
+/* ── Scoreboard ── */
+.dlm-scorebar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 6px 16px;
+    flex-shrink: 0;
+}
+.dlm-score-a, .dlm-score-b {
+    font-size: 22px;
+    font-weight: 900;
+    min-width: 40px;
+    text-align: center;
+}
+.dlm-score-a { color: #e74c3c; }
+.dlm-score-b { color: #27ae60; }
+.dlm-score-vs {
+    font-size: 12px;
+    font-weight: 700;
+    color: rgba(255,255,255,0.4);
+}
+
+/* ── Side picker ── */
+.dlm-side-picker {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px 14px;
+    flex-shrink: 0;
+    background: rgba(0,0,0,0.35);
+    border-top: 1px solid rgba(255,255,255,0.08);
+}
+
+.dlm-pick-prompt {
+    font-size: 12px;
+    font-weight: 600;
+    color: rgba(255,255,255,0.6);
+    margin: 0;
+}
+
+.dlm-pick-row {
+    display: flex;
+    gap: 10px;
+    width: 100%;
+}
+
+.dlm-pick-btn {
+    flex: 1;
+    padding: 11px 8px;
+    border: none;
+    border-radius: 12px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity 0.18s, transform 0.15s;
+}
+.dlm-pick-btn:active { transform: scale(0.97); }
+.dlm-pick-a { background: #e74c3c; color: #fff; }
+.dlm-pick-b { background: #27ae60; color: #fff; }
+.dlm-pick-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+/* ── Comment input bar ── */
+.dlm-input-bar {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px 12px 14px;
+    flex-shrink: 0;
+    background: rgba(0,0,0,0.35);
+    border-top: 1px solid rgba(255,255,255,0.08);
+}
+
+.dlm-joined-tag {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 20px;
+    align-self: flex-start;
+}
+
+.dlm-input-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.dlm-input {
+    flex: 1;
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.18);
+    border-radius: 22px;
+    padding: 10px 16px;
+    font-size: 14px;
+    color: #fff;
+    outline: none;
+}
+.dlm-input::placeholder { color: rgba(255,255,255,0.4); }
+.dlm-input:focus { border-color: rgba(255,255,255,0.35); background: rgba(255,255,255,0.14); }
+
+.dlm-send-btn {
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    background: var(--page-primary, #4caf50);
+    border: none;
+    color: #fff;
+    font-size: 15px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    transition: opacity 0.18s, transform 0.15s;
+}
+.dlm-send-btn:hover { opacity: 0.85; }
+.dlm-send-btn:active { transform: scale(0.93); }
