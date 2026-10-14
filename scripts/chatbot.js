@@ -338,11 +338,36 @@ function clearAttachment() {
 }
 
 async function sendMediaMessage(message, file) {
-    // Show user bubble with file info
-    const displayMsg = message
-        ? `${message}\n📎 ${file.name}`
-        : `📎 ${file.name}`;
-    appendMessage(displayMsg, 'user');
+    hideWelcome();
+
+    // Show user bubble — image preview for images, chip for other files
+    const isImage = file.type.startsWith('image/');
+    if (isImage) {
+        // Show actual image in the bubble so the user can see what was sent
+        const previewUrl = URL.createObjectURL(file);
+        const feed = document.getElementById('chatMessages');
+        const row  = document.createElement('div');
+        row.className = 'msg-row user-row fade-in';
+        const time = new Date().toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit' });
+        row.innerHTML = `
+            <div class="msg-avatar"><i class="fas fa-user"></i></div>
+            <div class="msg-bubble-wrap">
+                <div class="msg-bubble msg-image-bubble">
+                    <img src="${previewUrl}" alt="${file.name}"
+                         style="max-width:220px;max-height:220px;border-radius:12px;display:block;object-fit:cover;"
+                         onload="URL.revokeObjectURL(this.src)">
+                    ${message ? `<p style="margin:6px 0 0;font-size:13px;">${renderMarkdown(message)}</p>` : ''}
+                </div>
+                <div class="msg-meta"><span class="msg-time">${time}</span></div>
+            </div>`;
+        feed.appendChild(row);
+        messageCount++;
+        scrollToBottom();
+    } else {
+        const displayMsg = message ? `${message}\n📎 ${file.name}` : `📎 ${file.name}`;
+        appendMessage(displayMsg, 'user');
+    }
+
     setWaiting(true);
 
     try {

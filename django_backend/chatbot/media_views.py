@@ -1,4 +1,4 @@
-"""
+0"""
 Chatbot media views — voice transcription + image/file chat
 ============================================================
 POST /api/chatbot/transcribe/
@@ -161,7 +161,19 @@ def media_chat(request):
     image_mime   = None
 
     if uploaded_file:
-        mime = uploaded_file.content_type or mimetypes.guess_type(uploaded_file.name)[0] or 'application/octet-stream'
+        mime = (
+            uploaded_file.content_type
+            or mimetypes.guess_type(uploaded_file.name)[0]
+            or 'application/octet-stream'
+        )
+
+        # Browsers sometimes send 'application/octet-stream' even for images.
+        # Re-detect from the filename extension to be safe.
+        if not mime.startswith('image/'):
+            guessed, _ = mimetypes.guess_type(uploaded_file.name)
+            if guessed and guessed.startswith('image/'):
+                mime = guessed
+                logger.info(f'Re-detected image mime from filename: {mime}')
 
         if mime.startswith('image/'):
             # Image — encode to base64 for vision model
@@ -276,10 +288,17 @@ def _call_vision_ai(message, image_b64, image_mime, user, groq_key):
             content = resp.json()['choices'][0]['message']['content'].strip()
             return content, 'groq-vision'
 
-        err = resp.json().get('error', {}).get('message', resp.text[:200])
-        logger.error(f'Groq vision error: {err}')
+        # Log the full error body so it's visible in Render/Django logs
+        try:
+            err_body = resp.json()
+            err      = err_body.get('error', {}).get('message', str(err_body)[:300])
+        except Exception:
+            err = resp.text[:300]
+        logger.error(f'Groq vision error (status {resp.status_code}): {err}')
+
         # Fall back to text-only with image description hint
-        return _call_ai(f'User sent an image and said: {message}', [], user)[0], 'groq'
+        fallback_reply, _ = _call_ai(f'User sent an image and said: {message}', [], user)
+        return fallback_reply, 'groq'
 
     except Exception as e:
         logger.error(f'Vision API error: {e}')
