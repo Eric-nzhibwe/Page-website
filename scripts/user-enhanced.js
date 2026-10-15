@@ -526,9 +526,15 @@ async function _ehLoadFollowList(tab) {
     list.innerHTML = '<div class="skeleton-list"><div class="sk-row"></div><div class="sk-row short"></div><div class="sk-row"></div></div>';
 
     try {
+        // Fall back to current user if _ehFollowUserId is somehow null
+        const uid = _ehFollowUserId || localStorage.getItem('userId');
+        if (!uid) {
+            list.innerHTML = '<div class="empty-state"><i class="fas fa-users"></i><span>Not logged in</span></div>';
+            return;
+        }
         const endpoint = tab === 'followers'
-            ? `${_EH_API}/social/follows/followers/?user_id=${_ehFollowUserId}`
-            : `${_EH_API}/social/follows/following/?user_id=${_ehFollowUserId}`;
+            ? `${_EH_API}/social/follows/followers/?user_id=${uid}`
+            : `${_EH_API}/social/follows/following/?user_id=${uid}`;
         const res  = await fetch(endpoint, { headers: { 'Authorization': `Token ${_ehToken()}` } });
         if (!res.ok) throw new Error('Failed');
         const data = await res.json();
