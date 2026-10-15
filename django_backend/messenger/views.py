@@ -1,3 +1,4 @@
+import logging
 from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action, api_view, permission_classes, authentication_classes
 from rest_framework.response import Response
@@ -8,6 +9,30 @@ from django.utils import timezone
 from .models import Conversation, Message
 from .serializers import ConversationListSerializer, ConversationDetailSerializer, MessageSerializer
 from users.models import User
+
+logger = logging.getLogger(__name__)
+
+
+def _broadcast_message(conversation_id: str, message_data: dict):
+    """Push a new message to all WebSocket clients in this conversation."""
+    try:
+        from channels.layers import get_channel_layer
+        from asgiref.sync import async_to_sync
+        from .consumers import conversation_group
+        from django.core.serializers.json import DjangoJSONEncoder
+        import json
+
+        layer = get_channel_layer()
+        if not layer:
+            return
+        # DjangoJSONEncoder handles UUID / datetime / Decimal
+        safe_data = json.loads(json.dumps(dict(message_data), cls=DjangoJSONEncoder))
+        async_to_sync(layer.group_send)(
+            conversation_group(conversation_id),
+            {'type': 'ws_new_message', 'message': safe_data},
+        )
+    except Exception as exc:
+        logger.warning(f'Messenger WS broadcast failed: {exc}')
 
 
 def _parse_duration(value):
@@ -209,7 +234,12 @@ class ConversationViewSet(viewsets.ModelViewSet):
         # post_save signal in signals.py calls mirror_message() → Firestore
 
         serializer = MessageSerializer(message, context={'request': request})
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        msg_data = serializer.data
+
+        # Broadcast to all participants via WebSocket
+        _broadcast_message(str(conversation.id), msg_data)
+
+        return Response(msg_data, status=status.HTTP_201_CREATED)
 
 
 @api_view(['GET'])

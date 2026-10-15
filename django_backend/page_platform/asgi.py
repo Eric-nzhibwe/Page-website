@@ -37,11 +37,13 @@ django_asgi_app = get_asgi_application()
 from notifications.routing import websocket_urlpatterns as notifications_ws  # noqa: E402
 from social.routing import websocket_urlpatterns as social_ws                # noqa: E402
 from challenges.routing import websocket_urlpatterns as challenges_ws        # noqa: E402
+from messenger.routing import websocket_urlpatterns as messenger_ws          # noqa: E402
 
 all_websocket_urlpatterns = (
     notifications_ws
     + social_ws
     + challenges_ws
+    + messenger_ws
 )
 
 application = ProtocolTypeRouter({

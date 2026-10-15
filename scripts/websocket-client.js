@@ -20,7 +20,7 @@
 
 'use strict';
 
-const _WS_HOST  = window.location.host;
+const _WS_HOST = window.location.host;
 const _WS_PROTO = window.location.protocol === 'https:' ? 'wss' : 'ws';
 
 function _wsUrl(path) {
@@ -55,17 +55,17 @@ async function _wsClientCheckSupport() {
 // ─────────────────────────────────────────────────────────────────────────────
 class _WSConn {
     constructor(name, urlFn, onMessage) {
-        this.name        = name;
-        this._urlFn      = urlFn;
-        this._onMessage  = onMessage;
-        this.ws          = null;
-        this._attempt    = 0;
+        this.name = name;
+        this._urlFn = urlFn;
+        this._onMessage = onMessage;
+        this.ws = null;
+        this._attempt = 0;
         this._maxAttempt = 5;
-        this._baseDelay  = 2000;
-        this._heartbeat  = null;
-        this._dead       = false;
-        this._open       = false;
-        this._disabled   = false;
+        this._baseDelay = 2000;
+        this._heartbeat = null;
+        this._dead = false;
+        this._open = false;
+        this._disabled = false;
     }
 
     async connect() {
@@ -87,7 +87,7 @@ class _WSConn {
 
         this.ws.onopen = () => {
             this._attempt = 0;
-            this._open    = true;
+            this._open = true;
             this._startHeartbeat();
             console.log(`[WS:${this.name}] connected`);
         };
@@ -156,11 +156,12 @@ class _WSConn {
 // ─────────────────────────────────────────────────────────────────────────────
 class PAGEWebSocketClient {
     constructor() {
-        this._listeners    = {};
-        this._feedConn     = null;
-        this._storyConn    = null;
+        this._listeners = {};
+        this._feedConn = null;
+        this._storyConn = null;
         this._userFeedConn = null;
-        this._postConns    = new Map();
+        this._messengerConn = null;
+        this._postConns = new Map();
     }
 
     // ── Event bus ─────────────────────────────────────────────────────────────
@@ -180,7 +181,7 @@ class PAGEWebSocketClient {
             try { fn(data); } catch (e) { console.error('[WS emit]', e); }
         });
         (this._listeners[`${channel}:*`] || []).forEach(fn => {
-            try { fn({ type, ...data }); } catch (_) {}
+            try { fn({ type, ...data }); } catch (_) { }
         });
     }
 
@@ -193,11 +194,11 @@ class PAGEWebSocketClient {
 
     _handleFeed(msg) {
         switch (msg.type) {
-            case 'feed_snapshot':   this._emit('feed', 'snapshot',      { posts: msg.posts   }); break;
-            case 'new_post':        this._emit('feed', 'new_post',      { post:  msg.post    }); break;
-            case 'post_update':     this._emit('feed', 'post_update',   msg);                    break;
-            case 'live_activity':   this._emit('feed', 'live_activity', msg);                    break;
-            case 'new_story':       this._emit('feed', 'new_story',     { story: msg.story   }); break;
+            case 'feed_snapshot': this._emit('feed', 'snapshot', { posts: msg.posts }); break;
+            case 'new_post': this._emit('feed', 'new_post', { post: msg.post }); break;
+            case 'post_update': this._emit('feed', 'post_update', msg); break;
+            case 'live_activity': this._emit('feed', 'live_activity', msg); break;
+            case 'new_story': this._emit('feed', 'new_story', { story: msg.story }); break;
         }
     }
 
@@ -223,9 +224,9 @@ class PAGEWebSocketClient {
     _handlePost(postId, msg, callbacks) {
         switch (msg.type) {
             case 'comments_snapshot': this._emit('post', 'comments_snapshot', { postId, comments: msg.comments }); callbacks.onSnapshot?.(msg.comments); break;
-            case 'comment_created':   this._emit('post', 'comment_created',   { postId, comment:  msg.comment  }); callbacks.onComment?.(msg.comment);   break;
-            case 'reaction_updated':  this._emit('post', 'reaction_updated',  { postId, reaction: msg.reaction }); callbacks.onReaction?.(msg.reaction); break;
-            case 'post_shared':       this._emit('post', 'post_shared',       { postId, share:    msg.share    }); callbacks.onShare?.(msg.share);       break;
+            case 'comment_created': this._emit('post', 'comment_created', { postId, comment: msg.comment }); callbacks.onComment?.(msg.comment); break;
+            case 'reaction_updated': this._emit('post', 'reaction_updated', { postId, reaction: msg.reaction }); callbacks.onReaction?.(msg.reaction); break;
+            case 'post_shared': this._emit('post', 'post_shared', { postId, share: msg.share }); callbacks.onShare?.(msg.share); break;
         }
     }
 
@@ -250,9 +251,9 @@ class PAGEWebSocketClient {
 
     _handleStory(msg, callbacks) {
         switch (msg.type) {
-            case 'stories_snapshot': this._emit('stories', 'snapshot',     { stories: msg.stories }); callbacks.onSnapshot?.(msg.stories); break;
-            case 'story_viewed':     this._emit('stories', 'story_viewed', { view: msg.view, storyId: msg.story_id }); callbacks.onView?.(msg.view, msg.story_id); break;
-            case 'story_created':    this._emit('stories', 'story_created',{ story: msg.story }); callbacks.onCreate?.(msg.story); break;
+            case 'stories_snapshot': this._emit('stories', 'snapshot', { stories: msg.stories }); callbacks.onSnapshot?.(msg.stories); break;
+            case 'story_viewed': this._emit('stories', 'story_viewed', { view: msg.view, storyId: msg.story_id }); callbacks.onView?.(msg.view, msg.story_id); break;
+            case 'story_created': this._emit('stories', 'story_created', { story: msg.story }); callbacks.onCreate?.(msg.story); break;
         }
     }
 
@@ -269,18 +270,66 @@ class PAGEWebSocketClient {
 
     _handleUserFeed(msg, callbacks) {
         switch (msg.type) {
-            case 'user_feed_ready':         this._emit('userFeed', 'ready',          {}); callbacks.onReady?.(); break;
-            case 'followed_new_post':       this._emit('userFeed', 'new_post',       { post:  msg.post  }); callbacks.onNewPost?.(msg.post);   break;
-            case 'followed_new_story':      this._emit('userFeed', 'new_story',      { story: msg.story }); callbacks.onNewStory?.(msg.story); break;
-            case 'followed_avatar_updated': this._emit('userFeed', 'avatar_updated', msg);                  callbacks.onAvatarUpdated?.(msg);  break;
+            case 'user_feed_ready': this._emit('userFeed', 'ready', {}); callbacks.onReady?.(); break;
+            case 'followed_new_post': this._emit('userFeed', 'new_post', { post: msg.post }); callbacks.onNewPost?.(msg.post); break;
+            case 'followed_new_story': this._emit('userFeed', 'new_story', { story: msg.story }); callbacks.onNewStory?.(msg.story); break;
+            case 'followed_avatar_updated': this._emit('userFeed', 'avatar_updated', msg); callbacks.onAvatarUpdated?.(msg); break;
         }
+    }
+
+    // ── Messenger ─────────────────────────────────────────────────────────────
+    connectMessenger(callbacks = {}) {
+        if (this._messengerConn) return;
+        this._messengerConn = new _WSConn(
+            'messenger',
+            () => {
+                const token = localStorage.getItem('djangoAuthToken') || '';
+                return `${_WS_PROTO}://${_WS_HOST}/ws/messenger/?token=${encodeURIComponent(token)}`;
+            },
+            msg => this._handleMessenger(msg, callbacks)
+        );
+        this._messengerConn.connect();
+    }
+
+    _handleMessenger(msg, callbacks) {
+        switch (msg.type) {
+            case 'messenger_ready':
+                this._emit('messenger', 'ready', { unreadCount: msg.unread_count });
+                callbacks.onReady?.(msg.unread_count);
+                break;
+            case 'new_message':
+                this._emit('messenger', 'new_message', { message: msg.message });
+                callbacks.onMessage?.(msg.message);
+                break;
+            case 'typing':
+                this._emit('messenger', 'typing', msg);
+                callbacks.onTyping?.(msg);
+                break;
+            case 'marked_read':
+                this._emit('messenger', 'marked_read', msg);
+                callbacks.onMarkedRead?.(msg);
+                break;
+        }
+    }
+
+    sendTyping(conversationId, isTyping) {
+        this._messengerConn?.send({
+            action: 'typing',
+            conversation_id: conversationId,
+            is_typing: isTyping,
+        });
+    }
+
+    sendMarkRead(conversationId) {
+        this._messengerConn?.send({ action: 'mark_read', conversation_id: conversationId });
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
     disconnect(key) {
-        if (key === 'feed')      { this._feedConn?.close();     this._feedConn     = null; }
-        if (key === 'stories')   { this._storyConn?.close();    this._storyConn    = null; }
+        if (key === 'feed') { this._feedConn?.close(); this._feedConn = null; }
+        if (key === 'stories') { this._storyConn?.close(); this._storyConn = null; }
         if (key === 'user-feed') { this._userFeedConn?.close(); this._userFeedConn = null; }
+        if (key === 'messenger') { this._messengerConn?.close(); this._messengerConn = null; }
         if (this._postConns.has(key)) { this._postConns.get(key).close(); this._postConns.delete(key); }
     }
 
@@ -288,14 +337,16 @@ class PAGEWebSocketClient {
         this._feedConn?.close();
         this._storyConn?.close();
         this._userFeedConn?.close();
+        this._messengerConn?.close();
         this._postConns.forEach(c => c.close());
-        this._feedConn = this._storyConn = this._userFeedConn = null;
+        this._feedConn = this._storyConn = this._userFeedConn = this._messengerConn = null;
         this._postConns.clear();
     }
 
-    get feedConnected()     { return this._feedConn?.isOpen     || false; }
-    get storyConnected()    { return this._storyConn?.isOpen    || false; }
+    get feedConnected() { return this._feedConn?.isOpen || false; }
+    get storyConnected() { return this._storyConn?.isOpen || false; }
     get userFeedConnected() { return this._userFeedConn?.isOpen || false; }
+    get messengerConnected() { return this._messengerConn?.isOpen || false; }
 }
 
 const wsClient = new PAGEWebSocketClient();

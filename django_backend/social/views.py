@@ -487,6 +487,9 @@ class FollowViewSet(viewsets.ViewSet):
                 message='',
                 link=f'/pages/user.html?id={request.user.id}',
             )
+            # Real-time: push follow event to the followed user's personal group
+            # and to the follower's user-feed so they start receiving posts
+            self._broadcast_follow(request.user, user_to_follow)
 
         serializer = FollowSerializer(follow)
         return Response(serializer.data, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
@@ -515,17 +518,19 @@ class FollowViewSet(viewsets.ViewSet):
     @action(detail=False, methods=['get'])
     def followers(self, request):
         """Get user's followers"""
-        user_id = request.query_params.get('user_id', request.user.id)
+        raw = request.query_params.get('user_id', '')
+        user_id = raw if raw and raw.lower() not in ('null', 'undefined', '') else request.user.id
         user = get_object_or_404(User, id=user_id)
-        
+
         follows = Follow.objects.filter(following=user)
         serializer = FollowListSerializer(follows, many=True, context={'request': request})
         return Response(serializer.data)
-    
+
     @action(detail=False, methods=['get'])
     def following(self, request):
         """Get users that current user is following"""
-        user_id = request.query_params.get('user_id', request.user.id)
+        raw = request.query_params.get('user_id', '')
+        user_id = raw if raw and raw.lower() not in ('null', 'undefined', '') else request.user.id
         user = get_object_or_404(User, id=user_id)
         
         follows = Follow.objects.filter(follower=user)
@@ -535,9 +540,8 @@ class FollowViewSet(viewsets.ViewSet):
     @action(detail=False, methods=['get'])
     def is_following(self, request):
         """Check if current user is following a specific user"""
-        user_id = request.query_params.get('user_id')
-        
-        if not user_id:
+        user_id = request.query_params.get('user_id', '')
+        if not user_id or user_id.lower() in ('null', 'undefined'):
             return Response({'error': 'user_id is required'}, status=status.HTTP_400_BAD_REQUEST)
         
         is_following = Follow.objects.filter(
@@ -547,9 +551,46 @@ class FollowViewSet(viewsets.ViewSet):
         
         return Response({'is_following': is_following})
 
+    def _broadcast_follow(self, follower, followed_user):
+        """
+        Push a follow event to the followed user's WebSocket notification group
+        so they see an instant "X started following you" toast.
+        """
+        try:
+            from channels.layers import get_channel_layer
+            from asgiref.sync import async_to_sync
+            from django.utils import timezone
+            from notifications.consumers import user_group
+
+            layer = get_channel_layer()
+            if not layer:
+                return
+
+            async_to_sync(layer.group_send)(
+                user_group(followed_user.id),
+                {
+                    'type': 'notify_new',
+                    'notification': {
+                        'id':         None,
+                        'type':       'follow',
+                        'title':      f'{follower.username} started following you',
+                        'message':    '',
+                        'link':       f'/pages/user.html?id={follower.id}',
+                        'is_read':    False,
+                        'created_at': timezone.now().isoformat(),
+                        'actor': {
+                            'username':     follower.username,
+                            'display_name': follower.display_name or follower.username,
+                            'profile_image': None,
+                        },
+                    },
+                }
+            )
+        except Exception:
+            pass  # never let a WS broadcast break the follow action
+
     @action(detail=False, methods=['get'])
     def counts(self, request):
-        """Return follower count, following count, and is_following for a user."""
         user_id = request.query_params.get('user_id', request.user.id)
         user = get_object_or_404(User, id=user_id)
         is_following = Follow.objects.filter(

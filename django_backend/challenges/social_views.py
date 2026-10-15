@@ -300,17 +300,23 @@ def post_debate_comment(request, debate_id):
         debate=debate,
         user=request.user,
         text=text,
-        side=side if not is_participant else (
+        side=(
             DebateParticipant.objects.filter(debate=debate, user=request.user)
             .values_list('side', flat=True).first() or 'a'
         ),
+    )
+
+    # Resolve side for the broadcast payload
+    participant_side = (
+        DebateParticipant.objects.filter(debate=debate, user=request.user)
+        .values_list('side', flat=True).first() or 'a'
     )
 
     # Broadcast via WebSocket to debate group
     payload = {
         'user':       request.user.username,
         'text':       text,
-        'side':       side if is_participant else 'a',   # include side so frontend can route correctly
+        'side':       participant_side,
         'created_at': comment.created_at.isoformat(),
     }
     _broadcast_debate(str(debate_id), payload)
