@@ -915,9 +915,30 @@ async function _initRealtimeUpdates() {
     } // end if (wsSupported)
 
     // ── 3. Follower-feed WebSocket — new posts/stories/avatar from followed accounts ──
-    // This is a separate, lightweight channel that only delivers content from
-    // accounts the logged-in user actually follows — no polling needed.
-    _connectUserFeedWs();
+    // Delivered via wsClient so it goes through the same Redis probe / backoff logic.
+    wsClient.connectUserFeed({
+        onNewPost: post => {
+            if (!post || _seenPostIds.has(String(post.id))) return;
+            _seenPostIds.add(String(post.id));
+            const container = document.getElementById('feedPosts');
+            if (!container) return;
+            const el = _buildPostCard(post);
+            el.classList.add('post-card--new');
+            container.insertBefore(el, container.firstChild);
+            const authorName = post.author?.display_name || post.author?.username || 'Someone';
+            _rtToast(`${authorName} just posted`, 'info');
+        },
+        onNewStory: story => {
+            if (!story) return;
+            if (document.querySelector(`[data-story-id="${story.id}"]`)) return;
+            _appendStoryCard(story);
+            const authorName = story.author?.display_name || story.author?.username || 'Someone';
+            _rtToast(`${authorName} added a story`, 'info');
+        },
+        onAvatarUpdated: ({ user_id, avatar_url }) => {
+            if (user_id && avatar_url) _patchUserAvatarEverywhere(user_id, avatar_url);
+        },
+    });
 
     // ── 4. Load who we're following first so follow buttons render correctly ──
     _loadFollowingSet().then(() => {
@@ -939,7 +960,7 @@ async function _initRealtimeUpdates() {
             _notifTimer = _onlinePollTimer = null;
         } else {
             _connectNotifWs();
-            _connectUserFeedWs();   // reconnect follower feed WS too
+            wsClient.connectUserFeed();   // reconnect follower feed WS too
             _startOnlinePoller();
         }
     });
@@ -948,11 +969,10 @@ async function _initRealtimeUpdates() {
 // ── Story card builder (for WS-pushed stories) ────────────────────────────────
 function _buildStoryCard(story) {
     const card = document.createElement('div');
+    const author   = story.author || {};
     card.className = 'story-card';
     card.dataset.storyId  = story.id;
     card.dataset.authorId = String(author.id || '');
-
-    const author   = story.author || {};
     const name     = author.display_name || author.username || 'User';
     // Prefer resolved_media_url (uploaded file) over legacy media_url
     const mediaSrc = story.resolved_media_url || story.media_url || null;

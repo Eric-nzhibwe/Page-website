@@ -215,8 +215,11 @@ EMAIL_PROVIDER = config('EMAIL_PROVIDER', default='console')
 DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='PAGE Platform <noreply@pageplatform.com>')
 FRONTEND_BASE_URL = config('FRONTEND_BASE_URL', default='http://localhost:8000')
 
-if EMAIL_PROVIDER == 'resend':
-    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+if EMAIL_PROVIDER == 'sendgrid':
+    EMAIL_BACKEND = 'django.core.mail.backends.dummy.EmailBackend'  # not used; we call API directly
+    SENDGRID_API_KEY = config('SENDGRID_API_KEY', default='')
+elif EMAIL_PROVIDER == 'resend':
+    EMAIL_BACKEND = 'django.core.mail.backends.dummy.EmailBackend'  # not used; we call API directly
     RESEND_API_KEY = config('RESEND_API_KEY', default='')
 elif EMAIL_PROVIDER == 'smtp':
     EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'

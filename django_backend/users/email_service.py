@@ -3,14 +3,15 @@
 PAGE Email Service
 ==================
 Sends transactional email via:
-  - Resend API  (EMAIL_PROVIDER=resend)  -- HTTPS, works on Render free tier
-  - Django SMTP (EMAIL_PROVIDER=smtp)    -- direct SMTP, blocked on Render free
-  - Console     (EMAIL_PROVIDER=console) -- prints to stdout, local dev only
+  - SendGrid API (EMAIL_PROVIDER=sendgrid) -- HTTPS, no domain needed, free 100/day
+  - Resend API   (EMAIL_PROVIDER=resend)   -- HTTPS, works on Render free tier
+  - Django SMTP  (EMAIL_PROVIDER=smtp)     -- direct SMTP, blocked on Render free
+  - Console      (EMAIL_PROVIDER=console)  -- prints to stdout, local dev only
 
-Set EMAIL_PROVIDER=resend + RESEND_API_KEY in your environment for production.
-
-Get a free Resend API key (3,000 emails/month free):
-  https://resend.com  -> Sign up -> API Keys -> Create Key
+Recommended for production without a custom domain:
+  SendGrid -> sign up at sendgrid.com -> Settings -> API Keys -> Create Key
+             -> Settings -> Sender Authentication -> Single Sender Verification
+  Set EMAIL_PROVIDER=sendgrid and SENDGRID_API_KEY in your environment.
 """
 
 import logging
@@ -28,7 +29,7 @@ logger = logging.getLogger(__name__)
 # ─────────────────────────────────────────────────────────────────
 
 def _site_url():
-    return getattr(settings, 'FRONTEND_BASE_URL', 'https://pageplatform.com').rstrip('/')
+    return getattr(settings, 'FRONTEND_BASE_URL', 'https://page-website.onrender.com').rstrip('/')
 
 
 def _from_address():
@@ -50,14 +51,82 @@ def _render(template_name, context):
     return html, plain
 
 
+def _parse_from_address():
+    """
+    Split 'Display Name <email@example.com>' into (name, email).
+    Falls back gracefully if the format is just a plain email address.
+    """
+    raw = _from_address    if '<' in raw and raw.endswith('>'):
+        name, _, addr = raw.partition('<')
+        return name.strip(), addr.rstrip('>')
+    return 'PAGE Platform', raw.strip()
+
+
 # ─────────────────────────────────────────────────────────────────
-# Resend API sender  (HTTPS, works on Render free tier)
+# SendGrid API sender (HTTPS, single sender — no domain needed)
+# ─────────────────────────────────────────────────────────────────
+
+def _send_via_sendgrid(subject, html_body, plain_body, recipient_email):
+    """
+    POST to SendGrid's v3 /mail/send endpoint over HTTPS.
+    Requires only a verified single sender email — no custom domain needed.
+    Free tier: 100 emails/day forever.
+    """
+    api_key = getattr(settings, 'SENDGRID_API_KEY', '')
+    if not api_key:
+        logger.error('Email FAILED: SENDGRID_API_KEY is not set.')
+        return False
+
+    from_name, from_email = _parse_from_address()
+
+    payload = {
+        'personalizations': [
+            {
+                'to': [{'email': recipient_email}],
+                'subject': subject,
+            }
+        ],
+        'from': {'email': from_email, 'name': from_name},
+        'content': [
+            {'type': 'text/plain', 'value': plain_body},
+            {'type': 'text/html',  'value': html_body},
+        ],
+    }
+
+    try:
+        resp = http_requests.post(
+            'https://api.sendgrid.com/v3/mail/send',
+            headers={
+                'Authorization': f'Bearer {api_key}',
+                'Content-Type':  'application/json',
+            },
+            data=json.dumps(payload),
+            timeout=15,
+        )
+        # SendGrid returns 202 Accepted on success (no body)
+        if resp.status_code == 202:
+            logger.info('Email sent OK via SendGrid: subject="%s" to=%s', subject, recipient_email)
+            return True
+        else:
+            logger.error(
+                'Email FAILED via SendGrid: subject="%s" to=%s | status=%s body=%s',
+                subject, recipient_email, resp.status_code, resp.text[:300]
+            )
+            return False
+    except Exception as exc:
+        logger.error('Email FAILED via SendGrid: subject="%s" to=%s | error: %s',
+                     subject, recipient_email, exc)
+        return False
+
+
+# ─────────────────────────────────────────────────────────────────
+# Resend API sender (HTTPS, works on Render free tier)
 # ─────────────────────────────────────────────────────────────────
 
 def _send_via_resend(subject, html_body, plain_body, recipient_email):
     """
     POST to Resend's send endpoint over HTTPS port 443.
-    This bypasses the SMTP port-blocking on Render's free plan.
+    Use from address 'onboarding@resend.dev' if you have no verified domain.
     """
     api_key = getattr(settings, 'RESEND_API_KEY', '')
     if not api_key:
@@ -83,7 +152,7 @@ def _send_via_resend(subject, html_body, plain_body, recipient_email):
             timeout=15,
         )
         if resp.status_code in (200, 201):
-            logger.warning('Email sent OK via Resend: subject="%s" to=%s', subject, recipient_email)
+            logger.info('Email sent OK via Resend: subject="%s" to=%s', subject, recipient_email)
             return True
         else:
             logger.error(
@@ -110,9 +179,10 @@ def _send_via_smtp(subject, html_body, plain_body, recipient_email):
             from_email=_from_address(),
             to=[recipient_email],
         )
-        msg.attach_alternative(html_body, 'text/html')
+        from django.utils import timezone
+        return _send(dy, 'text/html')
         msg.send(fail_silently=False)
-        logger.warning('Email sent OK via SMTP: subject="%s" to=%s', subject, recipient_email)
+        logger.info('Email sent OK via SMTP: subject="%s" to=%s', subject, recipient_email)
         return True
     except Exception as exc:
         logger.error('Email FAILED via SMTP: subject="%s" to=%s | error: %s',
@@ -126,7 +196,7 @@ def _send_via_smtp(subject, html_body, plain_body, recipient_email):
 
 def _send_via_console(subject, html_body, plain_body, recipient_email):
     print('\n' + '=' * 60)
-    print(f'[PAGE EMAIL - CONSOLE MODE]')
+    print('[PAGE EMAIL - CONSOLE MODE]')
     print(f'To:      {recipient_email}')
     print(f'Subject: {subject}')
     print('-' * 60)
@@ -152,12 +222,13 @@ def _send(subject, template_name, context, recipient_email):
 
     provider = _provider()
 
-    if provider == 'resend':
+    if provider == 'sendgrid':
+        return _send_via_sendgrid(subject, html_body, plain_body, recipient_email)
+    elif provider == 'resend':
         return _send_via_resend(subject, html_body, plain_body, recipient_email)
     elif provider == 'smtp':
         return _send_via_smtp(subject, html_body, plain_body, recipient_email)
     else:
-        # console (default for local dev)
         return _send_via_console(subject, html_body, plain_body, recipient_email)
 
 
@@ -174,7 +245,7 @@ class EmailService:
             context={
                 'user':      user,
                 'username':  user.username,
-                'login_url': f'{https://page.onrender.com()}/pages/auth.html',
+                'login_url': f'{_site_url()}/pages/auth.html',
             },
             recipient_email=user.email,
         )
@@ -196,7 +267,6 @@ class EmailService:
         )
 
     def send_otp(self, user, otp, expiry_minutes=10):
-        # Try HTML template first; fall back to plain text
         try:
             return _send(
                 subject='Your PAGE verification code',
@@ -213,11 +283,8 @@ class EmailService:
             return self._otp_plain_fallback(user, otp, expiry_minutes)
 
     def _otp_plain_fallback(self, user, otp, expiry_minutes):
-        """
-        Emergency plain-text OTP send when the template is missing.
-        Uses the same provider routing as everything else.
-        """
-        html  = (
+        """Plain-text OTP fallback when the template is missing."""
+        html = (
             f'<p>Hi <b>{user.username}</b>,</p>'
             f'<p>Your PAGE verification code is: <b style="font-size:24px">{otp}</b></p>'
             f'<p>Expires in {expiry_minutes} minutes.</p>'
@@ -230,8 +297,10 @@ class EmailService:
             f'-- PAGE Team'
         )
         provider = _provider()
-        if provider == 'resend':
-            return _send_via_resend('Your PAGE  verification code', html, plain, user.email)
+        if provider == 'sendgrid':
+            return _send_via_sendgrid('Your PAGE verification code', html, plain, user.email)
+        elif provider == 'resend':
+            return _send_via_resend('Your PAGE verification code', html, plain, user.email)
         elif provider == 'smtp':
             return _send_via_smtp('Your PAGE verification code', html, plain, user.email)
         else:
@@ -246,7 +315,7 @@ class EmailService:
                 'username':      user.username,
                 'old_tier':      old_tier,
                 'new_tier':      new_tier,
-                'dashboard_url': f'{https://page.onrender.com()}/pages/user.html',
+                'dashboard_url': f'{_site_url()}/pages/user.html',
             },
             recipient_email=user.email,
         )
@@ -259,7 +328,7 @@ class EmailService:
                 'user':          user,
                 'username':      user.username,
                 'alliance_name': alliance_name,
-                'dashboard_url': f'{https://page.onrender.com()}/pages/user.html',
+                'dashboard_url': f'{_site_url()}/pages/user.html',
             },
             recipient_email=user.email,
         )
@@ -272,7 +341,7 @@ class EmailService:
                 'user':          user,
                 'username':      user.username,
                 'alliance_name': alliance_name,
-                'dashboard_url': f'{https://page.onrender.com()}/pages/user.html',
+                'dashboard_url': f'{_site_url()}/pages/user.html',
             },
             recipient_email=user.email,
         )
