@@ -131,7 +131,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!currentUser) {
         // Redirect to auth page if not logged in
         console.log('No authenticated user, redirecting to auth page');
-        window.location.href = 'pages/auth.html';
+        window.location.href = '/pages/auth.html';
         return;
     }
     
@@ -862,7 +862,7 @@ function logout() {
         currentUser = null;
         
         // Redirect to auth page
-        window.location.href = 'pages/auth.html';
+        window.location.href = '/pages/auth.html';
     }
 }
 

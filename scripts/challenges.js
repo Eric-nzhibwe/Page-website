@@ -167,7 +167,7 @@ function logout() {
         localStorage.removeItem('authToken');
         localStorage.removeItem('pageUser');
         localStorage.removeItem('pageUser');
-        window.location.href = 'auth.html';
+        window.location.href = '/pages/auth.html';
     }
 }
 

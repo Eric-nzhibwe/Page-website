@@ -850,7 +850,7 @@ async function deactivateAccount() {
         showToast('Account deactivated. Logging out…', 'info');
         setTimeout(() => {
             localStorage.removeItem('djangoAuthToken');
-            window.location.href = '../pages/auth.html';
+            window.location.href = '/pages/auth.html';
         }, 2000);
     } catch (err) {
         showToast(err.message, 'error');
@@ -872,7 +872,7 @@ async function deleteAccount() {
         showToast('Account deleted. Goodbye.', 'info');
         setTimeout(() => {
             localStorage.clear();
-            window.location.href = '../pages/auth.html';
+            window.location.href = '/pages/auth.html';
         }, 2000);
     } catch (err) {
         showToast(err.message, 'error');

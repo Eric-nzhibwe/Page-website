@@ -31,7 +31,7 @@ function authHeaders() {
 function requireAuth(action = 'do that') {
     if (isLoggedIn()) return true;
     showNotification(`Please log in to ${action}.`);
-    setTimeout(() => { window.location.href = 'pages/auth.html'; }, 1200);
+    setTimeout(() => { window.location.href = '/pages/auth.html'; }, 1200);
     return false;
 }
 
@@ -276,7 +276,7 @@ async function publishChallenge(event) {
 
     } else if (category === 'qa') {
         endpoint = `${API}/qa/create/`;
-        body = { title, description, duration_days: durationDays };
+        body = { title, description, duration_days: durationDays, image_url: challengeImageData || '' };
     }
 
     const { ok, data } = await apiPost(endpoint, body);
@@ -322,7 +322,7 @@ function _injectNewCard(category, apiResponse, title, description, duration, bod
         card.innerHTML = buildPollCard(id, title, description, body.options, duration);
 
     } else if (category === 'qa') {
-        card.innerHTML = buildQACard(id, title, description, null, duration);
+        card.innerHTML = buildQACard(id, title, description, apiResponse.image_url || null, duration);
         setTimeout(() => openQAWS(id), 200);
     }
 
@@ -471,7 +471,8 @@ function buildQACard(id, title, description, imgSrc, duration) {
 
     const imgSection = imgSrc ? `
         <div class="qa-img-preview-wrap" id="qaImgWrap_${id}">
-            <button class="qa-img-toggle-btn" onclick="toggleQAImage('${id}')" aria-expanded="false">
+            <button class="qa-img-toggle-btn" onclick="toggleQAImage('${id}')" aria-expanded="false"
+                    aria-controls="qaImgPanel_${id}">
                 <i class="fas fa-image"></i> View Image
             </button>
             <div class="qa-img-panel" id="qaImgPanel_${id}" style="display:none;">
@@ -481,17 +482,24 @@ function buildQACard(id, title, description, imgSrc, duration) {
             </div>
         </div>` : '';
 
+    const descSection = description ? `<p class="qa-description">${description}</p>` : '';
+
     return `
         <div class="qa-creator-avatar-wrap">
             <div class="qa-creator-avatar">${initial}</div>
         </div>
         <p class="qa-question">${title}</p>
+        ${descSection}
         ${imgSection}
-        <div class="qa-live-pane" id="qaLive_${id}">
-        </div>
+        <div class="qa-live-pane" id="qaLive_${id}"></div>
         <div class="qa-input-row">
-            <input class="qa-type-input" placeholder="Type something..." id="qaInput_${id}"
-                onkeydown="if(event.key==='Enter') submitQAAnswer('${id}')">
+            <div class="qa-input-wrap">
+                <input class="qa-type-input" placeholder="Type your answer…" id="qaInput_${id}"
+                    maxlength="1000"
+                    onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();submitQAAnswer('${id}');}"
+                    oninput="document.getElementById('qaCounter_${id}').textContent=this.value.length+'/1000'">
+                <span class="qa-char-counter" id="qaCounter_${id}">0/1000</span>
+            </div>
             <button class="qa-send-btn" onclick="submitQAAnswer('${id}')">
                 <i class="fas fa-paper-plane"></i>
             </button>
@@ -504,6 +512,16 @@ function buildQACard(id, title, description, imgSrc, duration) {
                 <i class="fas fa-share-alt"></i>
             </button>
         </div>`;
+}
+
+function toggleQAImage(id) {
+    const panel = document.getElementById(`qaImgPanel_${id}`);
+    const btn   = panel?.previousElementSibling;
+    if (!panel) return;
+    const isOpen = panel.style.display !== 'none';
+    panel.style.display = isOpen ? 'none' : 'block';
+    if (btn) btn.setAttribute('aria-expanded', String(!isOpen));
+}
 }
 
 /* ── Interaction handlers — all DB-backed ── */

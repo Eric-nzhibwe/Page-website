@@ -2081,6 +2081,23 @@
     border-top: 1px solid #f0f2f5;
 }
 
+/* Wrap input + counter together */
+.qa-input-wrap {
+    flex: 1;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+
+.qa-char-counter {
+    font-size: 11px;
+    color: var(--theme-text-muted, #999);
+    text-align: right;
+    padding-right: 4px;
+    margin-top: 2px;
+    line-height: 1;
+}
+
 .qa-type-input {
     flex: 1;
     border: 1.5px solid #e4e6ea;
@@ -2095,6 +2112,15 @@
 
 .qa-type-input::placeholder { color: var(--theme-text-muted); }
 .qa-type-input:focus { border-color: var(--page-primary); background: #fff; }
+
+/* Description line below the question */
+.qa-description {
+    font-size: 13px;
+    color: var(--theme-text-muted, #666);
+    padding: 0 14px 8px;
+    margin: 0;
+    line-height: 1.5;
+}
 
 .qa-send-btn {
     width: 36px; height: 36px;

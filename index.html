@@ -461,1558 +461,1610 @@
 
                 <!-- Challenges Grid -->
                 <div class="challenges-grid" id="challengesGrid">
-        <!-- Dashboard View (Original Content) -->
-        <section id="dashboard" class="view">
-            <!-- Emotional Loop Cycle Display -->
-            <div class="emotional-loop">
-                <div class="loop-step" data-step="participate">
-                    <div class="loop-icon"><i class="fas fa-gamepad"></i></div>
-                    <div class="loop-label">Participate</div>
-                </div>
-                <div class="loop-arrow">→</div>
-                <div class="loop-step" data-step="earn">
-                    <div class="loop-icon"><i class="fas fa-star"></i></div>
-                    <div class="loop-label">Earn Points</div>
-                </div>
-                <div class="loop-arrow">→</div>
-                <div class="loop-step" data-step="climb">
-                    <div class="loop-icon"><i class="fas fa-chart-line"></i></div>
-                    <div class="loop-label">Climb Tier</div>
-                </div>
-                <div class="loop-arrow">→</div>
-                <div class="loop-step" data-step="unlock">
-                    <div class="loop-icon"><i class="fas fa-unlock"></i></div>
-                    <div class="loop-label">Unlock Access</div>
-                </div>
-                <div class="loop-arrow">→</div>
-                <div class="loop-step" data-step="money">
-                    <div class="loop-icon"><i class="fas fa-money-bill-wave"></i></div>
-                    <div class="loop-label">Earn Money</div>
-                </div>
-                <div class="loop-arrow">↻</div>
-            </div>
+                    <!-- Dashboard View (Original Content) -->
+                    <section id="dashboard" class="view">
+                        <!-- Emotional Loop Cycle Display -->
+                        <div class="emotional-loop">
+                            <div class="loop-step" data-step="participate">
+                                <div class="loop-icon"><i class="fas fa-gamepad"></i></div>
+                                <div class="loop-label">Participate</div>
+                            </div>
+                            <div class="loop-arrow">→</div>
+                            <div class="loop-step" data-step="earn">
+                                <div class="loop-icon"><i class="fas fa-star"></i></div>
+                                <div class="loop-label">Earn Points</div>
+                            </div>
+                            <div class="loop-arrow">→</div>
+                            <div class="loop-step" data-step="climb">
+                                <div class="loop-icon"><i class="fas fa-chart-line"></i></div>
+                                <div class="loop-label">Climb Tier</div>
+                            </div>
+                            <div class="loop-arrow">→</div>
+                            <div class="loop-step" data-step="unlock">
+                                <div class="loop-icon"><i class="fas fa-unlock"></i></div>
+                                <div class="loop-label">Unlock Access</div>
+                            </div>
+                            <div class="loop-arrow">→</div>
+                            <div class="loop-step" data-step="money">
+                                <div class="loop-icon"><i class="fas fa-money-bill-wave"></i></div>
+                                <div class="loop-label">Earn Money</div>
+                            </div>
+                            <div class="loop-arrow">↻</div>
+                        </div>
 
-            <!-- Public Competition Feed -->
-            <div class="public-feed">
-                <h2><i class="fas fa-fire"></i> Live Competition Feed</h2>
-                <div id="publicFeed" class="feed-container"></div>
-            </div>
+                        <!-- Public Competition Feed -->
+                        <div class="public-feed">
+                            <h2><i class="fas fa-fire"></i> Live Competition Feed</h2>
+                            <div id="publicFeed" class="feed-container"></div>
+                        </div>
 
-            <!-- Quick Action Center -->
-            <div class="action-center">
-                <div class="action-card pulse">
-                    <h3><i class="fas fa-bullseye"></i> Submit Answer</h3>
-                    <p>Answer challenges to earn prestige</p>
-                    <input type="text" id="answerInput" placeholder="Enter your answer..." class="answer-input">
-                    <button class="btn-primary" onclick="submitAnswer()">Submit & Compete</button>
+                        <!-- Quick Action Center -->
+                        <div class="action-center">
+                            <div class="action-card pulse">
+                                <h3><i class="fas fa-bullseye"></i> Submit Answer</h3>
+                                <p>Answer challenges to earn prestige</p>
+                                <input type="text" id="answerInput" placeholder="Enter your answer..."
+                                    class="answer-input">
+                                <button class="btn-primary" onclick="submitAnswer()">Submit & Compete</button>
+                            </div>
+
+                            <div class="action-card">
+                                <h3><i class="fas fa-users"></i> Form Alliance</h3>
+                                <p>Join forces with other players</p>
+                                <button class="btn-secondary" onclick="showAllianceModal()">Create/Join
+                                    Alliance</button>
+                            </div>
+
+                            <div class="action-card locked" id="exclusiveEventCard">
+                                <div class="lock-overlay">
+                                    <div class="lock-icon"><i class="fas fa-lock"></i></div>
+                                    <p id="exclusiveEventLockText">Unlock at Silver Tier</p>
+                                </div>
+                                <h3><i class="fas fa-bolt"></i> Exclusive Event</h3>
+                                <p>High-stakes competition</p>
+                                <button class="btn-primary" disabled>Locked</button>
+                            </div>
+
+                            <!-- Legendary Feature: Revenue Share -->
+                            <div class="action-card locked" id="legendaryRevenueCard">
+                                <div class="lock-overlay">
+                                    <div class="lock-icon"><i class="fas fa-lock"></i></div>
+                                    <p>Unlock at Legendary Tier</p>
+                                </div>
+                                <h3><i class="fas fa-hand-holding-usd"></i> Revenue Share</h3>
+                                <p>Earn from hosted events</p>
+                                <button class="btn-primary" disabled>Locked</button>
+                            </div>
+                        </div>
+
+                        <!-- Visible Rank Ladder -->
+                        <div class="rank-ladder">
+                            <h2><i class="fas fa-trophy"></i> Public Rank Ladder - Climb to the Top!</h2>
+                            <div class="ladder-container">
+                                <div class="your-position" id="yourPosition">
+                                    <span class="position-label">Your Position</span>
+                                    <span class="position-rank">#<span id="yourRank">5</span></span>
+                                    <span class="position-prestige"><span id="yourPrestigeDisplay">0</span> pts</span>
+                                </div>
+                                <div id="rankLadder" class="ladder-list"></div>
+                            </div>
+                        </div>
+
+                        <!-- Status & Progress Dashboard -->
+                        <div class="personal-dashboard">
+                            <h2><i class="fas fa-chart-bar"></i> Personal Dashboard</h2>
+                            <div class="dashboard-grid">
+                                <div class="dashboard-card">
+                                    <div class="card-icon"><i class="fas fa-star"></i></div>
+                                    <div class="card-content">
+                                        <h4>Total Prestige</h4>
+                                        <div class="card-value" id="dashPrestige">0</div>
+                                        <div class="card-change positive">+0 today</div>
+                                    </div>
+                                </div>
+                                <div class="dashboard-card">
+                                    <div class="card-icon"><i class="fas fa-fire"></i></div>
+                                    <div class="card-content">
+                                        <h4>Current Streak</h4>
+                                        <div class="card-value" id="dashStreak">0</div>
+                                        <div class="card-change">days in a row</div>
+                                    </div>
+                                </div>
+                                <div class="dashboard-card">
+                                    <div class="card-icon"><i class="fas fa-chart-line"></i></div>
+                                    <div class="card-content">
+                                        <h4>Rank Position</h4>
+                                        <div class="card-value">#<span id="dashRank">5</span></div>
+                                        <div class="card-change">of <span id="totalPlayers">100</span></div>
+                                    </div>
+                                </div>
+                                <div class="dashboard-card">
+                                    <div class="card-icon"><i class="fas fa-check-circle"></i></div>
+                                    <div class="card-content">
+                                        <h4>Submissions</h4>
+                                        <div class="card-value" id="dashSubmissions">0</div>
+                                        <div class="card-change"><span id="successRate">0</span>% success</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Submission History -->
+                        <div class="submission-history">
+                            <h2><i class="fas fa-history"></i> Submission History</h2>
+                            <div class="history-filters">
+                                <button class="filter-btn active" onclick="filterHistory('all')">All</button>
+                                <button class="filter-btn" onclick="filterHistory('success')">Success</button>
+                                <button class="filter-btn" onclick="filterHistory('failed')">Failed</button>
+                            </div>
+                            <div id="submissionHistoryList" class="history-list"></div>
+                        </div>
+
+                        <!-- Streak Statistics -->
+                        <div class="streak-stats-card">
+                            <h2><i class="fas fa-fire"></i> Streak Statistics</h2>
+                            <div class="streak-stats-grid">
+                                <div class="streak-stat-item">
+                                    <span class="streak-stat-value" id="currentStreakStat">0</span>
+                                    <span class="streak-stat-label">Current Streak</span>
+                                </div>
+                                <div class="streak-stat-item">
+                                    <span class="streak-stat-value" id="longestStreak">0</span>
+                                    <span class="streak-stat-label">Longest Streak</span>
+                                </div>
+                                <div class="streak-stat-item">
+                                    <span class="streak-stat-value" id="totalDaysActive">0</span>
+                                    <span class="streak-stat-label">Total Days Active</span>
+                                </div>
+                                <div class="streak-stat-item">
+                                    <span class="streak-stat-value" id="accountAge">0</span>
+                                    <span class="streak-stat-label">Account Age</span>
+                                </div>
+                            </div>
+
+                            <div class="streak-progress">
+                                <div class="streak-progress-bar">
+                                    <div class="streak-progress-fill" id="streakProgressFill" style="width: 0%"></div>
+                                </div>
+                                <div class="streak-progress-text">
+                                    <span>Next Milestone</span>
+                                    <span id="nextStreakMilestone">3 days</span>
+                                </div>
+                            </div>
+
+                            <div class="streak-milestones">
+                                <div class="streak-milestone-badge locked" data-milestone="3">
+                                    <i class="fas fa-lock"></i> 3 Days
+                                </div>
+                                <div class="streak-milestone-badge locked" data-milestone="7">
+                                    <i class="fas fa-lock"></i> 7 Days
+                                </div>
+                                <div class="streak-milestone-badge locked" data-milestone="14">
+                                    <i class="fas fa-lock"></i> 14 Days
+                                </div>
+                                <div class="streak-milestone-badge locked" data-milestone="30">
+                                    <i class="fas fa-lock"></i> 30 Days
+                                </div>
+                                <div class="streak-milestone-badge locked" data-milestone="60">
+                                    <i class="fas fa-lock"></i> 60 Days
+                                </div>
+                                <div class="streak-milestone-badge locked" data-milestone="90">
+                                    <i class="fas fa-lock"></i> 90 Days
+                                </div>
+                                <div class="streak-milestone-badge locked" data-milestone="180">
+                                    <i class="fas fa-lock"></i> 180 Days
+                                </div>
+                                <div class="streak-milestone-badge locked" data-milestone="365">
+                                    <i class="fas fa-lock"></i> 365 Days
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Stats Grid -->
+                        <div class="stats-grid">
+                            <div class="stat-card glow">
+                                <h3>Prestige Points</h3>
+                                <div class="stat-value" id="prestigeLevel">0</div>
+                                <div class="progress-bar">
+                                    <div class="progress-fill" id="prestigeProgress"></div>
+                                </div>
+                                <p class="next-milestone" id="nextMilestone">Next: 100 pts</p>
+                            </div>
+                            <div class="stat-card">
+                                <h3>Power Rank</h3>
+                                <div class="stat-value" id="powerRank">Novice</div>
+                                <div class="rank-benefits" id="rankBenefits">+3 opportunities</div>
+                            </div>
+                            <div class="stat-card">
+                                <h3>Access Tier</h3>
+                                <div class="stat-value" id="accessTier">Bronze</div>
+                                <div class="tier-unlock" id="tierUnlock">2 events unlocked</div>
+                            </div>
+                            <div class="stat-card money-card">
+                                <h3><i class="fas fa-dollar-sign"></i> Earnings</h3>
+                                <div class="stat-value" id="totalEarnings">$0</div>
+                                <button class="btn-cashout" onclick="cashOut()">Cash Out</button>
+                            </div>
+                        </div>
+
+                        <!-- Alliance & Family Section -->
+                        <div class="alliance-section" id="alliance">
+                            <div class="alliance-card">
+                                <h3>Your Alliance</h3>
+                                <div id="allianceDisplay">
+                                    <p class="no-alliance">No alliance yet. Form one to gain bonuses!</p>
+                                </div>
+                                <div class="alliance-power">
+                                    <span>Combined Power:</span>
+                                    <span class="power-value" id="alliancePower">0</span>
+                                </div>
+                            </div>
+                            <div class="alliance-benefits">
+                                <h4>Alliance Benefits</h4>
+                                <ul>
+                                    <li><i class="fas fa-check"></i> +20% Prestige Bonus</li>
+                                    <li><i class="fas fa-check"></i> Shared Tournament Entries</li>
+                                    <li><i class="fas fa-check"></i> Exclusive Alliance Events</li>
+                                    <li><i class="fas fa-check"></i> Combined Rank Climbing</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <!-- Upcoming Premium Events -->
+                        <div class="premium-events">
+                            <h2><i class="fas fa-bolt"></i> Premium Events - High Stakes Ahead!</h2>
+                            <div class="events-grid" id="premiumEvents"></div>
+                        </div>
+
+                        <div class="recent-activity">
+                            <h2>Recent Activity</h2>
+                            <div id="activityFeed"></div>
+                        </div>
+                    </section>
+
+                    <!-- Tournaments View -->
+                    <section id="tournaments" class="view">
+                        <h1>Monetized Tournaments</h1>
+                        <div class="tournaments-grid">
+                            <div class="tournament-card">
+                                <div class="tournament-badge">LIVE</div>
+                                <h3>Weekly Championship</h3>
+                                <p class="prize">Prize Pool: $500</p>
+                                <p class="entry">Entry: 100 Prestige</p>
+                                <button class="btn-primary" onclick="enterTournament('weekly')">Enter</button>
+                            </div>
+                            <div class="tournament-card">
+                                <div class="tournament-badge upcoming">UPCOMING</div>
+                                <h3>Elite Masters</h3>
+                                <p class="prize">Prize Pool: $2,000</p>
+                                <p class="entry">Entry: 500 Prestige (Elite Access Required)</p>
+                                <button class="btn-primary" disabled>Locked</button>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- People View — mobile access to Online Now / Discover / Suggested -->
+                    <section id="people" class="view">
+                        <div class="people-view-container">
+
+                            <!-- Search bar -->
+                            <div class="people-search-bar">
+                                <i class="fas fa-search"></i>
+                                <input type="text" id="peopleSearchInput" placeholder="Search players…"
+                                    oninput="searchUsers(this.value)">
+                            </div>
+
+                            <!-- Online Now -->
+                            <div class="people-section-card">
+                                <h3 class="people-section-title">
+                                    <span class="online-dot-indicator"></span> Online Now
+                                </h3>
+                                <div id="onlineUsersMobile" class="online-users-mobile-grid">
+                                    <p class="people-loading"><i class="fas fa-spinner fa-spin"></i> Loading…</p>
+                                </div>
+                            </div>
+
+                            <!-- Discover Users -->
+                            <div class="people-section-card">
+                                <h3 class="people-section-title">
+                                    <i class="fas fa-compass"></i> Discover Players
+                                </h3>
+                                <div id="discoverUsersListMobile" class="discover-users-list">
+                                    <p class="people-loading"><i class="fas fa-spinner fa-spin"></i> Loading…</p>
+                                </div>
+                            </div>
+
+                            <!-- Suggested For You -->
+                            <div class="people-section-card">
+                                <h3 class="people-section-title">
+                                    <i class="fas fa-user-plus"></i> Suggested For You
+                                </h3>
+                                <div id="suggestedUsersListMobile" class="suggestions-list">
+                                    <p class="people-loading"><i class="fas fa-spinner fa-spin"></i> Loading…</p>
+                                </div>
+                            </div>
+
+                        </div>
+                    </section>
+
                 </div>
 
-                <div class="action-card">
-                    <h3><i class="fas fa-users"></i> Form Alliance</h3>
-                    <p>Join forces with other players</p>
-                    <button class="btn-secondary" onclick="showAllianceModal()">Create/Join Alliance</button>
-                </div>
+                <!-- Create Post Modal -->
+                <div id="createPostModal" class="modal">
+                    <div class="modal-content create-post-modal">
+                        <div class="modal-header">
+                            <h2>Create Post</h2>
+                            <span class="close" onclick="closeCreatePostModal()">&times;</span>
+                        </div>
+                        <div class="modal-body">
+                            <div class="post-creator-header">
+                                <div class="post-avatar" data-current-user-avatar></div>
+                                <div class="post-creator-info">
+                                    <h4 id="postCreatorName">Player</h4>
+                                    <select class="post-privacy">
+                                        <option value="public">🌍 Publ ic</option>
+                                        <option value="friends">👥 Friends</option>
+                                        <option value="alliance">🛡️ Alliance Only</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <textarea id="postContent" class="post-textarea"
+                                placeholder="What's on your mind?"></textarea>
 
-                <div class="action-card locked" id="exclusiveEventCard">
-                    <div class="lock-overlay">
-                        <div class="lock-icon"><i class="fas fa-lock"></i></div>
-                        <p id="exclusiveEventLockText">Unlock at Silver Tier</p>
-                    </div>
-                    <h3><i class="fas fa-bolt"></i> Exclusive Event</h3>
-                    <p>High-stakes competition</p>
-                    <button class="btn-primary" disabled>Locked</button>
-                </div>
+                            <div class="post-media-preview" id="postMediaPreview" style="display: none;">
+                                <div class="media-preview-container">
+                                    <button class="remove-media-btn" onclick="removePostMedia()">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                    <div id="mediaPreviewContent"></div>
+                                </div>
+                            </div>
 
-                <!-- Legendary Feature: Revenue Share -->
-                <div class="action-card locked" id="legendaryRevenueCard">
-                    <div class="lock-overlay">
-                        <div class="lock-icon"><i class="fas fa-lock"></i></div>
-                        <p>Unlock at Legendary Tier</p>
-                    </div>
-                    <h3><i class="fas fa-hand-holding-usd"></i> Revenue Share</h3>
-                    <p>Earn from hosted events</p>
-                    <button class="btn-primary" disabled>Locked</button>
-                </div>
-            </div>
+                            <div class="post-options">
+                                <button class="post-option-btn" onclick="triggerMediaUpload('image')">
+                                    <i class="fas fa-image"></i>
+                                    <span>Photo</span>
+                                </button>
+                                <button class="post-option-btn" onclick="triggerMediaUpload('video')">
+                                    <i class="fas fa-video"></i>
+                                    <span>Video</span>
+                                </button>
+                                <button class="post-option-btn" onclick="addAchievement()">
+                                    <i class="fas fa-trophy"></i>
+                                    <span>Achievement</span>
+                                </button>
+                                <button class="post-option-btn" onclick="addLocation()">
+                                    <i class="fas fa-map-marker-alt"></i>
+                                    <span>Location</span>
+                                </button>
+                            </div>
 
-            <!-- Visible Rank Ladder -->
-            <div class="rank-ladder">
-                <h2><i class="fas fa-trophy"></i> Public Rank Ladder - Climb to the Top!</h2>
-                <div class="ladder-container">
-                    <div class="your-position" id="yourPosition">
-                        <span class="position-label">Your Position</span>
-                        <span class="position-rank">#<span id="yourRank">5</span></span>
-                        <span class="position-prestige"><span id="yourPrestigeDisplay">0</span> pts</span>
-                    </div>
-                    <div id="rankLadder" class="ladder-list"></div>
-                </div>
-            </div>
+                            <input type="file" id="mediaUploadInput" accept="image/*,video/*" style="display: none;"
+                                onchange="handleMediaUpload(event)">
 
-            <!-- Status & Progress Dashboard -->
-            <div class="personal-dashboard">
-                <h2><i class="fas fa-chart-bar"></i> Personal Dashboard</h2>
-                <div class="dashboard-grid">
-                    <div class="dashboard-card">
-                        <div class="card-icon"><i class="fas fa-star"></i></div>
-                        <div class="card-content">
-                            <h4>Total Prestige</h4>
-                            <div class="card-value" id="dashPrestige">0</div>
-                            <div class="card-change positive">+0 today</div>
+                            <button class="btn-primary btn-post" onclick="publishPost()">
+                                <i class="fas fa-paper-plane"></i> Post
+                            </button>
                         </div>
                     </div>
-                    <div class="dashboard-card">
-                        <div class="card-icon"><i class="fas fa-fire"></i></div>
-                        <div class="card-content">
-                            <h4>Current Streak</h4>
-                            <div class="card-value" id="dashStreak">0</div>
-                            <div class="card-change">days in a row</div>
+                </div>
+
+                <!-- Cashout Modal -->
+                <div id="cashoutModal" class="modal">
+                    <div class="modal-content">
+                        <span class="close" onclick="closeCashoutModal()">&times;</span>
+                        <h2><i class="fas fa-money-bill-wave"></i> Cash Out Earnings</h2>
+                        <div class="cashout-info">
+                            <p>Available Balance: <strong id="cashoutAmount">$0.00</strong></p>
+                        </div>
+                        <div class="cashout-form" id="cashoutForm">
+                            <div class="form-group">
+                                <label>Mobile Money Provider <span class="required">*</span></label>
+                                <select id="cashoutProvider" class="modal-input" required>
+                                    <option value="airtel">Airtel Money</option>
+                                    <option value="mtn">MTN Mobile Money</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Phone Number <span class="required">*</span></label>
+                                <input type="tel" id="cashoutPhone" placeholder="+260771493387" class="modal-input"
+                                    required>
+                                <small style="color: #666; font-size: 11px; display: block; margin-top: 3px;">Format:
+                                    +260XXXXXXXXX
+                                    or 0XXXXXXXXX</small>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Currency <span class="required">*</span></label>
+                                <select id="cashoutCurrency" class="modal-input" required>
+                                    <option value="USD">USD ($)</option>
+                                    <option value="ZMW">ZMW (K) - Zambian Kwacha</option>
+                                    <option value="UGX">UGX (Sh)</option>
+                                    <option value="ZAR">ZAR (R)</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Withdrawal Amount <span class="required">*</span></label>
+                                <div class="amount-input-wrapper">
+                                    <input type="number" id="cashoutWithdrawAmount" placeholder="0.00"
+                                        class="modal-input" step="0.01" required>
+                                    <button type="button" class="btn-max" onclick="setMaxAmount()">Max</button>
+                                </div>
+                            </div>
+
+                            <div class="cashout-info">
+                                <p><i class="fas fa-info-circle"></i> Funds arrive in 2-5 minutes.</p>
+                            </div>
+                            <div class="form-actions">
+                                <button class="btn-primary" onclick="submitCashout()">Confirm</button>
+                                <button class="btn-secondary" onclick="closeCashoutModal()">Cancel</button>
+                            </div>
                         </div>
                     </div>
-                    <div class="dashboard-card">
-                        <div class="card-icon"><i class="fas fa-chart-line"></i></div>
-                        <div class="card-content">
-                            <h4>Rank Position</h4>
-                            <div class="card-value">#<span id="dashRank">5</span></div>
-                            <div class="card-change">of <span id="totalPlayers">100</span></div>
+                </div>
+
+                <!-- Alliance Modal -->
+                <div id="allianceModal" class="modal">
+                    <div class="modal-content">
+                        <span class="close" onclick="closeAllianceModal()">&times;</span>
+                        <h2>Alliance System</h2>
+                        <div class="modal-tabs">
+                            <button class="tab-btn active" onclick="showAllianceTab('create')">Create Alliance</button>
+                            <button class="tab-btn" onclick="showAllianceTab('join')">Join Alliance</button>
+                        </div>
+                        <div id="createAllianceTab" class="tab-content active">
+                            <input type="text" id="allianceName" placeholder="Alliance Name" class="modal-input">
+                            <button class="btn-primary" onclick="createAlliance()">Create Alliance</button>
+                        </div>
+                        <div id="joinAllianceTab" class="tab-content">
+                            <div id="availableAlliances"></div>
                         </div>
                     </div>
-                    <div class="dashboard-card">
-                        <div class="card-icon"><i class="fas fa-check-circle"></i></div>
-                        <div class="card-content">
-                            <h4>Submissions</h4>
-                            <div class="card-value" id="dashSubmissions">0</div>
-                            <div class="card-change"><span id="successRate">0</span>% success</div>
+                </div>
+
+                <!-- Create Challenge Modal (Step 1: Category Picker) -->
+                <div id="createChallengeModal" class="modal">
+                    <div class="modal-content create-challenge-modal">
+                        <div class="modal-header">
+                            <h2><i class="fas fa-trophy"></i> Create Challenge</h2>
+                            <span class="close" onclick="closeCreateChallengeModal()">&times;</span>
+                        </div>
+                        <div class="modal-body" id="createChallengeStep1">
+                            <p class="category-picker-label">Select a challenge type to get started:</p>
+                            <div class="challenge-category-grid">
+                                <button class="challenge-category-card" onclick="selectChallengeCategory('polls')">
+                                    <span class="category-card-icon">📊</span>
+                                    <span class="category-card-name">Polls</span>
+                                    <span class="category-card-desc">Let the community vote on a question</span>
+                                </button>
+                                <button class="challenge-category-card" onclick="selectChallengeCategory('qa')">
+                                    <span class="category-card-icon">💬</span>
+                                    <span class="category-card-name">Q &amp; A</span>
+                                    <span class="category-card-desc">Ask questions, share answers &amp; pictures</span>
+                                </button>
+                                <button class="challenge-category-card" onclick="selectChallengeCategory('debates')">
+                                    <span class="category-card-icon">⚔️</span>
+                                    <span class="category-card-name">Debates</span>
+                                    <span class="category-card-desc">Pick a side and argue your position</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Step 2: Challenge Form (hidden until category is chosen) -->
+                        <div class="modal-body" id="createChallengeStep2" style="display: none;">
+                            <button class="back-btn" onclick="backToCategoryPicker()">
+                                <i class="fas fa-arrow-left"></i> Back
+                            </button>
+                            <form id="createChallengeForm" onsubmit="publishChallenge(event)">
+                                <input type="hidden" id="challengeCategory">
+
+                                <div class="form-group">
+                                    <label>Challenge Title <span class="required">*</span></label>
+                                    <input type="text" id="challengeTitle" class="modal-input"
+                                        placeholder="e.g., Best programming language?" required>
+                                </div>
+
+                                <div class="form-group">
+                                    <label>Difficulty <span class="required">*</span></label>
+                                    <select id="challengeDifficulty" class="modal-input" required>
+                                        <option value="">Select difficulty</option>
+                                        <option value="easy">Easy</option>
+                                        <option value="medium">Medium</option>
+                                        <option value="hard">Hard</option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group" id="challengePrizeGroup">
+                                    <label>Prize Money (ZMW) <span class="optional"
+                                            style="font-size:11px;color:#999;font-weight:400;">(optional)</span></label>
+                                    <input type="number" id="challengePrize" class="modal-input" placeholder="e.g., 500"
+                                        step="0.01" min="0" value="0">
+                                    <small>Leave at 0 for prestige-only reward.</small>
+                                </div>
+
+                                <div class="form-group">
+                                    <label>Duration <span class="required">*</span></label>
+                                    <div style="display:flex;gap:8px;align-items:center;">
+                                        <input type="number" id="challengeDuration" class="modal-input"
+                                            placeholder="e.g. 30" min="1" max="9999" required style="flex:1;">
+                                        <select id="challengeDurationUnit" class="modal-input"
+                                            style="width:110px;flex-shrink:0;">
+                                            <option value="minutes">Minutes</option>
+                                            <option value="hours">Hours</option>
+                                            <option value="days" selected>Days</option>
+                                        </select>
+                                    </div>
+                                    <small>Set how long participants have — from 5 minutes to multiple days.</small>
+                                </div>
+
+                                <div class="form-group">
+                                    <label>Description <span class="required">*</span></label>
+                                    <textarea id="challengeDescription" class="modal-textarea"
+                                        placeholder="Describe the challenge..." rows="4" required></textarea>
+                                </div>
+
+                                <!-- Q&A: optional image upload -->
+                                <div class="form-group" id="challengeImageGroup" style="display: none;">
+                                    <label>Attach Image <span class="optional">(optional)</span></label>
+                                    <div class="image-upload-area"
+                                        onclick="document.getElementById('challengeImage').click()">
+                                        <i class="fas fa-cloud-upload-alt"></i>
+                                        <p>Upload an image for your Q&amp;A</p>
+                                        <small>JPG, PNG, or GIF (Max 5MB)</small>
+                                    </div>
+                                    <input type="file" id="challengeImage" accept="image/*" style="display: none;"
+                                        onchange="handleChallengeImage(event)">
+                                    <div id="challengeImagePreview" class="image-preview-single"></div>
+                                </div>
+
+                                <!-- Polls: options input -->
+                                <div class="form-group" id="pollOptionsGroup" style="display: none;">
+                                    <label>Poll Options <span class="required">*</span></label>
+                                    <input type="text" id="pollOption1" class="modal-input mb-2" placeholder="Option 1">
+                                    <input type="text" id="pollOption2" class="modal-input mb-2" placeholder="Option 2">
+                                    <input type="text" id="pollOption3" class="modal-input mb-2"
+                                        placeholder="Option 3 (optional)">
+                                    <input type="text" id="pollOption4" class="modal-input"
+                                        placeholder="Option 4 (optional)">
+                                </div>
+
+                                <!-- Debates: two sides -->
+                                <div class="form-group" id="debateSidesGroup" style="display: none;">
+                                    <label>Debate Sides <span class="required">*</span></label>
+                                    <input type="text" id="debateSideA" class="modal-input mb-2"
+                                        placeholder="Side A (e.g., For)">
+                                    <input type="text" id="debateSideB" class="modal-input"
+                                        placeholder="Side B (e.g., Against)">
+                                </div>
+
+                                <div class="form-group">
+                                    <label>
+                                        <input type="checkbox" id="challengeVerification" checked>
+                                        Require manual verification
+                                    </label>
+                                </div>
+
+                                <button type="submit" class="btn-primary btn-publish">
+                                    <i class="fas fa-check"></i> Create Challenge
+                                </button>
+                            </form>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Submission History -->
-            <div class="submission-history">
-                <h2><i class="fas fa-history"></i> Submission History</h2>
-                <div class="history-filters">
-                    <button class="filter-btn active" onclick="filterHistory('all')">All</button>
-                    <button class="filter-btn" onclick="filterHistory('success')">Success</button>
-                    <button class="filter-btn" onclick="filterHistory('failed')">Failed</button>
-                </div>
-                <div id="submissionHistoryList" class="history-list"></div>
-            </div>
+                <!-- Attempt Challenge Modal -->
+                <div id="attemptChallengeModal" class="modal">
+                    <div class="modal-content attempt-challenge-modal">
+                        <div class="modal-header">
+                            <h2><i class="fas fa-play"></i> Attempt Challenge</h2>
+                            <span class="close" onclick="closeAttemptChallengeModal()">&times;</span>
+                        </div>
+                        <div class="modal-body">
+                            <div class="challenge-info-display">
+                                <h3 id="attemptChallengeTitle">Challenge Title</h3>
+                                <p id="attemptChallengeDescription">Challenge description...</p>
+                                <div class="challenge-prize-display">
+                                    <i class="fas fa-trophy"></i>
+                                    <span>Prize: <strong id="attemptChallengePrize">K0.00</strong></span>
+                                </div>
+                            </div>
 
-            <!-- Streak Statistics -->
-            <div class="streak-stats-card">
-                <h2><i class="fas fa-fire"></i> Streak Statistics</h2>
-                <div class="streak-stats-grid">
-                    <div class="streak-stat-item">
-                        <span class="streak-stat-value" id="currentStreakStat">0</span>
-                        <span class="streak-stat-label">Current Streak</span>
-                    </div>
-                    <div class="streak-stat-item">
-                        <span class="streak-stat-value" id="longestStreak">0</span>
-                        <span class="streak-stat-label">Longest Streak</span>
-                    </div>
-                    <div class="streak-stat-item">
-                        <span class="streak-stat-value" id="totalDaysActive">0</span>
-                        <span class="streak-stat-label">Total Days Active</span>
-                    </div>
-                    <div class="streak-stat-item">
-                        <span class="streak-stat-value" id="accountAge">0</span>
-                        <span class="streak-stat-label">Account Age</span>
-                    </div>
-                </div>
+                            <form id="attemptChallengeForm" onsubmit="submitChallengeAttempt(event)">
+                                <div class="form-group">
+                                    <label>Your Submission <span class="required">*</span></label>
+                                    <textarea id="submissionText" class="modal-textarea"
+                                        placeholder="Describe your solution or provide links..." rows="4"
+                                        required></textarea>
+                                </div>
 
-                <div class="streak-progress">
-                    <div class="streak-progress-bar">
-                        <div class="streak-progress-fill" id="streakProgressFill" style="width: 0%"></div>
-                    </div>
-                    <div class="streak-progress-text">
-                        <span>Next Milestone</span>
-                        <span id="nextStreakMilestone">3 days</span>
-                    </div>
-                </div>
+                                <div class="form-group">
+                                    <label>Upload Proof (Optional)</label>
+                                    <div class="file-upload-area"
+                                        onclick="document.getElementById('submissionFiles').click()">
+                                        <i class="fas fa-cloud-upload-alt"></i>
+                                        <p>Upload screenshots, videos, or files</p>
+                                        <small>Max 50MB</small>
+                                    </div>
+                                    <input type="file" id="submissionFiles" accept="image/*,video/*,.pdf,.zip" multiple
+                                        style="display: none;" onchange="handleSubmissionFiles(event)">
+                                    <div id="submissionFilesPreview" class="files-preview"></div>
+                                </div>
 
-                <div class="streak-milestones">
-                    <div class="streak-milestone-badge locked" data-milestone="3">
-                        <i class="fas fa-lock"></i> 3 Days
-                    </div>
-                    <div class="streak-milestone-badge locked" data-milestone="7">
-                        <i class="fas fa-lock"></i> 7 Days
-                    </div>
-                    <div class="streak-milestone-badge locked" data-milestone="14">
-                        <i class="fas fa-lock"></i> 14 Days
-                    </div>
-                    <div class="streak-milestone-badge locked" data-milestone="30">
-                        <i class="fas fa-lock"></i> 30 Days
-                    </div>
-                    <div class="streak-milestone-badge locked" data-milestone="60">
-                        <i class="fas fa-lock"></i> 60 Days
-                    </div>
-                    <div class="streak-milestone-badge locked" data-milestone="90">
-                        <i class="fas fa-lock"></i> 90 Days
-                    </div>
-                    <div class="streak-milestone-badge locked" data-milestone="180">
-                        <i class="fas fa-lock"></i> 180 Days
-                    </div>
-                    <div class="streak-milestone-badge locked" data-milestone="365">
-                        <i class="fas fa-lock"></i> 365 Days
-                    </div>
-                </div>
-            </div>
+                                <div class="form-group">
+                                    <label>Additional Links</label>
+                                    <input type="url" id="submissionLink" class="modal-input"
+                                        placeholder="https://github.com/yourrepo or demo link">
+                                </div>
 
-            <!-- Stats Grid -->
-            <div class="stats-grid">
-                <div class="stat-card glow">
-                    <h3>Prestige Points</h3>
-                    <div class="stat-value" id="prestigeLevel">0</div>
-                    <div class="progress-bar">
-                        <div class="progress-fill" id="prestigeProgress"></div>
-                    </div>
-                    <p class="next-milestone" id="nextMilestone">Next: 100 pts</p>
-                </div>
-                <div class="stat-card">
-                    <h3>Power Rank</h3>
-                    <div class="stat-value" id="powerRank">Novice</div>
-                    <div class="rank-benefits" id="rankBenefits">+3 opportunities</div>
-                </div>
-                <div class="stat-card">
-                    <h3>Access Tier</h3>
-                    <div class="stat-value" id="accessTier">Bronze</div>
-                    <div class="tier-unlock" id="tierUnlock">2 events unlocked</div>
-                </div>
-                <div class="stat-card money-card">
-                    <h3><i class="fas fa-dollar-sign"></i> Earnings</h3>
-                    <div class="stat-value" id="totalEarnings">$0</div>
-                    <button class="btn-cashout" onclick="cashOut()">Cash Out</button>
-                </div>
-            </div>
-
-            <!-- Alliance & Family Section -->
-            <div class="alliance-section" id="alliance">
-                <div class="alliance-card">
-                    <h3>Your Alliance</h3>
-                    <div id="allianceDisplay">
-                        <p class="no-alliance">No alliance yet. Form one to gain bonuses!</p>
-                    </div>
-                    <div class="alliance-power">
-                        <span>Combined Power:</span>
-                        <span class="power-value" id="alliancePower">0</span>
-                    </div>
-                </div>
-                <div class="alliance-benefits">
-                    <h4>Alliance Benefits</h4>
-                    <ul>
-                        <li><i class="fas fa-check"></i> +20% Prestige Bonus</li>
-                        <li><i class="fas fa-check"></i> Shared Tournament Entries</li>
-                        <li><i class="fas fa-check"></i> Exclusive Alliance Events</li>
-                        <li><i class="fas fa-check"></i> Combined Rank Climbing</li>
-                    </ul>
-                </div>
-            </div>
-
-            <!-- Upcoming Premium Events -->
-            <div class="premium-events">
-                <h2><i class="fas fa-bolt"></i> Premium Events - High Stakes Ahead!</h2>
-                <div class="events-grid" id="premiumEvents"></div>
-            </div>
-
-            <div class="recent-activity">
-                <h2>Recent Activity</h2>
-                <div id="activityFeed"></div>
-            </div>
-        </section>
-
-        <!-- Tournaments View -->
-        <section id="tournaments" class="view">
-            <h1>Monetized Tournaments</h1>
-            <div class="tournaments-grid">
-                <div class="tournament-card">
-                    <div class="tournament-badge">LIVE</div>
-                    <h3>Weekly Championship</h3>
-                    <p class="prize">Prize Pool: $500</p>
-                    <p class="entry">Entry: 100 Prestige</p>
-                    <button class="btn-primary" onclick="enterTournament('weekly')">Enter</button>
-                </div>
-                <div class="tournament-card">
-                    <div class="tournament-badge upcoming">UPCOMING</div>
-                    <h3>Elite Masters</h3>
-                    <p class="prize">Prize Pool: $2,000</p>
-                    <p class="entry">Entry: 500 Prestige (Elite Access Required)</p>
-                    <button class="btn-primary" disabled>Locked</button>
-                </div>
-            </div>
-        </section>
-
-        <!-- People View — mobile access to Online Now / Discover / Suggested -->
-        <section id="people" class="view">
-            <div class="people-view-container">
-
-                <!-- Search bar -->
-                <div class="people-search-bar">
-                    <i class="fas fa-search"></i>
-                    <input type="text" id="peopleSearchInput" placeholder="Search players…"
-                        oninput="searchUsers(this.value)">
-                </div>
-
-                <!-- Online Now -->
-                <div class="people-section-card">
-                    <h3 class="people-section-title">
-                        <span class="online-dot-indicator"></span> Online Now
-                    </h3>
-                    <div id="onlineUsersMobile" class="online-users-mobile-grid">
-                        <p class="people-loading"><i class="fas fa-spinner fa-spin"></i> Loading…</p>
+                                <button type="submit" class="btn-primary btn-submit">
+                                    <i class="fas fa-paper-plane"></i> Submit Attempt
+                                </button>
+                            </form>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Discover Users -->
-                <div class="people-section-card">
-                    <h3 class="people-section-title">
-                        <i class="fas fa-compass"></i> Discover Players
-                    </h3>
-                    <div id="discoverUsersListMobile" class="discover-users-list">
-                        <p class="people-loading"><i class="fas fa-spinner fa-spin"></i> Loading…</p>
+                <!-- Image Interpretation: Details Modal -->
+                <div id="imgInterpDetailsModal" class="modal">
+                    <div class="modal-content img-interp-details-modal">
+                        <div class="modal-header">
+                            <h2><i class="fas fa-eye"></i> Challenge Details</h2>
+                            <span class="close" onclick="closeImgInterpDetails()">&times;</span>
+                        </div>
+                        <div class="modal-body">
+                            <div class="img-interp-details-body">
+                                <div class="img-interp-blur-preview">
+                                    <img id="imgInterpPreviewThumb" src="" alt="Blurred challenge image">
+                                    <div class="blur-overlay-label"><i class="fas fa-lock"></i> Pay to reveal</div>
+                                </div>
+                                <h3 id="imgInterpDetailsTitle" class="img-interp-details-title"></h3>
+                                <p id="imgInterpDetailsDesc" class="img-interp-details-desc"></p>
+
+                                <div class="img-interp-rules-box">
+                                    <h4><i class="fas fa-list-ul"></i> How it works</h4>
+                                    <ul>
+                                        <li><i class="fas fa-image"></i> A blurred image will be revealed for <strong>30
+                                                seconds</strong> after you pay the entry fee.</li>
+                                        <li><i class="fas fa-search"></i> Study the image closely and pick out the
+                                            numbers or points
+                                            you see.</li>
+                                        <li><i class="fas fa-pen"></i> Enter those numbers as your answer before time
+                                            runs out.</li>
+                                        <li><i class="fas fa-trophy"></i> Correct answers win the prize money — wrong
+                                            answers lose
+                                            the entry fee.</li>
+                                    </ul>
+                                </div>
+
+                                <div class="img-interp-meta-row">
+                                    <div class="img-interp-meta-item">
+                                        <i class="fas fa-stopwatch"></i>
+                                        <span>30 second reveal</span>
+                                    </div>
+                                    <div class="img-interp-meta-item" id="imgInterpDetailsDiff">
+                                        <i class="fas fa-signal"></i>
+                                        <span>—</span>
+                                    </div>
+                                    <div class="img-interp-meta-item">
+                                        <i class="fas fa-users"></i>
+                                        <span id="imgInterpDetailsParticipants">0 players</span>
+                                    </div>
+                                </div>
+
+                                <div class="img-interp-entry-fee-box">
+                                    <div class="entry-fee-label">Entry Fee</div>
+                                    <div class="entry-fee-amount" id="imgInterpDetailsEntry">K0.00</div>
+                                    <div class="entry-fee-prize">Prize Pool: <strong
+                                            id="imgInterpDetailsPrize">K0.00</strong></div>
+                                </div>
+
+                                <button class="btn-play-now" id="imgInterpPlayBtn" onclick="startImgInterpGame()">
+                                    <i class="fas fa-play"></i> Pay & Play
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Suggested For You -->
-                <div class="people-section-card">
-                    <h3 class="people-section-title">
-                        <i class="fas fa-user-plus"></i> Suggested For You
-                    </h3>
-                    <div id="suggestedUsersListMobile" class="suggestions-list">
-                        <p class="people-loading"><i class="fas fa-spinner fa-spin"></i> Loading…</p>
+                <!-- Image Interpretation: Game Modal -->
+                <div id="imgInterpGameModal" class="modal">
+                    <div class="modal-content img-interp-game-modal">
+                        <!-- Countdown bar -->
+                        <div class="img-interp-timer-bar">
+                            <div class="img-interp-timer-fill" id="imgInterpTimerFill"></div>
+                        </div>
+                        <div class="img-interp-game-header">
+                            <h3 id="imgInterpGameTitle" class="img-interp-game-title"></h3>
+                            <div class="img-interp-countdown" id="imgInterpCountdown">
+                                <i class="fas fa-stopwatch"></i>
+                                <span id="imgInterpSecondsLeft">30</span>s
+                            </div>
+                        </div>
+
+                        <div class="img-interp-image-wrap">
+                            <img id="imgInterpGameImage" src="" alt="Interpret this image" class="img-interp-game-img">
+                            <div class="img-interp-go-overlay" id="imgInterpGoOverlay">
+                                <div class="go-pulse"><i class="fas fa-eye"></i></div>
+                                <p>Get ready…</p>
+                            </div>
+                        </div>
+
+                        <div class="img-interp-answer-section" id="imgInterpAnswerSection">
+                            <p class="img-interp-answer-hint">
+                                <i class="fas fa-lightbulb"></i> Enter the numbers / points you spotted in the image,
+                                separated by
+                                commas.
+                            </p>
+                            <div class="img-interp-input-row">
+                                <input type="text" id="imgInterpAnswer" class="img-interp-answer-input"
+                                    placeholder="e.g.  7, 13, 42" inputmode="text" autocomplete="off">
+                                <button class="btn-submit-interp" id="imgInterpSubmitBtn"
+                                    onclick="submitImgInterpAnswer()">
+                                    <i class="fas fa-paper-plane"></i> Submit
+                                </button>
+                            </div>
+                            <p class="img-interp-time-warning" id="imgInterpTimeWarning" style="display:none;">
+                                <i class="fas fa-exclamation-triangle"></i> Time is almost up!
+                            </p>
+                        </div>
                     </div>
                 </div>
 
-            </div>
-        </section>
+                <!-- Create Product Modal -->
+                <div id="createProductModal" class="modal">
+                    <div class="modal-content create-product-modal">
+                        <div class="modal-header">
+                            <h2><i class="fas fa-store"></i> Sell a Product</h2>
+                            <span class="close" onclick="closeCreateProductModal()">&times;</span>
+                        </div>
+                        <div class="modal-body">
+                            <form id="createProductForm" onsubmit="publishProduct(event)">
+                                <div class="form-group">
+                                    <label>Product Title <span class="required">*</span></label>
+                                    <input type="text" id="productTitle" class="modal-input"
+                                        placeholder="e.g., Gaming Laptop RTX 3060" required>
+                                </div>
 
-    </div>
+                                <div class="form-group">
+                                    <label>Category <span class="required">*</span></label>
+                                    <select id="productCategory" class="modal-input" required>
+                                        <option value="">Select category</option>
+                                        <option value="electronics">Electronics</option>
+                                        <option value="fashion">Fashion</option>
+                                        <option value="gaming">Gaming</option>
+                                        <option value="sports">Sports</option>
+                                        <option value="other">Other</option>
+                                    </select>
+                                </div>
 
-    <!-- Create Post Modal -->
-    <div id="createPostModal" class="modal">
-        <div class="modal-content create-post-modal">
-            <div class="modal-header">
-                <h2>Create Post</h2>
-                <span class="close" onclick="closeCreatePostModal()">&times;</span>
-            </div>
-            <div class="modal-body">
-                <div class="post-creator-header">
-                    <div class="post-avatar" data-current-user-avatar></div>
-                    <div class="post-creator-info">
-                        <h4 id="postCreatorName">Player</h4>
-                        <select class="post-privacy">
-                            <option value="public">🌍 Publ ic</option>
-                            <option value="friends">👥 Friends</option>
-                            <option value="alliance">🛡️ Alliance Only</option>
-                        </select>
+                                <div class="form-group">
+                                    <label>Price (ZMW) <span class="required">*</span></label>
+                                    <input type="number" id="productPrice" class="modal-input" placeholder="e.g., 1500"
+                                        step="0.01" required>
+                                </div>
+
+                                <div class="form-group">
+                                    <label>Description <span class="required">*</span></label>
+                                    <textarea id="productDescription" class="modal-textarea"
+                                        placeholder="Describe your product..." rows="4" required></textarea>
+                                </div>
+
+                                <div class="form-group">
+                                    <label>Product Images</label>
+                                    <div class="image-upload-area"
+                                        onclick="document.getElementById('productImages').click()">
+                                        <i class="fas fa-cloud-upload-alt"></i>
+                                        <p>Click to upload images</p>
+                                        <small>Up to 5 images</small>
+                                    </div>
+                                    <input type="file" id="productImages" accept="image/*" multiple
+                                        style="display: none;" onchange="handleProductImages(event)">
+                                    <div id="productImagePreview" class="image-preview-grid"></div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label>Contact Method <span class="required">*</span></label>
+                                    <select id="contactMethod" class="modal-input" required>
+                                        <option value="phone">Phone Number</option>
+                                        <option value="whatsapp">WhatsApp</option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group" id="phoneNumberGroup" style="display: none;">
+                                    <label>Phone Number</label>
+                                    <input type="tel" id="contactPhone" class="modal-input"
+                                        placeholder="+260 XXX XXX XXX">
+                                </div>
+
+                                <button type="submit" class="btn-primary btn-publish">
+                                    <i class="fas fa-check"></i> Publish Product
+                                </button>
+                            </form>
+                        </div>
                     </div>
                 </div>
-                <textarea id="postContent" class="post-textarea" placeholder="What's on your mind?"></textarea>
 
-                <div class="post-media-preview" id="postMediaPreview" style="display: none;">
-                    <div class="media-preview-container">
-                        <button class="remove-media-btn" onclick="removePostMedia()">
-                            <i class="fas fa-times"></i>
-                        </button>
-                        <div id="mediaPreviewContent"></div>
+                <!-- Settings Modal -->
+                <div id="settingsModal" class="modal" role="dialog" aria-modal="true"
+                    aria-labelledby="settingsModalTitle">
+                    <div class="modal-content settings-modal">
+                        <div class="settings-modal-header">
+                            <div class="header-glow-line"></div>
+                            <div class="settings-header-inner">
+                                <div class="settings-header-left">
+                                    <div class="settings-header-icon"><i class="fas fa-sliders-h"></i></div>
+                                    <div class="settings-header-text">
+                                        <h2 id="settingsModalTitle">Settings</h2>
+                                        <p class="settings-header-sub">Manage your account &amp; preferences</p>
+                                    </div>
+                                </div>
+                                <button class="settings-close-btn" onclick="closeSettings()"
+                                    aria-label="Close settings">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="settings-layout">
+                            <!-- Sidebar Nav -->
+                            <nav class="settings-nav" aria-label="Settings sections">
+                                <div class="settings-nav-divider">Profile</div>
+                                <button class="settings-nav-btn active" onclick="showSettingsTab('account')"
+                                    data-tab="account">
+                                    <span class="nav-icon"><i class="fas fa-user"></i></span>
+                                    <span class="nav-label">Account</span>
+                                    <span class="nav-arrow"><i class="fas fa-chevron-right"></i></span>
+                                </button>
+                                <button class="settings-nav-btn" onclick="showSettingsTab('profile')"
+                                    data-tab="profile">
+                                    <span class="nav-icon"><i class="fas fa-id-card"></i></span>
+                                    <span class="nav-label">Profile</span>
+                                    <span class="nav-arrow"><i class="fas fa-chevron-right"></i></span>
+                                </button>
+                                <button class="settings-nav-btn" onclick="showSettingsTab('linked')" data-tab="linked">
+                                    <span class="nav-icon"><i class="fas fa-link"></i></span>
+                                    <span class="nav-label">Linked Accounts</span>
+                                    <span class="nav-arrow"><i class="fas fa-chevron-right"></i></span>
+                                </button>
+                                <div class="settings-nav-divider">Preferences</div>
+                                <button class="settings-nav-btn" onclick="showSettingsTab('privacy')"
+                                    data-tab="privacy">
+                                    <span class="nav-icon"><i class="fas fa-shield-alt"></i></span>
+                                    <span class="nav-label">Privacy</span>
+                                    <span class="nav-arrow"><i class="fas fa-chevron-right"></i></span>
+                                </button>
+                                <button class="settings-nav-btn" onclick="showSettingsTab('notifications')"
+                                    data-tab="notifications">
+                                    <span class="nav-icon"><i class="fas fa-bell"></i></span>
+                                    <span class="nav-label">Notifications</span>
+                                    <span class="nav-arrow"><i class="fas fa-chevron-right"></i></span>
+                                </button>
+                                <button class="settings-nav-btn" onclick="showSettingsTab('appearance')"
+                                    data-tab="appearance">
+                                    <span class="nav-icon"><i class="fas fa-palette"></i></span>
+                                    <span class="nav-label">Appearance</span>
+                                    <span class="nav-arrow"><i class="fas fa-chevron-right"></i></span>
+                                </button>
+                                <div class="settings-nav-divider">Access</div>
+                                <button class="settings-nav-btn" onclick="showSettingsTab('security')"
+                                    data-tab="security">
+                                    <span class="nav-icon"><i class="fas fa-lock"></i></span>
+                                    <span class="nav-label">Security</span>
+                                    <span class="nav-arrow"><i class="fas fa-chevron-right"></i></span>
+                                </button>
+                            </nav>
+
+                            <!-- Content Panels -->
+                            <div class="settings-content">
+
+                                <!-- ── Account Tab ── -->
+                                <div id="accountTab" class="settings-tab active">
+                                    <div class="tab-heading">
+                                        <i class="fas fa-user"></i>
+                                        <div>
+                                            <h3>Account Information</h3>
+                                            <p>Update your login details and personal info</p>
+                                        </div>
+                                    </div>
+
+                                    <div class="settings-card">
+                                        <div class="settings-card-title">Basic Details</div>
+                                        <div class="form-row-2">
+                                            <div class="form-group">
+                                                <label for="settingsUsername">Username</label>
+                                                <div class="input-icon-wrap">
+                                                    <i class="fas fa-at"></i>
+                                                    <input type="text" id="settingsUsername" class="modal-input"
+                                                        placeholder="Your username">
+                                                </div>
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="settingsEmail">Email Address</label>
+                                                <div class="input-icon-wrap">
+                                                    <i class="fas fa-envelope"></i>
+                                                    <input type="email" id="settingsEmail" class="modal-input"
+                                                        placeholder="you@email.com">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="form-row-2">
+                                            <div class="form-group">
+                                                <label for="settingsPhone">Phone Number</label>
+                                                <div class="input-icon-wrap">
+                                                    <i class="fas fa-phone"></i>
+                                                    <input type="tel" id="settingsPhone" class="modal-input"
+                                                        placeholder="+260 XXX XXX XXX">
+                                                </div>
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="settingsDOB">Date of Birth</label>
+                                                <div class="input-icon-wrap">
+                                                    <i class="fas fa-calendar"></i>
+                                                    <input type="date" id="settingsDOB" class="modal-input">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <button class="btn-settings-save" onclick="saveAccountSettings()">
+                                            <i class="fas fa-save"></i> Save Changes
+                                        </button>
+                                    </div>
+
+                                    <div class="settings-card danger-card">
+                                        <div class="settings-card-title danger-title">
+                                            <i class="fas fa-exclamation-triangle"></i> Danger Zone
+                                        </div>
+                                        <p class="danger-desc">These actions are irreversible. Please be certain before
+                                            proceeding.
+                                        </p>
+                                        <div class="danger-actions">
+                                            <button class="btn-danger-outline" onclick="deactivateAccount()">
+                                                <i class="fas fa-user-slash"></i> Deactivate Account
+                                            </button>
+                                            <button class="btn-danger-solid" onclick="deleteAccount()">
+                                                <i class="fas fa-trash-alt"></i> Delete Account
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- ── Profile Tab ── -->
+                                <div id="profileTab" class="settings-tab">
+                                    <div class="tab-heading">
+                                        <i class="fas fa-id-card"></i>
+                                        <div>
+                                            <h3>Profile Settings</h3>
+                                            <p>Customize how others see you on PAGE</p>
+                                        </div>
+                                    </div>
+
+                                    <div class="settings-card">
+                                        <div class="avatar-upload-section">
+                                            <div class="avatar-ring">
+                                                <div class="avatar-preview" id="settingsAvatarPreview">
+                                                    <i class="fas fa-user-circle"></i>
+                                                </div>
+                                                <button class="avatar-edit-btn" onclick="changeAvatar()"
+                                                    aria-label="Change avatar">
+                                                    <i class="fas fa-camera"></i>
+                                                </button>
+                                            </div>
+                                            <div class="avatar-info">
+                                                <h4 id="settingsAvatarName">Player</h4>
+                                                <p>JPG, PNG or GIF · Max 5 MB</p>
+                                                <button class="btn-settings-secondary" onclick="changeAvatar()">
+                                                    <i class="fas fa-upload"></i> Upload Photo
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="settings-card">
+                                        <div class="settings-card-title">Public Info</div>
+                                        <div class="form-group">
+                                            <label for="settingsDisplayName">Display Name</label>
+                                            <div class="input-icon-wrap">
+                                                <i class="fas fa-signature"></i>
+                                                <input type="text" id="settingsDisplayName" class="modal-input"
+                                                    placeholder="How others see you">
+                                            </div>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="settingsBio">Bio</label>
+                                            <textarea id="settingsBio" class="modal-textarea"
+                                                placeholder="Tell others about yourself..." rows="3"></textarea>
+                                        </div>
+                                        <div class="form-row-2">
+                                            <div class="form-group">
+                                                <label for="settingsLocation">Location</label>
+                                                <div class="input-icon-wrap">
+                                                    <i class="fas fa-map-marker-alt"></i>
+                                                    <input type="text" id="settingsLocation" class="modal-input"
+                                                        placeholder="City, Country">
+                                                </div>
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="settingsWebsite">Website</label>
+                                                <div class="input-icon-wrap">
+                                                    <i class="fas fa-globe"></i>
+                                                    <input type="url" id="settingsWebsite" class="modal-input"
+                                                        placeholder="https://yoursite.com">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <button class="btn-settings-save" onclick="saveProfileSettings()">
+                                            <i class="fas fa-save"></i> Save Profile
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- ── Linked Accounts Tab ── -->
+                                <div id="linkedTab" class="settings-tab">
+                                    <div class="tab-heading">
+                                        <i class="fas fa-link"></i>
+                                        <div>
+                                            <h3>Linked Accounts</h3>
+                                            <p>Connect your social media profiles to PAGE</p>
+                                        </div>
+                                    </div>
+                                    <div class="settings-card">
+                                        <div class="settings-card-title">Social Platforms</div>
+                                        <p class="card-desc">Link your accounts to show them on your public profile and
+                                            unlock
+                                            social features.</p>
+                                        <div id="linkedAccountsList" class="linked-accounts-list">
+                                            <div class="linked-platform-row" data-platform="twitter">
+                                                <span class="lp-icon" style="color:#1da1f2"><i
+                                                        class="fab fa-twitter"></i></span>
+                                                <div class="lp-info"><strong>X (Twitter)</strong><span class="lp-handle"
+                                                        id="lpHandleTwitter">Not connected</span></div>
+                                                <button class="lp-btn" id="lpBtnTwitter"
+                                                    onclick="toggleSocialLink('twitter')">Connect</button>
+                                            </div>
+                                            <div class="linked-platform-row" data-platform="instagram">
+                                                <span class="lp-icon" style="color:#e1306c"><i
+                                                        class="fab fa-instagram"></i></span>
+                                                <div class="lp-info"><strong>Instagram</strong><span class="lp-handle"
+                                                        id="lpHandleInstagram">Not connected</span></div>
+                                                <button class="lp-btn" id="lpBtnInstagram"
+                                                    onclick="toggleSocialLink('instagram')">Connect</button>
+                                            </div>
+                                            <div class="linked-platform-row" data-platform="youtube">
+                                                <span class="lp-icon" style="color:#ff0000"><i
+                                                        class="fab fa-youtube"></i></span>
+                                                <div class="lp-info"><strong>YouTube</strong><span class="lp-handle"
+                                                        id="lpHandleYoutube">Not connected</span></div>
+                                                <button class="lp-btn" id="lpBtnYoutube"
+                                                    onclick="toggleSocialLink('youtube')">Connect</button>
+                                            </div>
+                                            <div class="linked-platform-row" data-platform="tiktok">
+                                                <span class="lp-icon" style="color:#333"><i
+                                                        class="fab fa-tiktok"></i></span>
+                                                <div class="lp-info"><strong>TikTok</strong><span class="lp-handle"
+                                                        id="lpHandleTiktok">Not connected</span></div>
+                                                <button class="lp-btn" id="lpBtnTiktok"
+                                                    onclick="toggleSocialLink('tiktok')">Connect</button>
+                                            </div>
+                                            <div class="linked-platform-row" data-platform="facebook">
+                                                <span class="lp-icon" style="color:#1877f2"><i
+                                                        class="fab fa-facebook"></i></span>
+                                                <div class="lp-info"><strong>Facebook</strong><span class="lp-handle"
+                                                        id="lpHandleFacebook">Not connected</span></div>
+                                                <button class="lp-btn" id="lpBtnFacebook"
+                                                    onclick="toggleSocialLink('facebook')">Connect</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- ── Privacy Tab ── -->
+                                <div id="privacyTab" class="settings-tab">
+                                    <div class="tab-heading">
+                                        <i class="fas fa-shield-alt"></i>
+                                        <div>
+                                            <h3>Privacy Settings</h3>
+                                            <p>Control who can see your information</p>
+                                        </div>
+                                    </div>
+
+                                    <div class="settings-card">
+                                        <div class="settings-card-title">Visibility</div>
+                                        <div class="setting-row">
+                                            <div class="setting-row-info">
+                                                <span class="setting-row-icon"><i class="fas fa-eye"></i></span>
+                                                <div>
+                                                    <h4>Profile Visibility</h4>
+                                                    <p>Control who can see your profile</p>
+                                                </div>
+                                            </div>
+                                            <select id="profileVisibility" class="settings-select">
+                                                <option value="public">Everyone</option>
+                                                <option value="friends">Friends Only</option>
+                                                <option value="alliance">Alliance Only</option>
+                                                <option value="private">Only Me</option>
+                                            </select>
+                                        </div>
+                                        <div class="setting-row">
+                                            <div class="setting-row-info">
+                                                <span class="setting-row-icon"><i
+                                                        class="fas fa-comment-dots"></i></span>
+                                                <div>
+                                                    <h4>Who Can Message You</h4>
+                                                    <p>Control who can send you direct messages</p>
+                                                </div>
+                                            </div>
+                                            <select id="messagePrivacy" class="settings-select">
+                                                <option value="everyone">Everyone</option>
+                                                <option value="friends">Friends Only</option>
+                                                <option value="none">No One</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div class="settings-card">
+                                        <div class="settings-card-title">Activity &amp; Status</div>
+                                        <div class="setting-row">
+                                            <div class="setting-row-info">
+                                                <span class="setting-row-icon"><i class="fas fa-circle"
+                                                        style="color:#4caf50;"></i></span>
+                                                <div>
+                                                    <h4>Show Online Status</h4>
+                                                    <p>Let others see when you're online</p>
+                                                </div>
+                                            </div>
+                                            <label class="toggle-switch" aria-label="Toggle online status">
+                                                <input type="checkbox" id="showOnlineStatus" checked>
+                                                <span class="toggle-slider"></span>
+                                            </label>
+                                        </div>
+                                        <div class="setting-row">
+                                            <div class="setting-row-info">
+                                                <span class="setting-row-icon"><i class="fas fa-rss"></i></span>
+                                                <div>
+                                                    <h4>Activity Status</h4>
+                                                    <p>Show your activity in the feed</p>
+                                                </div>
+                                            </div>
+                                            <label class="toggle-switch" aria-label="Toggle activity status">
+                                                <input type="checkbox" id="showActivity" checked>
+                                                <span class="toggle-slider"></span>
+                                            </label>
+                                        </div>
+                                        <div class="setting-row">
+                                            <div class="setting-row-info">
+                                                <span class="setting-row-icon"><i class="fas fa-chart-bar"></i></span>
+                                                <div>
+                                                    <h4>Show Stats Publicly</h4>
+                                                    <p>Display your prestige and rank</p>
+                                                </div>
+                                            </div>
+                                            <label class="toggle-switch" aria-label="Toggle public stats">
+                                                <input type="checkbox" id="showStats" checked>
+                                                <span class="toggle-slider"></span>
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <button class="btn-settings-save" onclick="savePrivacySettings()">
+                                        <i class="fas fa-save"></i> Save Privacy Settings
+                                    </button>
+                                </div>
+
+                                <!-- ── Notifications Tab ── -->
+                                <div id="notificationsTab" class="settings-tab">
+                                    <div class="tab-heading">
+                                        <i class="fas fa-bell"></i>
+                                        <div>
+                                            <h3>Notification Preferences</h3>
+                                            <p>Choose what you want to be notified about</p>
+                                        </div>
+                                    </div>
+
+                                    <div class="settings-card">
+                                        <div class="settings-card-title">Channels</div>
+                                        <div class="setting-row">
+                                            <div class="setting-row-info">
+                                                <span class="setting-row-icon"><i class="fas fa-mobile-alt"></i></span>
+                                                <div>
+                                                    <h4>Push Notifications</h4>
+                                                    <p>Receive notifications on your device</p>
+                                                </div>
+                                            </div>
+                                            <label class="toggle-switch"><input type="checkbox" id="pushNotifications"
+                                                    checked><span class="toggle-slider"></span></label>
+                                        </div>
+                                        <div class="setting-row">
+                                            <div class="setting-row-info">
+                                                <span class="setting-row-icon"><i class="fas fa-envelope"></i></span>
+                                                <div>
+                                                    <h4>Email Notifications</h4>
+                                                    <p>Get updates via email</p>
+                                                </div>
+                                            </div>
+                                            <label class="toggle-switch"><input type="checkbox" id="emailNotifications"
+                                                    checked><span class="toggle-slider"></span></label>
+                                        </div>
+                                        <div class="setting-row">
+                                            <div class="setting-row-info">
+                                                <span class="setting-row-icon"><i class="fas fa-volume-up"></i></span>
+                                                <div>
+                                                    <h4>Sound Effects</h4>
+                                                    <p>Play sounds for notifications</p>
+                                                </div>
+                                            </div>
+                                            <label class="toggle-switch"><input type="checkbox" id="soundEffects"
+                                                    checked><span class="toggle-slider"></span></label>
+                                        </div>
+                                    </div>
+
+                                    <div class="settings-card">
+                                        <div class="settings-card-title">Activity Alerts</div>
+                                        <div class="setting-row">
+                                            <div class="setting-row-info">
+                                                <span class="setting-row-icon"><i class="fas fa-trophy"></i></span>
+                                                <div>
+                                                    <h4>Challenge Updates</h4>
+                                                    <p>New challenges and results</p>
+                                                </div>
+                                            </div>
+                                            <label class="toggle-switch"><input type="checkbox"
+                                                    id="challengeNotifications" checked><span
+                                                    class="toggle-slider"></span></label>
+                                        </div>
+                                        <div class="setting-row">
+                                            <div class="setting-row-info">
+                                                <span class="setting-row-icon"><i class="fas fa-comment"></i></span>
+                                                <div>
+                                                    <h4>Messages</h4>
+                                                    <p>When you receive a new message</p>
+                                                </div>
+                                            </div>
+                                            <label class="toggle-switch"><input type="checkbox"
+                                                    id="messageNotifications" checked><span
+                                                    class="toggle-slider"></span></label>
+                                        </div>
+                                        <div class="setting-row">
+                                            <div class="setting-row-info">
+                                                <span class="setting-row-icon"><i class="fas fa-users"></i></span>
+                                                <div>
+                                                    <h4>Alliance Activity</h4>
+                                                    <p>Updates from your alliance</p>
+                                                </div>
+                                            </div>
+                                            <label class="toggle-switch"><input type="checkbox"
+                                                    id="allianceNotifications" checked><span
+                                                    class="toggle-slider"></span></label>
+                                        </div>
+                                        <div class="setting-row">
+                                            <div class="setting-row-info">
+                                                <span class="setting-row-icon"><i
+                                                        class="fas fa-flag-checkered"></i></span>
+                                                <div>
+                                                    <h4>Tournament Reminders</h4>
+                                                    <p>Upcoming tournament alerts</p>
+                                                </div>
+                                            </div>
+                                            <label class="toggle-switch"><input type="checkbox"
+                                                    id="tournamentNotifications" checked><span
+                                                    class="toggle-slider"></span></label>
+                                        </div>
+                                    </div>
+
+                                    <button class="btn-settings-save" onclick="saveNotificationSettings()">
+                                        <i class="fas fa-save"></i> Save Notification Settings
+                                    </button>
+                                </div>
+
+                                <!-- ── Appearance Tab ── -->
+                                <div id="appearanceTab" class="settings-tab">
+                                    <div class="tab-heading">
+                                        <i class="fas fa-palette"></i>
+                                        <div>
+                                            <h3>Appearance</h3>
+                                            <p>Make PAGE look the way you like it</p>
+                                        </div>
+                                    </div>
+
+                                    <div class="settings-card">
+                                        <div class="settings-card-title">Theme &amp; Display</div>
+                                        <div class="setting-row">
+                                            <div class="setting-row-info">
+                                                <span class="setting-row-icon"><i class="fas fa-moon"></i></span>
+                                                <div>
+                                                    <h4>Theme</h4>
+                                                    <p>Choose your preferred color scheme</p>
+                                                </div>
+                                            </div>
+                                            <select id="themeSelect" class="settings-select" onchange="changeTheme()">
+                                                <option value="dark">Dark Mode</option>
+                                                <option value="light">Light Mode</option>
+                                                <option value="auto">Auto (System)</option>
+                                            </select>
+                                        </div>
+                                        <div class="setting-row">
+                                            <div class="setting-row-info">
+                                                <span class="setting-row-icon"><i class="fas fa-text-height"></i></span>
+                                                <div>
+                                                    <h4>Font Size</h4>
+                                                    <p>Adjust text size for readability</p>
+                                                </div>
+                                            </div>
+                                            <select id="fontSize" class="settings-select" onchange="changeFontSize()">
+                                                <option value="small">Small</option>
+                                                <option value="medium" selected>Medium</option>
+                                                <option value="large">Large</option>
+                                            </select>
+                                        </div>
+                                        <div class="setting-row">
+                                            <div class="setting-row-info">
+                                                <span class="setting-row-icon"><i class="fas fa-magic"></i></span>
+                                                <div>
+                                                    <h4>Animations</h4>
+                                                    <p>Enable UI animations and transitions</p>
+                                                </div>
+                                            </div>
+                                            <label class="toggle-switch"><input type="checkbox" id="enableAnimations"
+                                                    checked onchange="toggleAnimationsSetting(this)"><span
+                                                    class="toggle-slider"></span></label>
+                                        </div>
+                                        <div class="setting-row">
+                                            <div class="setting-row-info">
+                                                <span class="setting-row-icon"><i
+                                                        class="fas fa-compress-alt"></i></span>
+                                                <div>
+                                                    <h4>Compact Mode</h4>
+                                                    <p>Show more content with tighter spacing</p>
+                                                </div>
+                                            </div>
+                                            <label class="toggle-switch"><input type="checkbox" id="compactMode"
+                                                    onchange="toggleCompactModeSetting(this)"><span
+                                                    class="toggle-slider"></span></label>
+                                        </div>
+                                    </div>
+
+                                    <div class="settings-card">
+                                        <div class="settings-card-title">Accent Color</div>
+                                        <p class="card-desc">Choose a color that highlights interactive elements</p>
+                                        <div class="color-picker-grid">
+                                            <button class="color-swatch active" data-color="#ffffff"
+                                                data-accent-swatch="#ffffff"
+                                                style="background:#ffffff;border:2px solid #ccc;"
+                                                onclick="selectAccentColor('#ffffff')"
+                                                aria-label="Classic White"></button>
+                                            <button class="color-swatch" data-color="#90ee90"
+                                                data-accent-swatch="#90ee90" style="background:#90ee90;"
+                                                onclick="selectAccentColor('#90ee90')"
+                                                aria-label="Forest Green"></button>
+                                            <button class="color-swatch" data-color="#4facfe"
+                                                data-accent-swatch="#4facfe" style="background:#4facfe;"
+                                                onclick="selectAccentColor('#4facfe')" aria-label="Ocean Blue"></button>
+                                            <button class="color-swatch" data-color="#f093fb"
+                                                data-accent-swatch="#f093fb" style="background:#f093fb;"
+                                                onclick="selectAccentColor('#f093fb')" aria-label="Rose Pink"></button>
+                                            <button class="color-swatch" data-color="#ffd700"
+                                                data-accent-swatch="#ffd700" style="background:#ffd700;"
+                                                onclick="selectAccentColor('#ffd700')" aria-label="Gold"></button>
+                                            <button class="color-swatch" data-color="#ff6b6b"
+                                                data-accent-swatch="#ff6b6b" style="background:#ff6b6b;"
+                                                onclick="selectAccentColor('#ff6b6b')"
+                                                aria-label="Crimson Red"></button>
+                                            <button class="color-swatch" data-color="#a78bfa"
+                                                data-accent-swatch="#a78bfa" style="background:#a78bfa;"
+                                                onclick="selectAccentColor('#a78bfa')"
+                                                aria-label="Deep Purple"></button>
+                                            <button class="color-swatch" data-color="#d4b483"
+                                                data-accent-swatch="#d4b483" style="background:#d4b483;"
+                                                onclick="selectAccentColor('#d4b483')" aria-label="Warm Beige"></button>
+                                            <button class="color-swatch" data-color="#a0522d"
+                                                data-accent-swatch="#a0522d" style="background:#a0522d;"
+                                                onclick="selectAccentColor('#a0522d')"
+                                                aria-label="Sienna Brown"></button>
+                                        </div>
+                                        <div id="smAccentLabel"
+                                            style="font-size:11px;font-weight:700;text-align:center;margin-top:6px;opacity:0;transition:opacity .3s;">
+                                        </div>
+                                    </div>
+
+                                    <button class="btn-settings-save" onclick="saveAppearanceSettings()">
+                                        <i class="fas fa-save"></i> Save Appearance
+                                    </button>
+                                </div>
+
+                                <!-- ── Security Tab ── -->
+                                <div id="securityTab" class="settings-tab">
+                                    <div class="tab-heading">
+                                        <i class="fas fa-lock"></i>
+                                        <div>
+                                            <h3>Security</h3>
+                                            <p>Keep your account safe and secure</p>
+                                        </div>
+                                    </div>
+
+                                    <div class="settings-card">
+                                        <div class="settings-card-title">Change Password</div>
+                                        <div class="form-group">
+                                            <label for="currentPassword">Current Password</label>
+                                            <div class="input-icon-wrap">
+                                                <i class="fas fa-lock"></i>
+                                                <input type="password" id="currentPassword" class="modal-input"
+                                                    placeholder="Enter current password">
+                                                <button type="button" class="toggle-pw-btn"
+                                                    onclick="togglePasswordVisibility('currentPassword', this)"
+                                                    aria-label="Show password">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="form-row-2">
+                                            <div class="form-group">
+                                                <label for="newPassword">New Password</label>
+                                                <div class="input-icon-wrap">
+                                                    <i class="fas fa-key"></i>
+                                                    <input type="password" id="newPassword" class="modal-input"
+                                                        placeholder="Enter new password"
+                                                        oninput="checkPasswordStrength(this.value)">
+                                                    <button type="button" class="toggle-pw-btn"
+                                                        onclick="togglePasswordVisibility('newPassword', this)"
+                                                        aria-label="Show password">
+                                                        <i class="fas fa-eye"></i>
+                                                    </button>
+                                                </div>
+                                                <div class="password-strength" id="passwordStrength">
+                                                    <div class="strength-bar"><span id="strengthFill"></span></div>
+                                                    <span id="strengthLabel">—</span>
+                                                </div>
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="confirmPassword">Confirm New Password</label>
+                                                <div class="input-icon-wrap">
+                                                    <i class="fas fa-key"></i>
+                                                    <input type="password" id="confirmPassword" class="modal-input"
+                                                        placeholder="Confirm new password">
+                                                    <button type="button" class="toggle-pw-btn"
+                                                        onclick="togglePasswordVisibility('confirmPassword', this)"
+                                                        aria-label="Show password">
+                                                        <i class="fas fa-eye"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <button class="btn-settings-save" onclick="changePassword()">
+                                            <i class="fas fa-key"></i> Update Password
+                                        </button>
+                                    </div>
+
+                                    <div class="settings-card">
+                                        <div class="settings-card-title">Two-Factor Authentication</div>
+                                        <div class="setting-row">
+                                            <div class="setting-row-info">
+                                                <span class="setting-row-icon"><i class="fas fa-mobile-alt"></i></span>
+                                                <div>
+                                                    <h4>Enable 2FA</h4>
+                                                    <p>Add an extra layer of security to your account</p>
+                                                </div>
+                                            </div>
+                                            <label class="toggle-switch"><input type="checkbox" id="enable2FA"><span
+                                                    class="toggle-slider"></span></label>
+                                        </div>
+                                        <button class="btn-settings-secondary" onclick="setup2FA()">
+                                            <i class="fas fa-qrcode"></i> Setup Authenticator App
+                                        </button>
+                                    </div>
+
+                                    <div class="settings-card">
+                                        <div class="settings-card-title">Active Sessions</div>
+                                        <div id="sessionsList" class="sessions-list">
+                                            <div class="sessions-loading"><i class="fas fa-spinner fa-spin"></i> Loading
+                                                sessions...
+                                            </div>
+                                        </div>
+                                        <button class="btn-danger-outline" onclick="logoutAllDevices()">
+                                            <i class="fas fa-sign-out-alt"></i> Logout All Devices
+                                        </button>
+                                    </div>
+                                </div>
+
+                            </div><!-- /settings-content -->
+                        </div><!-- /settings-layout -->
                     </div>
                 </div>
 
-                <div class="post-options">
-                    <button class="post-option-btn" onclick="triggerMediaUpload('image')">
-                        <i class="fas fa-image"></i>
-                        <span>Photo</span>
+                <!-- Mobile Bottom Navigation Bar (hidden on desktop via CSS) -->
+                <nav class="mobile-bottom-nav" id="mobileBottomNav">
+                    <button class="icon-nav-btn active" data-view="social-feed" title="Home"
+                        onclick="switchView('social-feed')">
+                        <i class="fas fa-home"></i>
                     </button>
-                    <button class="post-option-btn" onclick="triggerMediaUpload('video')">
-                        <i class="fas fa-video"></i>
-                        <span>Video</span>
-                    </button>
-                    <button class="post-option-btn" onclick="addAchievement()">
+                    <button class="icon-nav-btn" data-view="challenges" title="Challenges"
+                        onclick="switchView('challenges')">
                         <i class="fas fa-trophy"></i>
-                        <span>Achievement</span>
+                        <span class="notification-badge" id="challengesBadgeMobile" style="display:none;">0</span>
                     </button>
-                    <button class="post-option-btn" onclick="addLocation()">
-                        <i class="fas fa-map-marker-alt"></i>
-                        <span>Location</span>
+                    <button class="icon-nav-btn" title="Messages" onclick="window.location.href='pages/messenger.html'">
+                        <i class="fas fa-comment-dots"></i>
                     </button>
-                </div>
-
-                <input type="file" id="mediaUploadInput" accept="image/*,video/*" style="display: none;"
-                    onchange="handleMediaUpload(event)">
-
-                <button class="btn-primary btn-post" onclick="publishPost()">
-                    <i class="fas fa-paper-plane"></i> Post
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Cashout Modal -->
-    <div id="cashoutModal" class="modal">
-        <div class="modal-content">
-            <span class="close" onclick="closeCashoutModal()">&times;</span>
-            <h2><i class="fas fa-money-bill-wave"></i> Cash Out Earnings</h2>
-            <div class="cashout-info">
-                <p>Available Balance: <strong id="cashoutAmount">$0.00</strong></p>
-            </div>
-            <div class="cashout-form" id="cashoutForm">
-                <div class="form-group">
-                    <label>Mobile Money Provider <span class="required">*</span></label>
-                    <select id="cashoutProvider" class="modal-input" required>
-                        <option value="airtel">Airtel Money</option>
-                        <option value="mtn">MTN Mobile Money</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label>Phone Number <span class="required">*</span></label>
-                    <input type="tel" id="cashoutPhone" placeholder="+260771493387" class="modal-input" required>
-                    <small style="color: #666; font-size: 11px; display: block; margin-top: 3px;">Format: +260XXXXXXXXX
-                        or 0XXXXXXXXX</small>
-                </div>
-
-                <div class="form-group">
-                    <label>Currency <span class="required">*</span></label>
-                    <select id="cashoutCurrency" class="modal-input" required>
-                        <option value="USD">USD ($)</option>
-                        <option value="ZMW">ZMW (K) - Zambian Kwacha</option>
-                        <option value="UGX">UGX (Sh)</option>
-                        <option value="ZAR">ZAR (R)</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label>Withdrawal Amount <span class="required">*</span></label>
-                    <div class="amount-input-wrapper">
-                        <input type="number" id="cashoutWithdrawAmount" placeholder="0.00" class="modal-input"
-                            step="0.01" required>
-                        <button type="button" class="btn-max" onclick="setMaxAmount()">Max</button>
-                    </div>
-                </div>
-
-                <div class="cashout-info">
-                    <p><i class="fas fa-info-circle"></i> Funds arrive in 2-5 minutes.</p>
-                </div>
-                <div class="form-actions">
-                    <button class="btn-primary" onclick="submitCashout()">Confirm</button>
-                    <button class="btn-secondary" onclick="closeCashoutModal()">Cancel</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Alliance Modal -->
-    <div id="allianceModal" class="modal">
-        <div class="modal-content">
-            <span class="close" onclick="closeAllianceModal()">&times;</span>
-            <h2>Alliance System</h2>
-            <div class="modal-tabs">
-                <button class="tab-btn active" onclick="showAllianceTab('create')">Create Alliance</button>
-                <button class="tab-btn" onclick="showAllianceTab('join')">Join Alliance</button>
-            </div>
-            <div id="createAllianceTab" class="tab-content active">
-                <input type="text" id="allianceName" placeholder="Alliance Name" class="modal-input">
-                <button class="btn-primary" onclick="createAlliance()">Create Alliance</button>
-            </div>
-            <div id="joinAllianceTab" class="tab-content">
-                <div id="availableAlliances"></div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Create Challenge Modal (Step 1: Category Picker) -->
-    <div id="createChallengeModal" class="modal">
-        <div class="modal-content create-challenge-modal">
-            <div class="modal-header">
-                <h2><i class="fas fa-trophy"></i> Create Challenge</h2>
-                <span class="close" onclick="closeCreateChallengeModal()">&times;</span>
-            </div>
-            <div class="modal-body" id="createChallengeStep1">
-                <p class="category-picker-label">Select a challenge type to get started:</p>
-                <div class="challenge-category-grid">
-                    <button class="challenge-category-card" onclick="selectChallengeCategory('polls')">
-                        <span class="category-card-icon">📊</span>
-                        <span class="category-card-name">Polls</span>
-                        <span class="category-card-desc">Let the community vote on a question</span>
+                    <button class="icon-nav-btn" data-view="people" title="People" onclick="switchView('people')">
+                        <i class="fas fa-users"></i>
                     </button>
-                    <button class="challenge-category-card" onclick="selectChallengeCategory('qa')">
-                        <span class="category-card-icon">💬</span>
-                        <span class="category-card-name">Q &amp; A</span>
-                        <span class="category-card-desc">Ask questions, share answers &amp; pictures</span>
-                    </button>
-                    <button class="challenge-category-card" onclick="selectChallengeCategory('debates')">
-                        <span class="category-card-icon">⚔️</span>
-                        <span class="category-card-name">Debates</span>
-                        <span class="category-card-desc">Pick a side and argue your position</span>
-                    </button>
-                </div>
-            </div>
-
-            <!-- Step 2: Challenge Form (hidden until category is chosen) -->
-            <div class="modal-body" id="createChallengeStep2" style="display: none;">
-                <button class="back-btn" onclick="backToCategoryPicker()">
-                    <i class="fas fa-arrow-left"></i> Back
-                </button>
-                <form id="createChallengeForm" onsubmit="publishChallenge(event)">
-                    <input type="hidden" id="challengeCategory">
-
-                    <div class="form-group">
-                        <label>Challenge Title <span class="required">*</span></label>
-                        <input type="text" id="challengeTitle" class="modal-input"
-                            placeholder="e.g., Best programming language?" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Difficulty <span class="required">*</span></label>
-                        <select id="challengeDifficulty" class="modal-input" required>
-                            <option value="">Select difficulty</option>
-                            <option value="easy">Easy</option>
-                            <option value="medium">Medium</option>
-                            <option value="hard">Hard</option>
-                        </select>
-                    </div>
-
-                    <div class="form-group" id="challengePrizeGroup">
-                        <label>Prize Money (ZMW) <span class="optional"
-                                style="font-size:11px;color:#999;font-weight:400;">(optional)</span></label>
-                        <input type="number" id="challengePrize" class="modal-input" placeholder="e.g., 500" step="0.01"
-                            min="0" value="0">
-                        <small>Leave at 0 for prestige-only reward.</small>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Duration <span class="required">*</span></label>
-                        <div style="display:flex;gap:8px;align-items:center;">
-                            <input type="number" id="challengeDuration" class="modal-input" placeholder="e.g. 30"
-                                min="1" max="9999" required style="flex:1;">
-                            <select id="challengeDurationUnit" class="modal-input" style="width:110px;flex-shrink:0;">
-                                <option value="minutes">Minutes</option>
-                                <option value="hours">Hours</option>
-                                <option value="days" selected>Days</option>
-                            </select>
-                        </div>
-                        <small>Set how long participants have — from 5 minutes to multiple days.</small>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Description <span class="required">*</span></label>
-                        <textarea id="challengeDescription" class="modal-textarea"
-                            placeholder="Describe the challenge..." rows="4" required></textarea>
-                    </div>
-
-                    <!-- Q&A: optional image upload -->
-                    <div class="form-group" id="challengeImageGroup" style="display: none;">
-                        <label>Attach Image <span class="optional">(optional)</span></label>
-                        <div class="image-upload-area" onclick="document.getElementById('challengeImage').click()">
-                            <i class="fas fa-cloud-upload-alt"></i>
-                            <p>Upload an image for your Q&amp;A</p>
-                            <small>JPG, PNG, or GIF (Max 5MB)</small>
-                        </div>
-                        <input type="file" id="challengeImage" accept="image/*" style="display: none;"
-                            onchange="handleChallengeImage(event)">
-                        <div id="challengeImagePreview" class="image-preview-single"></div>
-                    </div>
-
-                    <!-- Polls: options input -->
-                    <div class="form-group" id="pollOptionsGroup" style="display: none;">
-                        <label>Poll Options <span class="required">*</span></label>
-                        <input type="text" id="pollOption1" class="modal-input mb-2" placeholder="Option 1">
-                        <input type="text" id="pollOption2" class="modal-input mb-2" placeholder="Option 2">
-                        <input type="text" id="pollOption3" class="modal-input mb-2" placeholder="Option 3 (optional)">
-                        <input type="text" id="pollOption4" class="modal-input" placeholder="Option 4 (optional)">
-                    </div>
-
-                    <!-- Debates: two sides -->
-                    <div class="form-group" id="debateSidesGroup" style="display: none;">
-                        <label>Debate Sides <span class="required">*</span></label>
-                        <input type="text" id="debateSideA" class="modal-input mb-2" placeholder="Side A (e.g., For)">
-                        <input type="text" id="debateSideB" class="modal-input" placeholder="Side B (e.g., Against)">
-                    </div>
-
-                    <div class="form-group">
-                        <label>
-                            <input type="checkbox" id="challengeVerification" checked>
-                            Require manual verification
-                        </label>
-                    </div>
-
-                    <button type="submit" class="btn-primary btn-publish">
-                        <i class="fas fa-check"></i> Create Challenge
-                    </button>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <!-- Attempt Challenge Modal -->
-    <div id="attemptChallengeModal" class="modal">
-        <div class="modal-content attempt-challenge-modal">
-            <div class="modal-header">
-                <h2><i class="fas fa-play"></i> Attempt Challenge</h2>
-                <span class="close" onclick="closeAttemptChallengeModal()">&times;</span>
-            </div>
-            <div class="modal-body">
-                <div class="challenge-info-display">
-                    <h3 id="attemptChallengeTitle">Challenge Title</h3>
-                    <p id="attemptChallengeDescription">Challenge description...</p>
-                    <div class="challenge-prize-display">
-                        <i class="fas fa-trophy"></i>
-                        <span>Prize: <strong id="attemptChallengePrize">K0.00</strong></span>
-                    </div>
-                </div>
-
-                <form id="attemptChallengeForm" onsubmit="submitChallengeAttempt(event)">
-                    <div class="form-group">
-                        <label>Your Submission <span class="required">*</span></label>
-                        <textarea id="submissionText" class="modal-textarea"
-                            placeholder="Describe your solution or provide links..." rows="4" required></textarea>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Upload Proof (Optional)</label>
-                        <div class="file-upload-area" onclick="document.getElementById('submissionFiles').click()">
-                            <i class="fas fa-cloud-upload-alt"></i>
-                            <p>Upload screenshots, videos, or files</p>
-                            <small>Max 50MB</small>
-                        </div>
-                        <input type="file" id="submissionFiles" accept="image/*,video/*,.pdf,.zip" multiple
-                            style="display: none;" onchange="handleSubmissionFiles(event)">
-                        <div id="submissionFilesPreview" class="files-preview"></div>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Additional Links</label>
-                        <input type="url" id="submissionLink" class="modal-input"
-                            placeholder="https://github.com/yourrepo or demo link">
-                    </div>
-
-                    <button type="submit" class="btn-primary btn-submit">
-                        <i class="fas fa-paper-plane"></i> Submit Attempt
-                    </button>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <!-- Image Interpretation: Details Modal -->
-    <div id="imgInterpDetailsModal" class="modal">
-        <div class="modal-content img-interp-details-modal">
-            <div class="modal-header">
-                <h2><i class="fas fa-eye"></i> Challenge Details</h2>
-                <span class="close" onclick="closeImgInterpDetails()">&times;</span>
-            </div>
-            <div class="modal-body">
-                <div class="img-interp-details-body">
-                    <div class="img-interp-blur-preview">
-                        <img id="imgInterpPreviewThumb" src="" alt="Blurred challenge image">
-                        <div class="blur-overlay-label"><i class="fas fa-lock"></i> Pay to reveal</div>
-                    </div>
-                    <h3 id="imgInterpDetailsTitle" class="img-interp-details-title"></h3>
-                    <p id="imgInterpDetailsDesc" class="img-interp-details-desc"></p>
-
-                    <div class="img-interp-rules-box">
-                        <h4><i class="fas fa-list-ul"></i> How it works</h4>
-                        <ul>
-                            <li><i class="fas fa-image"></i> A blurred image will be revealed for <strong>30
-                                    seconds</strong> after you pay the entry fee.</li>
-                            <li><i class="fas fa-search"></i> Study the image closely and pick out the numbers or points
-                                you see.</li>
-                            <li><i class="fas fa-pen"></i> Enter those numbers as your answer before time runs out.</li>
-                            <li><i class="fas fa-trophy"></i> Correct answers win the prize money — wrong answers lose
-                                the entry fee.</li>
-                        </ul>
-                    </div>
-
-                    <div class="img-interp-meta-row">
-                        <div class="img-interp-meta-item">
-                            <i class="fas fa-stopwatch"></i>
-                            <span>30 second reveal</span>
-                        </div>
-                        <div class="img-interp-meta-item" id="imgInterpDetailsDiff">
-                            <i class="fas fa-signal"></i>
-                            <span>—</span>
-                        </div>
-                        <div class="img-interp-meta-item">
-                            <i class="fas fa-users"></i>
-                            <span id="imgInterpDetailsParticipants">0 players</span>
-                        </div>
-                    </div>
-
-                    <div class="img-interp-entry-fee-box">
-                        <div class="entry-fee-label">Entry Fee</div>
-                        <div class="entry-fee-amount" id="imgInterpDetailsEntry">K0.00</div>
-                        <div class="entry-fee-prize">Prize Pool: <strong id="imgInterpDetailsPrize">K0.00</strong></div>
-                    </div>
-
-                    <button class="btn-play-now" id="imgInterpPlayBtn" onclick="startImgInterpGame()">
-                        <i class="fas fa-play"></i> Pay & Play
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Image Interpretation: Game Modal -->
-    <div id="imgInterpGameModal" class="modal">
-        <div class="modal-content img-interp-game-modal">
-            <!-- Countdown bar -->
-            <div class="img-interp-timer-bar">
-                <div class="img-interp-timer-fill" id="imgInterpTimerFill"></div>
-            </div>
-            <div class="img-interp-game-header">
-                <h3 id="imgInterpGameTitle" class="img-interp-game-title"></h3>
-                <div class="img-interp-countdown" id="imgInterpCountdown">
-                    <i class="fas fa-stopwatch"></i>
-                    <span id="imgInterpSecondsLeft">30</span>s
-                </div>
-            </div>
-
-            <div class="img-interp-image-wrap">
-                <img id="imgInterpGameImage" src="" alt="Interpret this image" class="img-interp-game-img">
-                <div class="img-interp-go-overlay" id="imgInterpGoOverlay">
-                    <div class="go-pulse"><i class="fas fa-eye"></i></div>
-                    <p>Get ready…</p>
-                </div>
-            </div>
-
-            <div class="img-interp-answer-section" id="imgInterpAnswerSection">
-                <p class="img-interp-answer-hint">
-                    <i class="fas fa-lightbulb"></i> Enter the numbers / points you spotted in the image, separated by
-                    commas.
-                </p>
-                <div class="img-interp-input-row">
-                    <input type="text" id="imgInterpAnswer" class="img-interp-answer-input"
-                        placeholder="e.g.  7, 13, 42" inputmode="text" autocomplete="off">
-                    <button class="btn-submit-interp" id="imgInterpSubmitBtn" onclick="submitImgInterpAnswer()">
-                        <i class="fas fa-paper-plane"></i> Submit
-                    </button>
-                </div>
-                <p class="img-interp-time-warning" id="imgInterpTimeWarning" style="display:none;">
-                    <i class="fas fa-exclamation-triangle"></i> Time is almost up!
-                </p>
-            </div>
-        </div>
-    </div>
-
-    <!-- Create Product Modal -->
-    <div id="createProductModal" class="modal">
-        <div class="modal-content create-product-modal">
-            <div class="modal-header">
-                <h2><i class="fas fa-store"></i> Sell a Product</h2>
-                <span class="close" onclick="closeCreateProductModal()">&times;</span>
-            </div>
-            <div class="modal-body">
-                <form id="createProductForm" onsubmit="publishProduct(event)">
-                    <div class="form-group">
-                        <label>Product Title <span class="required">*</span></label>
-                        <input type="text" id="productTitle" class="modal-input"
-                            placeholder="e.g., Gaming Laptop RTX 3060" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Category <span class="required">*</span></label>
-                        <select id="productCategory" class="modal-input" required>
-                            <option value="">Select category</option>
-                            <option value="electronics">Electronics</option>
-                            <option value="fashion">Fashion</option>
-                            <option value="gaming">Gaming</option>
-                            <option value="sports">Sports</option>
-                            <option value="other">Other</option>
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Price (ZMW) <span class="required">*</span></label>
-                        <input type="number" id="productPrice" class="modal-input" placeholder="e.g., 1500" step="0.01"
-                            required>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Description <span class="required">*</span></label>
-                        <textarea id="productDescription" class="modal-textarea" placeholder="Describe your product..."
-                            rows="4" required></textarea>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Product Images</label>
-                        <div class="image-upload-area" onclick="document.getElementById('productImages').click()">
-                            <i class="fas fa-cloud-upload-alt"></i>
-                            <p>Click to upload images</p>
-                            <small>Up to 5 images</small>
-                        </div>
-                        <input type="file" id="productImages" accept="image/*" multiple style="display: none;"
-                            onchange="handleProductImages(event)">
-                        <div id="productImagePreview" class="image-preview-grid"></div>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Contact Method <span class="required">*</span></label>
-                        <select id="contactMethod" class="modal-input" required>
-                            <option value="phone">Phone Number</option>
-                            <option value="whatsapp">WhatsApp</option>
-                        </select>
-                    </div>
-
-                    <div class="form-group" id="phoneNumberGroup" style="display: none;">
-                        <label>Phone Number</label>
-                        <input type="tel" id="contactPhone" class="modal-input" placeholder="+260 XXX XXX XXX">
-                    </div>
-
-                    <button type="submit" class="btn-primary btn-publish">
-                        <i class="fas fa-check"></i> Publish Product
-                    </button>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <!-- Settings Modal -->
-    <div id="settingsModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="settingsModalTitle">
-        <div class="modal-content settings-modal">
-            <div class="settings-modal-header">
-                <div class="header-glow-line"></div>
-                <div class="settings-header-inner">
-                    <div class="settings-header-left">
-                        <div class="settings-header-icon"><i class="fas fa-sliders-h"></i></div>
-                        <div class="settings-header-text">
-                            <h2 id="settingsModalTitle">Settings</h2>
-                            <p class="settings-header-sub">Manage your account &amp; preferences</p>
-                        </div>
-                    </div>
-                    <button class="settings-close-btn" onclick="closeSettings()" aria-label="Close settings">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-            </div>
-
-            <div class="settings-layout">
-                <!-- Sidebar Nav -->
-                <nav class="settings-nav" aria-label="Settings sections">
-                    <div class="settings-nav-divider">Profile</div>
-                    <button class="settings-nav-btn active" onclick="showSettingsTab('account')" data-tab="account">
-                        <span class="nav-icon"><i class="fas fa-user"></i></span>
-                        <span class="nav-label">Account</span>
-                        <span class="nav-arrow"><i class="fas fa-chevron-right"></i></span>
-                    </button>
-                    <button class="settings-nav-btn" onclick="showSettingsTab('profile')" data-tab="profile">
-                        <span class="nav-icon"><i class="fas fa-id-card"></i></span>
-                        <span class="nav-label">Profile</span>
-                        <span class="nav-arrow"><i class="fas fa-chevron-right"></i></span>
-                    </button>
-                    <button class="settings-nav-btn" onclick="showSettingsTab('linked')" data-tab="linked">
-                        <span class="nav-icon"><i class="fas fa-link"></i></span>
-                        <span class="nav-label">Linked Accounts</span>
-                        <span class="nav-arrow"><i class="fas fa-chevron-right"></i></span>
-                    </button>
-                    <div class="settings-nav-divider">Preferences</div>
-                    <button class="settings-nav-btn" onclick="showSettingsTab('privacy')" data-tab="privacy">
-                        <span class="nav-icon"><i class="fas fa-shield-alt"></i></span>
-                        <span class="nav-label">Privacy</span>
-                        <span class="nav-arrow"><i class="fas fa-chevron-right"></i></span>
-                    </button>
-                    <button class="settings-nav-btn" onclick="showSettingsTab('notifications')"
-                        data-tab="notifications">
-                        <span class="nav-icon"><i class="fas fa-bell"></i></span>
-                        <span class="nav-label">Notifications</span>
-                        <span class="nav-arrow"><i class="fas fa-chevron-right"></i></span>
-                    </button>
-                    <button class="settings-nav-btn" onclick="showSettingsTab('appearance')" data-tab="appearance">
-                        <span class="nav-icon"><i class="fas fa-palette"></i></span>
-                        <span class="nav-label">Appearance</span>
-                        <span class="nav-arrow"><i class="fas fa-chevron-right"></i></span>
-                    </button>
-                    <div class="settings-nav-divider">Access</div>
-                    <button class="settings-nav-btn" onclick="showSettingsTab('security')" data-tab="security">
-                        <span class="nav-icon"><i class="fas fa-lock"></i></span>
-                        <span class="nav-label">Security</span>
-                        <span class="nav-arrow"><i class="fas fa-chevron-right"></i></span>
+                    <button class="icon-nav-btn" onclick="toggleMobileMoreMenu(this)" title="More">
+                        <i class="fas fa-bars"></i>
                     </button>
                 </nav>
 
-                <!-- Content Panels -->
-                <div class="settings-content">
+                <script>
+                    // Sync both the header icon-nav and bottom mobile nav active states
+                    function switchView(viewName) {
+                        showView(viewName);
+                        // Update icon-nav-btns in both header and bottom nav
+                        document.querySelectorAll('.icon-nav-btn[data-view]').forEach(function (btn) {
+                            btn.classList.toggle('active', btn.getAttribute('data-view') === viewName);
+                        });
+                    }
 
-                    <!-- ── Account Tab ── -->
-                    <div id="accountTab" class="settings-tab active">
-                        <div class="tab-heading">
-                            <i class="fas fa-user"></i>
-                            <div>
-                                <h3>Account Information</h3>
-                                <p>Update your login details and personal info</p>
-                            </div>
-                        </div>
+                    // Mobile bottom-nav "More" — opens the user menu anchored above the nav bar
+                    function toggleMobileMoreMenu(btn) {
+                        const dropdown = document.getElementById('userMenuDropdown');
+                        const quickMenu = document.getElementById('quickMenuDropdown');
 
-                        <div class="settings-card">
-                            <div class="settings-card-title">Basic Details</div>
-                            <div class="form-row-2">
-                                <div class="form-group">
-                                    <label for="settingsUsername">Username</label>
-                                    <div class="input-icon-wrap">
-                                        <i class="fas fa-at"></i>
-                                        <input type="text" id="settingsUsername" class="modal-input"
-                                            placeholder="Your username">
-                                    </div>
-                                </div>
-                                <div class="form-group">
-                                    <label for="settingsEmail">Email Address</label>
-                                    <div class="input-icon-wrap">
-                                        <i class="fas fa-envelope"></i>
-                                        <input type="email" id="settingsEmail" class="modal-input"
-                                            placeholder="you@email.com">
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="form-row-2">
-                                <div class="form-group">
-                                    <label for="settingsPhone">Phone Number</label>
-                                    <div class="input-icon-wrap">
-                                        <i class="fas fa-phone"></i>
-                                        <input type="tel" id="settingsPhone" class="modal-input"
-                                            placeholder="+260 XXX XXX XXX">
-                                    </div>
-                                </div>
-                                <div class="form-group">
-                                    <label for="settingsDOB">Date of Birth</label>
-                                    <div class="input-icon-wrap">
-                                        <i class="fas fa-calendar"></i>
-                                        <input type="date" id="settingsDOB" class="modal-input">
-                                    </div>
-                                </div>
-                            </div>
-                            <button class="btn-settings-save" onclick="saveAccountSettings()">
-                                <i class="fas fa-save"></i> Save Changes
-                            </button>
-                        </div>
+                        // Close quick menu if open
+                        if (quickMenu && quickMenu.classList.contains('show')) {
+                            quickMenu.classList.remove('show');
+                        }
 
-                        <div class="settings-card danger-card">
-                            <div class="settings-card-title danger-title">
-                                <i class="fas fa-exclamation-triangle"></i> Danger Zone
-                            </div>
-                            <p class="danger-desc">These actions are irreversible. Please be certain before proceeding.
-                            </p>
-                            <div class="danger-actions">
-                                <button class="btn-danger-outline" onclick="deactivateAccount()">
-                                    <i class="fas fa-user-slash"></i> Deactivate Account
-                                </button>
-                                <button class="btn-danger-solid" onclick="deleteAccount()">
-                                    <i class="fas fa-trash-alt"></i> Delete Account
-                                </button>
-                            </div>
-                        </div>
-                    </div>
+                        if (!dropdown) return;
 
-                    <!-- ── Profile Tab ── -->
-                    <div id="profileTab" class="settings-tab">
-                        <div class="tab-heading">
-                            <i class="fas fa-id-card"></i>
-                            <div>
-                                <h3>Profile Settings</h3>
-                                <p>Customize how others see you on PAGE</p>
-                            </div>
-                        </div>
+                        const isOpen = dropdown.classList.contains('show');
 
-                        <div class="settings-card">
-                            <div class="avatar-upload-section">
-                                <div class="avatar-ring">
-                                    <div class="avatar-preview" id="settingsAvatarPreview">
-                                        <i class="fas fa-user-circle"></i>
-                                    </div>
-                                    <button class="avatar-edit-btn" onclick="changeAvatar()" aria-label="Change avatar">
-                                        <i class="fas fa-camera"></i>
-                                    </button>
-                                </div>
-                                <div class="avatar-info">
-                                    <h4 id="settingsAvatarName">Player</h4>
-                                    <p>JPG, PNG or GIF · Max 5 MB</p>
-                                    <button class="btn-settings-secondary" onclick="changeAvatar()">
-                                        <i class="fas fa-upload"></i> Upload Photo
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
+                        if (isOpen) {
+                            dropdown.classList.remove('show');
+                            dropdown.style.removeProperty('top');
+                            dropdown.style.removeProperty('bottom');
+                            dropdown.style.removeProperty('right');
+                            dropdown.style.removeProperty('position');
+                        } else {
+                            // Position above the bottom nav
+                            const navH = document.getElementById('mobileBottomNav').offsetHeight;
+                            dropdown.style.position = 'fixed';
+                            dropdown.style.bottom = (navH + 8) + 'px';
+                            dropdown.style.top = 'auto';
+                            dropdown.style.right = '8px';
+                            dropdown.classList.add('show');
+                        }
+                    }
 
-                        <div class="settings-card">
-                            <div class="settings-card-title">Public Info</div>
-                            <div class="form-group">
-                                <label for="settingsDisplayName">Display Name</label>
-                                <div class="input-icon-wrap">
-                                    <i class="fas fa-signature"></i>
-                                    <input type="text" id="settingsDisplayName" class="modal-input"
-                                        placeholder="How others see you">
-                                </div>
-                            </div>
-                            <div class="form-group">
-                                <label for="settingsBio">Bio</label>
-                                <textarea id="settingsBio" class="modal-textarea"
-                                    placeholder="Tell others about yourself..." rows="3"></textarea>
-                            </div>
-                            <div class="form-row-2">
-                                <div class="form-group">
-                                    <label for="settingsLocation">Location</label>
-                                    <div class="input-icon-wrap">
-                                        <i class="fas fa-map-marker-alt"></i>
-                                        <input type="text" id="settingsLocation" class="modal-input"
-                                            placeholder="City, Country">
-                                    </div>
-                                </div>
-                                <div class="form-group">
-                                    <label for="settingsWebsite">Website</label>
-                                    <div class="input-icon-wrap">
-                                        <i class="fas fa-globe"></i>
-                                        <input type="url" id="settingsWebsite" class="modal-input"
-                                            placeholder="https://yoursite.com">
-                                    </div>
-                                </div>
-                            </div>
-                            <button class="btn-settings-save" onclick="saveProfileSettings()">
-                                <i class="fas fa-save"></i> Save Profile
-                            </button>
-                        </div>
-                    </div>
+                    // Close mobile more menu when clicking outside
+                    document.addEventListener('click', function (e) {
+                        const dropdown = document.getElementById('userMenuDropdown');
+                        if (dropdown && dropdown.classList.contains('show') && dropdown.style.bottom) {
+                            // Only handle closing when opened from the bottom nav (has inline bottom style)
+                            const moreBtn = document.querySelector('.mobile-bottom-nav .icon-nav-btn[title="More"]');
+                            if (!dropdown.contains(e.target) && (!moreBtn || !moreBtn.contains(e.target))) {
+                                dropdown.classList.remove('show');
+                                dropdown.style.removeProperty('top');
+                                dropdown.style.removeProperty('bottom');
+                                dropdown.style.removeProperty('right');
+                                dropdown.style.removeProperty('position');
+                            }
+                        }
+                    });
+                </script>
 
-                    <!-- ── Linked Accounts Tab ── -->
-                    <div id="linkedTab" class="settings-tab">
-                        <div class="tab-heading">
-                            <i class="fas fa-link"></i>
-                            <div>
-                                <h3>Linked Accounts</h3>
-                                <p>Connect your social media profiles to PAGE</p>
-                            </div>
-                        </div>
-                        <div class="settings-card">
-                            <div class="settings-card-title">Social Platforms</div>
-                            <p class="card-desc">Link your accounts to show them on your public profile and unlock
-                                social features.</p>
-                            <div id="linkedAccountsList" class="linked-accounts-list">
-                                <div class="linked-platform-row" data-platform="twitter">
-                                    <span class="lp-icon" style="color:#1da1f2"><i class="fab fa-twitter"></i></span>
-                                    <div class="lp-info"><strong>X (Twitter)</strong><span class="lp-handle"
-                                            id="lpHandleTwitter">Not connected</span></div>
-                                    <button class="lp-btn" id="lpBtnTwitter"
-                                        onclick="toggleSocialLink('twitter')">Connect</button>
-                                </div>
-                                <div class="linked-platform-row" data-platform="instagram">
-                                    <span class="lp-icon" style="color:#e1306c"><i class="fab fa-instagram"></i></span>
-                                    <div class="lp-info"><strong>Instagram</strong><span class="lp-handle"
-                                            id="lpHandleInstagram">Not connected</span></div>
-                                    <button class="lp-btn" id="lpBtnInstagram"
-                                        onclick="toggleSocialLink('instagram')">Connect</button>
-                                </div>
-                                <div class="linked-platform-row" data-platform="youtube">
-                                    <span class="lp-icon" style="color:#ff0000"><i class="fab fa-youtube"></i></span>
-                                    <div class="lp-info"><strong>YouTube</strong><span class="lp-handle"
-                                            id="lpHandleYoutube">Not connected</span></div>
-                                    <button class="lp-btn" id="lpBtnYoutube"
-                                        onclick="toggleSocialLink('youtube')">Connect</button>
-                                </div>
-                                <div class="linked-platform-row" data-platform="tiktok">
-                                    <span class="lp-icon" style="color:#333"><i class="fab fa-tiktok"></i></span>
-                                    <div class="lp-info"><strong>TikTok</strong><span class="lp-handle"
-                                            id="lpHandleTiktok">Not connected</span></div>
-                                    <button class="lp-btn" id="lpBtnTiktok"
-                                        onclick="toggleSocialLink('tiktok')">Connect</button>
-                                </div>
-                                <div class="linked-platform-row" data-platform="facebook">
-                                    <span class="lp-icon" style="color:#1877f2"><i class="fab fa-facebook"></i></span>
-                                    <div class="lp-info"><strong>Facebook</strong><span class="lp-handle"
-                                            id="lpHandleFacebook">Not connected</span></div>
-                                    <button class="lp-btn" id="lpBtnFacebook"
-                                        onclick="toggleSocialLink('facebook')">Connect</button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                <script src="scripts/websocket-client.js"></script>
+                <script src="scripts/utils.js"></script>
+                <script src="scripts/app.js"></script>
+                <script src="scripts/social-feed.js"></script>
+                <script src="scripts/challenges-enhanced.js"></script>
+                <script src="scripts/image-interpretation.js"></script>
+                <script src="scripts/settings.js"></script>
+                <script src="scripts/social-features.js"></script>
+                <script src="scripts/realtime-updates.js"></script>
+                <script src="scripts/story-viewer.js"></script>
+                <!-- Firebase real-time listeners: notifications badge + messenger badge -->
+                <script src="scripts/firebase-realtime.js"></script>
 
-                    <!-- ── Privacy Tab ── -->
-                    <div id="privacyTab" class="settings-tab">
-                        <div class="tab-heading">
-                            <i class="fas fa-shield-alt"></i>
-                            <div>
-                                <h3>Privacy Settings</h3>
-                                <p>Control who can see your information</p>
-                            </div>
-                        </div>
-
-                        <div class="settings-card">
-                            <div class="settings-card-title">Visibility</div>
-                            <div class="setting-row">
-                                <div class="setting-row-info">
-                                    <span class="setting-row-icon"><i class="fas fa-eye"></i></span>
-                                    <div>
-                                        <h4>Profile Visibility</h4>
-                                        <p>Control who can see your profile</p>
-                                    </div>
-                                </div>
-                                <select id="profileVisibility" class="settings-select">
-                                    <option value="public">Everyone</option>
-                                    <option value="friends">Friends Only</option>
-                                    <option value="alliance">Alliance Only</option>
-                                    <option value="private">Only Me</option>
-                                </select>
-                            </div>
-                            <div class="setting-row">
-                                <div class="setting-row-info">
-                                    <span class="setting-row-icon"><i class="fas fa-comment-dots"></i></span>
-                                    <div>
-                                        <h4>Who Can Message You</h4>
-                                        <p>Control who can send you direct messages</p>
-                                    </div>
-                                </div>
-                                <select id="messagePrivacy" class="settings-select">
-                                    <option value="everyone">Everyone</option>
-                                    <option value="friends">Friends Only</option>
-                                    <option value="none">No One</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div class="settings-card">
-                            <div class="settings-card-title">Activity &amp; Status</div>
-                            <div class="setting-row">
-                                <div class="setting-row-info">
-                                    <span class="setting-row-icon"><i class="fas fa-circle"
-                                            style="color:#4caf50;"></i></span>
-                                    <div>
-                                        <h4>Show Online Status</h4>
-                                        <p>Let others see when you're online</p>
-                                    </div>
-                                </div>
-                                <label class="toggle-switch" aria-label="Toggle online status">
-                                    <input type="checkbox" id="showOnlineStatus" checked>
-                                    <span class="toggle-slider"></span>
-                                </label>
-                            </div>
-                            <div class="setting-row">
-                                <div class="setting-row-info">
-                                    <span class="setting-row-icon"><i class="fas fa-rss"></i></span>
-                                    <div>
-                                        <h4>Activity Status</h4>
-                                        <p>Show your activity in the feed</p>
-                                    </div>
-                                </div>
-                                <label class="toggle-switch" aria-label="Toggle activity status">
-                                    <input type="checkbox" id="showActivity" checked>
-                                    <span class="toggle-slider"></span>
-                                </label>
-                            </div>
-                            <div class="setting-row">
-                                <div class="setting-row-info">
-                                    <span class="setting-row-icon"><i class="fas fa-chart-bar"></i></span>
-                                    <div>
-                                        <h4>Show Stats Publicly</h4>
-                                        <p>Display your prestige and rank</p>
-                                    </div>
-                                </div>
-                                <label class="toggle-switch" aria-label="Toggle public stats">
-                                    <input type="checkbox" id="showStats" checked>
-                                    <span class="toggle-slider"></span>
-                                </label>
-                            </div>
-                        </div>
-
-                        <button class="btn-settings-save" onclick="savePrivacySettings()">
-                            <i class="fas fa-save"></i> Save Privacy Settings
-                        </button>
-                    </div>
-
-                    <!-- ── Notifications Tab ── -->
-                    <div id="notificationsTab" class="settings-tab">
-                        <div class="tab-heading">
-                            <i class="fas fa-bell"></i>
-                            <div>
-                                <h3>Notification Preferences</h3>
-                                <p>Choose what you want to be notified about</p>
-                            </div>
-                        </div>
-
-                        <div class="settings-card">
-                            <div class="settings-card-title">Channels</div>
-                            <div class="setting-row">
-                                <div class="setting-row-info">
-                                    <span class="setting-row-icon"><i class="fas fa-mobile-alt"></i></span>
-                                    <div>
-                                        <h4>Push Notifications</h4>
-                                        <p>Receive notifications on your device</p>
-                                    </div>
-                                </div>
-                                <label class="toggle-switch"><input type="checkbox" id="pushNotifications" checked><span
-                                        class="toggle-slider"></span></label>
-                            </div>
-                            <div class="setting-row">
-                                <div class="setting-row-info">
-                                    <span class="setting-row-icon"><i class="fas fa-envelope"></i></span>
-                                    <div>
-                                        <h4>Email Notifications</h4>
-                                        <p>Get updates via email</p>
-                                    </div>
-                                </div>
-                                <label class="toggle-switch"><input type="checkbox" id="emailNotifications"
-                                        checked><span class="toggle-slider"></span></label>
-                            </div>
-                            <div class="setting-row">
-                                <div class="setting-row-info">
-                                    <span class="setting-row-icon"><i class="fas fa-volume-up"></i></span>
-                                    <div>
-                                        <h4>Sound Effects</h4>
-                                        <p>Play sounds for notifications</p>
-                                    </div>
-                                </div>
-                                <label class="toggle-switch"><input type="checkbox" id="soundEffects" checked><span
-                                        class="toggle-slider"></span></label>
-                            </div>
-                        </div>
-
-                        <div class="settings-card">
-                            <div class="settings-card-title">Activity Alerts</div>
-                            <div class="setting-row">
-                                <div class="setting-row-info">
-                                    <span class="setting-row-icon"><i class="fas fa-trophy"></i></span>
-                                    <div>
-                                        <h4>Challenge Updates</h4>
-                                        <p>New challenges and results</p>
-                                    </div>
-                                </div>
-                                <label class="toggle-switch"><input type="checkbox" id="challengeNotifications"
-                                        checked><span class="toggle-slider"></span></label>
-                            </div>
-                            <div class="setting-row">
-                                <div class="setting-row-info">
-                                    <span class="setting-row-icon"><i class="fas fa-comment"></i></span>
-                                    <div>
-                                        <h4>Messages</h4>
-                                        <p>When you receive a new message</p>
-                                    </div>
-                                </div>
-                                <label class="toggle-switch"><input type="checkbox" id="messageNotifications"
-                                        checked><span class="toggle-slider"></span></label>
-                            </div>
-                            <div class="setting-row">
-                                <div class="setting-row-info">
-                                    <span class="setting-row-icon"><i class="fas fa-users"></i></span>
-                                    <div>
-                                        <h4>Alliance Activity</h4>
-                                        <p>Updates from your alliance</p>
-                                    </div>
-                                </div>
-                                <label class="toggle-switch"><input type="checkbox" id="allianceNotifications"
-                                        checked><span class="toggle-slider"></span></label>
-                            </div>
-                            <div class="setting-row">
-                                <div class="setting-row-info">
-                                    <span class="setting-row-icon"><i class="fas fa-flag-checkered"></i></span>
-                                    <div>
-                                        <h4>Tournament Reminders</h4>
-                                        <p>Upcoming tournament alerts</p>
-                                    </div>
-                                </div>
-                                <label class="toggle-switch"><input type="checkbox" id="tournamentNotifications"
-                                        checked><span class="toggle-slider"></span></label>
-                            </div>
-                        </div>
-
-                        <button class="btn-settings-save" onclick="saveNotificationSettings()">
-                            <i class="fas fa-save"></i> Save Notification Settings
-                        </button>
-                    </div>
-
-                    <!-- ── Appearance Tab ── -->
-                    <div id="appearanceTab" class="settings-tab">
-                        <div class="tab-heading">
-                            <i class="fas fa-palette"></i>
-                            <div>
-                                <h3>Appearance</h3>
-                                <p>Make PAGE look the way you like it</p>
-                            </div>
-                        </div>
-
-                        <div class="settings-card">
-                            <div class="settings-card-title">Theme &amp; Display</div>
-                            <div class="setting-row">
-                                <div class="setting-row-info">
-                                    <span class="setting-row-icon"><i class="fas fa-moon"></i></span>
-                                    <div>
-                                        <h4>Theme</h4>
-                                        <p>Choose your preferred color scheme</p>
-                                    </div>
-                                </div>
-                                <select id="themeSelect" class="settings-select" onchange="changeTheme()">
-                                    <option value="dark">Dark Mode</option>
-                                    <option value="light">Light Mode</option>
-                                    <option value="auto">Auto (System)</option>
-                                </select>
-                            </div>
-                            <div class="setting-row">
-                                <div class="setting-row-info">
-                                    <span class="setting-row-icon"><i class="fas fa-text-height"></i></span>
-                                    <div>
-                                        <h4>Font Size</h4>
-                                        <p>Adjust text size for readability</p>
-                                    </div>
-                                </div>
-                                <select id="fontSize" class="settings-select" onchange="changeFontSize()">
-                                    <option value="small">Small</option>
-                                    <option value="medium" selected>Medium</option>
-                                    <option value="large">Large</option>
-                                </select>
-                            </div>
-                            <div class="setting-row">
-                                <div class="setting-row-info">
-                                    <span class="setting-row-icon"><i class="fas fa-magic"></i></span>
-                                    <div>
-                                        <h4>Animations</h4>
-                                        <p>Enable UI animations and transitions</p>
-                                    </div>
-                                </div>
-                                <label class="toggle-switch"><input type="checkbox" id="enableAnimations" checked
-                                        onchange="toggleAnimationsSetting(this)"><span
-                                        class="toggle-slider"></span></label>
-                            </div>
-                            <div class="setting-row">
-                                <div class="setting-row-info">
-                                    <span class="setting-row-icon"><i class="fas fa-compress-alt"></i></span>
-                                    <div>
-                                        <h4>Compact Mode</h4>
-                                        <p>Show more content with tighter spacing</p>
-                                    </div>
-                                </div>
-                                <label class="toggle-switch"><input type="checkbox" id="compactMode"
-                                        onchange="toggleCompactModeSetting(this)"><span
-                                        class="toggle-slider"></span></label>
-                            </div>
-                        </div>
-
-                        <div class="settings-card">
-                            <div class="settings-card-title">Accent Color</div>
-                            <p class="card-desc">Choose a color that highlights interactive elements</p>
-                            <div class="color-picker-grid">
-                                <button class="color-swatch active" data-color="#ffffff" data-accent-swatch="#ffffff"
-                                    style="background:#ffffff;border:2px solid #ccc;"
-                                    onclick="selectAccentColor('#ffffff')" aria-label="Classic White"></button>
-                                <button class="color-swatch" data-color="#90ee90" data-accent-swatch="#90ee90"
-                                    style="background:#90ee90;" onclick="selectAccentColor('#90ee90')"
-                                    aria-label="Forest Green"></button>
-                                <button class="color-swatch" data-color="#4facfe" data-accent-swatch="#4facfe"
-                                    style="background:#4facfe;" onclick="selectAccentColor('#4facfe')"
-                                    aria-label="Ocean Blue"></button>
-                                <button class="color-swatch" data-color="#f093fb" data-accent-swatch="#f093fb"
-                                    style="background:#f093fb;" onclick="selectAccentColor('#f093fb')"
-                                    aria-label="Rose Pink"></button>
-                                <button class="color-swatch" data-color="#ffd700" data-accent-swatch="#ffd700"
-                                    style="background:#ffd700;" onclick="selectAccentColor('#ffd700')"
-                                    aria-label="Gold"></button>
-                                <button class="color-swatch" data-color="#ff6b6b" data-accent-swatch="#ff6b6b"
-                                    style="background:#ff6b6b;" onclick="selectAccentColor('#ff6b6b')"
-                                    aria-label="Crimson Red"></button>
-                                <button class="color-swatch" data-color="#a78bfa" data-accent-swatch="#a78bfa"
-                                    style="background:#a78bfa;" onclick="selectAccentColor('#a78bfa')"
-                                    aria-label="Deep Purple"></button>
-                                <button class="color-swatch" data-color="#d4b483" data-accent-swatch="#d4b483"
-                                    style="background:#d4b483;" onclick="selectAccentColor('#d4b483')"
-                                    aria-label="Warm Beige"></button>
-                                <button class="color-swatch" data-color="#a0522d" data-accent-swatch="#a0522d"
-                                    style="background:#a0522d;" onclick="selectAccentColor('#a0522d')"
-                                    aria-label="Sienna Brown"></button>
-                            </div>
-                            <div id="smAccentLabel"
-                                style="font-size:11px;font-weight:700;text-align:center;margin-top:6px;opacity:0;transition:opacity .3s;">
-                            </div>
-                        </div>
-
-                        <button class="btn-settings-save" onclick="saveAppearanceSettings()">
-                            <i class="fas fa-save"></i> Save Appearance
-                        </button>
-                    </div>
-
-                    <!-- ── Security Tab ── -->
-                    <div id="securityTab" class="settings-tab">
-                        <div class="tab-heading">
-                            <i class="fas fa-lock"></i>
-                            <div>
-                                <h3>Security</h3>
-                                <p>Keep your account safe and secure</p>
-                            </div>
-                        </div>
-
-                        <div class="settings-card">
-                            <div class="settings-card-title">Change Password</div>
-                            <div class="form-group">
-                                <label for="currentPassword">Current Password</label>
-                                <div class="input-icon-wrap">
-                                    <i class="fas fa-lock"></i>
-                                    <input type="password" id="currentPassword" class="modal-input"
-                                        placeholder="Enter current password">
-                                    <button type="button" class="toggle-pw-btn"
-                                        onclick="togglePasswordVisibility('currentPassword', this)"
-                                        aria-label="Show password">
-                                        <i class="fas fa-eye"></i>
-                                    </button>
-                                </div>
-                            </div>
-                            <div class="form-row-2">
-                                <div class="form-group">
-                                    <label for="newPassword">New Password</label>
-                                    <div class="input-icon-wrap">
-                                        <i class="fas fa-key"></i>
-                                        <input type="password" id="newPassword" class="modal-input"
-                                            placeholder="Enter new password"
-                                            oninput="checkPasswordStrength(this.value)">
-                                        <button type="button" class="toggle-pw-btn"
-                                            onclick="togglePasswordVisibility('newPassword', this)"
-                                            aria-label="Show password">
-                                            <i class="fas fa-eye"></i>
-                                        </button>
-                                    </div>
-                                    <div class="password-strength" id="passwordStrength">
-                                        <div class="strength-bar"><span id="strengthFill"></span></div>
-                                        <span id="strengthLabel">—</span>
-                                    </div>
-                                </div>
-                                <div class="form-group">
-                                    <label for="confirmPassword">Confirm New Password</label>
-                                    <div class="input-icon-wrap">
-                                        <i class="fas fa-key"></i>
-                                        <input type="password" id="confirmPassword" class="modal-input"
-                                            placeholder="Confirm new password">
-                                        <button type="button" class="toggle-pw-btn"
-                                            onclick="togglePasswordVisibility('confirmPassword', this)"
-                                            aria-label="Show password">
-                                            <i class="fas fa-eye"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                            <button class="btn-settings-save" onclick="changePassword()">
-                                <i class="fas fa-key"></i> Update Password
-                            </button>
-                        </div>
-
-                        <div class="settings-card">
-                            <div class="settings-card-title">Two-Factor Authentication</div>
-                            <div class="setting-row">
-                                <div class="setting-row-info">
-                                    <span class="setting-row-icon"><i class="fas fa-mobile-alt"></i></span>
-                                    <div>
-                                        <h4>Enable 2FA</h4>
-                                        <p>Add an extra layer of security to your account</p>
-                                    </div>
-                                </div>
-                                <label class="toggle-switch"><input type="checkbox" id="enable2FA"><span
-                                        class="toggle-slider"></span></label>
-                            </div>
-                            <button class="btn-settings-secondary" onclick="setup2FA()">
-                                <i class="fas fa-qrcode"></i> Setup Authenticator App
-                            </button>
-                        </div>
-
-                        <div class="settings-card">
-                            <div class="settings-card-title">Active Sessions</div>
-                            <div id="sessionsList" class="sessions-list">
-                                <div class="sessions-loading"><i class="fas fa-spinner fa-spin"></i> Loading sessions...
-                                </div>
-                            </div>
-                            <button class="btn-danger-outline" onclick="logoutAllDevices()">
-                                <i class="fas fa-sign-out-alt"></i> Logout All Devices
-                            </button>
-                        </div>
-                    </div>
-
-                </div><!-- /settings-content -->
-            </div><!-- /settings-layout -->
-        </div>
-    </div>
-
-    <!-- Mobile Bottom Navigation Bar (hidden on desktop via CSS) -->
-    <nav class="mobile-bottom-nav" id="mobileBottomNav">
-        <button class="icon-nav-btn active" data-view="social-feed" title="Home" onclick="switchView('social-feed')">
-            <i class="fas fa-home"></i>
-        </button>
-        <button class="icon-nav-btn" data-view="challenges" title="Challenges" onclick="switchView('challenges')">
-            <i class="fas fa-trophy"></i>
-            <span class="notification-badge" id="challengesBadgeMobile" style="display:none;">0</span>
-        </button>
-        <button class="icon-nav-btn" title="Messages" onclick="window.location.href='pages/messenger.html'">
-            <i class="fas fa-comment-dots"></i>
-        </button>
-        <button class="icon-nav-btn" data-view="people" title="People" onclick="switchView('people')">
-            <i class="fas fa-users"></i>
-        </button>
-        <button class="icon-nav-btn" onclick="toggleMobileMoreMenu(this)" title="More">
-            <i class="fas fa-bars"></i>
-        </button>
-    </nav>
-
-    <script>
-        // Sync both the header icon-nav and bottom mobile nav active states
-        function switchView(viewName) {
-            showView(viewName);
-            // Update icon-nav-btns in both header and bottom nav
-            document.querySelectorAll('.icon-nav-btn[data-view]').forEach(function (btn) {
-                btn.classList.toggle('active', btn.getAttribute('data-view') === viewName);
-            });
-        }
-
-        // Mobile bottom-nav "More" — opens the user menu anchored above the nav bar
-        function toggleMobileMoreMenu(btn) {
-            const dropdown = document.getElementById('userMenuDropdown');
-            const quickMenu = document.getElementById('quickMenuDropdown');
-
-            // Close quick menu if open
-            if (quickMenu && quickMenu.classList.contains('show')) {
-                quickMenu.classList.remove('show');
-            }
-
-            if (!dropdown) return;
-
-            const isOpen = dropdown.classList.contains('show');
-
-            if (isOpen) {
-                dropdown.classList.remove('show');
-                dropdown.style.removeProperty('top');
-                dropdown.style.removeProperty('bottom');
-                dropdown.style.removeProperty('right');
-                dropdown.style.removeProperty('position');
-            } else {
-                // Position above the bottom nav
-                const navH = document.getElementById('mobileBottomNav').offsetHeight;
-                dropdown.style.position = 'fixed';
-                dropdown.style.bottom = (navH + 8) + 'px';
-                dropdown.style.top = 'auto';
-                dropdown.style.right = '8px';
-                dropdown.classList.add('show');
-            }
-        }
-
-        // Close mobile more menu when clicking outside
-        document.addEventListener('click', function (e) {
-            const dropdown = document.getElementById('userMenuDropdown');
-            if (dropdown && dropdown.classList.contains('show') && dropdown.style.bottom) {
-                // Only handle closing when opened from the bottom nav (has inline bottom style)
-                const moreBtn = document.querySelector('.mobile-bottom-nav .icon-nav-btn[title="More"]');
-                if (!dropdown.contains(e.target) && (!moreBtn || !moreBtn.contains(e.target))) {
-                    dropdown.classList.remove('show');
-                    dropdown.style.removeProperty('top');
-                    dropdown.style.removeProperty('bottom');
-                    dropdown.style.removeProperty('right');
-                    dropdown.style.removeProperty('position');
-                }
-            }
-        });
-    </script>
-
-    <script src="scripts/websocket-client.js"></script>
-    <script src="scripts/utils.js"></script>
-    <script src="scripts/app.js"></script>
-    <script src="scripts/social-feed.js"></script>
-    <script src="scripts/challenges-enhanced.js"></script>
-    <script src="scripts/image-interpretation.js"></script>
-    <script src="scripts/settings.js"></script>
-    <script src="scripts/social-features.js"></script>
-    <script src="scripts/realtime-updates.js"></script>
-    <script src="scripts/story-viewer.js"></script>
-    <!-- Firebase real-time listeners: notifications badge + messenger badge -->
-    <script src="scripts/firebase-realtime.js"></script>
-
-    <!-- Bootstrap JS Bundle (includes Popper) -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+                <!-- Bootstrap JS Bundle (includes Popper) -->
+                <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 
 </html>

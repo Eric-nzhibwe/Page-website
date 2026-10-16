@@ -25,6 +25,17 @@ def _use_fs_social():
     return django_settings.FIRESTORE_COLLECTIONS.get('social', False)
 
 
+def _resolve_user_id(request, param='user_id'):
+    """
+    Safely resolve a user_id query param, treating 'null'/'undefined'/''
+    as absent so we always fall back to the authenticated user's own ID.
+    """
+    raw = request.query_params.get(param, '')
+    if raw and raw.lower() not in ('null', 'undefined'):
+        return raw
+    return request.user.id
+
+
 class StandardResultsSetPagination(PageNumberPagination):
     page_size = 20
     page_size_query_param = 'page_size'
@@ -518,10 +529,7 @@ class FollowViewSet(viewsets.ViewSet):
     @action(detail=False, methods=['get'])
     def followers(self, request):
         """Get user's followers"""
-        raw = request.query_params.get('user_id', '')
-        user_id = raw if raw and raw.lower() not in ('null', 'undefined', '') else request.user.id
-        user = get_object_or_404(User, id=user_id)
-
+        user = get_object_or_404(User, id=_resolve_user_id(request))
         follows = Follow.objects.filter(following=user)
         serializer = FollowListSerializer(follows, many=True, context={'request': request})
         return Response(serializer.data)
@@ -529,9 +537,7 @@ class FollowViewSet(viewsets.ViewSet):
     @action(detail=False, methods=['get'])
     def following(self, request):
         """Get users that current user is following"""
-        raw = request.query_params.get('user_id', '')
-        user_id = raw if raw and raw.lower() not in ('null', 'undefined', '') else request.user.id
-        user = get_object_or_404(User, id=user_id)
+        user = get_object_or_404(User, id=_resolve_user_id(request))
         
         follows = Follow.objects.filter(follower=user)
         serializer = FollowListSerializer(follows, many=True, context={'request': request})
@@ -591,8 +597,7 @@ class FollowViewSet(viewsets.ViewSet):
 
     @action(detail=False, methods=['get'])
     def counts(self, request):
-        user_id = request.query_params.get('user_id', request.user.id)
-        user = get_object_or_404(User, id=user_id)
+        user = get_object_or_404(User, id=_resolve_user_id(request))
         is_following = Follow.objects.filter(
             follower=request.user,
             following=user

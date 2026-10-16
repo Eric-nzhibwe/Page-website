@@ -613,7 +613,7 @@ class QAChallenge(models.Model):
     created_by  = models.ForeignKey(User, on_delete=models.CASCADE, related_name='qa_challenges')
     title       = models.CharField(max_length=255, help_text='The question')
     description = models.TextField(blank=True)
-    image_url   = models.URLField(max_length=500, blank=True)
+    image_url   = models.TextField(blank=True)   # TextField — accepts base64 data URIs
     prize_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     difficulty  = models.CharField(max_length=20, default='easy')
     duration_days = models.IntegerField(default=7)

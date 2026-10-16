@@ -26,7 +26,7 @@ function clearAllLocalStorage() {
     alert('🧹 All local storage data has been cleared!\n\n✅ You can now register new users fresh!\n\n🎮 The system will now use the Django database for all user data.');
     
     // Redirect to auth page for fresh start
-    window.location.href = 'pages/auth.html';
+    window.location.href = '/pages/auth.html';
 }
 
 // Auto-execute when script loads

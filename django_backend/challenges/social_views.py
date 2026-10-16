@@ -416,22 +416,32 @@ def qa_list(request):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def create_qa(request):
-    """Create a new Q&A challenge."""
+    """
+    Create a new Q&A challenge.
+    Accepts an optional image as a base64 data URI in 'image_url'.
+    """
     data  = request.data
     title = data.get('title', '').strip()
     if not title:
         return Response({'error': 'title is required.'}, status=400)
 
+    # Accept base64 data URI or empty string — TextField handles both
+    image_url = data.get('image_url', '') or ''
+
     qa = QAChallenge.objects.create(
-        created_by   = request.user,
-        title        = title,
-        description  = data.get('description', ''),
-        image_url    = data.get('image_url', ''),
-        prize_amount = data.get('prize_amount', 0),
-        difficulty   = data.get('difficulty', 'easy'),
+        created_by    = request.user,
+        title         = title,
+        description   = data.get('description', ''),
+        image_url     = image_url,
+        prize_amount  = data.get('prize_amount', 0),
+        difficulty    = data.get('difficulty', 'easy'),
         duration_days = data.get('duration_days', 7),
     )
-    return Response({'id': str(qa.id), 'title': qa.title}, status=201)
+    return Response({
+        'id':        str(qa.id),
+        'title':     qa.title,
+        'image_url': qa.image_url,
+    }, status=201)
 
 
 @api_view(['POST'])
