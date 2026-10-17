@@ -62,7 +62,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.addEventListener('DOMContentLoaded', () => {
             try {
                 const u = JSON.parse(localStorage.getItem('pageUser') || '{}');
-                const url = u.profile_image_url || u.avatar_url || u.profile_image || null;
+                const url = (typeof getAvatarUrl === 'function')
+                    ? getAvatarUrl(u)
+                    : (u.profile_image_url || u.avatar_url || null);
                 _stamp(url, u.username || u.display_name || '');
             } catch (_) { /* non-critical */ }
         });

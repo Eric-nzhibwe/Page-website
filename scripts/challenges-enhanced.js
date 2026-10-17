@@ -440,8 +440,11 @@ function _fmtDuration(val) {
 }
 
 function buildPollCard(id, title, description, options, duration) {
-    const username = document.getElementById('username')?.textContent || 'You';
-    const avatarInitial = username[0].toUpperCase();
+    const u = (() => { try { return JSON.parse(localStorage.getItem('pageUser') || '{}'); } catch { return {}; } })();
+    const username = u.display_name || u.username || 'You';
+    const avatarInner = (typeof avatarHTML === 'function')
+        ? avatarHTML(u)
+        : `<span style="display:inline-flex;align-items:center;justify-content:center;width:100%;height:100%;border-radius:50%;background:#6c63ff;color:#fff;font-weight:700;font-size:14px;">${username[0].toUpperCase()}</span>`;
 
     const optionsHTML = options.map((opt, i) => `
         <button class="poll-vote-btn" onclick="castPollVote('${id}', ${i}, this)">
@@ -453,7 +456,7 @@ function buildPollCard(id, title, description, options, duration) {
     return `
         <div class="poll-header-bar">
             <div class="poll-avatar">
-                <span class="poll-avatar-placeholder">${avatarInitial}</span>
+                ${avatarInner}
             </div>
             <h3 class="poll-title">${title}</h3>
         </div>
@@ -470,8 +473,11 @@ function buildPollCard(id, title, description, options, duration) {
 }
 
 function buildQACard(id, title, description, imgSrc, duration) {
-    const username = document.getElementById('username')?.textContent || 'You';
-    const initial = username[0].toUpperCase();
+    const u = (() => { try { return JSON.parse(localStorage.getItem('pageUser') || '{}'); } catch { return {}; } })();
+    const username = u.display_name || u.username || 'You';
+    const avatarInner = (typeof avatarHTML === 'function')
+        ? avatarHTML(u)
+        : `<span style="display:inline-flex;align-items:center;justify-content:center;width:100%;height:100%;border-radius:50%;background:#6c63ff;color:#fff;font-weight:700;font-size:14px;">${username[0].toUpperCase()}</span>`;
 
     const imgSection = imgSrc ? `
         <div class="qa-img-preview-wrap" id="qaImgWrap_${id}">
@@ -490,7 +496,7 @@ function buildQACard(id, title, description, imgSrc, duration) {
 
     return `
         <div class="qa-creator-avatar-wrap">
-            <div class="qa-creator-avatar">${initial}</div>
+            <div class="qa-creator-avatar">${avatarInner}</div>
         </div>
         <p class="qa-question">${title}</p>
         ${descSection}
@@ -525,7 +531,6 @@ function toggleQAImage(id) {
     const isOpen = panel.style.display !== 'none';
     panel.style.display = isOpen ? 'none' : 'block';
     if (btn) btn.setAttribute('aria-expanded', String(!isOpen));
-}
 }
 
 /* ── Interaction handlers — all DB-backed ── */
