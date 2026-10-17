@@ -18,6 +18,7 @@
     <link rel="stylesheet" href="styles/story-viewer.css">
     <link rel="stylesheet" href="styles/icon-nav.css">
     <link rel="stylesheet" href="styles/social-feed.css">
+    <link rel="stylesheet" href="styles/challenges.css">
     <link rel="stylesheet" href="styles/challenges-enhanced.css">
     <link rel="stylesheet" href="styles/settings.css">
     <link rel="stylesheet" href="styles/streak.css">
@@ -1936,117 +1937,121 @@
                 <!-- Bootstrap JS Bundle (includes Popper) -->
                 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
-    <!-- ═══════════════════════════════════════════════════
+                <!-- ═══════════════════════════════════════════════════
          CREATE SOCIAL CHALLENGE MODAL
          Placed at body level so display:none on parent
          sections never hides it. Used by openCreateChallengeModal()
          in challenges-enhanced.js.
     ════════════════════════════════════════════════════ -->
-    <div id="createChallengeModal" class="modal" style="display:none;" role="dialog" aria-modal="true">
-        <div class="modal-content create-challenge-modal">
-            <div class="modal-header">
-                <h2><i class="fas fa-trophy"></i> Create Challenge</h2>
-                <span class="close" onclick="closeCreateChallengeModal()">&times;</span>
-            </div>
+                <div id="createChallengeModal" class="modal" style="display:none;" role="dialog" aria-modal="true">
+                    <div class="modal-content create-challenge-modal">
+                        <div class="modal-header">
+                            <h2><i class="fas fa-trophy"></i> Create Challenge</h2>
+                            <span class="close" onclick="closeCreateChallengeModal()">&times;</span>
+                        </div>
 
-            <!-- Step 1: Category picker -->
-            <div class="modal-body" id="createChallengeStep1">
-                <p class="category-picker-label">Select a challenge type to get started:</p>
-                <div class="challenge-category-grid">
-                    <button class="challenge-category-card" onclick="selectChallengeCategory('polls')">
-                        <span class="category-card-icon">📊</span>
-                        <span class="category-card-name">Polls</span>
-                        <span class="category-card-desc">Let the community vote on a question</span>
-                    </button>
-                    <button class="challenge-category-card" onclick="selectChallengeCategory('qa')">
-                        <span class="category-card-icon">💬</span>
-                        <span class="category-card-name">Q &amp; A</span>
-                        <span class="category-card-desc">Ask questions, share answers &amp; pictures</span>
-                    </button>
-                    <button class="challenge-category-card" onclick="selectChallengeCategory('debates')">
-                        <span class="category-card-icon">⚔️</span>
-                        <span class="category-card-name">Debates</span>
-                        <span class="category-card-desc">Pick a side and argue your position</span>
-                    </button>
+                        <!-- Step 1: Category picker -->
+                        <div class="modal-body" id="createChallengeStep1">
+                            <p class="category-picker-label">Select a challenge type to get started:</p>
+                            <div class="challenge-category-grid">
+                                <button class="challenge-category-card" onclick="selectChallengeCategory('polls')">
+                                    <span class="category-card-icon">📊</span>
+                                    <span class="category-card-name">Polls</span>
+                                    <span class="category-card-desc">Let the community vote on a question</span>
+                                </button>
+                                <button class="challenge-category-card" onclick="selectChallengeCategory('qa')">
+                                    <span class="category-card-icon">💬</span>
+                                    <span class="category-card-name">Q &amp; A</span>
+                                    <span class="category-card-desc">Ask questions, share answers &amp; pictures</span>
+                                </button>
+                                <button class="challenge-category-card" onclick="selectChallengeCategory('debates')">
+                                    <span class="category-card-icon">⚔️</span>
+                                    <span class="category-card-name">Debates</span>
+                                    <span class="category-card-desc">Pick a side and argue your position</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Step 2: form -->
+                        <div class="modal-body" id="createChallengeStep2" style="display:none;">
+                            <button class="back-btn" onclick="backToCategoryPicker()">
+                                <i class="fas fa-arrow-left"></i> Back
+                            </button>
+                            <form id="socialChallengeForm" onsubmit="publishChallenge(event)" novalidate>
+                                <input type="hidden" id="challengeCategory">
+
+                                <div class="form-group">
+                                    <label>Title <span class="required">*</span></label>
+                                    <input type="text" id="socialChallengeTitle" class="modal-input"
+                                        placeholder="e.g., Best programming language?" required>
+                                </div>
+
+                                <div class="form-group">
+                                    <label>Duration <span class="required">*</span></label>
+                                    <div style="display:flex;gap:8px;align-items:center;">
+                                        <input type="number" id="challengeDuration" class="modal-input"
+                                            placeholder="e.g. 7" min="1" max="9999" required style="flex:1;" value="7">
+                                        <select id="challengeDurationUnit" class="modal-input"
+                                            style="width:110px;flex-shrink:0;">
+                                            <option value="minutes">Minutes</option>
+                                            <option value="hours">Hours</option>
+                                            <option value="days" selected>Days</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label>Description</label>
+                                    <textarea id="socialChallengeDescription" class="modal-textarea"
+                                        placeholder="Give some context…" rows="3"></textarea>
+                                </div>
+
+                                <!-- Q&A image -->
+                                <div class="form-group" id="challengeImageGroup" style="display:none;">
+                                    <label>Attach Image <span
+                                            style="font-size:11px;color:#999;">(optional)</span></label>
+                                    <div class="image-upload-area"
+                                        onclick="document.getElementById('challengeImageUpload').click()"
+                                        style="cursor:pointer;border:2px dashed #ddd;border-radius:10px;padding:16px;text-align:center;">
+                                        <i class="fas fa-cloud-upload-alt"></i>
+                                        <p style="margin:4px 0 0;">Upload an image for your Q&amp;A</p>
+                                        <small>JPG, PNG or GIF — max 5 MB</small>
+                                    </div>
+                                    <input type="file" id="challengeImageUpload" accept="image/*" style="display:none;"
+                                        onchange="handleChallengeImage(event)">
+                                    <div id="challengeImagePreview" style="margin-top:8px;"></div>
+                                </div>
+
+                                <!-- Poll options -->
+                                <div class="form-group" id="pollOptionsGroup" style="display:none;">
+                                    <label>Poll Options <span class="required">*</span></label>
+                                    <input type="text" id="pollOption1" class="modal-input" placeholder="Option 1"
+                                        style="margin-bottom:6px;">
+                                    <input type="text" id="pollOption2" class="modal-input" placeholder="Option 2"
+                                        style="margin-bottom:6px;">
+                                    <input type="text" id="pollOption3" class="modal-input"
+                                        placeholder="Option 3 (optional)" style="margin-bottom:6px;">
+                                    <input type="text" id="pollOption4" class="modal-input"
+                                        placeholder="Option 4 (optional)">
+                                </div>
+
+                                <!-- Debate sides -->
+                                <div class="form-group" id="debateSidesGroup" style="display:none;">
+                                    <label>Debate Sides <span class="required">*</span></label>
+                                    <input type="text" id="debateSideA" class="modal-input"
+                                        placeholder="Side A (e.g., For)" style="margin-bottom:6px;">
+                                    <input type="text" id="debateSideB" class="modal-input"
+                                        placeholder="Side B (e.g., Against)">
+                                </div>
+
+                                <button type="submit" class="btn-primary btn-large"
+                                    style="width:100%;margin-top:12px;border-radius:12px;color:#000;">
+                                    <i class="fas fa-check"></i> Create Challenge
+                                </button>
+                            </form>
+                        </div>
+                    </div>
                 </div>
-            </div>
-
-            <!-- Step 2: form -->
-            <div class="modal-body" id="createChallengeStep2" style="display:none;">
-                <button class="back-btn" onclick="backToCategoryPicker()">
-                    <i class="fas fa-arrow-left"></i> Back
-                </button>
-                <form id="socialChallengeForm" onsubmit="publishChallenge(event)" novalidate>
-                    <input type="hidden" id="challengeCategory">
-
-                    <div class="form-group">
-                        <label>Title <span class="required">*</span></label>
-                        <input type="text" id="socialChallengeTitle" class="modal-input"
-                            placeholder="e.g., Best programming language?" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Duration <span class="required">*</span></label>
-                        <div style="display:flex;gap:8px;align-items:center;">
-                            <input type="number" id="challengeDuration" class="modal-input"
-                                placeholder="e.g. 7" min="1" max="9999" required style="flex:1;" value="7">
-                            <select id="challengeDurationUnit" class="modal-input" style="width:110px;flex-shrink:0;">
-                                <option value="minutes">Minutes</option>
-                                <option value="hours">Hours</option>
-                                <option value="days" selected>Days</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Description</label>
-                        <textarea id="socialChallengeDescription" class="modal-textarea"
-                            placeholder="Give some context…" rows="3"></textarea>
-                    </div>
-
-                    <!-- Q&A image -->
-                    <div class="form-group" id="challengeImageGroup" style="display:none;">
-                        <label>Attach Image <span style="font-size:11px;color:#999;">(optional)</span></label>
-                        <div class="image-upload-area"
-                            onclick="document.getElementById('challengeImageUpload').click()"
-                            style="cursor:pointer;border:2px dashed #ddd;border-radius:10px;padding:16px;text-align:center;">
-                            <i class="fas fa-cloud-upload-alt"></i>
-                            <p style="margin:4px 0 0;">Upload an image for your Q&amp;A</p>
-                            <small>JPG, PNG or GIF — max 5 MB</small>
-                        </div>
-                        <input type="file" id="challengeImageUpload" accept="image/*" style="display:none;"
-                            onchange="handleChallengeImage(event)">
-                        <div id="challengeImagePreview" style="margin-top:8px;"></div>
-                    </div>
-
-                    <!-- Poll options -->
-                    <div class="form-group" id="pollOptionsGroup" style="display:none;">
-                        <label>Poll Options <span class="required">*</span></label>
-                        <input type="text" id="pollOption1" class="modal-input" placeholder="Option 1"
-                            style="margin-bottom:6px;">
-                        <input type="text" id="pollOption2" class="modal-input" placeholder="Option 2"
-                            style="margin-bottom:6px;">
-                        <input type="text" id="pollOption3" class="modal-input" placeholder="Option 3 (optional)"
-                            style="margin-bottom:6px;">
-                        <input type="text" id="pollOption4" class="modal-input" placeholder="Option 4 (optional)">
-                    </div>
-
-                    <!-- Debate sides -->
-                    <div class="form-group" id="debateSidesGroup" style="display:none;">
-                        <label>Debate Sides <span class="required">*</span></label>
-                        <input type="text" id="debateSideA" class="modal-input" placeholder="Side A (e.g., For)"
-                            style="margin-bottom:6px;">
-                        <input type="text" id="debateSideB" class="modal-input" placeholder="Side B (e.g., Against)">
-                    </div>
-
-                    <button type="submit" class="btn-primary btn-large"
-                        style="width:100%;margin-top:12px;border-radius:12px;color:#000;">
-                        <i class="fas fa-check"></i> Create Challenge
-                    </button>
-                </form>
-            </div>
-        </div>
-    </div>
 </body>
 
 </html>

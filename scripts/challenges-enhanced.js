@@ -166,11 +166,15 @@ function removeChallengeImage() {
 function openCreateChallengeModal() {
     if (!requireAuth('create a challenge')) return;
     const modal = document.getElementById('createChallengeModal');
-    if (modal) {
-        document.getElementById('createChallengeStep1').style.display = 'block';
-        document.getElementById('createChallengeStep2').style.display = 'none';
-        modal.style.display = 'block';
-    }
+    if (!modal) return;
+    const step1 = document.getElementById('createChallengeStep1');
+    const step2 = document.getElementById('createChallengeStep2');
+    if (step1) step1.style.display = 'block';
+    if (step2) step2.style.display = 'none';
+    // Use flex so the modal backdrop centers its content correctly
+    modal.style.display = 'flex';
+    modal.style.alignItems = 'flex-start';
+    modal.style.justifyContent = 'center';
 }
 
 // Select a category and move to step 2
