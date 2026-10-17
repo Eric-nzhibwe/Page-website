@@ -2,11 +2,12 @@
 URL configuration for PAGE Platform
 """
 from django.contrib import admin
-from django.urls import path, include
+from django.urls import path, include, re_path
 from django.conf import settings
 from django.conf.urls.static import static
 from django.views.generic import RedirectView
-from django.http import JsonResponse
+from django.http import JsonResponse, FileResponse, Http404
+from pathlib import Path
 
 
 def health(request):
@@ -24,6 +25,26 @@ def media_fallback(request, path):
     from django.http import HttpResponsePermanentRedirect
     # Redirect to a generic avatar icon served from static files
     return HttpResponsePermanentRedirect('/static/frontend/images/Page.jpeg')
+
+
+def serve_frontend_file(request, subpath=''):
+    """
+    Serve frontend HTML/asset files directly from the staticfiles directory.
+    Handles paths like /pages/auth.html, /scripts/app.js, /styles/main.css, etc.
+    Falls back to the index so deep-links work after collectstatic.
+    """
+    staticfiles_root = Path(settings.STATIC_ROOT) / 'frontend'
+    # Also check STATICFILES_DIRS in dev (before collectstatic runs)
+    dev_root = Path(settings.STATICFILES_DIRS[0]) / 'frontend' if settings.STATICFILES_DIRS else None
+
+    for root in filter(None, [staticfiles_root, dev_root]):
+        candidate = root / subpath
+        if candidate.exists() and candidate.is_file():
+            import mimetypes
+            content_type, _ = mimetypes.guess_type(str(candidate))
+            return FileResponse(open(candidate, 'rb'), content_type=content_type or 'application/octet-stream')
+
+    raise Http404(f"Frontend file not found: {subpath}")
 
 
 def ws_status(request):
@@ -55,6 +76,10 @@ urlpatterns = [
 
     # Redirect root → frontend index (WhiteNoise serves static/frontend/)
     path('', RedirectView.as_view(url='/static/frontend/index.html', permanent=False)),
+
+    # Direct frontend file serving — maps /pages/x.html, /scripts/x.js, etc.
+    # to static/frontend/pages/x.html without needing the /static/frontend/ prefix
+    re_path(r'^(?P<subpath>(?:pages|scripts|styles|images)/.+)$', serve_frontend_file),
 
     # API routes
     path('api/users/',         include('users.urls')),
