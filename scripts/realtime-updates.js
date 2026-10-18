@@ -858,6 +858,9 @@ async function _initRealtimeUpdates() {
 
     // New post broadcast from another user
     wsClient.on('feed', 'new_post', ({ post }) => {
+        // Ignore the echo of a post this user is currently uploading —
+        // the upload flow already rendered it optimistically.
+        if (_socialEchoSuppressed(post)) return;
         if (_seenPostIds.has(String(post.id))) return;
         _seenPostIds.add(String(post.id));
         const container = document.getElementById('feedPosts');
@@ -891,6 +894,11 @@ async function _initRealtimeUpdates() {
 
     // New story from someone we follow
     wsClient.on('feed', 'new_story', ({ story }) => {
+        if (!story) return;
+        // Ignore our own upload echo — the upload flow owns that ring.
+        if (_socialEchoSuppressed(story)) return;
+        if (_storySeen(story.id) || document.querySelector(`[data-story-id="${story.id}"]`)) return;
+        _markStorySeen(story.id);
         _appendStoryCard(story);
     });
 
@@ -908,6 +916,7 @@ async function _initRealtimeUpdates() {
                     if (createCard?.nextSibling) container.insertBefore(card, createCard.nextSibling);
                     else container.appendChild(card);
                 }
+                _markStorySeen(s.id);   // keep the realtime dedup set in sync
             });
         }
     });
@@ -918,6 +927,8 @@ async function _initRealtimeUpdates() {
     // Delivered via wsClient so it goes through the same Redis probe / backoff logic.
     wsClient.connectUserFeed({
         onNewPost: post => {
+            // Ignore our own upload echo — the upload flow owns that card.
+            if (_socialEchoSuppressed(post)) return;
             if (!post || _seenPostIds.has(String(post.id))) return;
             _seenPostIds.add(String(post.id));
             const container = document.getElementById('feedPosts');
@@ -930,7 +941,10 @@ async function _initRealtimeUpdates() {
         },
         onNewStory: story => {
             if (!story) return;
-            if (document.querySelector(`[data-story-id="${story.id}"]`)) return;
+            // Ignore our own upload echo — the upload flow owns that ring.
+            if (_socialEchoSuppressed(story)) return;
+            if (_storySeen(story.id) || document.querySelector(`[data-story-id="${story.id}"]`)) return;
+            _markStorySeen(story.id);
             _appendStoryCard(story);
             const authorName = story.author?.display_name || story.author?.username || 'Someone';
             _rtToast(`${authorName} added a story`, 'info');
@@ -1309,10 +1323,13 @@ function _handleUserFeedMessage(msg) {
             const story = msg.story;
             if (!story) break;
 
-            // Only add if not already present on the rail
+            // Ignore our own upload echo, and any story already on the rail
+            if (_socialEchoSuppressed(story)) break;
+            if (_storySeen(story.id)) break;
             const existing = document.querySelector(`[data-story-id="${story.id}"]`);
             if (existing) break;
 
+            _markStorySeen(story.id);
             _appendStoryCard(story);
 
             const authorName = story.author?.display_name || story.author?.username || 'Someone';

@@ -43,6 +43,72 @@ function _currentUsername() {
     catch { return 'You'; }
 }
 
+function _currentUserId() {
+    try { return String(JSON.parse(localStorage.getItem('pageUser') || '{}').id || ''); }
+    catch { return ''; }
+}
+
+/** Minimal author object for optimistic cards, using the cached profile. */
+function _currentAuthor() {
+    try {
+        const u = JSON.parse(localStorage.getItem('pageUser') || '{}');
+        const username = u.username || 'You';
+        return {
+            id:                u.id,
+            username,
+            display_name:      u.display_name || username,
+            profile_image_url: u.profile_image_url || u.profile_image || null,
+        };
+    } catch {
+        return { id: '', username: 'You', display_name: 'You', profile_image_url: null };
+    }
+}
+
+/** True when a post payload was authored by the signed-in user. */
+function _isSelfAuthored(post) {
+    const me = _currentUserId();
+    if (!me) return false;
+    const authorId = post?.author?.id ?? post?.author_id ?? '';
+    return String(authorId) === me;
+}
+
+// ─── Shared de-dup registry with the realtime layer ──────────────────────────
+// realtime-updates.js owns `_seenPostIds` and skips ids already in it. We
+// register ids here too, so a post is rendered exactly once — whether it
+// arrives from the upload response or the Redis WebSocket echo.
+const _localSeenPostIds = new Set();
+function _markPostSeen(id) {
+    if (id == null || id === '') return;
+    const key = String(id);
+    try {
+        if (typeof _seenPostIds !== 'undefined' && _seenPostIds) { _seenPostIds.add(key); return; }
+    } catch (_) { /* realtime layer not initialised yet */ }
+    _localSeenPostIds.add(key);
+}
+
+// ─── Upload-in-flight counter ────────────────────────────────────────────────
+// While the current user's post is uploading, the Redis echo of that same post
+// must be ignored — the upload flow already renders it optimistically.
+let _selfUploadsInFlight = 0;
+function _socialUploadStarted() { _selfUploadsInFlight += 1; }
+function _socialUploadSettled() { _selfUploadsInFlight = Math.max(0, _selfUploadsInFlight - 1); }
+// Works for both posts and stories — both expose `author.id`.
+function _socialEchoSuppressed(item) {
+    return _selfUploadsInFlight > 0 && _isSelfAuthored(item);
+}
+
+// ─── Story de-dup registry (same idea as posts) ──────────────────────────────
+// The stories rail is keyed by `data-story-id`; this set additionally lets the
+// realtime layer skip the Redis echo of a story the user just uploaded.
+const _localSeenStoryIds = new Set();
+function _markStorySeen(id) {
+    if (id == null || id === '') return;
+    _localSeenStoryIds.add(String(id));
+}
+function _storySeen(id) {
+    return _localSeenStoryIds.has(String(id));
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 //  DASHBOARD NAV
 // ─────────────────────────────────────────────────────────────────────────────
@@ -359,17 +425,16 @@ function postVoiceRecording() {
 
     const token   = localStorage.getItem('djangoAuthToken');
     const caption = (document.getElementById('voiceCaption')?.value || '').trim();
+    if (!token) {
+        _feedToast('Sign in to post a voice message.', 'error');
+        return;
+    }
 
     // Capture duration BEFORE we reset state
     const durationSecs = _voiceSeconds;
     const m = Math.floor(durationSecs / 60);
     const s = String(durationSecs % 60).padStart(2, '0');
     const durLabel = `${m}:${s}`;
-
-    if (!token) {
-        _feedToast('Sign in to post a voice message.', 'error');
-        return;
-    }
 
     // Build a File from the blob
     const ext  = _voiceBlob.type.includes('mp4') ? 'm4a'
@@ -378,19 +443,19 @@ function postVoiceRecording() {
     const blobCopy = _voiceBlob;   // hold reference before clearing
     const file = new File([blobCopy], `voice-${Date.now()}.${ext}`, { type: blobCopy.type });
 
-    // Optimistic local card (blob URL — kept until server URL arrives or upload succeeds)
+    // Optimistic local card (object URL — swapped for the server URL on success)
     const localUrl = URL.createObjectURL(blobCopy);
     const tempId   = `local-voice-${Date.now()}`;
-    const local    = {
+    const card = _insertPostCard({
         id:             tempId,
         content:        caption,
         post_type:      'voice',
         _voiceUrl:      localUrl,
         _voiceDur:      durLabel,
-        author:         { username: _currentUsername() },
+        author:         _currentAuthor(),
         created_at:     new Date().toISOString(),
         reaction_count: 0, comment_count: 0, share_count: 0,
-    };
+    });
 
     // Clean up recording state
     _voiceBlob       = null;
@@ -400,59 +465,37 @@ function postVoiceRecording() {
     if (_voiceMediaRecorder && _voiceMediaRecorder.state !== 'inactive') _voiceMediaRecorder.stop();
     _resetVoiceUI();
 
-    // Show optimistic card immediately
-    _insertPostCard(local);
+    const buildForm = () => {
+        const fd = new FormData();
+        fd.append('post_type',      'voice');
+        fd.append('content',        caption);
+        fd.append('voice_file',     file, file.name);
+        fd.append('voice_duration', String(durationSecs));
+        return fd;
+    };
+
+    const attempt = () => {
+        _socialUploadStarted();
+        _setPostCardUploadState(card, 'uploading', 0);
+        _uploadForm(_POST_API, buildForm(), token, {
+            onProgress: pct => _setPostCardUploadState(card, 'uploading', pct),
+            onDone: apiPost => {
+                _socialUploadSettled();
+                _finalizePostCard(card, apiPost, localUrl);
+                _feedToast('Voice message posted! 🎤', 'success');
+            },
+            onError: err => {
+                _socialUploadSettled();
+                console.error('Voice post failed:', err);
+                const msg = err?.error || err?.detail || 'Upload failed — tap Retry.';
+                _setPostCardUploadState(card, 'error', 0, msg, attempt);
+                _feedToast('Voice upload failed — tap Retry to try again.', 'error');
+            },
+        });
+    };
+
     _feedToast('Posting voice message… 🎤', 'info');
-
-    const fd = new FormData();
-    fd.append('post_type',      'voice');
-    fd.append('content',        caption);
-    fd.append('voice_file',     file, file.name);
-    fd.append('voice_duration', String(durationSecs));
-
-    fetch(_POST_API, {
-        method:  'POST',
-        headers: { 'Authorization': `Token ${token}` },
-        body:    fd,
-    })
-    .then(r => r.ok ? r.json() : r.json().then(d => Promise.reject(d)))
-    .then(apiPost => {
-        // Swap temp card to the real persisted post
-        const tempCard = document.querySelector(`[data-post-id="${tempId}"]`);
-        if (tempCard) {
-            tempCard.setAttribute('data-post-id', apiPost.id);
-            const audio   = tempCard.querySelector('audio.voice-note-player');
-            const realUrl = apiPost.resolved_media_url || apiPost.media_url;
-            if (audio && realUrl) {
-                URL.revokeObjectURL(localUrl);
-                audio.src = realUrl;
-            }
-            // Ensure card stays visible — remove any fade-out class that may have been added
-            tempCard.style.opacity  = '1';
-            tempCard.style.display  = '';
-        }
-        _feedToast('Voice message posted! 🎤', 'success');
-    })
-    .catch(err => {
-        console.error('Voice post failed:', err);
-        // Keep the optimistic card so the user can see it and retry — just mark it
-        const tempCard = document.querySelector(`[data-post-id="${tempId}"]`);
-        if (tempCard) {
-            tempCard.style.opacity = '0.6';
-            const errNote = document.createElement('p');
-            errNote.style.cssText = 'color:#e63946;font-size:12px;margin:4px 0 0;padding:0 16px;';
-            errNote.textContent   = '⚠️ Upload failed — tap to retry';
-            errNote.style.cursor  = 'pointer';
-            errNote.onclick       = () => {
-                // Re-show the voice recording bar pre-filled so user can re-post
-                tempCard.remove();
-                URL.revokeObjectURL(localUrl);
-                _feedToast('Please record and post your voice message again.', 'info');
-            };
-            tempCard.appendChild(errNote);
-        }
-        _feedToast('Upload failed — your message is still visible locally.', 'error');
-    });
+    attempt();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -579,62 +622,209 @@ const _POST_API = (window.location.hostname === 'localhost' || window.location.h
 
 function publishPost() {
     const content = (document.getElementById('postContent')?.value || '').trim();
-    if (!content && !_selectedMedia) {
+    const isAchievement = _selectedMediaType === 'achievement';
+
+    if (!content && !_selectedMedia && !isAchievement) {
         _feedToast('Add some text or media before posting.', 'info');
         return;
     }
 
-    const btn = document.querySelector('#createPostModal .btn-post');
-    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Posting…'; }
-
     const token = localStorage.getItem('djangoAuthToken');
+    if (!token) { _feedToast('Sign in to publish a post.', 'error'); return; }
 
-    // Determine post type
-    const isAchievement = _selectedMediaType === 'achievement';
-    const post_type = isAchievement ? 'achievement'
-                    : _selectedMedia ? 'media'
-                    : 'text';
+    const btn = document.querySelector('#createPostModal .btn-post');
 
-    const privacy = document.querySelector('#createPostModal .post-privacy')?.value || 'public';
+    // Snapshot the composer state before we reset the modal
+    const mediaFile = (!isAchievement && _selectedMedia) ? _selectedMedia : null;
+    const mediaType = mediaFile ? (_selectedMediaType === 'video' ? 'video' : 'image') : null;
+    const post_type = isAchievement ? 'achievement' : mediaFile ? 'media' : 'text';
 
-    // Always use FormData so we can attach files
-    const fd = new FormData();
-    fd.append('content',   content);
-    fd.append('post_type', post_type);
-    // Note: 'privacy' is intentionally omitted — not a model field yet
-    if (_selectedMedia && !isAchievement) {
-        fd.append('media_file', _selectedMedia, _selectedMedia.name);
-        fd.append('media_type', _selectedMediaType === 'video' ? 'video' : 'image');
+    // Object URL gives the user an instant preview while the file uploads
+    let localUrl = null;
+    const localMedia = [];
+    if (mediaFile) {
+        localUrl = URL.createObjectURL(mediaFile);
+        localMedia.push({ type: mediaType, src: localUrl });
+    } else if (isAchievement) {
+        localMedia.push({ type: 'achievement' });   // no object URL — kept after finalise
     }
 
-    const doPost = token
-        ? fetch(_POST_API, {
-            method:  'POST',
-            headers: { 'Authorization': `Token ${token}` }, // NO Content-Type — browser sets boundary
-            body:    fd,
-          }).then(r => r.ok ? r.json() : r.json().then(d => Promise.reject(d)))
-        : Promise.reject('no_token');
+    // 1. Render the post immediately so the user gets instant feedback
+    const tempId = `local-post-${Date.now()}`;
+    const card = _insertPostCard({
+        id: tempId,
+        content,
+        post_type,
+        media_type: mediaType,
+        _localMedia: localMedia,
+        author:      _currentAuthor(),
+        created_at:     new Date().toISOString(),
+        reaction_count: 0, comment_count: 0, share_count: 0,
+    });
 
-    doPost
-        .then(apiPost => {
-            _insertPostCard(apiPost);
-            closeCreatePostModal();
-            _feedToast('Post published! 🎉', 'success');
-        })
-        .catch(err => {
-            console.error('publishPost API failed:', err);
-            _feedToast('Could not publish post — please try again.', 'error');
-        })
-        .finally(() => {
-            if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-paper-plane"></i> Post'; }
+    // 2. Close the composer straight away — no waiting on the network
+    closeCreatePostModal();
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-paper-plane"></i> Post'; }
+
+    const buildForm = () => {
+        const fd = new FormData();
+        fd.append('content',   content);
+        fd.append('post_type', post_type);
+        // 'privacy' is intentionally omitted — not a model field yet
+        if (mediaFile) {
+            fd.append('media_file', mediaFile, mediaFile.name);
+            fd.append('media_type', mediaType);
+        }
+        return fd;
+    };
+
+    // 3. Upload with live progress; keep the card and offer Retry on failure
+    const attempt = () => {
+        _socialUploadStarted();
+        _setPostCardUploadState(card, 'uploading', 0);
+        _uploadForm(_POST_API, buildForm(), token, {
+            onProgress: pct => _setPostCardUploadState(card, 'uploading', pct),
+            onDone: apiPost => {
+                _socialUploadSettled();
+                _finalizePostCard(card, apiPost, localUrl, isAchievement ? localMedia : null);
+                _feedToast(isAchievement ? 'Achievement shared! 🏆' : 'Post published! 🎉', 'success');
+            },
+            onError: err => {
+                _socialUploadSettled();
+                console.error('publishPost API failed:', err);
+                const msg = err?.error || err?.detail
+                    || (typeof err === 'string' && err !== 'no_token' ? err : '')
+                    || 'Could not publish post — please try again.';
+                _setPostCardUploadState(card, 'error', 0, msg, attempt);
+                _feedToast('Upload failed — tap Retry on the post to try again.', 'error');
+            },
         });
+    };
+    attempt();
 }
 
-/** Build and prepend a post card to the feed */
+/**
+ * POST a multipart FormData with upload progress.
+ * Uses XHR because fetch() cannot report upload progress.
+ * Works for any endpoint — posts, voice notes, stories.
+ */
+function _uploadForm(url, formData, token, { onProgress, onDone, onError }) {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', url, true);
+    xhr.setRequestHeader('Authorization', `Token ${token}`);
+    xhr.timeout = 120000;
+
+    xhr.upload.onprogress = e => {
+        if (e.lengthComputable && onProgress) {
+            onProgress(Math.round((e.loaded / e.total) * 100));
+        }
+    };
+    xhr.onload = () => {
+        let body = null;
+        try { body = JSON.parse(xhr.responseText); } catch (_) { /* non-JSON body */ }
+        if (xhr.status >= 200 && xhr.status < 300) {
+            onDone?.(body);
+        } else {
+            onError?.(body || { error: `Upload failed (${xhr.status}).` });
+        }
+    };
+    xhr.onerror   = () => onError?.({ error: 'Network error — check your connection and try again.' });
+    xhr.ontimeout = () => onError?.({ error: 'Upload timed out. Please try again.' });
+    xhr.send(formData);
+    return xhr;
+}
+
+/**
+ * Show a small status strip on an optimistic post card.
+ * @param {HTMLElement} card
+ * @param {'uploading'|'error'|'done'} state
+ * @param {number}  pct      upload percentage (0–100)
+ * @param {string}  msg      error message
+ * @param {Function} onRetry retry handler for the error state
+ */
+function _setPostCardUploadState(card, state, pct = 0, msg = '', onRetry = null) {
+    if (!card || !card.isConnected) return;
+
+    if (state === 'done') {
+        card.querySelector('.post-upload-status')?.remove();
+        return;
+    }
+
+    let bar = card.querySelector('.post-upload-status');
+    if (!bar) {
+        bar = document.createElement('div');
+        bar.className = 'post-upload-status';
+        bar.style.cssText = 'margin:8px 16px 0;font-size:12px;color:#666;'
+            + 'display:flex;align-items:center;gap:8px;';
+        card.appendChild(bar);
+    }
+
+    if (state === 'uploading') {
+        const label = pct > 0 && pct < 100 ? `Uploading… ${pct}%` : 'Uploading…';
+        bar.innerHTML = `<i class="fas fa-circle-notch fa-spin" style="color:#6c63ff;"></i>`
+            + `<span>${label}</span>`;
+        return;
+    }
+
+    // error
+    bar.innerHTML = `<i class="fas fa-triangle-exclamation" style="color:#e63946;"></i>`
+        + `<span style="color:#e63946;">${_esc(msg || 'Upload failed.')}</span>`;
+    if (typeof onRetry === 'function') {
+        const retry = document.createElement('button');
+        retry.type = 'button';
+        retry.textContent = 'Retry';
+        retry.style.cssText = 'margin-left:auto;padding:3px 12px;border:1px solid #6c63ff;'
+            + 'background:#fff;color:#6c63ff;border-radius:14px;font-size:12px;cursor:pointer;';
+        retry.onclick = () => { bar.remove(); onRetry(); };
+        bar.appendChild(retry);
+    }
+}
+
+/**
+ * Swap an optimistic card for the server-confirmed post.
+ * Marks the id as seen so the Redis echo of the same post is ignored.
+ *
+ * @param {HTMLElement} tempCard        the optimistic card
+ * @param {object}      apiPost         server response payload
+ * @param {string}      localUrl        object URL to revoke (media posts)
+ * @param {Array}       overrideMedia   optional visible-media array to carry over
+ */
+function _finalizePostCard(tempCard, apiPost, localUrl, overrideMedia = null) {
+    if (localUrl) URL.revokeObjectURL(localUrl);
+    if (!apiPost || apiPost.id == null) return;
+
+    const realId = String(apiPost.id);
+    _markPostSeen(realId);
+
+    // The WebSocket echo may have rendered the canonical card already —
+    // keep that one and drop our optimistic duplicate.
+    const existing = document.querySelector(`[data-post-id="${realId}"]`);
+    if (existing && existing !== tempCard) {
+        if (tempCard?.isConnected) tempCard.remove();
+        return;
+    }
+
+    const payload = (overrideMedia && overrideMedia.length)
+        ? { ...apiPost, _localMedia: overrideMedia }
+        : apiPost;
+    const fresh = _buildPostCardEl(payload);
+    fresh.classList.add('post-card--new');
+
+    if (tempCard?.isConnected) tempCard.replaceWith(fresh);
+    else _insertPostCard(payload);
+}
+
+/** Prepend a post card to the feed. Returns the created element (or null). */
 function _insertPostCard(post) {
     const container = document.getElementById('feedPosts');
-    if (!container) return;
+    if (!container) return null;
+    const card = _buildPostCardEl(post);
+    container.insertBefore(card, container.firstChild);
+    return card;
+}
 
+/** Build a post card element from a post payload (does not insert it). */
+function _buildPostCardEl(post) {
     const author = post.author || {};
     const name   = _esc(author.display_name || author.username || _currentUsername());
     const media  = post._localMedia || post.media || [];
@@ -722,7 +912,7 @@ function _insertPostCard(post) {
         </div>
         <div class="post-comments"></div>`;
 
-    container.insertBefore(card, container.firstChild);
+    return card;
 }
 
 // Sync any created posts saved in localStorage by fetching them from the API
@@ -834,63 +1024,67 @@ function createStory() {
         const file = e.target.files[0];
         if (!file) return;
 
+        const token = localStorage.getItem('djangoAuthToken');
+        if (!token) { _feedToast('Sign in to share a story.', 'error'); return; }
+
         const isVideo   = file.type.startsWith('video/');
         const mediaType = isVideo ? 'video' : 'image';
-
-        // ── Immediate preview using object URL (no green overlay) ──────────
         const previewUrl = URL.createObjectURL(file);
-        const tempId     = `local-story-${Date.now()}`;
 
-        _insertStoryCard({
-            id:         tempId,
-            author:     { username: _currentUsername(), display_name: _currentUsername(), profile_image: null },
+        // 1. Optimistic ring in the rail — instant feedback using the local file
+        const card = _insertStoryCard({
+            id:         `local-story-${Date.now()}`,
+            author:     _currentAuthor(),
             media_url:  previewUrl,
             media_type: mediaType,
             content:    '',
             view_count: 0,
             created_at: new Date().toISOString(),
-        }, tempId);
+        });
 
-        _feedToast('Story posted! 🎉', 'success');
+        const buildForm = () => {
+            const form = new FormData();
+            form.append('media_file', file);
+            form.append('media_type', mediaType);
+            form.append('content', '');
+            return form;
+        };
 
-        // ── Upload file to API as multipart/form-data ──────────────────────
-        const token = localStorage.getItem('djangoAuthToken');
-        if (!token) return;
-
-        const form = new FormData();
-        form.append('media_file', file);
-        form.append('media_type', mediaType);
-        form.append('content', '');
-
-        fetch(_STORY_API, {
-            method:  'POST',
-            headers: { 'Authorization': `Token ${token}` }, // NO Content-Type — browser sets multipart boundary
-            body:    form,
-        })
-        .then(r => r.ok ? r.json() : r.json().then(d => Promise.reject(d)))
-        .then(saved => {
-            // Swap the temp card to the real API id so viewer calls work
-            const tempCard = document.querySelector(`[data-story-id="${tempId}"]`);
-            if (tempCard) {
-                tempCard.dataset.storyId = saved.id;
-                // Update the stored story data for viewer
-                const realUrl = saved.resolved_media_url || saved.media_url || previewUrl;
-                tempCard._storyData = [{
-                    ...saved,
-                    resolved_media_url: realUrl,
-                }];
-            }
-        })
-        .catch(err => {
-            console.warn('Story API save failed:', err);
-            // Story stays visible for the session — no data loss for user
+        // 2. Upload — while this is in flight, the Redis echo of our own story
+        //    is ignored by the realtime layer (see _socialEchoSuppressed).
+        _socialUploadStarted();
+        _feedToast('Sharing story…', 'info');
+        _uploadForm(_STORY_API, buildForm(), token, {
+            onDone: saved => {
+                _socialUploadSettled();
+                URL.revokeObjectURL(previewUrl);
+                _markStorySeen(saved.id);
+                // Promote the optimistic ring to the real id so the viewer works
+                if (card?.isConnected) {
+                    card.dataset.storyId = String(saved.id);
+                    card._storyData = [{
+                        ...saved,
+                        resolved_media_url: saved.resolved_media_url || saved.media_url || previewUrl,
+                    }];
+                }
+                _feedToast('Story shared! 🎉', 'success');
+            },
+            onError: err => {
+                _socialUploadSettled();
+                console.error('Story upload failed:', err);
+                URL.revokeObjectURL(previewUrl);
+                // Nothing was saved server-side — drop the ring so the user is
+                // not misled into thinking the story is live.
+                if (card?.isConnected) card.remove();
+                _feedToast(err?.error || err?.detail || 'Story upload failed — please try again.', 'error');
+            },
         });
     };
     input.click();
 }
 
-/** Insert a rendered story card into the stories rail */
-function _insertStoryCard(story, tempId) {
+/** Insert a rendered story card into the stories rail. Returns the created element. */
+function _insertStoryCard(story) {
     const isVideo  = story.media_type === 'video';
     const mediaUrl = story.resolved_media_url || story.media_url || '';
     const name     = _esc(story.author?.display_name || story.author?.username || 'Story');
@@ -898,7 +1092,7 @@ function _insertStoryCard(story, tempId) {
     const card = document.createElement('div');
     card.className = 'story-card';
     card.style.animation = 'fadeInCard .4s ease';
-    card.dataset.storyId = tempId || story.id;
+    card.dataset.storyId = story.id;
 
     const imgStyle = (!isVideo && mediaUrl)
         ? `background-image:url('${mediaUrl}');background-size:cover;background-position:center;`
@@ -931,6 +1125,8 @@ function _insertStoryCard(story, tempId) {
     const createCard = container?.querySelector('.create-story');
     if (createCard?.nextSibling) container.insertBefore(card, createCard.nextSibling);
     else if (container) container.appendChild(card);
+
+    return card;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1083,10 +1279,11 @@ async function loadRealFeed(page = 1) {
         }
 
         posts.forEach(post => {
-            // Don't duplicate
+            // Don't duplicate — skip posts already rendered or seen via WebSocket
             if (!container.querySelector(`[data-post-id="${post.id}"]`)) {
                 _appendPostCard(post, container);
             }
+            _markPostSeen(post.id);   // keep the realtime layer's dedup set in sync
         });
 
         // Check if more pages exist
