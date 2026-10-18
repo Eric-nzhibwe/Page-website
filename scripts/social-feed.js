@@ -790,7 +790,6 @@ function _setPostCardUploadState(card, state, pct = 0, msg = '', onRetry = null)
  * @param {Array}       overrideMedia   optional visible-media array to carry over
  */
 function _finalizePostCard(tempCard, apiPost, localUrl, overrideMedia = null) {
-    if (localUrl) URL.revokeObjectURL(localUrl);
     if (!apiPost || apiPost.id == null) return;
 
     const realId = String(apiPost.id);
@@ -801,17 +800,33 @@ function _finalizePostCard(tempCard, apiPost, localUrl, overrideMedia = null) {
     const existing = document.querySelector(`[data-post-id="${realId}"]`);
     if (existing && existing !== tempCard) {
         if (tempCard?.isConnected) tempCard.remove();
+        // Only revoke object URL once we're done with it
+        if (localUrl) URL.revokeObjectURL(localUrl);
         return;
     }
 
-    const payload = (overrideMedia && overrideMedia.length)
-        ? { ...apiPost, _localMedia: overrideMedia }
-        : apiPost;
+    // Resolve the server media URL before building the card so the browser
+    // can load it (backend returns relative /media/... paths).
+    const serverMediaUrl = (typeof resolveMediaUrl === 'function')
+        ? resolveMediaUrl(apiPost.resolved_media_url || apiPost.media_url || null)
+        : (apiPost.resolved_media_url || apiPost.media_url || null);
+
+    const payload = {
+        ...(overrideMedia && overrideMedia.length
+            ? { ...apiPost, _localMedia: overrideMedia }
+            : apiPost),
+        // Carry the resolved server URL so voice/video renders correctly
+        resolved_media_url: serverMediaUrl || apiPost.resolved_media_url || apiPost.media_url || null,
+    };
+
     const fresh = _buildPostCardEl(payload);
     fresh.classList.add('post-card--new');
 
     if (tempCard?.isConnected) tempCard.replaceWith(fresh);
     else _insertPostCard(payload);
+
+    // Revoke object URL only after the new card is in the DOM
+    if (localUrl) URL.revokeObjectURL(localUrl);
 }
 
 /** Prepend a post card to the feed. Returns the created element (or null). */
@@ -844,11 +859,15 @@ function _buildPostCardEl(post) {
 
     let mediaHTML = '';
     if (post._voiceUrl || (post.post_type === 'voice' && (post.resolved_media_url || post.media_url))) {
-        const voiceSrc = post._voiceUrl || post.resolved_media_url || post.media_url;
+        const voiceSrc = post._voiceUrl
+            || ((typeof resolveMediaUrl === 'function')
+                ? resolveMediaUrl(post.resolved_media_url || post.media_url)
+                : (post.resolved_media_url || post.media_url));
         const dur      = post._voiceDur
             || (post.voice_duration ? `${Math.floor(post.voice_duration/60)}:${String(post.voice_duration%60).padStart(2,'0')}` : '');
         mediaHTML = `<div class="post-media">
-            <audio class="voice-note-player" controls src="${_esc(voiceSrc)}"></audio>
+            <audio class="voice-note-player" controls preload="metadata" src="${_esc(voiceSrc)}"
+                   style="width:100%;border-radius:8px;margin-top:4px;"></audio>
             <span style="font-size:12px;color:#888;display:block;margin-top:4px;"><i class="fas fa-microphone"></i> Voice message${dur ? ' · ' + _esc(dur) : ''}</span>
         </div>`;
     } else if (media[0]?.type === 'achievement') {
@@ -861,14 +880,17 @@ function _buildPostCardEl(post) {
             if (m.type === 'image')
                 mediaHTML += `<div class="post-media-item"><img src="${_esc(m.src)}" alt="Post image ${i+1}" loading="lazy"></div>`;
             else if (m.type === 'video')
-                mediaHTML += `<div class="post-media-item video-item"><video src="${_esc(m.src)}" controls></video></div>`;
+                mediaHTML += `<div class="post-media-item video-item"><video src="${_esc(m.src)}" controls preload="metadata" playsinline style="width:100%;border-radius:8px;"></video></div>`;
         });
         mediaHTML += '</div></div>';
     } else if (post.media_url || post.resolved_media_url) {
-        const src = post.resolved_media_url || post.media_url;
+        const rawSrc = post.resolved_media_url || post.media_url;
+        const src = (typeof resolveMediaUrl === 'function') ? resolveMediaUrl(rawSrc) : rawSrc;
         mediaHTML = (post.media_type === 'video')
-            ? `<div class="post-media"><video controls><source src="${_esc(src)}"></video></div>`
-            : `<div class="post-media"><img src="${_esc(src)}" alt="Post media" loading="lazy"></div>`;
+            ? `<div class="post-media"><video src="${_esc(src)}" controls preload="metadata" playsinline style="width:100%;border-radius:8px;max-height:420px;"></video></div>`
+            : (post.media_type === 'audio')
+                ? `<div class="post-media"><audio src="${_esc(src)}" controls preload="metadata" style="width:100%;border-radius:8px;margin-top:4px;"></audio></div>`
+                : `<div class="post-media"><img src="${_esc(src)}" alt="Post media" loading="lazy"></div>`;
     }
 
     const card = document.createElement('div');
@@ -1318,8 +1340,11 @@ function _appendPostCard(post, container) {
                 : (window.pageLetterAvatarHTML ? window.pageLetterAvatarHTML(init) : `<span style="display:inline-flex;align-items:center;justify-content:center;width:100%;height:100%;border-radius:50%;background:#6c63ff;color:#fff;font-weight:700;font-size:14px;">${init}</span>`);
         })();
 
-    // Prefer resolved_media_url (uploaded file) over legacy media_url
-    const mediaSrc = post.resolved_media_url || post.media_url || null;
+    // Prefer resolved_media_url (uploaded file) over legacy media_url; resolve relative paths
+    const _rawMediaSrc = post.resolved_media_url || post.media_url || null;
+    const mediaSrc = _rawMediaSrc
+        ? ((typeof resolveMediaUrl === 'function') ? resolveMediaUrl(_rawMediaSrc) : _rawMediaSrc)
+        : null;
 
     let mediaHTML = '';
     if (post.post_type === 'voice' && mediaSrc) {
@@ -1327,17 +1352,26 @@ function _appendPostCard(post, container) {
             ? ` · ${Math.floor(post.voice_duration / 60)}:${String(post.voice_duration % 60).padStart(2, '0')}`
             : '';
         mediaHTML = `<div class="post-media">
-            <audio class="voice-note-player" controls src="${_esc(mediaSrc)}"></audio>
+            <audio class="voice-note-player" controls preload="metadata" src="${_esc(mediaSrc)}"
+                   style="width:100%;border-radius:8px;margin-top:4px;"></audio>
             <span style="font-size:12px;color:#888;display:block;margin-top:4px;">
                 <i class="fas fa-microphone"></i> Voice message${dur}
             </span>
         </div>`;
+    } else if (post.media_type === 'audio' && mediaSrc) {
+        // Generic audio (e.g. voice stored as media_type='audio')
+        mediaHTML = `<div class="post-media">
+            <audio controls preload="metadata" src="${_esc(mediaSrc)}"
+                   style="width:100%;border-radius:8px;margin-top:4px;"></audio>
+        </div>`;
+    } else if (mediaSrc && post.media_type === 'video') {
+        mediaHTML = `<div class="post-media">
+            <video src="${_esc(mediaSrc)}" controls preload="metadata" playsinline
+                   style="width:100%;border-radius:8px;max-height:420px;"></video>
+        </div>`;
     } else if (mediaSrc) {
-        mediaHTML = post.media_type === 'video'
-            ? `<div class="post-media"><video controls>
-                   <source src="${_esc(mediaSrc)}"></video></div>`
-            : `<div class="post-media">
-                   <img src="${_esc(mediaSrc)}" alt="Post media" loading="lazy"></div>`;
+        mediaHTML = `<div class="post-media">
+            <img src="${_esc(mediaSrc)}" alt="Post media" loading="lazy"></div>`;
     } else if (post.achievement_badge?.title) {
         const ab = post.achievement_badge;
         mediaHTML = `<div class="post-media"><div class="achievement-badge-large">

@@ -103,25 +103,49 @@ class PostViewSet(viewsets.ModelViewSet):
                 import logging
                 logging.getLogger(__name__).error(f'Post image base64 failed: {exc}')
 
-        # Voice files are saved via default_storage and the URL stored in media_url
-        # so they persist across re-deploys (or via Cloudinary if configured).
+        # Voice files: encode as base64 data URI so they survive re-deploys.
+        # Audio is typically small (< 1 MB for short clips) so base64 is viable.
+        # Fall back to default_storage if encoding fails.
         elif voice_file:
             try:
-                import os
-                from django.core.files.storage import default_storage
-                from django.core.files.base import ContentFile
-                ext       = os.path.splitext(voice_file.name)[1].lower() or '.webm'
-                safe_name = f"posts/voice/{request.user.id}_{uuid.uuid4().hex}{ext}"
-                path      = default_storage.save(safe_name, ContentFile(voice_file.read()))
-                voice_url = request.build_absolute_uri(default_storage.url(path))
+                import base64 as _b64
+                raw_bytes  = voice_file.read()
+                mime       = voice_file.content_type or 'audio/webm'
+                # Normalise mime type — some browsers report audio/x-m4a etc.
+                if 'mp4' in mime or 'm4a' in mime:
+                    mime = 'audio/mp4'
+                elif 'ogg' in mime:
+                    mime = 'audio/ogg'
+                elif 'wav' in mime:
+                    mime = 'audio/wav'
+                else:
+                    mime = 'audio/webm'
+                encoded   = _b64.b64encode(raw_bytes).decode('utf-8')
+                voice_url = f'data:{mime};base64,{encoded}'
                 extra = {
                     'media_url':  voice_url,
                     'media_type': 'audio',
                     'voice_file': None,   # don't save raw file again via FileField
                 }
             except Exception as exc:
-                import logging
-                logging.getLogger(__name__).error(f'Voice file upload failed: {exc}')
+                import logging, os
+                logging.getLogger(__name__).error(f'Voice base64 encoding failed: {exc}')
+                # Fallback: store via default_storage
+                try:
+                    from django.core.files.storage import default_storage
+                    from django.core.files.base import ContentFile
+                    voice_file.seek(0)
+                    ext       = os.path.splitext(voice_file.name)[1].lower() or '.webm'
+                    safe_name = f"posts/voice/{request.user.id}_{uuid.uuid4().hex}{ext}"
+                    path      = default_storage.save(safe_name, ContentFile(voice_file.read()))
+                    voice_url = request.build_absolute_uri(default_storage.url(path))
+                    extra = {
+                        'media_url':  voice_url,
+                        'media_type': 'audio',
+                        'voice_file': None,
+                    }
+                except Exception as exc2:
+                    logging.getLogger(__name__).error(f'Voice fallback storage failed: {exc2}')
 
         post = serializer.save(author=request.user, **extra)
         self._broadcast_new_post(post)
@@ -188,20 +212,39 @@ class PostViewSet(viewsets.ModelViewSet):
                     logging.getLogger(__name__).error(f'Post video upload failed: {exc}')
 
         elif voice_file:
-            # Voice note — store via default_storage, URL goes into media_url
-            # Firestore documents have a 1 MB limit so base64 audio is not viable
-            import os
-            from django.core.files.storage import default_storage
-            from django.core.files.base import ContentFile
-            ext       = os.path.splitext(voice_file.name)[1].lower() or '.webm'
-            safe_name = f"posts/voice/{request.user.id}_{uuid.uuid4().hex}{ext}"
+            # Voice note — encode as base64 data URI so it persists across re-deploys.
+            # For Firestore: base64 audio is stored in media_url (text field), not in
+            # the Firestore document body, so the 1 MB document limit is not breached.
             try:
-                path      = default_storage.save(safe_name, ContentFile(voice_file.read()))
-                media_url = request.build_absolute_uri(default_storage.url(path))
+                import base64 as _b64
+                raw_bytes  = voice_file.read()
+                mime       = voice_file.content_type or 'audio/webm'
+                if 'mp4' in mime or 'm4a' in mime:
+                    mime = 'audio/mp4'
+                elif 'ogg' in mime:
+                    mime = 'audio/ogg'
+                elif 'wav' in mime:
+                    mime = 'audio/wav'
+                else:
+                    mime = 'audio/webm'
+                encoded    = _b64.b64encode(raw_bytes).decode('utf-8')
+                media_url  = f'data:{mime};base64,{encoded}'
                 media_type = 'audio'
             except Exception as exc:
-                import logging
-                logging.getLogger(__name__).error(f'Voice post upload failed: {exc}')
+                import logging, os
+                logging.getLogger(__name__).error(f'Voice base64 (Firestore) failed: {exc}')
+                # Fallback: store via default_storage
+                try:
+                    from django.core.files.storage import default_storage
+                    from django.core.files.base import ContentFile
+                    voice_file.seek(0)
+                    ext       = os.path.splitext(voice_file.name)[1].lower() or '.webm'
+                    safe_name = f"posts/voice/{request.user.id}_{uuid.uuid4().hex}{ext}"
+                    path      = default_storage.save(safe_name, ContentFile(voice_file.read()))
+                    media_url  = request.build_absolute_uri(default_storage.url(path))
+                    media_type = 'audio'
+                except Exception as exc2:
+                    logging.getLogger(__name__).error(f'Voice fallback (Firestore) failed: {exc2}')
 
         post = create_post(request.user, dict(data),
                            media_url=media_url, media_type=media_type)

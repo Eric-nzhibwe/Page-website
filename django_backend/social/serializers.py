@@ -119,8 +119,26 @@ class PostSerializer(serializers.ModelSerializer):
         return super().to_internal_value(filtered)
 
     def get_resolved_media_url(self, obj):
-        """Return the best available media URL — uploaded file takes priority."""
+        """Return the best available media URL.
+        Priority:
+          1. media_url — base64 data URI (images/voice) or absolute CDN URL → serve as-is
+          2. voice_file FileField  → build absolute URI
+          3. media_file FileField  → build absolute URI
+        """
         request = self.context.get('request')
+
+        # 1. media_url stores base64 data URIs and absolute CDN/storage URLs
+        if obj.media_url:
+            url = obj.media_url
+            # Already absolute or a data URI — return as-is
+            if url.startswith('data:') or url.startswith('http://') or url.startswith('https://'):
+                return url
+            # Relative path — build absolute URI if we have a request
+            if request:
+                return request.build_absolute_uri(url)
+            return url
+
+        # 2 & 3. FileField uploads
         for field in ('voice_file', 'media_file'):
             f = getattr(obj, field, None)
             if f:
@@ -128,7 +146,7 @@ class PostSerializer(serializers.ModelSerializer):
                     return request.build_absolute_uri(f.url) if request else f.url
                 except Exception:
                     pass
-        return obj.media_url or None
+        return None
 
     def get_user_reaction(self, obj):
         request = self.context.get('request')

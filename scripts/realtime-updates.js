@@ -539,25 +539,36 @@ function _buildPostCard(post) {
         : (window._rtLetterAvatar ? window._rtLetterAvatar(_rtInit).outerHTML
             : `<span style="display:inline-flex;align-items:center;justify-content:center;width:100%;height:100%;border-radius:50%;background:#6c63ff;color:#fff;font-weight:700;font-size:14px;">${_rtInit}</span>`);
 
-    // Prefer resolved_media_url (server file) over legacy media_url
-    const mediaSrc = post.resolved_media_url || post.media_url || null;
+    // Prefer resolved_media_url (server file) over legacy media_url; resolve relative paths
+    const _rawRtMedia = post.resolved_media_url || post.media_url || null;
+    const mediaSrc = _rawRtMedia
+        ? ((typeof resolveMediaUrl === 'function') ? resolveMediaUrl(_rawRtMedia) : _rawRtMedia)
+        : null;
 
     let mediaHTML = '';
-    if (post.post_type === 'voice' && (post.resolved_media_url || post.media_url)) {
-        const src = post.resolved_media_url || post.media_url;
+    if (post.post_type === 'voice' && mediaSrc) {
         const dur = post.voice_duration
             ? ` · ${Math.floor(post.voice_duration / 60)}:${String(post.voice_duration % 60).padStart(2, '0')}`
             : '';
         mediaHTML = `<div class="post-media">
-            <audio class="voice-note-player" controls src="${_rtEsc(src)}"></audio>
+            <audio class="voice-note-player" controls preload="metadata" src="${_rtEsc(mediaSrc)}"
+                   style="width:100%;border-radius:8px;margin-top:4px;"></audio>
             <span style="font-size:12px;color:#888;display:block;margin-top:4px;">
                 <i class="fas fa-microphone"></i> Voice message${dur}
             </span>
         </div>`;
+    } else if (post.media_type === 'audio' && mediaSrc) {
+        mediaHTML = `<div class="post-media">
+            <audio controls preload="metadata" src="${_rtEsc(mediaSrc)}"
+                   style="width:100%;border-radius:8px;margin-top:4px;"></audio>
+        </div>`;
+    } else if (mediaSrc && post.media_type === 'video') {
+        mediaHTML = `<div class="post-media">
+            <video src="${_rtEsc(mediaSrc)}" controls preload="metadata" playsinline
+                   style="width:100%;border-radius:8px;max-height:420px;"></video>
+        </div>`;
     } else if (mediaSrc) {
-        mediaHTML = post.media_type === 'video'
-            ? `<div class="post-media"><video controls><source src="${_rtEsc(mediaSrc)}"></video></div>`
-            : `<div class="post-media"><img src="${_rtEsc(mediaSrc)}" alt="Post media" loading="lazy"></div>`;
+        mediaHTML = `<div class="post-media"><img src="${_rtEsc(mediaSrc)}" alt="Post media" loading="lazy"></div>`;
     }
     if (post.achievement_badge && post.achievement_badge.title) {
         const ab = post.achievement_badge;
