@@ -800,7 +800,12 @@ async function _smUploadAvatar(e) {
 function _applyAvatarEverywhere(imgUrl) {
     if (!imgUrl) return;
 
-    const imgTag = `<img src="${imgUrl}" alt="Avatar"
+    // Resolve backend-relative "/media/..." paths to an absolute URL
+    const resolved = (typeof resolveMediaUrl === 'function')
+        ? resolveMediaUrl(imgUrl)
+        : imgUrl;
+
+    const imgTag = `<img src="${resolved}" alt="Avatar"
         style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;"
         onerror="this.replaceWith(window.pageLetterAvatar ? window.pageLetterAvatar('?') : (()=>{var s=document.createElement('span');s.style='display:inline-flex;align-items:center;justify-content:center;width:100%;height:100%;border-radius:50%;background:#6c63ff;color:#fff;font-weight:700;font-size:14px;';s.textContent='?';return s;})())">`;
 

@@ -491,9 +491,8 @@ function _makeCommentEl(c) {
     const text    = esc(c.content || c.text || '');
     const when    = timeAgo(c.created_at || c.timestamp || new Date().toISOString());
     // prefer profile_image_url (avatar_url / base64) over legacy profile_image
-    const avatarUrl = author.profile_image_url || author.avatar_url
-        || (author.profile_image && !author.profile_image.startsWith('/media/')
-            ? author.profile_image : null);
+    const _cmtAvatarRaw = author.profile_image_url || author.avatar_url || author.profile_image || null;
+    const avatarUrl = _cmtAvatarRaw ? ((typeof resolveMediaUrl === 'function') ? resolveMediaUrl(_cmtAvatarRaw) : _cmtAvatarRaw) : null;
 
     const div = document.createElement('div');
     div.className = 'page-comment-item';

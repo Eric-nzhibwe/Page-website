@@ -833,9 +833,8 @@ function _buildPostCardEl(post) {
     const avatarHTML_str = (typeof avatarHTML === 'function')
         ? avatarHTML(author)
         : (() => {
-            const url  = author.profile_image_url || author.avatar_url
-                || (author.profile_image && !author.profile_image.startsWith('/media/')
-                    ? author.profile_image : null);
+            const raw = author.profile_image_url || author.avatar_url || author.profile_image || null;
+            const url = raw ? ((typeof resolveMediaUrl === 'function') ? resolveMediaUrl(raw) : raw) : null;
             const init = (author.display_name || author.username || '?').charAt(0).toUpperCase();
             return url
                 ? `<img src="${_esc(url)}" alt="${name}" style="width:100%;height:100%;object-fit:cover;border-radius:50%"
@@ -1098,9 +1097,8 @@ function _insertStoryCard(story) {
         ? `background-image:url('${mediaUrl}');background-size:cover;background-position:center;`
         : (() => {
             // prefer profile_image_url (base64/CDN) over legacy profile_image
-            const authorUrl = story.author?.profile_image_url || story.author?.avatar_url
-                || (story.author?.profile_image && !story.author.profile_image.startsWith('/media/')
-                    ? story.author.profile_image : null);
+            const _authorRaw = story.author?.profile_image_url || story.author?.avatar_url || story.author?.profile_image || null;
+            const authorUrl = _authorRaw ? ((typeof resolveMediaUrl === 'function') ? resolveMediaUrl(_authorRaw) : _authorRaw) : null;
             return authorUrl
                 ? `background:url('${authorUrl}') center/cover;`
                 : 'background:linear-gradient(135deg,#556b2f,#8bc34a);';
@@ -1311,9 +1309,8 @@ function _appendPostCard(post, container) {
     const avatarHTML_str = (typeof avatarHTML === 'function')
         ? avatarHTML(author)
         : (() => {
-            const url  = author.profile_image_url || author.avatar_url
-                || (author.profile_image && !author.profile_image.startsWith('/media/')
-                    ? author.profile_image : null);
+            const raw = author.profile_image_url || author.avatar_url || author.profile_image || null;
+            const url = raw ? ((typeof resolveMediaUrl === 'function') ? resolveMediaUrl(raw) : raw) : null;
             const init = (author.display_name || author.username || '?').charAt(0).toUpperCase();
             return url
                 ? `<img src="${_esc(url)}" alt="${name}" style="width:100%;height:100%;object-fit:cover;border-radius:50%"
@@ -1452,9 +1449,8 @@ function _renderStoryCards(stories, container, fromCache) {
         const mediaSrc    = latestStory.resolved_media_url || latestStory.media_url || null;
         const isVideo     = latestStory.media_type === 'video';
 
-        const authorAvatarUrl = author.profile_image_url || author.avatar_url
-            || (author.profile_image && !author.profile_image.startsWith('/media/')
-                ? author.profile_image : null);
+        const _authorRaw2 = author.profile_image_url || author.avatar_url || author.profile_image || null;
+        const authorAvatarUrl = _authorRaw2 ? ((typeof resolveMediaUrl === 'function') ? resolveMediaUrl(_authorRaw2) : _authorRaw2) : null;
         const avatarStyle = (mediaSrc && !isVideo)
             ? `background-image:url('${_esc(mediaSrc)}');background-size:cover;background-position:center`
             : (authorAvatarUrl

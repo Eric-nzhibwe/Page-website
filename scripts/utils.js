@@ -242,6 +242,32 @@ window.truncateText = truncateText;
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
+ * Resolve a backend-relative URL (e.g. "/media/profiles/foo.jpg") to an
+ * absolute URL by prepending the Django backend origin.
+ * - Local dev  → http://localhost:8000
+ * - Production → same origin (served behind a reverse proxy)
+ *
+ * @param {string} url - Raw URL from the API (absolute, relative, or data URI)
+ * @returns {string|null} - Absolute URL, or null if input is empty
+ */
+function resolveMediaUrl(url) {
+    if (!url || typeof url !== 'string') return null;
+    // Already absolute (http(s)://) or a data URI — return as-is
+    if (/^(https?:)?\/\//i.test(url) || /^data:/i.test(url)) return url;
+    // Backend-relative path → prepend backend origin
+    if (url.startsWith('/')) {
+        const host = window.location.hostname;
+        const origin = (host === 'localhost' || host === '127.0.0.1')
+            ? 'http://localhost:8000'
+            : window.location.origin;
+        return origin + url;
+    }
+    return url;
+}
+
+window.resolveMediaUrl = resolveMediaUrl;
+
+/**
  * Return the safest profile image URL for a user object.
  * Prefers profile_image_url (server-verified to exist) over profile_image.
  * Returns null if neither is set — caller should use avatarFallbackHTML().
@@ -259,9 +285,9 @@ function getAvatarUrl(user) {
     ];
     for (const url of candidates) {
         if (!url || typeof url !== 'string') continue;
-        // Reject bare /media/ paths — ephemeral on Render, will 404
-        if (url.startsWith('/media/')) continue;
-        return url;
+        // Resolve backend-relative "/media/..." paths to absolute URLs
+        // (the browser would otherwise request them from the frontend origin and 404)
+        return resolveMediaUrl(url);
     }
     return null;
 }

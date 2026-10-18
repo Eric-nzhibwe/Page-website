@@ -20,8 +20,13 @@ let currentUser = null;
         const colour  = colours[initial.charCodeAt(0) % colours.length];
         const letterSpan = `<span style="display:inline-flex;align-items:center;justify-content:center;width:100%;height:100%;border-radius:50%;background:${colour};color:#fff;font-weight:700;font-size:14px;">${initial}</span>`;
 
-        const imgTag = imgUrl
-            ? `<img src="${imgUrl}" alt="avatar"
+        // Resolve backend-relative "/media/..." paths to an absolute URL
+        const resolved = imgUrl
+            ? ((typeof resolveMediaUrl === 'function') ? resolveMediaUrl(imgUrl) : imgUrl)
+            : null;
+
+        const imgTag = resolved
+            ? `<img src="${resolved}" alt="avatar"
                 style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;"
                 onerror="this.replaceWith((function(){var s=document.createElement('span');s.style.cssText='display:inline-flex;align-items:center;justify-content:center;width:100%;height:100%;border-radius:50%;background:${colour};color:#fff;font-weight:700;font-size:14px;';s.textContent='${initial}';return s;})())">`
             : letterSpan;

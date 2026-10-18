@@ -55,9 +55,10 @@ function _rtGetAvatarUrl(user) {
     if (!user) return null;
     const url = user.profile_image_url || user.avatar_url || user.profile_image || null;
     if (!url) return null;
-    // Reject bare /media/ paths known to 404 on Render's ephemeral storage
-    if (url.startsWith('/media/')) return null;
-    return url;
+    // Resolve backend-relative "/media/..." paths to an absolute URL
+    return (typeof resolveMediaUrl === 'function')
+        ? resolveMediaUrl(url)
+        : url;
 }
 
 /**
@@ -530,8 +531,10 @@ function _buildPostCard(post) {
     const content  = _rtEsc(post.content || '');
 
     const _rtInit    = (author.display_name || author.username || '?').charAt(0).toUpperCase();
-    const avatarHTML = (author.profile_image_url || author.profile_image)
-        ? `<img src="${_rtEsc(author.profile_image_url || author.profile_image)}" alt="${name}" class="page-user-avatar-img"
+    const _rtRaw     = author.profile_image_url || author.profile_image || null;
+    const _rtAvatar  = _rtRaw ? ((typeof resolveMediaUrl === 'function') ? resolveMediaUrl(_rtRaw) : _rtRaw) : null;
+    const avatarHTML = _rtAvatar
+        ? `<img src="${_rtEsc(_rtAvatar)}" alt="${name}" class="page-user-avatar-img"
                onerror="this.replaceWith(window._rtLetterAvatar('${_rtInit}'))">`
         : (window._rtLetterAvatar ? window._rtLetterAvatar(_rtInit).outerHTML
             : `<span style="display:inline-flex;align-items:center;justify-content:center;width:100%;height:100%;border-radius:50%;background:#6c63ff;color:#fff;font-weight:700;font-size:14px;">${_rtInit}</span>`);
@@ -1044,7 +1047,12 @@ document.addEventListener('DOMContentLoaded', _initRealtimeUpdates);
 function _stampCurrentUserAvatar(imgUrl) {
     if (!imgUrl) return;
 
-    const imgTag = `<img src="${imgUrl}" alt="Your avatar"
+    // Resolve backend-relative "/media/..." paths so the browser can load them
+    const resolved = (typeof resolveMediaUrl === 'function')
+        ? resolveMediaUrl(imgUrl)
+        : imgUrl;
+
+    const imgTag = `<img src="${resolved}" alt="Your avatar"
         style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;"
         onerror="this.style.display='none';this.parentElement.innerHTML='<i class=\\'fas fa-circle-user\\'></i>'">`;
 
@@ -1363,7 +1371,12 @@ function _handleUserFeedMessage(msg) {
 function _patchUserAvatarEverywhere(userId, avatarUrl) {
     if (!userId || !avatarUrl) return;
 
-    const imgTag = `<img src="${_rtEsc(avatarUrl)}" alt="avatar"
+    // Resolve backend-relative "/media/..." paths to an absolute URL
+    const resolved = (typeof resolveMediaUrl === 'function')
+        ? resolveMediaUrl(avatarUrl)
+        : avatarUrl;
+
+    const imgTag = `<img src="${_rtEsc(resolved)}" alt="avatar"
         style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;"
         onerror="this.replaceWith(window._rtLetterAvatar('?'))">`;
 

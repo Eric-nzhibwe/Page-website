@@ -111,9 +111,10 @@ function renderOtherProfile(u) {
     set('profileBio', u.bio || 'No bio yet.');
     set('statPrestige', (u.prestige_points || 0).toLocaleString());
     set('statLevel', u.level || 1);
-    // Use server-verified URL to avoid /media/ 404s on Render's ephemeral filesystem
-    const avatarUrl = u.profile_image_url || (u.profile_image && !u.profile_image.startsWith('/media/') ? u.profile_image : null);
-    if (avatarUrl) setAvatarImg(avatarUrl);
+    // Resolve backend-relative "/media/..." paths to an absolute URL
+    const avatarUrl = u.profile_image_url || u.profile_image || null;
+    const _resolvedUrl = avatarUrl ? ((typeof resolveMediaUrl === 'function') ? resolveMediaUrl(avatarUrl) : avatarUrl) : null;
+    if (_resolvedUrl) setAvatarImg(_resolvedUrl);
     if (window.applyTierPalette) applyTierPalette(u.access_tier);
     document.title = `PAGE — ${u.display_name || u.username}`;
 }
@@ -205,8 +206,9 @@ function renderProfile(u, rank) {
     const lvl = document.getElementById('avatarLevel');
     if (lvl) lvl.querySelector('b').textContent = u.level;
 
-    // Avatar image — use server-verified URL to avoid /media/ 404s on Render
-    const _avatarUrl = u.profile_image_url || (u.profile_image && !u.profile_image.startsWith('/media/') ? u.profile_image : null);
+    // Avatar image — resolve backend-relative "/media/..." paths to an absolute URL
+    const _avatarRaw = u.profile_image_url || u.profile_image || null;
+    const _avatarUrl = _avatarRaw ? ((typeof resolveMediaUrl === 'function') ? resolveMediaUrl(_avatarRaw) : _avatarRaw) : null;
     if (_avatarUrl) {
         setAvatarImg(_avatarUrl);
     }
@@ -289,7 +291,12 @@ function setAvatarImg(src) {
 function applyAvatarEverywhere(imgUrl) {
     if (!imgUrl) return;
 
-    const imgTag = `<img src="${imgUrl}" alt="avatar"
+    // Resolve backend-relative "/media/..." paths to an absolute URL
+    const resolved = (typeof resolveMediaUrl === 'function')
+        ? resolveMediaUrl(imgUrl)
+        : imgUrl;
+
+    const imgTag = `<img src="${resolved}" alt="avatar"
         style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;"
         onerror="this.replaceWith(window.pageLetterAvatar ? window.pageLetterAvatar('?') : (()=>{var s=document.createElement('span');s.style='display:inline-flex;align-items:center;justify-content:center;width:100%;height:100%;border-radius:50%;background:#6c63ff;color:#fff;font-weight:700;font-size:inherit;';s.textContent='?';return s;})())">`;
 

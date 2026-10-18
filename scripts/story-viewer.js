@@ -71,9 +71,8 @@ class StoryViewer {
 
         // ── Author header ──
         // Prefer profile_image_url (avatar_url/base64) over legacy profile_image
-        const _authorAvatarUrl = (story.author?.profile_image_url || story.author?.avatar_url)
-            || (story.author?.profile_image && !story.author.profile_image.startsWith('/media/')
-                ? story.author.profile_image : null);
+        const _authorRawUrl = (story.author?.profile_image_url || story.author?.avatar_url || story.author?.profile_image) || null;
+        const _authorAvatarUrl = _authorRawUrl ? ((typeof resolveMediaUrl === 'function') ? resolveMediaUrl(_authorRawUrl) : _authorRawUrl) : null;
         const _authorInit = (story.author?.display_name || story.author?.username || '?').charAt(0).toUpperCase();
         const avHTML = _authorAvatarUrl
             ? `<img src="${this._esc(_authorAvatarUrl)}" alt="${this._esc(story.author?.username || 'User')}"
