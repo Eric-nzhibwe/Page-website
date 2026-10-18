@@ -1,9 +1,11 @@
 """
-PAGE AI Service — powered by Groq (GPT-OSS series)
-================================================
-Primary:  openai/gpt-oss-120b  — Groq's flagship GPT-OSS model
-Fallback: openai/gpt-oss-20b   — lighter, faster fallback
-Safety:   openai/gpt-oss-safeguard-20b is available if needed
+PAGE AI Service — powered by Groq
+==================================
+Primary:  openai/gpt-oss-120b  — Groq's current quality model
+Fallback: openai/gpt-oss-20b   — faster, lighter model
+
+Groq retires models regularly and retired IDs return 404, so both model IDs
+are read from settings and can be overridden with env vars.
 
 Setup:
   1. Get a FREE key at https://console.groq.com/keys
@@ -16,8 +18,8 @@ from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
-GROQ_MODEL          = "openai/gpt-oss-120b"   # Primary: Groq GPT-OSS 120B
-GROQ_MODEL_FALLBACK = "openai/gpt-oss-20b"    # Fallback: Groq GPT-OSS 20B
+GROQ_MODEL          = getattr(settings, "GROQ_MODEL", "openai/gpt-oss-120b")
+GROQ_MODEL_FALLBACK = getattr(settings, "GROQ_MODEL_FALLBACK", "openai/gpt-oss-20b")
 GROQ_API_URL        = "https://api.groq.com/openai/v1/chat/completions"
 
 # ── System prompt ─────────────────────────────────────────────────────────────
@@ -249,8 +251,8 @@ def _rule_based_response(message: str, user_context: dict | None) -> str:
 
 class AIService:
     """
-    Primary:  Groq GPT-OSS 120B (requires GROQ_API_KEY in .env)
-    Fallback: Groq GPT-OSS 20B → Smart rule-based responses
+    Primary:  Groq openai/gpt-oss-120b (requires GROQ_API_KEY in .env)
+    Fallback: Groq openai/gpt-oss-20b → Smart rule-based responses
     """
 
     def get_response(

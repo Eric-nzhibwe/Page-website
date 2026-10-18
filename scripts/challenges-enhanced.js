@@ -159,8 +159,10 @@ function handleChallengeImage(event) {
 // Remove challenge image
 function removeChallengeImage() {
     challengeImageData = null;
-    document.getElementById('challengeImage').value = '';
-    document.getElementById('challengeImagePreview').innerHTML = '';
+    const input = document.getElementById('challengeImageUpload');
+    if (input) input.value = '';
+    const preview = document.getElementById('challengeImagePreview');
+    if (preview) preview.innerHTML = '';
 }
 // Open create challenge modal
 function openCreateChallengeModal() {

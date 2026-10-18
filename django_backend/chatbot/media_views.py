@@ -33,10 +33,10 @@ from .views import _call_ai, _chat_postgres, _chat_firestore, _use_firestore
 logger = logging.getLogger(__name__)
 
 GROQ_WHISPER_URL  = 'https://api.groq.com/openai/v1/audio/transcriptions'
-# Groq vision-capable models (verified at console.groq.com/docs/models)
-# Both support image_url content in messages.
-GROQ_VISION_MODEL          = 'meta-llama/llama-4-scout-17b-16e-instruct'   # fastest, free tier
-GROQ_VISION_MODEL_FALLBACK = 'meta-llama/llama-4-maverick-17b-128e-instruct'  # higher quality
+# Groq retires models regularly — llama-4-maverick, llama-4-scout and llava are
+# all gone now (see https://console.groq.com/docs/deprecations). The vision model
+# is read from settings so a future rotation only needs an env var change.
+GROQ_VISION_MODEL = getattr(settings, 'GROQ_VISION_MODEL', 'qwen/qwen3.8-27b')
 GROQ_API_URL      = 'https://api.groq.com/openai/v1/chat/completions'
 
 MAX_AUDIO_MB  = 25     # Groq Whisper limit
@@ -278,15 +278,6 @@ def _call_vision_ai(message, image_b64, image_mime, user, groq_key):
         resp = _vision_request(GROQ_VISION_MODEL)
         logger.info(f'Vision model {GROQ_VISION_MODEL!r} → status {resp.status_code}')
 
-        # If primary model rejected, try fallback before giving up
-        if resp.status_code in (400, 404):
-            logger.warning(
-                f"Primary vision model '{GROQ_VISION_MODEL}' returned {resp.status_code} — "
-                f"retrying with '{GROQ_VISION_MODEL_FALLBACK}'"
-            )
-            resp = _vision_request(GROQ_VISION_MODEL_FALLBACK)
-            logger.info(f'Fallback vision model {GROQ_VISION_MODEL_FALLBACK!r} → status {resp.status_code}')
-
         if resp.status_code == 200:
             content = resp.json()['choices'][0]['message']['content'].strip()
             return content, 'groq-vision'
@@ -300,7 +291,7 @@ def _call_vision_ai(message, image_b64, image_mime, user, groq_key):
 
         logger.error(
             f'Groq vision failed (status {resp.status_code}) '
-            f'model={GROQ_VISION_MODEL_FALLBACK!r}: {err_msg}'
+            f'model={GROQ_VISION_MODEL!r}: {err_msg}'
         )
 
         # Tell the user vision failed rather than pretending we saw the image

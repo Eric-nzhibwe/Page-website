@@ -502,52 +502,43 @@ function triggerMediaUpload(type) {
     const input = document.getElementById('mediaUploadInput');
     if (!input) return;
     input.accept   = type === 'image' ? 'image/*' : 'video/*';
-    input.multiple = type === 'image';
+    // The backend stores a single media_file per post — allow one file at a time
+    input.multiple = false;
+    input.value    = ''; // allow re-selecting the same file
     input.click();
 }
 
 function handleMediaUpload(event) {
-    const files   = event.target.files;
-    if (!files?.length) return;
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const isVideo = file.type.startsWith('video/');
+    const isImage = file.type.startsWith('image/');
+    if (!isVideo && !isImage) return;
+
     const preview = document.getElementById('postMediaPreview');
     const content = document.getElementById('mediaPreviewContent');
-    content.innerHTML = '';
+    if (!content) return;
 
-    Array.from(files).forEach((file, i) => {
-        const reader = new FileReader();
-        if (file.type.startsWith('image/')) {
-            _selectedMedia = file; _selectedMediaType = 'image';
-            reader.onload = e => {
-                const div = document.createElement('div');
-                div.className = 'media-preview-item';
-                div.innerHTML = `<img src="${e.target.result}" alt="Preview ${i+1}">
-                    <button class="remove-media-btn" onclick="removeMediaItem(${i})">
-                        <i class="fas fa-times"></i></button>`;
-                content.appendChild(div);
-            };
-            reader.readAsDataURL(file);
-        } else if (file.type.startsWith('video/')) {
-            _selectedMedia = file; _selectedMediaType = 'video';
-            reader.onload = e => {
-                content.innerHTML = `<div class="media-preview-item video-preview">
+    // Keep upload state in sync with the single selected file
+    _selectedMedia     = file;
+    _selectedMediaType = isVideo ? 'video' : 'image';
+
+    const reader = new FileReader();
+    reader.onload = e => {
+        content.innerHTML = isVideo
+            ? `<div class="media-preview-item video-preview">
                     <video src="${e.target.result}" controls></video>
                     <button class="remove-media-btn" onclick="removePostMedia()">
+                        <i class="fas fa-times"></i></button></div>`
+            : `<div class="media-preview-item">
+                    <img src="${e.target.result}" alt="Preview">
+                    <button class="remove-media-btn" onclick="removePostMedia()">
                         <i class="fas fa-times"></i></button></div>`;
-            };
-            reader.readAsDataURL(file);
-        }
-    });
-    if (preview) preview.style.display = 'block';
-}
+    };
+    reader.readAsDataURL(file);
 
-function removeMediaItem(index) {
-    const preview = document.getElementById('postMediaPreview');
-    const items   = preview?.querySelectorAll('.media-preview-item');
-    if (items?.[index]) items[index].remove();
-    if (!preview?.querySelectorAll('.media-preview-item').length) {
-        if (preview) preview.style.display = 'none';
-        _selectedMedia = _selectedMediaType = null;
-    }
+    if (preview) preview.style.display = 'block';
 }
 
 function removePostMedia() {

@@ -258,6 +258,13 @@ GROQ_API_KEY = config('GROQ_API_KEY', default='')
 OPENAI_API_KEY = config('OPENAI_API_KEY', default='')
 GEMINI_API_KEY = config('GEMINI_API_KEY', default='')
 
+# Groq model IDs — retired models return 404. Keep these overridable via env so
+# a Groq deprecation is a config change instead of a code change.
+# See https://console.groq.com/docs/deprecations
+GROQ_MODEL = config('GROQ_MODEL', default='openai/gpt-oss-120b')
+GROQ_MODEL_FALLBACK = config('GROQ_MODEL_FALLBACK', default='openai/gpt-oss-20b')
+GROQ_VISION_MODEL = config('GROQ_VISION_MODEL', default='qwen/qwen3.8-27b')
+
 # ─── Firebase / Firestore ─────────────────────────────────────────────────────
 # Method 1 (recommended on Render): paste the entire serviceAccountKey.json
 # contents as a single env var — no PEM line-ending issues.
