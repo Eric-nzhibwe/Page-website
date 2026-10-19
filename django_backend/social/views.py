@@ -103,35 +103,50 @@ class PostViewSet(viewsets.ModelViewSet):
                 import logging
                 logging.getLogger(__name__).error(f'Post image base64 failed: {exc}')
 
-        # Video — store via default_storage; build an absolute URL so the
-        # browser can play it even when the frontend is on a different origin.
+        # Video — encode as base64 data URI so it survives re-deploys.
+        # Cap at 50 MB; larger files are rejected with a clear 413 error.
         elif media_file and media_file.content_type.startswith('video/'):
             try:
-                import os
-                from django.core.files.storage import default_storage
-                from django.core.files.base import ContentFile
-                ext       = os.path.splitext(media_file.name)[1].lower() or '.mp4'
-                safe_name = f"posts/media/{request.user.id}_{uuid.uuid4().hex}{ext}"
-                path      = default_storage.save(safe_name, ContentFile(media_file.read()))
-                video_url = request.build_absolute_uri(default_storage.url(path))
+                import base64 as _b64
+                from rest_framework.response import Response as _Resp
+                raw_bytes = media_file.read()
+                MAX_VIDEO_BYTES = 50 * 1024 * 1024  # 50 MB
+                if len(raw_bytes) > MAX_VIDEO_BYTES:
+                    return _Resp(
+                        {'error': 'Video is too large. Maximum size is 50 MB.'},
+                        status=413,
+                    )
+                mime = media_file.content_type or 'video/mp4'
+                # Normalise to the two most compatible MIME types
+                if 'webm' in mime:
+                    mime = 'video/webm'
+                elif 'quicktime' in mime or 'mov' in mime:
+                    mime = 'video/mp4'
+                else:
+                    mime = 'video/mp4'
+                encoded = _b64.b64encode(raw_bytes).decode('utf-8')
                 extra = {
-                    'media_url':  video_url,
+                    'media_url':  f'data:{mime};base64,{encoded}',
                     'media_type': 'video',
-                    'media_file': None,   # URL already stored, skip FileField save
+                    'media_file': None,
                 }
             except Exception as exc:
                 import logging
-                logging.getLogger(__name__).error(f'Post video storage failed: {exc}')
+                logging.getLogger(__name__).error(f'Post video base64 failed: {exc}')
 
-        # Voice files: encode as base64 data URI so they survive re-deploys.
-        # Audio is typically small (< 1 MB for short clips) so base64 is viable.
-        # Fall back to default_storage if encoding fails.
+        # Voice files: encode as base64 data URI — survives re-deploys permanently.
         elif voice_file:
             try:
                 import base64 as _b64
                 raw_bytes  = voice_file.read()
-                mime       = voice_file.content_type or 'audio/webm'
-                # Normalise mime type — some browsers report audio/x-m4a etc.
+                MAX_VOICE_BYTES = 10 * 1024 * 1024  # 10 MB cap for voice notes
+                if len(raw_bytes) > MAX_VOICE_BYTES:
+                    from rest_framework.response import Response as _Resp
+                    return _Resp(
+                        {'error': 'Voice note is too large. Maximum size is 10 MB.'},
+                        status=413,
+                    )
+                mime = voice_file.content_type or 'audio/webm'
                 if 'mp4' in mime or 'm4a' in mime:
                     mime = 'audio/mp4'
                 elif 'ogg' in mime:
@@ -145,27 +160,11 @@ class PostViewSet(viewsets.ModelViewSet):
                 extra = {
                     'media_url':  voice_url,
                     'media_type': 'audio',
-                    'voice_file': None,   # don't save raw file again via FileField
+                    'voice_file': None,
                 }
             except Exception as exc:
-                import logging, os
+                import logging
                 logging.getLogger(__name__).error(f'Voice base64 encoding failed: {exc}')
-                # Fallback: store via default_storage
-                try:
-                    from django.core.files.storage import default_storage
-                    from django.core.files.base import ContentFile
-                    voice_file.seek(0)
-                    ext       = os.path.splitext(voice_file.name)[1].lower() or '.webm'
-                    safe_name = f"posts/voice/{request.user.id}_{uuid.uuid4().hex}{ext}"
-                    path      = default_storage.save(safe_name, ContentFile(voice_file.read()))
-                    voice_url = request.build_absolute_uri(default_storage.url(path))
-                    extra = {
-                        'media_url':  voice_url,
-                        'media_type': 'audio',
-                        'voice_file': None,
-                    }
-                except Exception as exc2:
-                    logging.getLogger(__name__).error(f'Voice fallback storage failed: {exc2}')
 
         post = serializer.save(author=request.user, **extra)
         self._broadcast_new_post(post)
@@ -218,26 +217,41 @@ class PostViewSet(viewsets.ModelViewSet):
                     import logging
                     logging.getLogger(__name__).error(f'Post image processing failed: {exc}')
             else:
-                # Video — store via default_storage
-                import os
-                from django.core.files.storage import default_storage
-                from django.core.files.base import ContentFile
-                ext       = os.path.splitext(media_file.name)[1].lower() or '.mp4'
-                safe_name = f"posts/{request.user.id}_{uuid.uuid4().hex}{ext}"
+                # Video — encode as base64 data URI so it survives re-deploys.
+                # Cap at 50 MB to keep the DB row size sane.
                 try:
-                    path      = default_storage.save(safe_name, ContentFile(media_file.read()))
-                    media_url = request.build_absolute_uri(default_storage.url(path))
+                    import base64 as _b64
+                    raw_bytes = media_file.read()
+                    MAX_VIDEO_BYTES = 50 * 1024 * 1024  # 50 MB
+                    if len(raw_bytes) > MAX_VIDEO_BYTES:
+                        return Response(
+                            {'error': 'Video is too large. Maximum size is 50 MB.'},
+                            status=413,
+                        )
+                    mime = media_file.content_type or 'video/mp4'
+                    if 'webm' in mime:
+                        mime = 'video/webm'
+                    elif 'quicktime' in mime or 'mov' in mime:
+                        mime = 'video/mp4'
+                    else:
+                        mime = 'video/mp4'
+                    encoded   = _b64.b64encode(raw_bytes).decode('utf-8')
+                    media_url = f'data:{mime};base64,{encoded}'
                 except Exception as exc:
                     import logging
-                    logging.getLogger(__name__).error(f'Post video upload failed: {exc}')
+                    logging.getLogger(__name__).error(f'Post video base64 (Firestore) failed: {exc}')
 
         elif voice_file:
             # Voice note — encode as base64 data URI so it persists across re-deploys.
-            # For Firestore: base64 audio is stored in media_url (text field), not in
-            # the Firestore document body, so the 1 MB document limit is not breached.
             try:
                 import base64 as _b64
                 raw_bytes  = voice_file.read()
+                MAX_VOICE_BYTES = 10 * 1024 * 1024  # 10 MB cap
+                if len(raw_bytes) > MAX_VOICE_BYTES:
+                    return Response(
+                        {'error': 'Voice note is too large. Maximum size is 10 MB.'},
+                        status=413,
+                    )
                 mime       = voice_file.content_type or 'audio/webm'
                 if 'mp4' in mime or 'm4a' in mime:
                     mime = 'audio/mp4'
@@ -251,20 +265,12 @@ class PostViewSet(viewsets.ModelViewSet):
                 media_url  = f'data:{mime};base64,{encoded}'
                 media_type = 'audio'
             except Exception as exc:
-                import logging, os
+                import logging
                 logging.getLogger(__name__).error(f'Voice base64 (Firestore) failed: {exc}')
-                # Fallback: store via default_storage
-                try:
-                    from django.core.files.storage import default_storage
-                    from django.core.files.base import ContentFile
-                    voice_file.seek(0)
-                    ext       = os.path.splitext(voice_file.name)[1].lower() or '.webm'
-                    safe_name = f"posts/voice/{request.user.id}_{uuid.uuid4().hex}{ext}"
-                    path      = default_storage.save(safe_name, ContentFile(voice_file.read()))
-                    media_url  = request.build_absolute_uri(default_storage.url(path))
-                    media_type = 'audio'
-                except Exception as exc2:
-                    logging.getLogger(__name__).error(f'Voice fallback (Firestore) failed: {exc2}')
+                return Response(
+                    {'error': 'Failed to process voice note. Please try again.'},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
 
         post = create_post(request.user,
                            # QueryDict.dict() returns the last value for each key

@@ -175,6 +175,11 @@ WHITENOISE_USE_FINDERS = True
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
+# Allow video uploads up to 60 MB (50 MB file + base64 overhead ≈ 1.33×)
+# Django's default is 2.5 MB which would reject large video uploads.
+DATA_UPLOAD_MAX_MEMORY_SIZE = 70 * 1024 * 1024   # 70 MB
+FILE_UPLOAD_MAX_MEMORY_SIZE = 70 * 1024 * 1024   # 70 MB
+
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # ─── Cloudinary (media storage) ───────────────────────────────────────────────

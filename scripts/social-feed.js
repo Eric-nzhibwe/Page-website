@@ -430,6 +430,13 @@ function postVoiceRecording() {
         return;
     }
 
+    // Guard: reject oversized blobs before wasting a round-trip
+    const MAX_VOICE_MB = 10;
+    if (_voiceBlob.size > MAX_VOICE_MB * 1024 * 1024) {
+        _feedToast(`Voice note is too large (max ${MAX_VOICE_MB} MB). Try a shorter recording.`, 'error');
+        return;
+    }
+
     // Capture duration BEFORE we reset state
     const durationSecs = _voiceSeconds;
     const m = Math.floor(durationSecs / 60);
@@ -558,6 +565,16 @@ function handleMediaUpload(event) {
     const isVideo = file.type.startsWith('video/');
     const isImage = file.type.startsWith('image/');
     if (!isVideo && !isImage) return;
+
+    // Enforce size limits before uploading — matches the backend caps
+    const MAX_IMAGE_MB = 10;
+    const MAX_VIDEO_MB = 50;
+    const limitMB = isVideo ? MAX_VIDEO_MB : MAX_IMAGE_MB;
+    if (file.size > limitMB * 1024 * 1024) {
+        _feedToast(`${isVideo ? 'Video' : 'Image'} is too large. Maximum is ${limitMB} MB.`, 'error');
+        event.target.value = '';
+        return;
+    }
 
     const preview = document.getElementById('postMediaPreview');
     const content = document.getElementById('mediaPreviewContent');
