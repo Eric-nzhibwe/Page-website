@@ -3,128 +3,188 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PAGE AI Assistant</title>
+    <title>PAGE AI</title>
     <link rel="icon" type="image/jpeg" href="../images/Page.jpeg">
     <link rel="stylesheet" href="../styles/styles.css">
     <link rel="stylesheet" href="../styles/chatbot.css">
     <link rel="stylesheet" href="../styles/responsive-pro.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
     <script src="../scripts/theme.js"></script>
 </head>
 <body>
 <div class="chat-page">
 
-    <!-- ── HEADER ── -->
-    <header class="chat-header">
-        <button class="chat-nav-btn" onclick="window.location.href='../index.html'" title="Back">
-            <i class="fas fa-arrow-left"></i>
+    <!-- ══════════════════════════════════
+         LEFT SIDEBAR
+    ══════════════════════════════════ -->
+    <aside class="chat-sidebar">
+
+        <!-- Brand -->
+        <div class="sidebar-brand">
+            <div class="brand-icon"><i class="fas fa-microchip"></i></div>
+            <span class="brand-label">PAGE AI</span>
+        </div>
+
+        <!-- New chat -->
+        <button class="new-chat-btn" onclick="clearConversation()">
+            <i class="fas fa-plus"></i>
+            <span>New chat</span>
         </button>
 
-        <div class="chat-header-identity">
-            <div class="chat-ai-orb">
-                <i class="fas fa-microchip"></i>
-            </div>
-            <div>
-                <div class="chat-header-name">PAGE AI</div>
-                <div class="chat-header-status" id="aiStatusBadge">
-                    <span class="status-dot"></span>
-                    <span id="aiStatusLabel">Connecting…</span>
+        <!-- Suggested prompts -->
+        <div class="sidebar-section">
+            <p class="sidebar-section-title">Suggestions</p>
+            <button class="sidebar-prompt" onclick="sendQuickMessage('How do I deposit funds into my wallet?')">
+                <i class="fas fa-wallet"></i><span>Deposit funds</span>
+            </button>
+            <button class="sidebar-prompt" onclick="sendQuickMessage('How do I earn money on PAGE?')">
+                <i class="fas fa-coins"></i><span>Earn money</span>
+            </button>
+            <button class="sidebar-prompt" onclick="sendQuickMessage('How do tournaments work?')">
+                <i class="fas fa-trophy"></i><span>Tournaments</span>
+            </button>
+            <button class="sidebar-prompt" onclick="sendQuickMessage('Explain the prestige tier system')">
+                <i class="fas fa-layer-group"></i><span>Prestige tiers</span>
+            </button>
+            <button class="sidebar-prompt" onclick="sendQuickMessage('What payment methods does PAGE support?')">
+                <i class="fas fa-credit-card"></i><span>Payments</span>
+            </button>
+            <button class="sidebar-prompt" onclick="sendQuickMessage('How do alliances work?')">
+                <i class="fas fa-shield-halved"></i><span>Alliances</span>
+            </button>
+        </div>
+
+        <div class="sidebar-spacer"></div>
+
+        <!-- Back link -->
+        <a href="../index.html" class="sidebar-back">
+            <i class="fas fa-arrow-left"></i>
+            <span>Back to PAGE</span>
+        </a>
+
+    </aside>
+
+    <!-- ══════════════════════════════════
+         MAIN CHAT PANEL
+    ══════════════════════════════════ -->
+    <div class="chat-main">
+
+        <!-- Top bar -->
+        <header class="chat-topbar">
+            <!-- Mobile: back button -->
+            <button class="topbar-icon-btn mobile-only" onclick="window.location.href='../index.html'" aria-label="Back">
+                <i class="fas fa-arrow-left"></i>
+            </button>
+
+            <div class="topbar-identity">
+                <div class="topbar-avatar">
+                    <i class="fas fa-microchip"></i>
+                </div>
+                <div class="topbar-info">
+                    <span class="topbar-name">PAGE AI</span>
+                    <span class="topbar-status" id="aiStatusBadge">
+                        <span class="status-dot"></span>
+                        <span id="aiStatusLabel">Connecting…</span>
+                    </span>
                 </div>
             </div>
+
+            <!-- Mobile: new chat -->
+            <button class="topbar-icon-btn mobile-only" onclick="clearConversation()" aria-label="New chat">
+                <i class="fas fa-pen-to-square"></i>
+            </button>
+        </header>
+
+        <!-- Messages -->
+        <main class="chat-messages" id="chatMessages">
+
+            <!-- Welcome (matches clearConversation() structure exactly) -->
+            <div class="welcome-screen" id="welcomeScreen">
+                <div class="welcome-orb">
+                    <i class="fas fa-microchip"></i>
+                </div>
+                <h2>PAGE AI Assistant</h2>
+                <p>Powered by Groq. Ask me anything — or send a voice message or image.</p>
+                <div class="starter-grid">
+                    <button class="starter-card" onclick="sendQuickMessage('How do I deposit funds into my wallet?')">
+                        <i class="fas fa-wallet"></i><span>Deposit funds</span>
+                    </button>
+                    <button class="starter-card" onclick="sendQuickMessage('How do I earn money on PAGE?')">
+                        <i class="fas fa-coins"></i><span>Earn money</span>
+                    </button>
+                    <button class="starter-card" onclick="sendQuickMessage('How do tournaments work?')">
+                        <i class="fas fa-trophy"></i><span>Tournaments</span>
+                    </button>
+                    <button class="starter-card" onclick="sendQuickMessage('Explain the prestige tier system')">
+                        <i class="fas fa-layer-group"></i><span>Prestige tiers</span>
+                    </button>
+                    <button class="starter-card" onclick="sendQuickMessage('What payment methods does PAGE support?')">
+                        <i class="fas fa-credit-card"></i><span>Payments</span>
+                    </button>
+                    <button class="starter-card" onclick="sendQuickMessage('How do alliances work?')">
+                        <i class="fas fa-shield-halved"></i><span>Alliances</span>
+                    </button>
+                </div>
+            </div>
+
+        </main>
+
+        <!-- Typing indicator -->
+        <div class="chat-typing" id="typingIndicator" style="display:none">
+            <div class="typing-avatar"><i class="fas fa-microchip"></i></div>
+            <div class="typing-bubble">
+                <span></span><span></span><span></span>
+            </div>
         </div>
 
-        <button class="chat-nav-btn" onclick="clearConversation()" title="New chat">
-            <i class="fas fa-pen-to-square"></i>
-        </button>
-    </header>
+        <!-- Input bar -->
+        <footer class="chat-input-bar">
+            <form id="chatForm" onsubmit="sendMessage(event)">
+                <div class="chat-attachment-preview" id="attachmentPreview" style="display:none;"></div>
 
-    <!-- ── MESSAGES ── -->
-    <main class="chat-messages" id="chatMessages">
+                <div class="chat-input-wrap" id="inputWrap">
+                    <button type="button" class="input-icon-btn" id="attachBtn"
+                        title="Attach image or file"
+                        onclick="document.getElementById('fileInput').click()">
+                        <i class="fas fa-paperclip"></i>
+                    </button>
+                    <input type="file" id="fileInput"
+                        accept="image/*,.pdf,.txt,.csv,.md"
+                        style="display:none"
+                        onchange="handleFileAttach(event)">
 
-        <!-- Welcome card (hidden once chat starts) -->
-        <div class="welcome-screen" id="welcomeScreen">
-            <div class="welcome-orb">
-                <i class="fas fa-microchip"></i>
-            </div>
-            <h2>PAGE AI Assistant</h2>
-            <p>Powered by Groq. Ask me anything about the platform — or anything at all.</p>
+                    <textarea
+                        id="messageInput"
+                        placeholder="Message PAGE AI…"
+                        rows="1"
+                        maxlength="2000"
+                        aria-label="Message input"
+                    ></textarea>
 
-            <div class="starter-grid">
-                <button class="starter-card" onclick="sendQuickMessage('How do I deposit funds into my wallet?')">
-                    <i class="fas fa-wallet"></i>
-                    <span>Deposit funds</span>
-                </button>
-                <button class="starter-card" onclick="sendQuickMessage('How do I earn money on PAGE?')">
-                    <i class="fas fa-coins"></i>
-                    <span>Earn money</span>
-                </button>
-                <button class="starter-card" onclick="sendQuickMessage('How do tournaments work?')">
-                    <i class="fas fa-trophy"></i>
-                    <span>Tournaments</span>
-                </button>
-                <button class="starter-card" onclick="sendQuickMessage('Explain the prestige tier system')">
-                    <i class="fas fa-star"></i>
-                    <span>Prestige tiers</span>
-                </button>
-                <button class="starter-card" onclick="sendQuickMessage('What payment methods does PAGE support?')">
-                    <i class="fas fa-credit-card"></i>
-                    <span>Payments</span>
-                </button>
-                <button class="starter-card" onclick="sendQuickMessage('How do alliances work?')">
-                    <i class="fas fa-users"></i>
-                    <span>Alliances</span>
-                </button>
-            </div>
-        </div>
+                    <button type="button" class="input-icon-btn chat-voice-btn" id="voiceBtn"
+                        title="Hold to record voice message"
+                        onmousedown="startRecording()"
+                        onmouseup="stopRecording()"
+                        ontouchstart="startRecording()"
+                        ontouchend="stopRecording()">
+                        <i class="fas fa-microphone"></i>
+                    </button>
 
-    </main>
+                    <button type="submit" class="chat-send-btn" id="sendBtn" disabled title="Send">
+                        <i class="fas fa-arrow-up"></i>
+                    </button>
+                </div>
 
-    <!-- ── TYPING INDICATOR ── -->
-    <div class="chat-typing" id="typingIndicator" style="display:none">
-        <div class="typing-bubble">
-            <span></span><span></span><span></span>
-        </div>
-        <span class="typing-label">PAGE AI is thinking…</span>
-    </div>
+                <p class="chat-disclaimer">PAGE AI may make mistakes. Verify important information.</p>
+            </form>
+        </footer>
 
-    <!-- ── INPUT BAR ── -->
-    <footer class="chat-input-bar">
-        <form id="chatForm" onsubmit="sendMessage(event)">
-            <!-- Media preview strip (shown when a file/image is attached) -->
-            <div class="chat-attachment-preview" id="attachmentPreview" style="display:none;"></div>
+    </div><!-- /chat-main -->
 
-            <div class="chat-input-wrap" id="inputWrap">
-                <!-- Attach file button -->
-                <button type="button" class="chat-media-btn" id="attachBtn" title="Attach image or file" onclick="document.getElementById('fileInput').click()">
-                    <i class="fas fa-paperclip"></i>
-                </button>
-                <input type="file" id="fileInput" accept="image/*,.pdf,.txt,.csv,.md" style="display:none" onchange="handleFileAttach(event)">
+</div><!-- /chat-page -->
 
-                <textarea
-                    id="messageInput"
-                    placeholder="Message PAGE AI…"
-                    rows="1"
-                    maxlength="2000"
-                    aria-label="Message input"
-                ></textarea>
-
-                <!-- Voice record button (replaces send btn while recording) -->
-                <button type="button" class="chat-voice-btn" id="voiceBtn" title="Hold to record voice message" onmousedown="startRecording()" onmouseup="stopRecording()" ontouchstart="startRecording()" ontouchend="stopRecording()">
-                    <i class="fas fa-microphone"></i>
-                </button>
-
-                <button type="submit" class="chat-send-btn" id="sendBtn" disabled title="Send">
-                    <i class="fas fa-arrow-up"></i>
-                </button>
-            </div>
-            <p class="chat-disclaimer">PAGE AI can make mistakes. Verify important info.</p>
-        </form>
-    </footer>
-
-</div>
-
-<!-- ── MOBILE BOTTOM NAV ── -->
+<!-- Mobile bottom nav -->
 <nav class="mobile-bottom-nav" id="mobileBottomNav">
     <button class="icon-nav-btn" title="Home" onclick="window.location.href='../index.html'">
         <i class="fas fa-home"></i>
@@ -135,7 +195,7 @@
     <button class="icon-nav-btn" title="Messages" onclick="window.location.href='messenger.html'">
         <i class="fas fa-comment-dots"></i>
     </button>
-    <button class="icon-nav-btn" title="People" onclick="window.location.href='community.html'">
+    <button class="icon-nav-btn" title="Community" onclick="window.location.href='community.html'">
         <i class="fas fa-users"></i>
     </button>
     <button class="icon-nav-btn active" onclick="toggleMobileMoreMenu(this)" title="More">
@@ -159,12 +219,12 @@ function toggleMobileMoreMenu(btn) {
     }
 }
 document.addEventListener('click', e => {
-    const dropdown = document.getElementById('userMenuDropdown');
-    if (dropdown?.classList.contains('show') && dropdown.style.bottom) {
+    const dd = document.getElementById('userMenuDropdown');
+    if (dd?.classList.contains('show') && dd.style.bottom) {
         const btn = document.querySelector('.mobile-bottom-nav .icon-nav-btn[title="More"]');
-        if (!dropdown.contains(e.target) && !btn?.contains(e.target)) {
-            dropdown.classList.remove('show');
-            ['top','bottom','right','position'].forEach(p => dropdown.style.removeProperty(p));
+        if (!dd.contains(e.target) && !btn?.contains(e.target)) {
+            dd.classList.remove('show');
+            ['top','bottom','right','position'].forEach(p => dd.style.removeProperty(p));
         }
     }
 });
