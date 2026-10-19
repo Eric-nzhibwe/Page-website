@@ -341,15 +341,12 @@ function _injectNewCard(category, apiResponse, title, description, duration, bod
 /* ── Card builders ── */
 
 function buildDebateCard(id, title, description, sideA, sideB, duration, imgSrc) {
-    const durLabel = _fmtDuration(duration);
-
     const commentsA = '';
     const commentsB = '';
 
     return `
         <div class="debate-card-header">
             <span class="debate-type-label"><i class="fas fa-gavel"></i> Debate</span>
-            <span style="font-size:11px;color:#888;">${durLabel}</span>
         </div>
         <p class="debate-card-title" style="padding:0 16px 10px;margin:0;">${title.toUpperCase()}</p>
 
@@ -406,10 +403,7 @@ function buildDebateCard(id, title, description, sideA, sideB, duration, imgSrc)
         </div>
 
         <div class="debate-card-footer">
-            <div style="display:flex;align-items:center;gap:6px;">
-                <span style="font-size:11px;color:#888;"><i class="fas fa-clock" style="color:var(--page-primary);margin-right:3px;"></i>${durLabel} left</span>
-            </div>
-            <div style="display:flex;gap:8px;align-items:center;">
+            <div style="display:flex;gap:8px;align-items:center;margin-left:auto;">
                 <button class="share-challenge-btn" onclick="shareChallenge('${title.replace(/'/g, "\\'")}','${id}','debate')" title="Share">
                     <i class="fas fa-share-alt"></i>
                 </button>
@@ -466,7 +460,6 @@ function buildPollCard(id, title, description, options, duration) {
         <div class="poll-card-footer">
             <div class="poll-meta">
                 <span><i class="fas fa-users"></i> 0 votes</span>
-                <span><i class="fas fa-clock"></i> ${duration} left</span>
             </div>
             <button class="share-challenge-btn" onclick="shareChallenge('${title.replace(/'/g, "\\'")}','${id}','poll')" title="Share">
                 <i class="fas fa-share-alt"></i>
@@ -517,9 +510,7 @@ function buildQACard(id, title, description, imgSrc, duration) {
             </button>
         </div>
         <div class="qa-card-footer">
-            <div class="qa-meta">
-                <span><i class="fas fa-clock"></i> ${duration} left</span>
-            </div>
+            <div class="qa-meta"></div>
             <button class="share-challenge-btn" onclick="shareChallenge('${title.replace(/'/g, "\\'")}','${id}','Q&A')" title="Share">
                 <i class="fas fa-share-alt"></i>
             </button>

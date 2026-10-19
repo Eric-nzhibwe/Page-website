@@ -1502,8 +1502,7 @@ function _renderDebateCard(c) {
             </div>
         </div>
         <div class="debate-card-footer">
-            <span style="font-size:11px;color:#888;"><i class="fas fa-clock" style="color:var(--page-primary);margin-right:3px;"></i>${dur} left</span>
-            <div style="display:flex;align-items:center;gap:8px;">
+            <div style="display:flex;align-items:center;gap:8px;margin-left:auto;">
                 <span class="debate-joined-badge" id="debateJoinedBadge_${id}" style="display:none;font-size:11px;color:#1b7f3a;font-weight:700;">
                     <i class="fas fa-check-circle"></i> Joined
                 </span>
