@@ -103,6 +103,26 @@ class PostViewSet(viewsets.ModelViewSet):
                 import logging
                 logging.getLogger(__name__).error(f'Post image base64 failed: {exc}')
 
+        # Video — store via default_storage; build an absolute URL so the
+        # browser can play it even when the frontend is on a different origin.
+        elif media_file and media_file.content_type.startswith('video/'):
+            try:
+                import os
+                from django.core.files.storage import default_storage
+                from django.core.files.base import ContentFile
+                ext       = os.path.splitext(media_file.name)[1].lower() or '.mp4'
+                safe_name = f"posts/media/{request.user.id}_{uuid.uuid4().hex}{ext}"
+                path      = default_storage.save(safe_name, ContentFile(media_file.read()))
+                video_url = request.build_absolute_uri(default_storage.url(path))
+                extra = {
+                    'media_url':  video_url,
+                    'media_type': 'video',
+                    'media_file': None,   # URL already stored, skip FileField save
+                }
+            except Exception as exc:
+                import logging
+                logging.getLogger(__name__).error(f'Post video storage failed: {exc}')
+
         # Voice files: encode as base64 data URI so they survive re-deploys.
         # Audio is typically small (< 1 MB for short clips) so base64 is viable.
         # Fall back to default_storage if encoding fails.
