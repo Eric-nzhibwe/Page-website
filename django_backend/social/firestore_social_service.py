@@ -71,6 +71,16 @@ BATCH_SIZE      = 400
 #  Posts — write
 # ─────────────────────────────────────────────────────────────────────────────
 
+def _scalar(value, default=''):
+    """Return the first item if value is a list, otherwise the value itself.
+    Multipart/form-data QueryDicts wrap every field in a list when passed
+    through dict() — this unwraps them safely.
+    """
+    if isinstance(value, (list, tuple)):
+        return value[0] if value else default
+    return value if value is not None else default
+
+
 def create_post(author, validated_data: dict,
                 media_url: str = None, media_type: str = '') -> dict:
     """Save a new post document.  Returns the formatted dict."""
@@ -81,12 +91,20 @@ def create_post(author, validated_data: dict,
     post_id = str(uuid.uuid4())
     now     = datetime.now(tz=timezone.utc)
 
-    # media_type from caller takes priority; fall back to validated_data
+    # media_type from caller takes priority; fall back to validated_data.
+    # Use _scalar() because multipart QueryDict wraps values in lists.
     resolved_media_type = (
         media_type
-        or validated_data.get('media_type', '')
+        or _scalar(validated_data.get('media_type', ''))
         or ('image' if media_url and media_url.startswith('data:image') else '')
+        or ('audio' if media_url and media_url.startswith('data:audio') else '')
     )
+
+    raw_duration = _scalar(validated_data.get('voice_duration', 0), 0)
+    try:
+        voice_duration = int(raw_duration or 0)
+    except (ValueError, TypeError):
+        voice_duration = 0
 
     doc = {
         'id':               post_id,
@@ -94,13 +112,13 @@ def create_post(author, validated_data: dict,
         'author_username':  author.username,
         'author_avatar':    _avatar(author),
         'author_tier':      getattr(author, 'access_tier', 'Bronze'),
-        'content':          validated_data.get('content', ''),
-        'post_type':        validated_data.get('post_type', 'text'),
-        'media_url':        media_url or validated_data.get('media_url') or None,
+        'content':          _scalar(validated_data.get('content', '')),
+        'post_type':        _scalar(validated_data.get('post_type', 'text')),
+        'media_url':        media_url or _scalar(validated_data.get('media_url')) or None,
         'media_type':       resolved_media_type,
-        'voice_duration':   int(validated_data.get('voice_duration', 0) or 0),
+        'voice_duration':   voice_duration,
         'achievement_badge': validated_data.get('achievement_badge', {}),
-        'challenge_id':     validated_data.get('challenge_id', ''),
+        'challenge_id':     _scalar(validated_data.get('challenge_id', '')),
         'reaction_count':   0,
         'comment_count':    0,
         'share_count':      0,

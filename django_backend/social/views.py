@@ -246,7 +246,10 @@ class PostViewSet(viewsets.ModelViewSet):
                 except Exception as exc2:
                     logging.getLogger(__name__).error(f'Voice fallback (Firestore) failed: {exc2}')
 
-        post = create_post(request.user, dict(data),
+        post = create_post(request.user,
+                           # QueryDict.dict() returns the last value for each key
+                           # (single scalar), which is what create_post expects.
+                           data.dict() if hasattr(data, 'dict') else dict(data),
                            media_url=media_url, media_type=media_type)
         if not post:
             return Response({'error': 'Failed to create post.'},
