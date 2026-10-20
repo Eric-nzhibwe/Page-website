@@ -15,9 +15,36 @@ Clients may send:
 import json
 import logging
 
+from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncWebsocketConsumer
 
 logger = logging.getLogger(__name__)
+
+
+# ── shared auth helpers (same pattern as social/consumers.py) ────────────────
+
+@database_sync_to_async
+def _get_user_from_token(token_key):
+    if not token_key:
+        return None, 'no_token'
+    try:
+        from rest_framework.authtoken.models import Token
+        token = Token.objects.select_related('user').get(key=token_key)
+        if not token.user.is_active:
+            return None, 'inactive'
+        return token.user, None
+    except Token.DoesNotExist:
+        return None, 'invalid_token'
+    except Exception as e:
+        return None, str(e)
+
+
+def _token_from_scope(scope):
+    qs = scope.get('query_string', b'').decode()
+    for part in qs.split('&'):
+        if part.startswith('token='):
+            return part.split('=', 1)[1]
+    return None
 
 
 class ChallengeConsumer(AsyncWebsocketConsumer):
@@ -27,6 +54,12 @@ class ChallengeConsumer(AsyncWebsocketConsumer):
     """
 
     async def connect(self):
+        token_key = _token_from_scope(self.scope)
+        self.user, err = await _get_user_from_token(token_key)
+        if err:
+            await self.close(code=4001)
+            return
+
         self.challenge_id = self.scope["url_route"]["kwargs"]["challenge_id"]
         self.group_name = f"challenge_{self.challenge_id}"
 
@@ -37,7 +70,6 @@ class ChallengeConsumer(AsyncWebsocketConsumer):
     async def disconnect(self, close_code):
         await self.channel_layer.group_discard(self.group_name, self.channel_name)
         logger.debug("WS disconnected: %s (code %s)", self.channel_name, close_code)
-
     async def receive(self, text_data):
         try:
             data = json.loads(text_data)
@@ -81,6 +113,12 @@ class DebateConsumer(AsyncWebsocketConsumer):
     """
 
     async def connect(self):
+        token_key = _token_from_scope(self.scope)
+        self.user, err = await _get_user_from_token(token_key)
+        if err:
+            await self.close(code=4001)
+            return
+
         self.debate_id  = self.scope['url_route']['kwargs']['debate_id']
         self.group_name = f'debate_{self.debate_id}'
         await self.channel_layer.group_add(self.group_name, self.channel_name)
@@ -111,6 +149,12 @@ class QAConsumer(AsyncWebsocketConsumer):
     """
 
     async def connect(self):
+        token_key = _token_from_scope(self.scope)
+        self.user, err = await _get_user_from_token(token_key)
+        if err:
+            await self.close(code=4001)
+            return
+
         self.qa_id      = self.scope['url_route']['kwargs']['qa_id']
         self.group_name = f'qa_{self.qa_id}'
         await self.channel_layer.group_add(self.group_name, self.channel_name)
@@ -144,6 +188,12 @@ class PollConsumer(AsyncWebsocketConsumer):
     """
 
     async def connect(self):
+        token_key = _token_from_scope(self.scope)
+        self.user, err = await _get_user_from_token(token_key)
+        if err:
+            await self.close(code=4001)
+            return
+
         self.poll_id    = self.scope['url_route']['kwargs']['poll_id']
         self.group_name = f'poll_{self.poll_id}'
         await self.channel_layer.group_add(self.group_name, self.channel_name)

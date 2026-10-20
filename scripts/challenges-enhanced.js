@@ -1460,7 +1460,8 @@ function openPollWS(pollId) {
             return;
         }
         const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-        const ws = new WebSocket(`${proto}://${location.host}/ws/poll/${pollId}/`);
+        const _wsToken = localStorage.getItem('djangoAuthToken') || '';
+        const ws = new WebSocket(`${proto}://${location.host}/ws/poll/${pollId}/?token=${encodeURIComponent(_wsToken)}`);
 
         ws.onmessage = (e) => {
             try {
@@ -1505,7 +1506,8 @@ function openDebateWS(debateId) {    // Don't open WS for static sample IDs (non
             return;
         }
         const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-        const ws = new WebSocket(`${proto}://${location.host}/ws/debate/${debateId}/`);
+        const _wsToken = localStorage.getItem('djangoAuthToken') || '';
+        const ws = new WebSocket(`${proto}://${location.host}/ws/debate/${debateId}/?token=${encodeURIComponent(_wsToken)}`);
 
         ws.onmessage = (e) => {
             try {
@@ -1554,7 +1556,8 @@ function openQAWS(qaId) {
             return;
         }
         const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-        const ws = new WebSocket(`${proto}://${location.host}/ws/qa/${qaId}/`);
+        const _wsToken = localStorage.getItem('djangoAuthToken') || '';
+        const ws = new WebSocket(`${proto}://${location.host}/ws/qa/${qaId}/?token=${encodeURIComponent(_wsToken)}`);
 
         ws.onmessage = (e) => {
             try {

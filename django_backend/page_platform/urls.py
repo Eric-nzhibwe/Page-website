@@ -61,13 +61,16 @@ def serve_frontend_file(request, subpath=""):
 def ws_status(request):
     """
     Tell the frontend whether WebSockets (Redis) are available.
+    Returns both 'ws_supported' (read by websocket-client.js and realtime-updates.js)
+    and 'websockets_enabled' for backward compat.
     """
     redis_url = getattr(settings, "REDIS_URL", "").strip()
     ws_enabled = bool(redis_url) and any(
         redis_url.startswith(s) for s in ("redis://", "rediss://", "unix://")
     )
     return JsonResponse({
-        "websockets_enabled": ws_enabled,
+        "ws_supported": ws_enabled,           # ← read by websocket-client.js + realtime-updates.js
+        "websockets_enabled": ws_enabled,     # ← kept for any other consumers
         "channel_layer": "redis" if ws_enabled else "memory",
         "polling_interval": 0 if ws_enabled else 15,
     })

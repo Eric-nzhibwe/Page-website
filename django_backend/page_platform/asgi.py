@@ -13,6 +13,12 @@ from WhiteNoise serving static files through the async ASGI path.  It is a
 warning only — static files are served correctly.  It is suppressed below
 because there is no clean fix without replacing WhiteNoise with an async-
 native static file server (e.g. starlette.staticfiles), which is out of scope.
+
+Auth note: ALL consumers authenticate via ?token= query param (DRF Token auth)
+handled inside each consumer's connect() method.  AuthMiddlewareStack is NOT
+used here because it only understands Django session cookies, not DRF tokens.
+Using it would add useless overhead and can break token-auth WS connections on
+some Channels versions.
 """
 import os
 import warnings
@@ -26,7 +32,6 @@ warnings.filterwarnings(
 
 from django.core.asgi import get_asgi_application
 from channels.routing import ProtocolTypeRouter, URLRouter
-from channels.auth import AuthMiddlewareStack
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'page_platform.settings')
 
@@ -48,7 +53,5 @@ all_websocket_urlpatterns = (
 
 application = ProtocolTypeRouter({
     'http':      django_asgi_app,
-    'websocket': AuthMiddlewareStack(
-        URLRouter(all_websocket_urlpatterns)
-    ),
+    'websocket': URLRouter(all_websocket_urlpatterns),
 })

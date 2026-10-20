@@ -2248,6 +2248,54 @@
                     }
                 });
             }
+
+            // ── Messenger WebSocket ───────────────────────────────────────────
+            // Replaces the poll-based approach for active conversations.
+            // wsClient handles the Redis probe + backoff internally, so this is
+            // a no-op when WS/Redis is not available — polling stays as fallback.
+            if (window.wsClient) {
+                wsClient.connectMessenger({
+                    onReady: (unreadCount) => {
+                        // Badge immediately accurate on connect
+                        ['msgBadge', 'msgBadgeMobile'].forEach(id => {
+                            const b = document.getElementById(id);
+                            if (!b) return;
+                            b.textContent   = unreadCount > 9 ? '9+' : unreadCount;
+                            b.style.display = unreadCount > 0 ? '' : 'none';
+                        });
+                    },
+                    onMessage: (message) => {
+                        // Live new message — refresh the active conversation if it matches
+                        const activeConvId = window._dm?.activeConversationId;
+                        if (activeConvId && String(message.conversation) === String(activeConvId)) {
+                            // Re-load messages for the open chat
+                            if (typeof dmOpenConversation === 'function') {
+                                dmOpenConversation(activeConvId);
+                            }
+                        }
+                        // Always refresh the conversation list so previews stay current
+                        if (typeof dmRefreshConversations === 'function') {
+                            dmRefreshConversations();
+                        }
+                    },
+                    onTyping: (data) => {
+                        // Show typing indicator if the conversation is open
+                        const activeConvId = window._dm?.activeConversationId;
+                        if (!activeConvId || String(data.conversation_id) !== String(activeConvId)) return;
+                        const indicator = document.getElementById('dmTypingIndicator');
+                        if (!indicator) return;
+                        if (data.is_typing) {
+                            indicator.style.display = 'flex';
+                            clearTimeout(indicator._hideTimer);
+                            indicator._hideTimer = setTimeout(() => {
+                                indicator.style.display = 'none';
+                            }, 3000);
+                        } else {
+                            indicator.style.display = 'none';
+                        }
+                    },
+                });
+            }
         });
     </script>
 
