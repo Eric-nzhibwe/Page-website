@@ -51,7 +51,30 @@ all_websocket_urlpatterns = (
     + messenger_ws
 )
 
+
+async def _lifespan_handler(scope, receive, send):
+    """
+    Minimal ASGI lifespan handler for uvicorn --lifespan on.
+    Channels 4's ProtocolTypeRouter raises ValueError: 'No application
+    configured for scope type lifespan' when uvicorn sends startup/shutdown
+    events and no handler is registered.  This callable completes the
+    handshake cleanly without doing anything else — the Redis channel layer
+    connects lazily on first use, so no explicit startup action is needed.
+    """
+    while True:
+        event = await receive()
+        if event['type'] == 'lifespan.startup':
+            await send({'type': 'lifespan.startup.complete'})
+        elif event['type'] == 'lifespan.shutdown':
+            await send({'type': 'lifespan.shutdown.complete'})
+            return
+
 application = ProtocolTypeRouter({
     'http':      django_asgi_app,
     'websocket': URLRouter(all_websocket_urlpatterns),
+    # Lifespan handler — required when uvicorn runs with --lifespan on.
+    # Channels 4's ProtocolTypeRouter raises ValueError without this when
+    # uvicorn sends the startup/shutdown events.
+    # We use a minimal async callable that just completes the handshake.
+    'lifespan':  _lifespan_handler,
 })
