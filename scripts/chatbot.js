@@ -363,7 +363,7 @@ async function sendMediaMessage(message, file) {
         row.className = 'msg-row user-row fade-in';
         const time = new Date().toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit' });
         row.innerHTML = `
-            <div class="msg-avatar"><i class="fas fa-user"></i></div>
+            <div class="msg-avatar">${_chatUserAvatarHTML()}</div>
             <div class="msg-bubble-wrap">
                 <div class="msg-bubble msg-image-bubble">
                     <img src="${previewUrl}" alt="${file.name}"
@@ -424,6 +424,32 @@ async function sendMediaMessage(message, file) {
 }
 
 // ── Message rendering ──────────────────────────────────────────────────────
+// ── Avatar helpers for chat bubbles ──────────────────────────────────────────
+function _chatUserAvatarHTML() {
+    // utils.js is loaded before chatbot.js — use its helpers if available.
+    try {
+        const u   = JSON.parse(localStorage.getItem('pageUser') || '{}');
+        // avatarHTML() from utils.js handles resolveMediaUrl + onerror automatically
+        if (typeof avatarHTML === 'function') {
+            return avatarHTML(u, 'width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;');
+        }
+        // Inline fallback if utils.js somehow unavailable
+        const raw  = u.profile_image_url || u.avatar_url || u.profile_image || null;
+        const url  = raw ? ((typeof resolveMediaUrl === 'function') ? resolveMediaUrl(raw) : raw) : null;
+        const init = (u.display_name || u.username || 'Y').charAt(0).toUpperCase();
+        if (url) {
+            return `<img src="${url}" alt="${init}"
+                style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;"
+                onerror="this.replaceWith(window.pageLetterAvatar ? window.pageLetterAvatar('${init}') : this)">`;
+        }
+        return window.pageLetterAvatarHTML
+            ? window.pageLetterAvatarHTML(init)
+            : `<span style="display:inline-flex;align-items:center;justify-content:center;width:100%;height:100%;border-radius:50%;background:#6c63ff;color:#fff;font-weight:700;font-size:14px;">${init}</span>`;
+    } catch (_) {
+        return window.pageLetterAvatarHTML ? window.pageLetterAvatarHTML('Y') : '';
+    }
+}
+
 function appendMessage(text, sender, source = null, isError = false) {
     const feed = document.getElementById('chatMessages');
     const row  = document.createElement('div');
@@ -434,8 +460,12 @@ function appendMessage(text, sender, source = null, isError = false) {
         ? `<span class="msg-source-badge ${source.includes('fallback') ? 'fallback' : ''}">${source === 'groq' ? '✦ Groq' : source === 'groq-vision' ? '✦ Vision' : 'Basic'}</span>`
         : '';
 
+    const avatarInner = sender === 'user'
+        ? _chatUserAvatarHTML()
+        : `<i class="fas fa-microchip"></i>`;
+
     row.innerHTML = `
-        <div class="msg-avatar"><i class="fas fa-${sender === 'user' ? 'user' : 'robot'}"></i></div>
+        <div class="msg-avatar">${avatarInner}</div>
         <div class="msg-bubble-wrap">
             <div class="msg-bubble ${isError ? 'error-bubble' : ''}">${renderMarkdown(text)}</div>
             <div class="msg-meta"><span class="msg-time">${time}</span>${sourceBadge}</div>
@@ -452,8 +482,11 @@ function appendVoiceBubble(sender) {
     row.className = `msg-row ${sender === 'user' ? 'user-row' : 'bot-row'} fade-in`;
     row.id = 'lastVoiceBubble';
     const time = new Date().toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit' });
+    const avatarInner = sender === 'user'
+        ? _chatUserAvatarHTML()
+        : `<i class="fas fa-microchip"></i>`;
     row.innerHTML = `
-        <div class="msg-avatar"><i class="fas fa-user"></i></div>
+        <div class="msg-avatar">${avatarInner}</div>
         <div class="msg-bubble-wrap">
             <div class="msg-bubble voice-bubble">
                 <i class="fas fa-microphone-alt" style="margin-right:6px;color:#e63946;"></i>

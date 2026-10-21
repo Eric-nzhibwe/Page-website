@@ -549,10 +549,16 @@ async function _ehLoadFollowList(tab) {
             const name   = u.display_name || u.username || 'User';
             const handle = u.username     || '';
             const tier   = u.access_tier  || 'Bronze';
-            const av     = u.profile_image_url || u.profile_image || '';
-            const avHTML = av
-                ? `<img src="${av}" alt="${name}">`
-                : `<i class="fas fa-user"></i>`;
+            const av     = u.profile_image_url || u.profile_image || null;
+            const resolvedAv = av ? ((typeof resolveMediaUrl === 'function') ? resolveMediaUrl(av) : av) : null;
+            const avInit = (name || '?').charAt(0).toUpperCase();
+            const avHTML = resolvedAv
+                ? `<img src="${resolvedAv}" alt="${name}"
+                       style="width:100%;height:100%;object-fit:cover;border-radius:50%;"
+                       onerror="this.replaceWith(window.pageLetterAvatar ? window.pageLetterAvatar('${avInit}') : this)">`
+                : (window.pageLetterAvatarHTML
+                    ? window.pageLetterAvatarHTML(avInit)
+                    : `<span style="display:inline-flex;align-items:center;justify-content:center;width:100%;height:100%;border-radius:50%;background:#6c63ff;color:#fff;font-weight:700;font-size:14px;">${avInit}</span>`);
             return `
             <div class="follow-user-row" onclick="window.location.href='user.html?id=${u.id}'">
                 <div class="follow-user-av">${avHTML}</div>

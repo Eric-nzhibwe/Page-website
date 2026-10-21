@@ -224,7 +224,13 @@ async function dmLoadMessages(convId, silent = false) {
         const currentUserId = _dmCurrentUserId();
         const wasScrolledToBottom = _dmIsScrolledToBottom(container);
 
-        container.innerHTML = dmRenderMessages(msgs, currentUserId);
+        // Resolve the conversation partner's avatar so message bubbles show their photo
+        const conv  = _dm.conversations?.find(c => c.id == convId);
+        const other = conv ? _dmOtherParticipant(conv, currentUserId) : null;
+        const partnerAvatarUrl = (other?.profile_image_url || other?.profile_image) || null;
+        const partnerInit = ((other?.display_name || other?.username) || '?').charAt(0).toUpperCase();
+
+        container.innerHTML = dmRenderMessages(msgs, currentUserId, partnerAvatarUrl, partnerInit);
 
         // Probe metadata on all voice messages so onloadedmetadata fires and
         // duration labels populate — browsers won't load hidden audio eagerly.
@@ -243,7 +249,7 @@ async function dmLoadMessages(convId, silent = false) {
     }
 }
 
-function dmRenderMessages(msgs, currentUserId) {
+function dmRenderMessages(msgs, currentUserId, partnerAvatarUrl = null, partnerInit = '?') {
     if (!msgs.length) {
         return '<div class="dm-empty-state">No messages yet. Say hello!</div>';
     }
@@ -263,9 +269,19 @@ function dmRenderMessages(msgs, currentUserId) {
             lastDate = dateStr;
         }
 
-        // Avatar (only for other person)
+        // Avatar (only for other person) — show their profile photo if available
+        const resolvedPartnerUrl = partnerAvatarUrl
+            ? ((typeof resolveMediaUrl === 'function') ? resolveMediaUrl(partnerAvatarUrl) : partnerAvatarUrl)
+            : null;
+        const avatarInnerHtml = resolvedPartnerUrl
+            ? `<img src="${_escHtml(resolvedPartnerUrl)}" alt="${_escHtml(partnerInit)}"
+                    style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;"
+                    onerror="this.replaceWith(window.pageLetterAvatar ? window.pageLetterAvatar('${_escHtml(partnerInit)}') : this)">`
+            : (window.pageLetterAvatarHTML
+                ? window.pageLetterAvatarHTML(partnerInit)
+                : `<span style="display:inline-flex;align-items:center;justify-content:center;width:100%;height:100%;border-radius:50%;background:#6c63ff;color:#fff;font-weight:700;font-size:13px;">${_escHtml(partnerInit)}</span>`);
         const avatarHtml = !isMine
-            ? `<div class="dm-msg-avatar"><i class="fas fa-circle-user"></i></div>`
+            ? `<div class="dm-msg-avatar">${avatarInnerHtml}</div>`
             : '';
 
         // Bubble content

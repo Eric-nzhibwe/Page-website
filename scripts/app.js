@@ -1043,7 +1043,14 @@ async function loadConversations() {
                     <div class="conversation-item ${currentConversation?.id === conv.id ? 'active' : ''}" 
                          onclick="openConversation(${conv.id})">
                         <div class="conversation-avatar">
-                            <i class="fas fa-user"></i>
+                            ${otherUser.profile_image_url || otherUser.profile_image
+                                ? `<img src="${otherUser.profile_image_url || otherUser.profile_image}" alt="${otherUser.username}"
+                                       style="width:100%;height:100%;object-fit:cover;border-radius:50%;"
+                                       onerror="this.replaceWith(window.pageLetterAvatar ? window.pageLetterAvatar('${(otherUser.username || '?').charAt(0).toUpperCase()}') : this)">`
+                                : (window.pageLetterAvatarHTML
+                                    ? window.pageLetterAvatarHTML((otherUser.username || '?').charAt(0).toUpperCase())
+                                    : `<span style="display:inline-flex;align-items:center;justify-content:center;width:100%;height:100%;border-radius:50%;background:#6c63ff;color:#fff;font-weight:700;font-size:14px;">${(otherUser.username || '?').charAt(0).toUpperCase()}</span>`)
+                            }
                         </div>
                         <div class="conversation-info">
                             <div class="conversation-name">
@@ -1250,7 +1257,14 @@ async function loadAvailableUsers() {
     usersList.innerHTML = users.map(user => `
         <div class="user-item" onclick="startNewConversation(${user.id}, '${user.username}', '${user.tier}')">
             <div class="user-avatar">
-                <i class="fas fa-user"></i>
+                ${user.profile_image_url || user.profile_image
+                    ? `<img src="${user.profile_image_url || user.profile_image}" alt="${user.username}"
+                           style="width:100%;height:100%;object-fit:cover;border-radius:50%;"
+                           onerror="this.replaceWith(window.pageLetterAvatar ? window.pageLetterAvatar('${(user.username||'?').charAt(0).toUpperCase()}') : this)">`
+                    : (window.pageLetterAvatarHTML
+                        ? window.pageLetterAvatarHTML((user.username||'?').charAt(0).toUpperCase())
+                        : `<span style="display:inline-flex;align-items:center;justify-content:center;width:100%;height:100%;border-radius:50%;background:#6c63ff;color:#fff;font-weight:700;font-size:14px;">${(user.username||'?').charAt(0).toUpperCase()}</span>`)
+                }
             </div>
             <div class="user-details">
                 <div class="user-name">${user.username}</div>

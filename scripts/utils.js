@@ -366,6 +366,33 @@ window.pageLetterAvatar      = pageLetterAvatar;
 window.pageLetterAvatarHTML  = pageLetterAvatarHTML;
 window.patchBrokenAvatars    = patchBrokenAvatars;
 
+/**
+ * Build the inner HTML for any avatar container from a user object.
+ * Returns an <img> if the user has a profile picture (base64, CDN, or /media/),
+ * otherwise returns a coloured letter-circle — never a bare fa-user icon.
+ *
+ * @param {object|null} user  - user/author object {profile_image_url, profile_image, username, display_name}
+ * @param {string}      [cls] - optional extra CSS class on the <img>
+ * @returns {string} HTML string suitable for el.innerHTML = ...
+ */
+function buildAvatarInner(user, cls = '') {
+    const url  = getAvatarUrl(user);
+    const name = (user && (user.display_name || user.username)) || '?';
+    const init = name.charAt(0).toUpperCase();
+    const styleAttr = 'width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;';
+    if (url) {
+        const escaped = escapeHTML(url);
+        const altEsc  = escapeHTML(name);
+        const initEsc = escapeHTML(init);
+        const clsAttr = cls ? ` class="${escapeHTML(cls)}"` : '';
+        return `<img src="${escaped}" alt="${altEsc}"${clsAttr} style="${styleAttr}"
+            onerror="this.replaceWith(window.pageLetterAvatar('${initEsc}'))">`;
+    }
+    return pageLetterAvatarHTML(init);
+}
+
+window.buildAvatarInner = buildAvatarInner;
+
 // Patch any avatars that were already in the DOM when this script loaded
 document.addEventListener('DOMContentLoaded', patchBrokenAvatars);
 

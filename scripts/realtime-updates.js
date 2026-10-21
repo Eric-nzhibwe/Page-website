@@ -1065,7 +1065,7 @@ function _stampCurrentUserAvatar(imgUrl) {
 
     const imgTag = `<img src="${resolved}" alt="Your avatar"
         style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;"
-        onerror="this.style.display='none';this.parentElement.innerHTML='<i class=\\'fas fa-circle-user\\'></i>'">`;
+        onerror="this.replaceWith(window.pageLetterAvatar ? window.pageLetterAvatar((localStorage.getItem('pageUser') && JSON.parse(localStorage.getItem('pageUser')).username || '?').charAt(0).toUpperCase()) : (()=>{var s=document.createElement('span');s.style='display:inline-flex;align-items:center;justify-content:center;width:100%;height:100%;border-radius:50%;background:#6c63ff;color:#fff;font-weight:700;font-size:14px;';s.textContent='?';return s;})())">`;
 
     // ── Named IDs (covers all pages) ──────────────────────────
     [

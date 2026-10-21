@@ -51,9 +51,7 @@
             <button class="header-icon-btn" onclick="toggleQuickMenu()" title="Menu">
                 <i class="fas fa-grid-2"></i>
             </button>
-            <div class="user-avatar-btn" onclick="toggleUserMenu()">
-                <i class="fas fa-circle-user"></i>
-            </div>
+            <div class="user-avatar-btn" onclick="toggleUserMenu()" data-current-user-avatar></div>
         </div>
 
         <!-- Quick Menu Dropdown -->
@@ -86,7 +84,7 @@
         <!-- User Menu Dropdown -->
         <div class="user-menu-dropdown" id="userMenuDropdown">
             <div class="user-menu-header">
-                <div class="user-menu-avatar"><i class="fas fa-circle-user"></i></div>
+                <div class="user-menu-avatar" data-current-user-avatar></div>
                 <div class="user-menu-info">
                     <h4 id="menuUsername">Player</h4>
                     <p id="menuTier">Bronze Tier</p>

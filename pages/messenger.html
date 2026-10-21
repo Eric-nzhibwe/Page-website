@@ -2028,9 +2028,7 @@
                         <button class="dm-back-btn" onclick="dmCloseChat()" title="Back">
                             <i class="fas fa-arrow-left"></i>
                         </button>
-                        <div class="dm-chat-avatar" id="dmChatAvatar">
-                            <i class="fas fa-circle-user"></i>
-                        </div>
+                        <div class="dm-chat-avatar" id="dmChatAvatar"><span style="display:inline-flex;align-items:center;justify-content:center;width:100%;height:100%;border-radius:50%;background:#9e9e9e;color:#fff;font-weight:700;font-size:15px;">?</span></div>
                         <div class="dm-chat-meta">
                             <span class="dm-chat-name" id="dmChatName">—</span>
                             <span class="dm-chat-status" id="dmChatStatus">Active now</span>
@@ -2131,6 +2129,8 @@
 
     <!-- Scripts -->
     <script src="../scripts/api-service.js"></script>
+    <script src="../scripts/utils.js"></script>
+    <script src="../scripts/websocket-client.js"></script>
     <script>
         'use strict';
         // Auth guard
@@ -2139,6 +2139,25 @@
                 window.location.href = 'auth.html';
             }
         })();
+
+        // Stamp current user's avatar into all data-current-user-avatar containers
+        document.addEventListener('DOMContentLoaded', function () {
+            try {
+                var u = JSON.parse(localStorage.getItem('pageUser') || '{}');
+                var raw = u.profile_image_url || u.avatar_url || u.profile_image || null;
+                if (raw && typeof window._stampCurrentUserAvatar === 'function') {
+                    window._stampCurrentUserAvatar(raw);
+                } else if (raw) {
+                    // Inline stamp if realtime-updates.js isn't loaded
+                    var host = window.location.hostname;
+                    var origin = (host === 'localhost' || host === '127.0.0.1') ? 'http://localhost:8000' : window.location.origin;
+                    var url = /^data:|^https?:/.test(raw) ? raw : (raw.startsWith('/') ? origin + raw : raw);
+                    var init = (u.display_name || u.username || 'Y').charAt(0).toUpperCase();
+                    var html = '<img src="' + url + '" alt="' + init + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;">';
+                    document.querySelectorAll('[data-current-user-avatar]').forEach(function(el) { el.innerHTML = html; });
+                }
+            } catch(_) {}
+        });
         window.switchView = function () { };
         window.showToast = function (msg, type) {
             let box = document.getElementById('_tb');

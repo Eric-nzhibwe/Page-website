@@ -82,8 +82,8 @@
             <button class="header-icon-btn" onclick="toggleQuickMenu()" title="Menu">
                 <i class="fas fa-grid-2"></i>
             </button>
-            <div class="user-avatar-btn" onclick="toggleUserMenu()">
-                <i class="fas fa-circle-user"></i>
+            <div class="user-avatar-btn" onclick="toggleUserMenu()" data-current-user-avatar>
+                <!-- Stamped by realtime-updates.js -->
             </div>
         </div>
 
@@ -127,8 +127,8 @@
         <!-- User Menu Dropdown -->
         <div class="user-menu-dropdown" id="userMenuDropdown">
             <div class="user-menu-header">
-                <div class="user-menu-avatar">
-                    <i class="fas fa-circle-user"></i>
+                <div class="user-menu-avatar" data-current-user-avatar>
+                    <!-- Stamped by realtime-updates.js -->
                 </div>
                 <div class="user-menu-info">
                     <h4 id="userMenuName">Player</h4>
@@ -180,8 +180,8 @@
                 <aside class="left-sidebar d-none d-xl-block">
                     <div class="sidebar-card">
                         <div class="user-profile-mini">
-                            <div class="profile-avatar">
-                                <i class="fas fa-user-circle"></i>
+                            <div class="profile-avatar" data-current-user-avatar>
+                                <!-- Stamped by realtime-updates.js; letter-circle until then -->
                             </div>
                             <div class="profile-info">
                                 <h3 id="sidebarUsername">Player</h3>
@@ -252,7 +252,7 @@
                         <div class="create-post-header d-flex gap-3 mb-3">
                             <div class="post-avatar rounded-circle d-flex align-items-center justify-content-center"
                                 data-current-user-avatar>
-                                <i class="fas fa-user-circle"></i>
+                                <!-- Stamped with real avatar by realtime-updates.js on load; letter-circle fallback if no photo -->
                             </div>
                             <div class="post-input-wrap">
                                 <input type="text" class="post-input form-control rounded-pill"
@@ -1316,9 +1316,7 @@
                                     <div class="settings-card">
                                         <div class="avatar-upload-section">
                                             <div class="avatar-ring">
-                                                <div class="avatar-preview" id="settingsAvatarPreview">
-                                                    <i class="fas fa-user-circle"></i>
-                                                </div>
+                                                <div class="avatar-preview" id="settingsAvatarPreview" data-current-user-avatar></div>
                                                 <button class="avatar-edit-btn" onclick="changeAvatar()"
                                                     aria-label="Change avatar">
                                                     <i class="fas fa-camera"></i>

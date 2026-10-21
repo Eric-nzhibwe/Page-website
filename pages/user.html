@@ -67,9 +67,7 @@
         <button class="header-icon-btn" onclick="toggleQuickMenu()" title="Menu">
             <i class="fas fa-grid-2"></i>
         </button>
-        <div class="user-avatar-btn" onclick="toggleUserMenu()">
-            <i class="fas fa-circle-user"></i>
-        </div>
+        <div class="user-avatar-btn" onclick="toggleUserMenu()" data-current-user-avatar></div>
     </div>
 
     <!-- Quick Menu Dropdown -->
@@ -100,7 +98,7 @@
     <!-- User Menu Dropdown -->
     <div class="user-menu-dropdown" id="userMenuDropdown">
         <div class="user-menu-header">
-            <div class="user-menu-avatar"><i class="fas fa-circle-user"></i></div>
+            <div class="user-menu-avatar" data-current-user-avatar></div>
             <div class="user-menu-info">
                 <h4 id="menuUsername">Player</h4>
                 <p id="menuTier">Bronze Tier</p>
@@ -146,9 +144,7 @@
             <!-- Avatar -->
             <div class="av-wrap">
                 <div class="av-ring" id="avRing"></div>
-                <div class="av-img" id="avatarDisplay">
-                    <i class="fas fa-user"></i>
-                </div>
+                <div class="av-img" id="avatarDisplay" data-current-user-avatar></div>
                 <label class="av-cam" for="avatarInput" title="Update photo">
                     <i class="fas fa-camera"></i>
                 </label>
@@ -460,7 +456,7 @@
         <button class="modal-close" onclick="closeEditModal()"><i class="fas fa-xmark"></i></button>
 
         <div class="modal-hero">
-            <div class="modal-av" id="modalAvatar"><i class="fas fa-user"></i></div>
+            <div class="modal-av" id="modalAvatar" data-current-user-avatar></div>
             <div>
                 <h2>Edit Profile</h2>
                 <p>Update how the PAGE community sees you</p>
@@ -633,9 +629,7 @@
                     <div class="settings-card">
                         <div class="avatar-upload-section">
                             <div class="avatar-ring">
-                                <div class="avatar-preview" id="settingsAvatarPreview">
-                                    <i class="fas fa-user-circle"></i>
-                                </div>
+                                <div class="avatar-preview" id="settingsAvatarPreview" data-current-user-avatar></div>
                                 <button class="avatar-edit-btn" onclick="changeAvatar()" aria-label="Change avatar">
                                     <i class="fas fa-camera"></i>
                                 </button>
