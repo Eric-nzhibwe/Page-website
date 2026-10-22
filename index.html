@@ -1988,17 +1988,21 @@
                                 </div>
 
                                 <div class="form-group">
-                                    <label>Duration <span class="required">*</span></label>
-                                    <div style="display:flex;gap:8px;align-items:center;">
-                                        <input type="number" id="challengeDuration" class="modal-input"
-                                            placeholder="e.g. 7" min="1" max="9999" required style="flex:1;" value="7">
-                                        <select id="challengeDurationUnit" class="modal-input"
-                                            style="width:110px;flex-shrink:0;">
+                                    <label class="challenge-form-label">Duration <span class="required">*</span></label>
+                                    <div class="duration-row">
+                                        <input type="number" id="challengeDuration"
+                                            class="duration-number"
+                                            placeholder="7" min="1" max="9999" required value="7">
+                                        <select id="challengeDurationUnit" class="duration-unit">
                                             <option value="minutes">Minutes</option>
                                             <option value="hours">Hours</option>
                                             <option value="days" selected>Days</option>
                                         </select>
                                     </div>
+                                    <p class="duration-hint">
+                                        <i class="fas fa-clock"></i>
+                                        Challenge runs for <strong id="durationPreviewIndex">7 days</strong>
+                                    </p>
                                 </div>
 
                                 <div class="form-group">

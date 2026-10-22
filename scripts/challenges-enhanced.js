@@ -173,10 +173,31 @@ function openCreateChallengeModal() {
     const step2 = document.getElementById('createChallengeStep2');
     if (step1) step1.style.display = 'block';
     if (step2) step2.style.display = 'none';
-    // Use flex so the modal backdrop centers its content correctly
     modal.style.display = 'flex';
     modal.style.alignItems = 'flex-start';
     modal.style.justifyContent = 'center';
+
+    // Wire up live duration preview — runs once per modal open
+    const numInput  = document.getElementById('challengeDuration');
+    const unitInput = document.getElementById('challengeDurationUnit');
+    function _updatePreview() {
+        const n    = parseFloat(numInput?.value) || 0;
+        const unit = unitInput?.value || 'days';
+        const label = !n ? '—'
+            : unit === 'minutes' ? (n === 1 ? '1 minute' : `${n} minutes`)
+            : unit === 'hours'   ? (n === 1 ? '1 hour'   : `${n} hours`)
+            : (n === 1 ? '1 day' : `${n} days`);
+        // Update whichever preview element exists on the current page
+        ['durationPreviewIndex', 'durationPreviewChallenges'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = label;
+        });
+    }
+    numInput?.removeEventListener('input', _updatePreview);
+    unitInput?.removeEventListener('change', _updatePreview);
+    numInput?.addEventListener('input', _updatePreview);
+    unitInput?.addEventListener('change', _updatePreview);
+    _updatePreview();
 }
 
 // Select a category and move to step 2
