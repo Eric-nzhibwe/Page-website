@@ -84,6 +84,87 @@ document.addEventListener('DOMContentLoaded', () => {
     initFirebase().catch(() => {});
 });
 
+// ─────────────────────────────────────────────────────────────
+//  GOOGLE OAUTH  (Firebase Google provider)
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * Sign in with Google using Firebase's signInWithPopup.
+ * Works for both login and registration — Firebase creates the account
+ * on first sign-in, then exchanges the ID token for a DRF token via
+ * the existing /api/auth/firebase-login/ endpoint.
+ */
+async function loginWithGoogle() {
+    const btn = document.getElementById('googleSignInBtn');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Connecting…';
+    }
+
+    try {
+        const fbReady = await initFirebase();
+        if (!fbReady) {
+            showToast('Google sign-in is not available right now. Please use email/password.', 'error');
+            return;
+        }
+
+        // Import GoogleAuthProvider from the cached module
+        const { GoogleAuthProvider, signInWithPopup } = _fbAuthModule ||
+            await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js');
+
+        const provider = new GoogleAuthProvider();
+        provider.addScope('email');
+        provider.addScope('profile');
+        // Always show account picker so multi-account users can choose
+        provider.setCustomParameters({ prompt: 'select_account' });
+
+        const credential = await signInWithPopup(_firebaseAuth, provider);
+        const idToken    = await credential.user.getIdToken();
+
+        const result = await _exchangeFirebaseToken(idToken);
+
+        if (result.success) {
+            // On first-ever Google sign-in the user may not have a username yet.
+            // Firebase displayName → use as the username if Django didn't set one.
+            if (result.user && !result.user.username) {
+                const displayName = credential.user.displayName || '';
+                const fallback    = displayName.replace(/\s+/g, '').toLowerCase() || 'user';
+                result.user.username = fallback;
+            }
+
+            // Stamp avatar from Google profile photo if no custom one is set
+            if (result.user && !result.user.profile_image_url) {
+                const photoURL = credential.user.photoURL;
+                if (photoURL) result.user.profile_image_url = photoURL;
+            }
+
+            _storeSession(result.token, result.user, result.source || 'firebase');
+            showToast(`Welcome, ${result.user?.display_name || result.user?.username || 'player'}! 🎉`, 'success');
+            setTimeout(() => { window.location.href = '../index.html'; }, 350);
+        } else {
+            showToast(result.message || 'Google sign-in failed. Please try again.', 'error');
+        }
+
+    } catch (err) {
+        // User closed the popup — not an error worth showing
+        if (err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request') {
+            return;
+        }
+        console.error('[Google OAuth]', err);
+        const msg = err.code === 'auth/popup-blocked'
+            ? 'Pop-up was blocked by your browser. Allow pop-ups for this site and try again.'
+            : err.code === 'auth/network-request-failed'
+                ? 'Network error. Check your connection and try again.'
+                : 'Google sign-in failed. Please try again.';
+        showToast(msg, 'error');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" width="18" height="18"> Continue with Google';
+        }
+    }
+}
+
 // ── Splash sequence ───────────────────────────────────────────
 function runSplash() {
     const splash  = document.getElementById('splashScreen');
