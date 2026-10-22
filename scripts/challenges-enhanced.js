@@ -1445,8 +1445,47 @@ function _startPollVoteSync(pollId) {
 }
 
 /* ── WebSocket connections for live comments ── */
-const _wsSockets = {};
+const _wsSockets    = {};
+const _wsRetries    = {};    // retry attempt counters per socket key
+const _wsHeartbeats = {};    // heartbeat interval IDs per socket key
+const _WS_MAX_RETRY = 5;     // give up after 5 attempts (matches wsClient)
+const _WS_BASE_DELAY = 2000; // 2 s base, doubles each attempt (capped at 30 s)
 let _wsSupported = null;   // null = unknown, true/false after first probe
+
+/**
+ * Start a 25 s heartbeat ping on an open WS to prevent proxy-induced drops.
+ * Same interval as wsClient._WSConn._startHeartbeat().
+ */
+function _startWsHeartbeat(key) {
+    _stopWsHeartbeat(key);
+    _wsHeartbeats[key] = setInterval(() => {
+        const ws = _wsSockets[key];
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ action: 'ping' }));
+        }
+    }, 25_000);
+}
+function _stopWsHeartbeat(key) {
+    clearInterval(_wsHeartbeats[key]);
+    delete _wsHeartbeats[key];
+}
+
+/**
+ * Exponential-backoff reconnect — same logic as wsClient._WSConn._scheduleReconnect().
+ * @param {string} key   socket registry key
+ * @param {Function} openFn  the openXxxWS() function to call
+ */
+function _scheduleWsReconnect(key, openFn) {
+    const attempt = (_wsRetries[key] || 0);
+    if (attempt >= _WS_MAX_RETRY) {
+        console.info(`[PAGE WS] ${key}: max retries reached, giving up`);
+        delete _wsRetries[key];
+        return;
+    }
+    const delay = Math.min(_WS_BASE_DELAY * Math.pow(2, attempt), 30_000);
+    _wsRetries[key] = attempt + 1;
+    setTimeout(openFn, delay);
+}
 
 async function _checkWsSupport() {
     if (_wsSupported !== null) return _wsSupported;
@@ -1473,24 +1512,22 @@ async function _checkWsSupport() {
 
 function openPollWS(pollId) {
     if (!pollId || pollId.length < 10) return;
-    if (_wsSockets[`poll_${pollId}`]) return;
+    const key = `poll_${pollId}`;
+    if (_wsSockets[key]) return;
 
     _checkWsSupport().then(supported => {
-        if (!supported) {
-            // Already covered by _startPollVoteSync interval
-            return;
-        }
+        if (!supported) return; // polling fallback already running
         const proto = location.protocol === 'https:' ? 'wss' : 'ws';
         const _wsToken = localStorage.getItem('djangoAuthToken') || '';
         const ws = new WebSocket(`${proto}://${location.host}/ws/poll/${pollId}/?token=${encodeURIComponent(_wsToken)}`);
+
+        ws.onopen = () => { _wsRetries[key] = 0; _startWsHeartbeat(key); };
 
         ws.onmessage = (e) => {
             try {
                 const msg = JSON.parse(e.data);
                 if (msg.type === 'poll_vote' && msg.payload) {
                     const { poll_id, vote_counts, total_votes } = msg.payload;
-                    // Only apply if the user on this device hasn't voted yet
-                    // (if they voted, the buttons are already disabled with correct counts)
                     const card = document.querySelector(`.challenge-card[data-id="${poll_id}"]`);
                     const hasVoted = card?.querySelector('.poll-vote-btn.voted');
                     if (!hasVoted) {
@@ -1503,82 +1540,78 @@ function openPollWS(pollId) {
 
         ws.onerror = () => {
             _wsSupported = false;
-            delete _wsSockets[`poll_${pollId}`];
-            // Polling sync already running as fallback
+            _stopWsHeartbeat(key);
+            delete _wsSockets[key];
         };
 
-        ws.onclose = () => {
-            delete _wsSockets[`poll_${pollId}`];
-            if (_wsSupported) setTimeout(() => openPollWS(pollId), 5000);
+        ws.onclose = (ev) => {
+            _stopWsHeartbeat(key);
+            delete _wsSockets[key];
+            if (ev.code === 4001) return; // auth rejected — don't retry
+            if (_wsSupported) _scheduleWsReconnect(key, () => openPollWS(pollId));
         };
 
-        _wsSockets[`poll_${pollId}`] = ws;
+        _wsSockets[key] = ws;
     });
 }
 
-function openDebateWS(debateId) {    // Don't open WS for static sample IDs (non-UUID single chars)
+function openDebateWS(debateId) {
     if (!debateId || debateId.length < 10) return;
-    if (_wsSockets[`debate_${debateId}`]) return;
+    const key = `debate_${debateId}`;
+    if (_wsSockets[key]) return;
 
     _checkWsSupport().then(supported => {
-        if (!supported) {
-            // Render free tier — poll for new comments every 8s instead
-            _pollDebateComments(debateId);
-            return;
-        }
+        if (!supported) { _pollDebateComments(debateId); return; }
         const proto = location.protocol === 'https:' ? 'wss' : 'ws';
         const _wsToken = localStorage.getItem('djangoAuthToken') || '';
         const ws = new WebSocket(`${proto}://${location.host}/ws/debate/${debateId}/?token=${encodeURIComponent(_wsToken)}`);
+
+        ws.onopen = () => { _wsRetries[key] = 0; _startWsHeartbeat(key); };
 
         ws.onmessage = (e) => {
             try {
                 const msg = JSON.parse(e.data);
                 if (msg.type === 'debate_comment' && msg.payload) {
                     const { user, text, side } = msg.payload;
-                    const resolvedSide = side || 'b';
-
-                    // Update the card's inline feed
-                    addLiveDebateComment(debateId, user, text, resolvedSide);
-
-                    // Mirror into the live modal if it's open for this debate
+                    addLiveDebateComment(debateId, user, text, side || 'b');
                     if (typeof _chAddDebateComment === 'function') {
-                        _chAddDebateComment(debateId, user, text, resolvedSide);
+                        _chAddDebateComment(debateId, user, text, side || 'b');
                     }
                 }
             } catch (_) { }
         };
 
         ws.onerror = () => {
-            // WS failed — fall back to polling silently
             _wsSupported = false;
-            delete _wsSockets[`debate_${debateId}`];
+            _stopWsHeartbeat(key);
+            delete _wsSockets[key];
             _pollDebateComments(debateId);
         };
 
-        ws.onclose = () => {
-            delete _wsSockets[`debate_${debateId}`];
-            // Only reconnect if WS is still supported
-            if (_wsSupported) {
-                setTimeout(() => openDebateWS(debateId), 5000);
-            }
+        ws.onclose = (ev) => {
+            _stopWsHeartbeat(key);
+            delete _wsSockets[key];
+            if (ev.code === 4001) return;
+            if (_wsSupported) _scheduleWsReconnect(key, () => openDebateWS(debateId));
+            else _pollDebateComments(debateId);
         };
 
-        _wsSockets[`debate_${debateId}`] = ws;
+        _wsSockets[key] = ws;
     });
 }
 
 function openQAWS(qaId) {
     if (!qaId || qaId.length < 10) return;
-    if (_wsSockets[`qa_${qaId}`]) return;
+    const key = `qa_${qaId}`;
+    if (_wsSockets[key]) return;
 
     _checkWsSupport().then(supported => {
-        if (!supported) {
-            _pollQAAnswers(qaId);
-            return;
-        }
+        if (!supported) { _pollQAAnswers(qaId); return; }
         const proto = location.protocol === 'https:' ? 'wss' : 'ws';
         const _wsToken = localStorage.getItem('djangoAuthToken') || '';
         const ws = new WebSocket(`${proto}://${location.host}/ws/qa/${qaId}/?token=${encodeURIComponent(_wsToken)}`);
+
+        ws.onopen = () => { _wsRetries[key] = 0; _startWsHeartbeat(key); };
 
         ws.onmessage = (e) => {
             try {
@@ -1604,16 +1637,20 @@ function openQAWS(qaId) {
 
         ws.onerror = () => {
             _wsSupported = false;
-            delete _wsSockets[`qa_${qaId}`];
+            _stopWsHeartbeat(key);
+            delete _wsSockets[key];
             _pollQAAnswers(qaId);
         };
 
-        ws.onclose = () => {
-            delete _wsSockets[`qa_${qaId}`];
-            if (_wsSupported) setTimeout(() => openQAWS(qaId), 5000);
+        ws.onclose = (ev) => {
+            _stopWsHeartbeat(key);
+            delete _wsSockets[key];
+            if (ev.code === 4001) return;
+            if (_wsSupported) _scheduleWsReconnect(key, () => openQAWS(qaId));
+            else _pollQAAnswers(qaId);
         };
 
-        _wsSockets[`qa_${qaId}`] = ws;
+        _wsSockets[key] = ws;
     });
 }
 

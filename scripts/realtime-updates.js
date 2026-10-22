@@ -922,7 +922,6 @@ async function _initRealtimeUpdates() {
             if (!stories?.length) return;
             const container = document.querySelector('.stories-container');
             if (!container) return;
-            // Keep create-story card, add real stories after it
             const createCard = container.querySelector('.create-story');
             stories.forEach(s => {
                 if (!container.querySelector(`[data-story-id="${s.id}"]`)) {
@@ -930,9 +929,17 @@ async function _initRealtimeUpdates() {
                     if (createCard?.nextSibling) container.insertBefore(card, createCard.nextSibling);
                     else container.appendChild(card);
                 }
-                _markStorySeen(s.id);   // keep the realtime dedup set in sync
+                _markStorySeen(s.id);
             });
-        }
+        },
+        // Gap fix: handle story_created pushed by _broadcast_new_story() in views.py
+        onCreate: story => {
+            if (!story) return;
+            if (_socialEchoSuppressed(story)) return;
+            if (_storySeen(story.id) || document.querySelector(`[data-story-id="${story.id}"]`)) return;
+            _markStorySeen(story.id);
+            _appendStoryCard(story);
+        },
     });
 
     } // end if (wsSupported)
@@ -988,8 +995,11 @@ async function _initRealtimeUpdates() {
             _notifTimer = _onlinePollTimer = null;
         } else {
             _connectNotifWs();
-            wsClient.connectUserFeed();   // reconnect follower feed WS too
+            wsClient.connectUserFeed();   // reconnect follower feed WS
+            wsClient.connectToStories();  // reconnect stories WS
             _startOnlinePoller();
+            // If WS not available, re-fetch stories to catch any posted while hidden
+            if (!wsClient.storyConnected) _pollStories();
         }
     });
 }
@@ -1039,6 +1049,30 @@ function _appendStoryCard(story) {
     const card = _buildStoryCard(story);
     if (createCard?.nextSibling) container.insertBefore(card, createCard.nextSibling);
     else container.appendChild(card);
+}
+
+/**
+ * Polling fallback for stories — used when WS is unavailable.
+ * Fetches the stories feed and adds any new stories to the rail.
+ */
+async function _pollStories() {
+    try {
+        const res = await fetch(`${_RT_BASE}/social/stories/feed/`, {
+            headers: _rtHeaders()
+        });
+        if (!res.ok) return;
+        const stories = await res.json();
+        const container = document.querySelector('.stories-container');
+        if (!container) return;
+        const createCard = container.querySelector('.create-story');
+        (Array.isArray(stories) ? stories : (stories.results || [])).forEach(s => {
+            if (_storySeen(s.id) || container.querySelector(`[data-story-id="${s.id}"]`)) return;
+            _markStorySeen(s.id);
+            const card = _buildStoryCard(s);
+            if (createCard?.nextSibling) container.insertBefore(card, createCard.nextSibling);
+            else container.appendChild(card);
+        });
+    } catch { /* silent */ }
 }
 
 document.addEventListener('DOMContentLoaded', _initRealtimeUpdates);

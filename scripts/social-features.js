@@ -312,6 +312,30 @@ function openCommentModal(postId) {
 
     _loadComments(postId, true).then(() => _startCommentPoller(postId));
     modal.querySelector('#pageCommentInput').focus();
+
+    // Connect per-post WS room for live comment/reaction updates —
+    // wsClient handles the Redis probe and backoff internally.
+    if (typeof wsClient !== 'undefined' && wsClient.connectToPost) {
+        wsClient.connectToPost(postId, {
+            onComment: comment => {
+                // Skip comments by the current user (already rendered optimistically)
+                try {
+                    const me = JSON.parse(localStorage.getItem('pageUser') || '{}');
+                    if (String(comment.author?.id) === String(me.id)) return;
+                } catch (_) {}
+                // Re-load the comment list to include the new comment
+                _loadComments(postId, false);
+            },
+            onReaction: reaction => {
+                // Patch the reaction count on the feed card
+                const card = document.querySelector(`[data-post-id="${postId}"]`);
+                if (card) {
+                    const el = card.querySelector('.reaction-count');
+                    if (el && reaction.reaction_count != null) el.textContent = reaction.reaction_count;
+                }
+            },
+        });
+    }
 }
 
 function closeCommentModal() {
@@ -324,6 +348,10 @@ function closeCommentModal() {
         document.body.classList.remove('modal-open');
     }, 280);
     _stopCommentPoller();   // stop the 8-second comment poll
+    // Disconnect per-post WS room when modal closes
+    if (_commentPostId && typeof wsClient !== 'undefined') {
+        wsClient.disconnectPost?.(_commentPostId);
+    }
     _commentPostId = null;
 }
 
