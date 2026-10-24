@@ -983,6 +983,13 @@ async function _initRealtimeUpdates() {
         _startOnlinePoller();
     });
 
+    // ── 4b. Feed polling fallback — used when WS is unavailable or as a
+    //        safety net to catch any posts missed by the WS layer.
+    //        _startFeedPoller does an immediate fetch then polls every 30 s.
+    if (!wsSupported) {
+        _startFeedPoller();
+    }
+
     // ── 5. Notification WebSocket (real-time bell badge + toasts) ────────────
     _connectNotifWs();
     // Fallback poller starts automatically if WS fails to connect
@@ -992,12 +999,16 @@ async function _initRealtimeUpdates() {
         if (document.hidden) {
             clearInterval(_notifTimer);
             clearInterval(_onlinePollTimer);
-            _notifTimer = _onlinePollTimer = null;
+            clearInterval(_feedPollTimer);
+            _notifTimer = _onlinePollTimer = _feedPollTimer = null;
         } else {
             _connectNotifWs();
             wsClient.connectUserFeed();   // reconnect follower feed WS
             wsClient.connectToStories();  // reconnect stories WS
             _startOnlinePoller();
+            // Always resume feed polling on visibility restore — catches any
+            // posts published while the tab was hidden (WS or polling path)
+            if (!_feedPollTimer) _startFeedPoller();
             // If WS not available, re-fetch stories to catch any posted while hidden
             if (!wsClient.storyConnected) _pollStories();
         }
@@ -1130,6 +1141,20 @@ function _stampCurrentUserAvatar(imgUrl) {
         '[data-avatar="current-user"]',
         '[data-current-user-avatar]',
     ].join(', ')).forEach(el => { el.innerHTML = imgTag; });
+
+    // ── Own post card avatars ─────────────────────────────────
+    // Post cards created by the current user carry data-author-id.
+    // Use the same mechanism as _patchUserAvatarEverywhere so the
+    // logged-in user always sees their latest profile photo on their
+    // own posts immediately after uploading — no reload needed.
+    try {
+        const selfId = String(JSON.parse(localStorage.getItem('pageUser') || '{}').id || '');
+        if (selfId) {
+            document.querySelectorAll(
+                `.post-card[data-author-id="${selfId}"] .post-avatar`
+            ).forEach(el => { el.innerHTML = imgTag; });
+        }
+    } catch (_) { /* non-critical */ }
 }
 
 // Boot: stamp avatar from localStorage as soon as DOM is ready
@@ -1154,6 +1179,7 @@ window.addEventListener('beforeunload', () => {
     clearInterval(_notifTimer);
     clearInterval(_onlinePollTimer);
     clearInterval(_statsPollTimer);
+    _feedPollTimer = _notifTimer = _onlinePollTimer = _statsPollTimer = null;
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

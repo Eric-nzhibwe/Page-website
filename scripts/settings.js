@@ -838,6 +838,17 @@ function _applyAvatarEverywhere(imgUrl) {
         '[data-avatar="current-user"]',
         '[data-current-user-avatar]',
     ].join(', ')).forEach(el => { el.innerHTML = imgTag; });
+
+    // Own post card avatars — patch every post card authored by the current user
+    // so a new profile photo appears on their posts immediately without a reload.
+    try {
+        const selfId = String(JSON.parse(localStorage.getItem('pageUser') || '{}').id || '');
+        if (selfId) {
+            document.querySelectorAll(
+                `.post-card[data-author-id="${selfId}"] .post-avatar`
+            ).forEach(el => { el.innerHTML = imgTag; });
+        }
+    } catch (_) { /* non-critical */ }
 }
 
 // ── Danger zone ───────────────────────────────────────────────────────────────

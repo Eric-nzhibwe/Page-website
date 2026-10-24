@@ -95,7 +95,9 @@ document.addEventListener('DOMContentLoaded', () => {
  * the existing /api/auth/firebase-login/ endpoint.
  */
 async function loginWithGoogle() {
-    const btn = document.getElementById('googleSignInBtn');
+    // Pick whichever Google button is in the currently visible tab
+    const signupVisible = document.getElementById('signupForm')?.classList.contains('active');
+    const btn = document.getElementById(signupVisible ? 'googleSignUpBtn' : 'googleSignInBtn');
     if (btn) {
         btn.disabled = true;
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Connecting…';
@@ -676,6 +678,7 @@ window.switchToSignup    = switchToSignup;
 window.switchToLogin     = switchToLogin;
 window.handleLogin       = handleLogin;
 window.handleSignup      = handleSignup;
+window.loginWithGoogle   = loginWithGoogle;
 window.togglePassword    = function(fieldId, btn) {
     const field = document.getElementById(fieldId);
     const icon  = btn.querySelector('i');
