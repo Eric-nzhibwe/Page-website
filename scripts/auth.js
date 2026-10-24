@@ -21,37 +21,64 @@ let _fbInitPromise = null;   // deduplicate concurrent init calls
 // Pre-cached SDK module references — avoids re-importing on each auth action
 let _fbAuthModule = null;
 
+// ── Inline Firebase config (set this in auth.html to avoid needing
+//    the Django backend to serve the config). Values are intentionally
+//    left empty here — fill them in from your Firebase Console:
+//    Project Settings → General → Your apps → Web app → SDK setup.
+//    These are PUBLIC keys — safe to embed in HTML.
+const _FIREBASE_INLINE_CONFIG = {
+    apiKey:            window._PAGE_FIREBASE_API_KEY            || '',
+    authDomain:        window._PAGE_FIREBASE_AUTH_DOMAIN        || '',
+    projectId:         window._PAGE_FIREBASE_PROJECT_ID         || '',
+    storageBucket:     window._PAGE_FIREBASE_STORAGE_BUCKET     || '',
+    messagingSenderId: window._PAGE_FIREBASE_MESSAGING_SENDER_ID|| '',
+    appId:             window._PAGE_FIREBASE_APP_ID             || '',
+};
+
 /**
- * Lazy-initialise Firebase using the config served by Django.
- * Falls back to legacy Django auth if Firebase is not configured.
+ * Lazy-initialise Firebase.
+ * Priority:
+ *   1. Inline config set via window._PAGE_FIREBASE_* variables in auth.html
+ *   2. Config fetched from the Django /api/users/firebase-config/ endpoint
+ * Falls back to legacy Django auth if neither source provides a valid config.
  * Deduplicates concurrent calls so only one init runs at a time.
  */
 async function initFirebase() {
     if (_fbReady) return true;
-    // Return the in-flight promise if init is already running
     if (_fbInitPromise) return _fbInitPromise;
 
     _fbInitPromise = (async () => {
         try {
-            const res = await fetchWithTimeout(`${API_BASE_URL}/users/firebase-config/`, {
-                headers: getAuthHeaders(),
-            }, 5000); // reduced from 8s
+            // ── 1. Try the inline config first (no network round-trip) ───────
+            let cfg = null;
+            if (_FIREBASE_INLINE_CONFIG.apiKey && _FIREBASE_INLINE_CONFIG.projectId) {
+                cfg = _FIREBASE_INLINE_CONFIG;
+            }
 
-            if (!res.ok) throw new Error('Config endpoint returned ' + res.status);
-            const cfg = await res.json();
+            // ── 2. Fall back to the backend endpoint ─────────────────────────
+            if (!cfg) {
+                try {
+                    const res = await fetchWithTimeout(`${API_BASE_URL}/users/firebase-config/`, {
+                        headers: getAuthHeaders(),
+                    }, 5000);
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (data.apiKey && data.projectId) cfg = data;
+                    }
+                } catch (_) { /* network error — try inline config only */ }
+            }
 
-            if (!cfg.apiKey || !cfg.projectId) {
+            if (!cfg) {
                 console.info('Firebase web config not set — using legacy auth.');
                 return false;
             }
 
-            // Import both modules in parallel
+            // ── 3. Import both modules in parallel ───────────────────────────
             const [appModule, authModule] = await Promise.all([
                 import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js'),
                 import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js'),
             ]);
 
-            // Cache auth module so login/signup don't re-import it
             _fbAuthModule = authModule;
 
             const { initializeApp, getApps } = appModule;
@@ -63,7 +90,7 @@ async function initFirebase() {
             return true;
         } catch (err) {
             console.info('Firebase not available — falling back to legacy auth:', err.message);
-            _fbInitPromise = null; // allow retry on next attempt
+            _fbInitPromise = null;
             return false;
         }
     })();
