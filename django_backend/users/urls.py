@@ -5,6 +5,10 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
+    # ── Google Identity Services OAuth ────────────────────────────────────────
+    # Frontend POSTs the signed JWT from Google's sign-in button here.
+    path('google-login/', views.google_login_view, name='google-login'),
+
     # ── Firebase Auth ──────────────────────────────────────────────────────
     # Frontend exchanges a Firebase ID token for a DRF token
     path('firebase-login/', views.firebase_token_login_view, name='firebase-login'),

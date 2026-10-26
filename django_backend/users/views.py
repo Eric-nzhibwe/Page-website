@@ -1080,3 +1080,179 @@ def password_reset_confirm_view(request):
     Token.objects.filter(user=user).delete()
 
     return Response({'message': 'Password reset successfully. You can now log in with your new password.'})
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  GOOGLE IDENTITY SERVICES — "Continue with Google"
+#  Endpoint: POST /api/auth/google-login/
+#
+#  Flow:
+#    1.  Frontend loads the Google Identity Services script and renders a
+#        "Sign in with Google" button.
+#    2.  User picks their account — Google returns a signed JWT (credential).
+#    3.  Frontend POSTs   { "credential": "<JWT>" }   to this endpoint.
+#    4.  We verify the JWT signature using Google's public keys (via the
+#        official google-auth library — no manual key fetching needed).
+#    5.  Extract the verified claims: sub, email, name, picture.
+#    6.  get_or_create the Django User (email as key), fill in profile fields.
+#    7.  Issue / reuse a DRF Token and return the same response shape as the
+#        regular login endpoint so the frontend needs zero changes downstream.
+# ─────────────────────────────────────────────────────────────────────────────
+
+@csrf_exempt
+@api_view(['POST'])
+@authentication_classes([])
+@permission_classes([permissions.AllowAny])
+def google_login_view(request):
+    """
+    Verify a Google Identity Services JWT and sign the user in.
+
+    Request body:
+        { "credential": "<Google JWT string>" }
+
+    Success response (200):
+        { "token": "<DRF token>", "user": {...}, "message": "...", "created": bool }
+
+    Error responses:
+        400  — credential missing or token verification failed
+        500  — unexpected server error
+    """
+    from django.conf import settings as _s
+
+    credential = (request.data.get('credential') or '').strip()
+    if not credential:
+        return Response(
+            {'error': 'credential is required.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    # ── 1. Verify the JWT using the google-auth library ───────────────────────
+    # google.oauth2.id_token.verify_oauth2_token() fetches Google's public keys
+    # once, caches them, and validates the signature + expiry + audience claim.
+    try:
+        from google.oauth2 import id_token as google_id_token
+        from google.auth.transport import requests as google_requests
+
+        client_id = getattr(_s, 'GOOGLE_CLIENT_ID', '')
+        if not client_id:
+            return Response(
+                {'error': 'Google Sign-In is not configured on this server.'},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        id_info = google_id_token.verify_oauth2_token(
+            credential,
+            google_requests.Request(),
+            client_id,
+            clock_skew_in_seconds=10,   # tolerates minor clock drift
+        )
+    except ValueError as exc:
+        # Covers expired tokens, wrong audience, bad signature, etc.
+        return Response(
+            {'error': f'Invalid Google credential: {exc}'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    except Exception as exc:
+        import logging
+        logging.getLogger(__name__).exception('Google token verification failed')
+        return Response(
+            {'error': 'Could not verify Google credential. Please try again.'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+    # ── 2. Extract verified claims from the token ─────────────────────────────
+    google_id  = id_info['sub']                       # stable unique Google user id
+    email      = id_info.get('email', '').lower().strip()
+    name       = id_info.get('name', '')
+    picture    = id_info.get('picture', '')           # Google CDN URL
+    given_name = id_info.get('given_name', '')
+    email_ok   = id_info.get('email_verified', False)
+
+    if not email:
+        return Response(
+            {'error': 'Google account does not have a verified email address.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    # ── 3. Upsert the Django user ─────────────────────────────────────────────
+    # Strategy:
+    #   • Look up by email first — handles users who registered via email/password
+    #     with the same address and now sign in via Google.
+    #   • If the user is brand-new, generate a safe username from their name.
+    #   • Always refresh display_name and avatar_url from Google (non-destructive
+    #     — only overwrites if the user hasn't set a custom value yet).
+
+    import re, secrets as _secrets
+
+    created = False
+    try:
+        user = User.objects.get(email=email)
+    except User.DoesNotExist:
+        # Build a unique username: lowercase name, strip non-word chars, add suffix
+        base = re.sub(r'\W+', '', (given_name or name or email.split('@')[0])).lower()[:20] or 'user'
+        username = base
+        suffix = 1
+        while User.objects.filter(username__iexact=username).exists():
+            username = f'{base}{suffix}'
+            suffix += 1
+
+        user = User.objects.create_user(
+            email=email,
+            username=username,
+            password=_secrets.token_urlsafe(32),   # random unguessable password
+            display_name=name or username,
+        )
+        created = True
+
+        # ── HOOK: additional new-user setup goes here ─────────────────────────
+        # e.g. create Stripe customer, send welcome email, assign free tier, etc.
+        try:
+            from users.email_service import email_service
+            email_service.send_welcome(user)
+        except Exception:
+            pass
+        # ─────────────────────────────────────────────────────────────────────
+
+    # ── 4. Update profile fields that Google keeps fresh ─────────────────────
+    update_fields = []
+
+    # Only backfill display_name if the user hasn't set one yet
+    if name and not user.display_name:
+        user.display_name = name
+        update_fields.append('display_name')
+
+    # Always refresh avatar_url from Google so it stays current
+    if picture and user.avatar_url != picture:
+        user.avatar_url = picture
+        update_fields.append('avatar_url')
+
+    # Mark email as verified (Google guarantees this)
+    if email_ok and user.verification_level < 1:
+        user.verification_level = 1
+        user.is_verified = True
+        update_fields += ['verification_level', 'is_verified']
+
+    if update_fields:
+        user.save(update_fields=update_fields)
+
+    # ── 5. Store / refresh the Google provider link ───────────────────────────
+    # UserFirebaseProfile is reused here as a generic OAuth provider link table.
+    # google_id → firebase_uid column, picture → picture_url.
+    try:
+        from users.models import UserFirebaseProfile
+        UserFirebaseProfile.objects.update_or_create(
+            firebase_uid=f'google:{google_id}',
+            defaults={'user': user, 'picture_url': picture or ''},
+        )
+    except Exception:
+        pass   # non-critical — don't break login if this fails
+
+    # ── 6. Issue DRF token and return ─────────────────────────────────────────
+    drf_token, _ = Token.objects.get_or_create(user=user)
+
+    return Response({
+        'token':   drf_token.key,
+        'user':    UserProfileSerializer(user).data,
+        'message': f"Welcome{'! 🎉' if created else ' back! 🔥'} {user.display_name or user.username}",
+        'created': created,
+    }, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)

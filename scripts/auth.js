@@ -111,86 +111,93 @@ document.addEventListener('DOMContentLoaded', () => {
     initFirebase().catch(() => {});
 });
 
-// ─────────────────────────────────────────────────────────────
-//  GOOGLE OAUTH  (Firebase Google provider)
-// ─────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+//  GOOGLE IDENTITY SERVICES  — "Continue with Google"
+//
+//  Flow:
+//    1. The GIS script in auth.html renders the official Google button and
+//       initialises One Tap.
+//    2. User picks their Google account → GIS calls handleGoogleCredential()
+//       with a signed JWT in response.credential.
+//    3. We POST that JWT to /api/auth/google-login/ on our Django backend.
+//    4. Django verifies the signature via google-auth, upserts the user, and
+//       returns a DRF token + profile — same shape as email/password login.
+//    5. We store the session and redirect to index.html.
+// ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Sign in with Google using Firebase's signInWithPopup.
- * Works for both login and registration — Firebase creates the account
- * on first sign-in, then exchanges the ID token for a DRF token via
- * the existing /api/auth/firebase-login/ endpoint.
+ * Called automatically by the Google Identity Services SDK after the user
+ * selects their account.  GIS passes a CredentialResponse whose .credential
+ * field is a signed JWT containing the user's profile.
+ * Must be on window so GIS can reach it as a plain global.
  */
-async function loginWithGoogle() {
-    // Pick whichever Google button is in the currently visible tab
-    const signupVisible = document.getElementById('signupForm')?.classList.contains('active');
-    const btn = document.getElementById(signupVisible ? 'googleSignUpBtn' : 'googleSignInBtn');
-    if (btn) {
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Connecting…';
+async function handleGoogleCredential(response) {
+    const credential = response?.credential;
+    if (!credential) {
+        showToast('Google sign-in did not return a credential. Please try again.', 'error');
+        return;
     }
 
+    // Visual feedback on both tab buttons
+    const loadingHTML = '<i class="fas fa-spinner fa-spin"></i> Signing in\u2026';
+    ['googleSignInBtn', 'googleSignUpBtn'].forEach(id => {
+        const btn = document.getElementById(id);
+        if (btn) { btn.disabled = true; btn.innerHTML = loadingHTML; }
+    });
+
     try {
-        const fbReady = await initFirebase();
-        if (!fbReady) {
-            showToast('Google sign-in is not available right now. Please use email/password.', 'error');
+        const res  = await fetchWithTimeout(`${API_BASE_URL}/auth/google-login/`, {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ credential }),
+        }, 10000);
+
+        const data = await res.json().catch(() => ({}));
+
+        if (!res.ok) {
+            const msg = res.status === 503
+                ? 'Google Sign-In is not enabled on the server yet. Please use email/password for now.'
+                : (data.error || 'Google sign-in failed. Please try again.');
+            showToast(msg, 'error');
             return;
         }
 
-        // Import GoogleAuthProvider from the cached module
-        const { GoogleAuthProvider, signInWithPopup } = _fbAuthModule ||
-            await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js');
-
-        const provider = new GoogleAuthProvider();
-        provider.addScope('email');
-        provider.addScope('profile');
-        // Always show account picker so multi-account users can choose
-        provider.setCustomParameters({ prompt: 'select_account' });
-
-        const credential = await signInWithPopup(_firebaseAuth, provider);
-        const idToken    = await credential.user.getIdToken();
-
-        const result = await _exchangeFirebaseToken(idToken);
-
-        if (result.success) {
-            // On first-ever Google sign-in the user may not have a username yet.
-            // Firebase displayName → use as the username if Django didn't set one.
-            if (result.user && !result.user.username) {
-                const displayName = credential.user.displayName || '';
-                const fallback    = displayName.replace(/\s+/g, '').toLowerCase() || 'user';
-                result.user.username = fallback;
-            }
-
-            // Stamp avatar from Google profile photo if no custom one is set
-            if (result.user && !result.user.profile_image_url) {
-                const photoURL = credential.user.photoURL;
-                if (photoURL) result.user.profile_image_url = photoURL;
-            }
-
-            _storeSession(result.token, result.user, result.source || 'firebase');
-            showToast(`Welcome, ${result.user?.display_name || result.user?.username || 'player'}! 🎉`, 'success');
-            setTimeout(() => { window.location.href = '../index.html'; }, 350);
-        } else {
-            showToast(result.message || 'Google sign-in failed. Please try again.', 'error');
-        }
+        // ── Success ────────────────────────────────────────────────────────
+        _storeSession(data.token, data.user, 'google');
+        showToast(data.message || (data.created ? 'Account created! Welcome to PAGE \uD83C\uDF89' : 'Welcome back! \uD83D\uDD25'), 'success');
+        setTimeout(() => { window.location.href = '../index.html'; }, 350);
 
     } catch (err) {
-        // User closed the popup — not an error worth showing
-        if (err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request') {
-            return;
-        }
-        console.error('[Google OAuth]', err);
-        const msg = err.code === 'auth/popup-blocked'
-            ? 'Pop-up was blocked by your browser. Allow pop-ups for this site and try again.'
-            : err.code === 'auth/network-request-failed'
-                ? 'Network error. Check your connection and try again.'
-                : 'Google sign-in failed. Please try again.';
+        const msg = err.name === 'AbortError'
+            ? 'Request timed out. Check your connection and try again.'
+            : 'Could not reach the server. Please try again.';
         showToast(msg, 'error');
     } finally {
-        if (btn) {
-            btn.disabled = false;
-            btn.innerHTML = '<img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" width="18" height="18"> Continue with Google';
-        }
+        const defaultHTML = '<img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" '
+            + 'alt="Google" width="18" height="18"> Continue with Google';
+        ['googleSignInBtn', 'googleSignUpBtn'].forEach(id => {
+            const btn = document.getElementById(id);
+            if (btn) { btn.disabled = false; btn.innerHTML = defaultHTML; }
+        });
+    }
+}
+
+/**
+ * Called when the user clicks our custom "Continue with Google" button.
+ * Triggers the GIS One Tap prompt; if dismissed, the rendered GIS button
+ * inside #g_id_signin_container is already visible as a fallback.
+ */
+function loginWithGoogle() {
+    if (window.google?.accounts?.id) {
+        window.google.accounts.id.prompt((notification) => {
+            if (notification.isSkippedMoment() || notification.isDismissedMoment()) {
+                // One Tap was suppressed — scroll the rendered button into view
+                document.getElementById('g_id_signin_container')
+                    ?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+        });
+    } else {
+        showToast('Google Sign-In is loading. Please wait a moment and try again.', 'info');
     }
 }
 
@@ -706,6 +713,7 @@ window.switchToLogin     = switchToLogin;
 window.handleLogin       = handleLogin;
 window.handleSignup      = handleSignup;
 window.loginWithGoogle   = loginWithGoogle;
+window.handleGoogleCredential = handleGoogleCredential;
 window.togglePassword    = function(fieldId, btn) {
     const field = document.getElementById(fieldId);
     const icon  = btn.querySelector('i');

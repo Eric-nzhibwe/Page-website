@@ -289,6 +289,11 @@ FIREBASE_STORAGE_BUCKET = config('FIREBASE_STORAGE_BUCKET', default='')
 FIREBASE_MESSAGING_SENDER_ID = config('FIREBASE_MESSAGING_SENDER_ID', default='')
 FIREBASE_APP_ID = config('FIREBASE_APP_ID', default='')
 
+# ─── Google Identity Services ─────────────────────────────────────────────────
+# OAuth 2.0 Client ID from Google Cloud Console → APIs & Services → Credentials
+# Used by the backend to verify the JWT returned by the GIS button.
+GOOGLE_CLIENT_ID = config('GOOGLE_CLIENT_ID', default='')
+
 # ─── Firestore feature flags ──────────────────────────────────────────────────
 FS_NOTIFICATIONS = config('FS_NOTIFICATIONS', default=False, cast=bool)
 FS_ACTIVITIES = config('FS_ACTIVITIES', default=False, cast=bool)

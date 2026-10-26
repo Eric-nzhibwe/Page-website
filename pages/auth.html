@@ -12,9 +12,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Fredericka+the+Great&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../styles/auth.css">
     <script src="../scripts/theme.js"></script>
-    <!-- Preload Firebase SDK so it's cached before the user submits -->
-    <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js">
-    <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js">
+    <!-- Google Identity Services — loads the official Sign In With Google SDK -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 
 <body>
@@ -708,11 +707,11 @@
                             <span class="btn-shimmer" aria-hidden="true"></span>
                         </button>
 
-                        <!-- Google OAuth -->
+                        <!-- Google Sign-In -->
                         <div class="auth-divider">
                             <span>or</span>
                         </div>
-                        <button type="button" class="btn-google" id="googleSignUpBtn" onclick="loginWithGoogle()">
+                        <button type="button" class="btn-google" id="googleSignInBtn" onclick="loginWithGoogle()">
                             <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
                                 alt="Google" width="18" height="18">
                             Continue with Google
@@ -789,11 +788,11 @@
                             <span class="btn-shimmer" aria-hidden="true"></span>
                         </button>
 
-                        <!-- Google OAuth -->
+                        <!-- Google Sign-Up -->
                         <div class="auth-divider">
                             <span>or</span>
                         </div>
-                        <button type="button" class="btn-google" id="googleSignInBtn" onclick="loginWithGoogle()">
+                        <button type="button" class="btn-google" id="googleSignUpBtn" onclick="loginWithGoogle()">
                             <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
                                 alt="Google" width="18" height="18">
                             Continue with Google
@@ -954,18 +953,70 @@
     </div>
 
     <!-- ══════════════════════════════════════════
-         FIREBASE WEB CONFIG
-         Fill in your project's values from:
-         Firebase Console → Project Settings → Your apps → Web app → SDK setup & config
-         These are PUBLIC keys — safe to include in HTML.
+         GOOGLE IDENTITY SERVICES CONFIG & INIT
+         ─────────────────────────────────────────
+         Replace YOUR_GOOGLE_CLIENT_ID with the OAuth 2.0 Client ID from:
+         Google Cloud Console → APIs & Services → Credentials → OAuth 2.0 Client IDs
+         Make sure these Authorized JS origins are added in the Console:
+           • http://localhost:8000  (local dev)
+           • https://yourdomain.com  (production)
+         Firebase keys are kept below for email/password auth — do not remove them.
     ══════════════════════════════════════════ -->
     <script>
+        // ── Google OAuth 2.0 Client ID (public — safe in HTML) ────────────────
+        window._PAGE_GOOGLE_CLIENT_ID = 'YOUR_GOOGLE_CLIENT_ID';
+
+        // ── Firebase config (used only for email/password auth fallback) ───────
         window._PAGE_FIREBASE_API_KEY             = 'AIzaSyDwO9EU_oT6ibtiIzqoCOf1edFoxT-aZ2U';
         window._PAGE_FIREBASE_AUTH_DOMAIN         = 'page-website-88fce.firebaseapp.com';
         window._PAGE_FIREBASE_PROJECT_ID          = 'page-website-88fce';
         window._PAGE_FIREBASE_STORAGE_BUCKET      = 'page-website-88fce.firebasestorage.app';
         window._PAGE_FIREBASE_MESSAGING_SENDER_ID = '706337215631';
         window._PAGE_FIREBASE_APP_ID              = '1:706337215631:web:7e97a8aec7b057a1de4cfa';
+
+        // ── Initialise GIS once the SDK has loaded ─────────────────────────────
+        // The SDK is async — we poll until google.accounts.id is available.
+        (function initGIS() {
+            function setup() {
+                if (!window._PAGE_GOOGLE_CLIENT_ID ||
+                     window._PAGE_GOOGLE_CLIENT_ID === 'YOUR_GOOGLE_CLIENT_ID') return;
+
+                window.google.accounts.id.initialize({
+                    client_id:            window._PAGE_GOOGLE_CLIENT_ID,
+                    callback:             window.handleGoogleCredential,
+                    auto_select:          false,
+                    cancel_on_tap_outside: true,
+                    context:              'signin',
+                    ux_mode:              'popup',
+                    itp_support:          true,
+                });
+
+                // Render the official button inside its container
+                window.google.accounts.id.renderButton(
+                    document.getElementById('g_id_signin_container'),
+                    {
+                        type:           'standard',
+                        shape:          'pill',
+                        theme:          'outline',
+                        text:           'continue_with',
+                        size:           'large',
+                        logo_alignment: 'left',
+                        width:          '100%',
+                    }
+                );
+            }
+
+            function waitForGIS() {
+                if (window.google?.accounts?.id) { setup(); return; }
+                setTimeout(waitForGIS, 100);
+            }
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', waitForGIS);
+            } else {
+                waitForGIS();
+            }
+        })();
     </script>
 
     <script src="../scripts/auth.js"></script>
