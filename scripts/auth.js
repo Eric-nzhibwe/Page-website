@@ -129,9 +129,10 @@ document.addEventListener('DOMContentLoaded', () => {
  * Called automatically by the Google Identity Services SDK after the user
  * selects their account.  GIS passes a CredentialResponse whose .credential
  * field is a signed JWT containing the user's profile.
- * Must be on window so GIS can reach it as a plain global.
+ * Explicitly assigned to window so GIS can reach it as a plain global
+ * regardless of how the script is bundled or deferred.
  */
-async function handleGoogleCredential(response) {
+window.handleGoogleCredential = async function handleGoogleCredential(response) {
     const credential = response?.credential;
     if (!credential) {
         showToast('Google sign-in did not return a credential. Please try again.', 'error');
@@ -713,7 +714,7 @@ window.switchToLogin     = switchToLogin;
 window.handleLogin       = handleLogin;
 window.handleSignup      = handleSignup;
 window.loginWithGoogle   = loginWithGoogle;
-window.handleGoogleCredential = handleGoogleCredential;
+// window.handleGoogleCredential is assigned at function definition above
 window.togglePassword    = function(fieldId, btn) {
     const field = document.getElementById(fieldId);
     const icon  = btn.querySelector('i');

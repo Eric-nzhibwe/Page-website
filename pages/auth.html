@@ -711,6 +711,9 @@
                         <div class="auth-divider">
                             <span>or</span>
                         </div>
+                        <!-- Official GIS rendered button (populated by renderButton() in initGIS) -->
+                        <div id="g_id_signin_container" class="gis-btn-container" aria-label="Continue with Google"></div>
+                        <!-- Custom fallback button — visible until GIS renders its own button -->
                         <button type="button" class="btn-google" id="googleSignInBtn" onclick="loginWithGoogle()">
                             <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
                                 alt="Google" width="18" height="18">
@@ -792,6 +795,8 @@
                         <div class="auth-divider">
                             <span>or</span>
                         </div>
+                        <!-- Official GIS rendered button (same GIS instance, same callback) -->
+                        <div id="g_id_signup_container" class="gis-btn-container" aria-label="Continue with Google"></div>
                         <button type="button" class="btn-google" id="googleSignUpBtn" onclick="loginWithGoogle()">
                             <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
                                 alt="Google" width="18" height="18">
@@ -979,7 +984,7 @@
         (function initGIS() {
             function setup() {
                 if (!window._PAGE_GOOGLE_CLIENT_ID ||
-                     window._PAGE_GOOGLE_CLIENT_ID === 'YOUR_GOOGLE_CLIENT_ID') return;
+                     window._PAGE_GOOGLE_CLIENT_ID === '828969841640-l0na7svmob8p0pdbi38c55s9d2h1ua7c.apps.googleusercontent.com') return;
 
                 window.google.accounts.id.initialize({
                     client_id:            window._PAGE_GOOGLE_CLIENT_ID,
@@ -991,19 +996,32 @@
                     itp_support:          true,
                 });
 
-                // Render the official button inside its container
-                window.google.accounts.id.renderButton(
-                    document.getElementById('g_id_signin_container'),
-                    {
-                        type:           'standard',
-                        shape:          'pill',
-                        theme:          'outline',
-                        text:           'continue_with',
-                        size:           'large',
-                        logo_alignment: 'left',
-                        width:          '100%',
-                    }
-                );
+                const btnCfg = {
+                    type:           'standard',
+                    shape:          'pill',
+                    theme:          'outline',
+                    text:           'continue_with',
+                    size:           'large',
+                    logo_alignment: 'left',
+                    width:          280,
+                };
+
+                // Render official GIS button into the sign-in container
+                const signInContainer = document.getElementById('g_id_signin_container');
+                if (signInContainer) {
+                    window.google.accounts.id.renderButton(signInContainer, btnCfg);
+                    // Hide custom fallback once the official button is rendered
+                    const fallback = document.getElementById('googleSignInBtn');
+                    if (fallback) fallback.style.display = 'none';
+                }
+
+                // Render official GIS button into the sign-up container
+                const signUpContainer = document.getElementById('g_id_signup_container');
+                if (signUpContainer) {
+                    window.google.accounts.id.renderButton(signUpContainer, btnCfg);
+                    const fallback = document.getElementById('googleSignUpBtn');
+                    if (fallback) fallback.style.display = 'none';
+                }
             }
 
             function waitForGIS() {

@@ -2341,6 +2341,21 @@ body {
     background: #3a3a3a;
     border-color: #666;
 }
+
+/* ── GIS rendered button container ───────────────────────────────────────── */
+/* Google renders an <iframe> inside here; we constrain it to full card width */
+.gis-btn-container {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    min-height: 44px;   /* prevents layout shift while the iframe loads */
+}
+.gis-btn-container > div,
+.gis-btn-container iframe {
+    width: 100% !important;
+    max-width: 100% !important;
+}
+
 [data-theme="dark"] .auth-divider::before,
 [data-theme="dark"] .auth-divider::after {
     background: #444;
