@@ -69,7 +69,17 @@ class UserRegistrationView(generics.CreateAPIView):
 @authentication_classes([])
 @permission_classes([permissions.AllowAny])
 def login_view(request):
-    """User login endpoint — email or username, token-based."""
+    """
+    Legacy email/password login endpoint.
+
+    When Firebase is configured (the default), the frontend authenticates
+    with Firebase and exchanges the ID token at /api/auth/firebase-login/.
+    This endpoint is kept as a fallback for environments where Firebase
+    is not set up, or for users created before Firebase was enabled.
+
+    If the database is unavailable, returns a helpful message directing
+    the user to Firebase login instead of crashing with a 500.
+    """
     import logging
     log = logging.getLogger('users.login')
 
@@ -92,7 +102,7 @@ def login_view(request):
     identifier_type = 'email' if '@' in identifier else 'username'
     log.info('LOGIN attempt: identifier_type=%s len(password)=%d', identifier_type, len(password))
 
-    # Check whether the user even exists and has a usable password
+    # Check whether the user exists — catch DB errors gracefully
     try:
         if '@' in identifier:
             _u = User.objects.get(email__iexact=identifier)
@@ -104,7 +114,11 @@ def login_view(request):
         log.warning('LOGIN user NOT found for identifier=%r', identifier)
     except Exception as exc:
         log.error('LOGIN user lookup error: %s', exc)
-    # ─────────────────────────────────────────────────────────────────────
+        # Database is unavailable — redirect to Firebase login
+        return Response({
+            'error': 'database_unavailable',
+            'message': 'Sign in is handled by Firebase. Please use the Firebase login flow.',
+        }, status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
     serializer = UserLoginSerializer(
         data={'username': identifier, 'password': password},
@@ -185,12 +199,101 @@ def logout_view(request):
 
 
 class UserProfileView(generics.RetrieveUpdateAPIView):
-    """User profile endpoint"""
+    """
+    User profile endpoint.
+
+    When the authenticated user is a real Django User (DB available),
+    reads/writes work normally.  When the user is an ``EphemeralUser``
+    (Firebase-only mode), GET returns the ephemeral user's attributes
+    and PATCH updates the Firestore profile document instead.
+    """
     serializer_class = UserProfileSerializer
     permission_classes = [permissions.IsAuthenticated]
-    
+
     def get_object(self):
         return self.request.user
+
+    def retrieve(self, request, *args, **kwargs):
+        user = request.user
+
+        # Ephemeral user — return its attributes directly (no DB needed)
+        from users.firebase_token_auth import EphemeralUser
+        if isinstance(user, EphemeralUser):
+            return Response(self._ephemeral_profile(user))
+
+        return super().retrieve(request, *args, **kwargs)
+
+    def update(self, request, *args, **kwargs):
+        user = request.user
+
+        # Ephemeral user — can't save to DB, update Firestore instead
+        from users.firebase_token_auth import EphemeralUser
+        if isinstance(user, EphemeralUser):
+            return self._update_firestore_profile(user, request.data)
+
+        return super().update(request, *args, **kwargs)
+
+    # Alias for PATCH (partial update)
+    partial_update = update
+
+    @staticmethod
+    def _ephemeral_profile(user):
+        """Build a profile dict from an EphemeralUser (no DB access)."""
+        return {
+            'id':                     user.id,
+            'username':               user.username,
+            'email':                  user.email,
+            'display_name':           user.display_name,
+            'bio':                    user.bio,
+            'profile_image':          user.avatar_url or None,
+            'profile_image_url':      user.avatar_url or None,
+            'phone':                  user.phone,
+            'date_of_birth':          user.date_of_birth,
+            'location':               user.location,
+            'website':                user.website,
+            'preferences':            user.preferences,
+            'prestige_points':        user.prestige_points,
+            'level':                  user.level,
+            'power_rank':             user.power_rank,
+            'access_tier':            user.access_tier,
+            'current_streak':         user.current_streak,
+            'total_submissions':     user.total_submissions,
+            'successful_submissions': user.successful_submissions,
+            'success_rate':           user.success_rate,
+            'total_earnings':         float(user.total_earnings),
+            'tournament_wins':        user.tournament_wins,
+            'is_verified':            user.is_verified,
+            'verification_level':     user.verification_level,
+            'social_connections':     user.social_connections,
+            'created_at':             user.created_at,
+            'last_login_date':        user.last_login_date,
+            'followers_count':        0,
+            'following_count':         0,
+        }
+
+    @staticmethod
+    def _update_firestore_profile(user, data):
+        """Update the user's profile in Firestore (ephemeral user mode)."""
+        try:
+            from users.firestore_user_service import update_user_fields
+            # Only update safe, non-sensitive fields
+            safe_fields = {}
+            for key in ('display_name', 'bio', 'location', 'website',
+                        'preferences', 'social_connections'):
+                if key in data:
+                    safe_fields[key] = data[key]
+            if safe_fields:
+                update_user_fields(user.id, safe_fields)
+                return Response({
+                    'message': 'Profile updated (Firestore mode).',
+                    **UserProfileView._ephemeral_profile(user),
+                })
+        except Exception as exc:
+            return Response(
+                {'error': f'Could not update profile: {exc}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+        return Response({'message': 'No fields to update.'})
 
 
 class UserActivitiesView(generics.ListAPIView):
@@ -735,23 +838,29 @@ def delete_account_view(request):
     return Response({'message': 'Account permanently deleted.'})
 
 
+@csrf_exempt
 @api_view(['POST'])
-@permission_classes([permissions.AllowAny])
 @authentication_classes([])
+@permission_classes([permissions.AllowAny])
 def firebase_token_login_view(request):
     """
-    Exchange a Firebase ID token for a Django auth token.
+    Exchange a Firebase ID token for an auth credential.
 
     Called by the frontend after Firebase Auth completes sign-in/sign-up.
-    The frontend sends:
-        { "firebase_token": "<Firebase ID token>" }
-    and receives back the same shape as the regular login endpoint:
-        { "token": "<DRF token>", "user": {...}, "message": "..." }
+    The frontend sends ``{ "firebase_token": "<Firebase ID token>" }``.
 
-    This endpoint works even when Postgres is the only database — it just
-    creates/finds a User row in Postgres using the Firebase uid as the key.
-    Once Firebase Auth is the primary auth source, Postgres only stores
-    profile data, not passwords.
+    Response shape (DB available — full mode):
+        { "token": "<DRF token>", "firebase_token": "<ID token>",
+          "user": {...}, "message": "..." }
+
+    Response shape (DB unavailable — Firebase-only mode):
+        { "firebase_token": "<ID token>", "user": {...},
+          "source": "firestore", "message": "..." }
+
+    In Firebase-only mode, the frontend stores the Firebase ID token and
+    uses ``Authorization: FirebaseToken <token>`` for all subsequent API
+    calls — the ``FirebaseTokenAuthentication`` DRF class verifies it
+    without needing the database.
     """
     firebase_token = request.data.get('firebase_token', '').strip()
     if not firebase_token:
@@ -767,40 +876,132 @@ def firebase_token_login_view(request):
             status=status.HTTP_503_SERVICE_UNAVAILABLE,
         )
 
-    # Verify the token and get/create the Django user
-    from users.firebase_auth_backend import FirebaseAuthenticationBackend
-    backend = FirebaseAuthenticationBackend()
-    user    = backend.authenticate(request, firebase_token=firebase_token)
-
-    if user is None:
+    # ── 1. Verify the Firebase ID token ──────────────────────────────────
+    try:
+        import firebase_admin.auth as fb_auth
+        decoded = fb_auth.verify_id_token(firebase_token)
+    except Exception as exc:
         return Response(
-            {'error': 'Invalid or expired Firebase token. Please sign in again.'},
+            {'error': f'Invalid or expired Firebase token: {exc}'},
             status=status.HTTP_401_UNAUTHORIZED,
         )
 
-    if not user.is_active:
-        return Response(
-            {'error': 'This account has been deactivated.'},
-            status=status.HTTP_403_FORBIDDEN,
+    firebase_uid = decoded.get('uid', '')
+    email        = (decoded.get('email') or '').lower().strip()
+    name         = decoded.get('name') or ''
+
+    # ── 2. Try to get/create a Django User + DRF token (best-effort) ──────
+    db_user = None
+    drf_token = None
+    try:
+        from users.firebase_auth_backend import FirebaseAuthenticationBackend
+        backend = FirebaseAuthenticationBackend()
+        db_user = backend._get_or_create_user(decoded)
+
+        if db_user is not None and db_user.is_active:
+            drf_token, _ = Token.objects.get_or_create(user=db_user)
+    except Exception as exc:
+        import logging
+        logging.getLogger('users.login').warning(
+            'firebase_token_login: DB unavailable (%s) — using Firebase-only mode',
+            exc,
         )
 
-    # Issue a DRF token so the rest of the app works unchanged
-    token, _ = Token.objects.get_or_create(user=user)
+    # ── 3. Build the user profile ─────────────────────────────────────────
+    if db_user is not None and drf_token:
+        # Full mode — DB is working, return DRF token + serialized user
+        try:
+            from page_platform.firebase_client import firebase_enabled
+            if firebase_enabled():
+                from users.firestore_user_service import sync_user
+                sync_user(db_user, request=request)
+        except Exception:
+            pass
 
-    # Always mirror to Firestore — this is the backup regardless of FS_USERS flag
+        return Response({
+            'token':          drf_token.key,
+            'firebase_token': firebase_token,
+            'user':           UserProfileSerializer(db_user).data,
+            'message':        f'Welcome, {db_user.username}! 🔥',
+        })
+
+    # ── 4. Firebase-only mode — DB is down, build profile from Firestore ─
+    user_profile = _build_firebase_only_profile(decoded, firebase_token)
+
+    return Response({
+        'firebase_token': firebase_token,
+        'user':           user_profile,
+        'source':         'firestore',
+        'message':        f'Welcome, {user_profile.get("username", "player")}! 🔥',
+    })
+
+
+def _build_firebase_only_profile(decoded, firebase_token):
+    """
+    Build a user profile dict from the decoded Firebase token and,
+    if available, the Firestore ``user_profiles`` document.
+    Works with zero database access.
+    """
+    firebase_uid = decoded.get('uid', '')
+    email        = (decoded.get('email') or '').lower().strip()
+    name         = decoded.get('name') or ''
+    picture      = decoded.get('picture') or ''
+
+    # Try Firestore first
+    profile = None
     try:
-        from page_platform.firebase_client import firebase_enabled
-        if firebase_enabled():
-            from users.firestore_user_service import sync_user
-            sync_user(user, request=request)
+        from page_platform.firebase_client import get_firestore
+        from google.cloud.firestore_v1 import FieldFilter
+        db = get_firestore()
+        if db is not None:
+            docs = (
+                db.collection('user_profiles')
+                .where(filter=FieldFilter('firebase_uid', '==', firebase_uid))
+                .limit(1)
+                .stream()
+            )
+            for doc in docs:
+                profile = doc.to_dict()
+                profile['id'] = doc.id
+                break
     except Exception:
         pass
 
-    return Response({
-        'token':   token.key,
-        'user':    UserProfileSerializer(user).data,
-        'message': f'Welcome, {user.username}! 🔥',
-    })
+    if profile:
+        # Enrich with email (not stored in Firestore for privacy)
+        profile['email'] = email
+        if picture and not profile.get('profile_image_url'):
+            profile['profile_image_url'] = picture
+            profile['profile_image'] = picture
+        return profile
+
+    # Minimal profile from decoded token only
+    return {
+        'id':              firebase_uid,
+        'username':        name or (email.split('@')[0] if email else firebase_uid[:12]),
+        'display_name':    name or '',
+        'email':           email,
+        'profile_image_url': picture or None,
+        'profile_image':   picture or None,
+        'bio':             '',
+        'access_tier':     'Bronze',
+        'prestige_points': 0,
+        'level':           1,
+        'power_rank':      'Novice',
+        'current_streak':  0,
+        'total_submissions': 0,
+        'successful_submissions': 0,
+        'tournament_wins': 0,
+        'total_earnings':  0.0,
+        'is_verified':     decoded.get('email_verified', False),
+        'verification_level': 1 if decoded.get('email_verified') else 0,
+        'location':        '',
+        'website':         '',
+        'social_connections': {},
+        'preferences':     {},
+        'followers_count': 0,
+        'following_count': 0,
+    }
 
 
 @csrf_exempt
@@ -812,8 +1013,8 @@ def resolve_email_view(request):
     Resolve a username to its email address so the frontend Firebase SDK
     can sign in with email+password even when the user typed a username.
 
-    Only returns the email if the username exists — Firebase still requires
-    the correct password to complete sign-in, so this exposes nothing sensitive.
+    Tries the Django DB first; if the DB is unavailable, falls back to
+    Firestore user_profiles collection.
 
     Request:  { "username": "someuser" }
     Response: { "email": "user@example.com" }  or 404
@@ -822,6 +1023,8 @@ def resolve_email_view(request):
     if not username or '@' in username:
         return Response({'error': 'A username (not email) is required.'},
                         status=status.HTTP_400_BAD_REQUEST)
+
+    # ── Try Django DB first ────────────────────────────────────────────────
     try:
         user = User.objects.get(username__iexact=username)
         if not user.is_active:
@@ -829,9 +1032,60 @@ def resolve_email_view(request):
                             status=status.HTTP_404_NOT_FOUND)
         return Response({'email': user.email})
     except User.DoesNotExist:
-        # Return 404 without revealing whether the username exists
-        return Response({'error': 'Account not found.'},
-                        status=status.HTTP_404_NOT_FOUND)
+        pass
+    except Exception:
+        # DB unavailable — fall through to Firestore
+        pass
+
+    # ── Firestore fallback ─────────────────────────────────────────────────
+    try:
+        from page_platform.firebase_client import firebase_enabled, get_firestore
+        if firebase_enabled():
+            from google.cloud.firestore_v1 import FieldFilter
+            db = get_firestore()
+            if db is not None:
+                q = username.lower()
+                docs = (
+                    db.collection('user_profiles')
+                    .where(filter=FieldFilter('username', '==', username))
+                    .limit(1)
+                    .stream()
+                )
+                for doc in docs:
+                    d = doc.to_dict()
+                    # Firestore doesn't store email for privacy — try Firebase Auth
+                    firebase_uid = d.get('firebase_uid', '')
+                    if firebase_uid:
+                        try:
+                            import firebase_admin.auth as fb_auth
+                            user_record = fb_auth.get_user(firebase_uid)
+                            if user_record.email:
+                                return Response({'email': user_record.email})
+                        except Exception:
+                            pass
+                    break
+    except Exception:
+        pass
+
+    # Return 404 without revealing whether the username exists
+    return Response({'error': 'Account not found.'},
+                    status=status.HTTP_404_NOT_FOUND)
+
+
+@api_view(['GET'])
+@authentication_classes([])
+@permission_classes([permissions.AllowAny])
+def google_config_view(request):
+    """
+    Return the public Google OAuth Client ID so the frontend GIS button can
+    initialise without the value being hardcoded in HTML.
+    Only the Client ID is returned — it is a public value safe to expose.
+    """
+    from django.conf import settings as _s
+    client_id = getattr(_s, 'GOOGLE_CLIENT_ID', '')
+    if not client_id:
+        return Response({'error': 'Google Sign-In is not configured.'}, status=503)
+    return Response({'client_id': client_id})
 
 
 @api_view(['GET'])

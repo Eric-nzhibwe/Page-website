@@ -383,11 +383,12 @@ async function submitNewPost() {
 async function _syncMyCreatedPosts() {
     const ids = JSON.parse(localStorage.getItem('myCreatedPostIds') || '[]');
     if (!ids.length) return;
-    const token = localStorage.getItem('djangoAuthToken');
-    if (!token) return;
+    const authHeader = window._pageAuthHeader ? window._pageAuthHeader() :
+        (() => { const t = localStorage.getItem('djangoAuthToken'); return t ? `Token ${t}` : null; })();
+    if (!authHeader) return;
     for (const id of ids.slice()) {
         try {
-            const res = await fetch(`${API}/social/posts/${id}/`, { headers: { 'Authorization': `Token ${token}` } });
+            const res = await fetch(`${API}/social/posts/${id}/`, { headers: { 'Authorization': authHeader } });
             if (!res.ok) continue;
             const post = await res.json();
             const grid = document.getElementById('feedGrid');

@@ -156,11 +156,15 @@ async function _fbSendVoiceMessage(convId, pendingMedia) {
     }
 
     try {
-        const token = localStorage.getItem('djangoAuthToken')
-                   || localStorage.getItem('authToken')
-                   || (typeof apiService !== 'undefined' ? apiService.token : null);
+        const authHeader = window._pageAuthHeader ? window._pageAuthHeader() :
+            (() => {
+                const t = localStorage.getItem('djangoAuthToken')
+                       || localStorage.getItem('authToken')
+                       || (typeof apiService !== 'undefined' ? apiService.token : null);
+                return t ? `Token ${t}` : null;
+            })();
 
-        if (!token) throw new Error('Not authenticated');
+        if (!authHeader) throw new Error('Not authenticated');
 
         const apiBase = (window.location.hostname === 'localhost' ||
                          window.location.hostname === '127.0.0.1')
@@ -176,7 +180,7 @@ async function _fbSendVoiceMessage(convId, pendingMedia) {
             `${apiBase}/messenger/conversations/${convId}/send_message/`,
             {
                 method:  'POST',
-                headers: { Authorization: `Token ${token}` },
+                headers: { Authorization: authHeader },
                 body:    fd,
             }
         );

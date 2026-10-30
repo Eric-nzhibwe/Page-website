@@ -15,9 +15,11 @@ const SOCIAL_API = (
   : `${window.location.origin}/api/social`;
 
 function authHeaders() {
+    const authHeader = window._pageAuthHeader ? window._pageAuthHeader() : null;
     const token = localStorage.getItem('djangoAuthToken');
     const h = { 'Content-Type': 'application/json' };
-    if (token) h['Authorization'] = `Token ${token}`;
+    if (authHeader) h['Authorization'] = authHeader;
+    else if (token) h['Authorization'] = `Token ${token}`;
     return h;
 }
 

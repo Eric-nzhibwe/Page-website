@@ -30,8 +30,11 @@ let _attachedPreviewUrl = null;
 
 // ── Boot ───────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
-    const token = localStorage.getItem('djangoAuthToken');
-    if (!token) { window.location.href = 'auth.html'; return; }
+    if (!window._pageIsAuthed || !window._pageIsAuthed()) {
+        if (!(localStorage.getItem('djangoAuthToken') || localStorage.getItem('firebaseIdToken'))) {
+            window.location.href = 'auth.html'; return;
+        }
+    }
 
     const input = document.getElementById('messageInput');
     input.addEventListener('input', () => { autoGrow(input); toggleSendBtn(); });
@@ -60,7 +63,7 @@ function toggleSendBtn() {
 
 // ── AI status badge ────────────────────────────────────────────────────────
 async function checkAiStatus() {
-    const token = localStorage.getItem('djangoAuthToken');
+    const authHeader = window._pageAuthHeader ? window._pageAuthHeader() : null;
     const label = document.getElementById('aiStatusLabel');
     const dot   = document.querySelector('.status-dot');
     dot.className   = 'status-dot';
@@ -72,7 +75,7 @@ async function checkAiStatus() {
 
     try {
         const res = await fetch(`${CHAT_API}/chatbot/status/`, {
-            headers: { 'Authorization': `Token ${token}` },
+            headers: authHeader ? { 'Authorization': authHeader } : {},
             signal:  controller.signal,
         });
         clearTimeout(timeout);
@@ -159,12 +162,12 @@ function sendQuickMessage(text) {
 }
 
 async function callBackend(message) {
-    const token = localStorage.getItem('djangoAuthToken');
-    if (!token) throw new Error('401 — not authenticated');
+    const authHeader = window._pageAuthHeader ? window._pageAuthHeader() : null;
+    if (!authHeader) throw new Error('401 — not authenticated');
 
     const res = await fetch(`${CHAT_API}/chatbot/chat/`, {
         method:  'POST',
-        headers: { 'Authorization': `Token ${token}`, 'Content-Type': 'application/json' },
+        headers: { ...(authHeader ? { 'Authorization': authHeader } : {}), 'Content-Type': 'application/json' },
         body:    JSON.stringify({ message, conversation_id: conversationId || undefined }),
     });
 
@@ -265,13 +268,13 @@ async function stopRecording() {
 }
 
 async function transcribeAudio(blob) {
-    const token   = localStorage.getItem('djangoAuthToken');
+    const authHeader = window._pageAuthHeader ? window._pageAuthHeader() : null;
     const formData = new FormData();
     formData.append('audio', blob, `voice_${Date.now()}.webm`);
 
     const res = await fetch(`${CHAT_API}/chatbot/transcribe/`, {
         method:  'POST',
-        headers: { 'Authorization': `Token ${token}` },
+        headers: authHeader ? { 'Authorization': authHeader } : {},
         body:    formData,
     });
 
@@ -384,7 +387,7 @@ async function sendMediaMessage(message, file) {
     setWaiting(true);
 
     try {
-        const token    = localStorage.getItem('djangoAuthToken');
+        const authHeader = window._pageAuthHeader ? window._pageAuthHeader() : null;
         const formData = new FormData();
         if (message) formData.append('message', message);
 
@@ -399,7 +402,7 @@ async function sendMediaMessage(message, file) {
 
         const res = await fetch(`${CHAT_API}/chatbot/media-chat/`, {
             method:  'POST',
-            headers: { 'Authorization': `Token ${token}` },
+            headers: authHeader ? { 'Authorization': authHeader } : {},
             body:    formData,
         });
 
@@ -545,9 +548,9 @@ function hideWelcome() {
 
 // ── History ────────────────────────────────────────────────────────────────
 async function loadHistory() {
-    const token = localStorage.getItem('djangoAuthToken');
+    const authHeader = window._pageAuthHeader ? window._pageAuthHeader() : null;
     try {
-        const res  = await fetch(`${CHAT_API}/chatbot/history/`, { headers: { 'Authorization': `Token ${token}` } });
+        const res  = await fetch(`${CHAT_API}/chatbot/history/`, { headers: authHeader ? { 'Authorization': authHeader } : {} });
         if (!res.ok) return;
         const data = await res.json();
         const conv = data?.conversations?.[0];

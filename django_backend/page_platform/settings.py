@@ -93,9 +93,9 @@ DATABASES = {
 AUTH_USER_MODEL = 'users.User'
 
 AUTHENTICATION_BACKENDS = [
-    # Firebase ID-token auth (used when Firebase is configured)
+    # Firebase ID-token auth — primary mechanism (no database needed)
     'users.firebase_auth_backend.FirebaseAuthenticationBackend',
-    # Email OR username login (case-insensitive) — used by the legacy login view
+    # Email OR username login — legacy fallback (requires database)
     'users.backends.EmailOrUsernameBackend',
     # Fallback — required by Django admin
     'django.contrib.auth.backends.ModelBackend',
@@ -111,6 +111,9 @@ AUTH_PASSWORD_VALIDATORS = [
 # ─── REST Framework ───────────────────────────────────────────────────────────
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
+        # Firebase ID-token auth — works even when the database is down
+        'users.firebase_token_auth.FirebaseTokenAuthentication',
+        # DRF token auth — used when a DRF token was issued (DB available)
         'rest_framework.authentication.TokenAuthentication',
         'rest_framework.authentication.SessionAuthentication',
     ],

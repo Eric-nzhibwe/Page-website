@@ -423,8 +423,7 @@ function discardVoiceRecording() {
 function postVoiceRecording() {
     if (!_voiceBlob) return;
 
-    const token   = localStorage.getItem('djangoAuthToken');
-    const caption = (document.getElementById('voiceCaption')?.value || '').trim();
+    const token = (window._pageIsAuthed ? window._pageIsAuthed() : false) || localStorage.getItem('djangoAuthToken');
     if (!token) {
         _feedToast('Sign in to post a voice message.', 'error');
         return;
@@ -646,7 +645,7 @@ function publishPost() {
         return;
     }
 
-    const token = localStorage.getItem('djangoAuthToken');
+    const token = (window._pageIsAuthed ? window._pageIsAuthed() : false) || localStorage.getItem('djangoAuthToken');
     if (!token) { _feedToast('Sign in to publish a post.', 'error'); return; }
 
     const btn = document.querySelector('#createPostModal .btn-post');
@@ -726,9 +725,14 @@ function publishPost() {
  * Works for any endpoint — posts, voice notes, stories.
  */
 function _uploadForm(url, formData, token, { onProgress, onDone, onError }) {
+    // Use the global auth helper if available (supports Firebase token), 
+    // otherwise fall back to the passed DRF token.
+    const authHeader = window._pageAuthHeader
+        ? window._pageAuthHeader()
+        : (token ? `Token ${token}` : null);
     const xhr = new XMLHttpRequest();
     xhr.open('POST', url, true);
-    xhr.setRequestHeader('Authorization', `Token ${token}`);
+    if (authHeader) xhr.setRequestHeader('Authorization', authHeader);
     xhr.timeout = 120000;
 
     xhr.upload.onprogress = e => {
@@ -1005,13 +1009,13 @@ function showPostMenu(postId, event) {
 function deletePost(postId) {
     if (!confirm('Delete this post?')) return;
 
-    const token = localStorage.getItem('djangoAuthToken');
+    const authHeader = window._pageAuthHeader ? window._pageAuthHeader() : null;
     const API   = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
         ? 'http://localhost:8000/api' : `${window.location.origin}/api`;
-    if (token) {
+    if (authHeader) {
         fetch(`${API}/social/posts/${postId}/`, {
             method:  'DELETE',
-            headers: { 'Authorization': `Token ${token}` }
+            headers: { 'Authorization': authHeader }
         }).catch(() => {});
     }
 
@@ -1062,7 +1066,7 @@ function createStory() {
         const file = e.target.files[0];
         if (!file) return;
 
-        const token = localStorage.getItem('djangoAuthToken');
+        const token = (window._pageIsAuthed ? window._pageIsAuthed() : false) || localStorage.getItem('djangoAuthToken');
         if (!token) { _feedToast('Sign in to share a story.', 'error'); return; }
 
         const isVideo   = file.type.startsWith('video/');
@@ -1285,12 +1289,13 @@ async function loadRealFeed(page = 1) {
     if (_feedLoading || _feedExhausted) return;
     _feedLoading = true;
 
-    const token = localStorage.getItem('djangoAuthToken');
+    const authHeader = window._pageAuthHeader ? window._pageAuthHeader() : null;
+    const token = authHeader ? authHeader : localStorage.getItem('djangoAuthToken');
     if (!token) { _feedLoading = false; return; }
 
     try {
         const res  = await fetch(`${_SOCIAL_API}/posts/?page=${page}`, {
-            headers: { 'Authorization': `Token ${token}` }
+            headers: authHeader ? { 'Authorization': authHeader } : { 'Authorization': `Token ${token}` }
         });
         if (!res.ok) throw new Error(res.status);
         const data = await res.json();
@@ -1449,8 +1454,8 @@ function _appendPostCard(post, container) {
 const _STORY_CACHE_KEY = 'page_stories_cache';
 
 async function loadRealStories() {
-    const token = localStorage.getItem('djangoAuthToken');
-    if (!token) return;
+    const authHeader = window._pageAuthHeader ? window._pageAuthHeader() : null;
+    if (!authHeader) return;
 
     const container = document.querySelector('.stories-container');
     if (!container) return;
@@ -1463,7 +1468,7 @@ async function loadRealStories() {
 
     try {
         const res = await fetch(`${_SOCIAL_API}/stories/feed/`, {
-            headers: { 'Authorization': `Token ${token}` }
+            headers: { 'Authorization': authHeader }
         });
         if (!res.ok) throw new Error(res.status);
         const stories = await res.json();

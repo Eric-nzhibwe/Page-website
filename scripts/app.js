@@ -5,6 +5,21 @@ const API_BASE_URL = (window.location.hostname === 'localhost' || window.locatio
     ? 'http://localhost:8000/api'
     : `${window.location.origin}/api`;
 
+// ── Auth helper — Firebase token takes priority over DRF token ───────────────
+// Call this instead of reading djangoAuthToken directly so Firebase-only
+// sessions (no database) keep working.
+function _appAuthHeader() {
+    if (window._pageAuthHeader) return window._pageAuthHeader();
+    const fb  = localStorage.getItem('firebaseIdToken');
+    const drf = localStorage.getItem('djangoAuthToken') || localStorage.getItem('authToken');
+    if (fb)  return `FirebaseToken ${fb}`;
+    if (drf) return `Token ${drf}`;
+    return null;
+}
+function _appIsAuthed() {
+    return !!_appAuthHeader();
+}
+
 // Current User Data (loaded from Django backend)
 let currentUser = null;
 
@@ -178,30 +193,31 @@ function clearOldLocalStorageData() {
 
 // Load current user from Django backend
 async function loadCurrentUser() {
-    const token = localStorage.getItem('djangoAuthToken');
-    
-    if (!token) {
+    const authHeader = _appAuthHeader();
+
+    if (!authHeader) {
         console.log('No auth token found');
         return null;
     }
-    
+
     try {
         const response = await fetch(`${API_BASE_URL}/auth/profile/`, {
             method: 'GET',
             headers: {
-                'Authorization': `Token ${token}`,
+                'Authorization': authHeader,
                 'Content-Type': 'application/json'
             }
         });
-        
+
         if (response.ok) {
             currentUser = await response.json();
             console.log('User loaded from Django backend:', currentUser);
             return currentUser;
         } else {
-            // Invalid token, remove it
+            // Invalid token — clear DRF token but keep Firebase token
+            // (Firebase token may still be valid but backend returned 401)
             localStorage.removeItem('djangoAuthToken');
-            console.log('Invalid auth token removed');
+            console.log('Invalid auth token, cleared DRF token');
             return null;
         }
     } catch (error) {
@@ -416,11 +432,11 @@ function updateAccessTierFeatures() {
 // Load leaderboard from Django backend
 async function loadLeaderboard() {
     try {
-        const token = localStorage.getItem('djangoAuthToken');
+        const authHeader = _appAuthHeader();
         const response = await fetch(`${API_BASE_URL}/tournaments/leaderboard/`, {
             method: 'GET',
             headers: {
-                'Authorization': `Token ${token}`,
+                ...(authHeader ? { 'Authorization': authHeader } : {}),
                 'Content-Type': 'application/json'
             }
         });
@@ -695,11 +711,11 @@ async function submitAnswer() {
     }
     
     try {
-        const token = localStorage.getItem('djangoAuthToken');
+        const authHeader = _appAuthHeader();
         const response = await fetch(`${API_BASE_URL}/auth/submit-answer/`, {
             method: 'POST',
             headers: {
-                'Authorization': `Token ${token}`,
+                ...(authHeader ? { 'Authorization': authHeader } : {}),
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
@@ -901,11 +917,11 @@ window.viewProfile = viewProfile;
 
 // Load user profile for navbar display (used by messenger and other pages)
 async function loadUserProfile() {
-    const token = localStorage.getItem('djangoAuthToken');
-    if (!token) return;
+    const authHeader = _appAuthHeader();
+    if (!authHeader) return;
     try {
         const res = await fetch(`${API_BASE_URL}/auth/profile/`, {
-            headers: { 'Authorization': `Token ${token}` }
+            headers: { 'Authorization': authHeader }
         });
         if (res.ok) {
             const user = await res.json();
@@ -1017,17 +1033,17 @@ function closeMessenger() {
 // Load Conversations from Backend
 async function loadConversations() {
     const conversationsList = document.getElementById('conversationsList');
-    const token = localStorage.getItem('djangoAuthToken');
-    
-    if (!token) {
+    const authHeader = _appAuthHeader();
+
+    if (!authHeader) {
         console.error('No auth token found');
         return;
     }
-    
+
     try {
         const response = await fetch(`${API_BASE_URL}/messenger/conversations/`, {
             headers: {
-                'Authorization': `Token ${token}`,
+                'Authorization': authHeader,
                 'Content-Type': 'application/json'
             }
         });
@@ -1430,14 +1446,14 @@ setInterval(simulateIncomingMessage, 30000);
 
 // Load wallet balance and display in header
 async function loadWalletBalance() {
-    const token = localStorage.getItem('djangoAuthToken');
-    
-    if (!token) return;
-    
+    const authHeader = _appAuthHeader();
+
+    if (!authHeader) return;
+
     try {
         const response = await fetch(`${API_BASE_URL}/payments/wallet/`, {
             headers: {
-                'Authorization': `Token ${token}`,
+                'Authorization': authHeader,
                 'Content-Type': 'application/json'
             }
         });

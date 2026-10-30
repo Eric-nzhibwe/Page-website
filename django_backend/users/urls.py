@@ -8,6 +8,8 @@ urlpatterns = [
     # ── Google Identity Services OAuth ────────────────────────────────────────
     # Frontend POSTs the signed JWT from Google's sign-in button here.
     path('google-login/', views.google_login_view, name='google-login'),
+    # Returns the public Google OAuth Client ID (read from env — never hardcoded in HTML)
+    path('google-config/', views.google_config_view, name='google-config'),
 
     # ── Firebase Auth ──────────────────────────────────────────────────────
     # Frontend exchanges a Firebase ID token for a DRF token

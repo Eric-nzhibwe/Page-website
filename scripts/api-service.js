@@ -12,11 +12,12 @@ class APIService {
     constructor() {
         // Use djangoAuthToken (written by auth.js/otp.js) with authToken as fallback for legacy sessions
         this.token = localStorage.getItem('djangoAuthToken') || localStorage.getItem('authToken') || null;
+        this.firebaseToken = localStorage.getItem('firebaseIdToken') || null;
         this.baseURL = API_BASE_URL;
     }
 
     /**
-     * Set authentication token
+     * Set authentication token (DRF token)
      */
     setToken(token) {
         this.token = token;
@@ -24,18 +25,60 @@ class APIService {
     }
 
     /**
-     * Get authentication headers
+     * Set Firebase ID token (for FirebaseToken auth)
+     */
+    setFirebaseToken(token) {
+        this.firebaseToken = token;
+        if (token) {
+            localStorage.setItem('firebaseIdToken', token);
+        } else {
+            localStorage.removeItem('firebaseIdToken');
+        }
+    }
+
+    /**
+     * Get authentication headers.
+     *
+     * Priority:
+     *   1. Firebase ID token  → Authorization: FirebaseToken <token>
+     *   2. DRF token          → Authorization: Token <token>
+     *
+     * Firebase token takes priority because it works even when the
+     * Django database is unavailable (Render free tier / suspended Postgres).
      */
     getHeaders(includeAuth = true) {
         const headers = {
             'Content-Type': 'application/json',
         };
 
-        if (includeAuth && this.token) {
-            headers['Authorization'] = `Token ${this.token}`;
+        if (includeAuth) {
+            // Always read the freshest tokens from storage
+            this.firebaseToken = localStorage.getItem('firebaseIdToken') || this.firebaseToken;
+            this.token = localStorage.getItem('djangoAuthToken')
+                      || localStorage.getItem('authToken')
+                      || this.token;
+
+            if (this.firebaseToken) {
+                headers['Authorization'] = `FirebaseToken ${this.firebaseToken}`;
+            } else if (this.token) {
+                headers['Authorization'] = `Token ${this.token}`;
+            }
         }
 
         return headers;
+    }
+
+    /**
+     * Get the best available auth header string.
+     */
+    _authHeader() {
+        this.firebaseToken = localStorage.getItem('firebaseIdToken') || this.firebaseToken;
+        this.token = localStorage.getItem('djangoAuthToken')
+                  || localStorage.getItem('authToken')
+                  || this.token;
+        if (this.firebaseToken) return `FirebaseToken ${this.firebaseToken}`;
+        if (this.token) return `Token ${this.token}`;
+        return null;
     }
 
     /**
@@ -47,8 +90,11 @@ class APIService {
     async request(endpoint, options = {}) {
         const url = `${this.baseURL}${endpoint}`;
 
-        // Always read the freshest token from storage — the constructor may have
+        // Always read the freshest tokens from storage — the constructor may have
         // run before login completed, and stale null tokens cause silent 401s.
+        this.firebaseToken = localStorage.getItem('firebaseIdToken')
+                           || this.firebaseToken
+                           || null;
         this.token = localStorage.getItem('djangoAuthToken')
                   || localStorage.getItem('authToken')
                   || this.token
@@ -314,10 +360,11 @@ class APIService {
      * Create a new challenge with image upload (multipart/form-data).
      */
     createChallenge(formData) {
+        const auth = this._authHeader();
         return this.request('/challenges/', {
             method: 'POST',
             body: formData,
-            headers: this.token ? { 'Authorization': `Token ${this.token}` } : {},
+            headers: auth ? { 'Authorization': auth } : {},
         });
     }
 
@@ -325,9 +372,10 @@ class APIService {
      * Publish (activate) a draft challenge. Only the creator can do this.
      */
     publishChallenge(challengeId) {
+        const auth = this._authHeader();
         return this.request(`/challenges/${challengeId}/publish/`, {
             method: 'POST',
-            headers: this.token ? { 'Authorization': `Token ${this.token}`, 'Content-Type': 'application/json' } : {},
+            headers: auth ? { 'Authorization': auth, 'Content-Type': 'application/json' } : {},
         });
     }
 
@@ -335,9 +383,10 @@ class APIService {
      * Unpublish (pause) an active challenge. Only the creator can do this.
      */
     unpublishChallenge(challengeId) {
+        const auth = this._authHeader();
         return this.request(`/challenges/${challengeId}/unpublish/`, {
             method: 'POST',
-            headers: this.token ? { 'Authorization': `Token ${this.token}`, 'Content-Type': 'application/json' } : {},
+            headers: auth ? { 'Authorization': auth, 'Content-Type': 'application/json' } : {},
         });
     }
 
@@ -345,9 +394,10 @@ class APIService {
      * Permanently delete a challenge. Only the creator can do this.
      */
     deleteChallenge(challengeId) {
+        const auth = this._authHeader();
         return this.request(`/challenges/${challengeId}/`, {
             method: 'DELETE',
-            headers: this.token ? { 'Authorization': `Token ${this.token}` } : {},
+            headers: auth ? { 'Authorization': auth } : {},
         });
     }
 
@@ -356,9 +406,10 @@ class APIService {
      * type: 'polls' | 'debates' | 'qa'
      */
     deleteSocialChallenge(type, challengeId) {
+        const auth = this._authHeader();
         return this.request(`/challenges/${type}/${challengeId}/delete/`, {
             method: 'DELETE',
-            headers: this.token ? { 'Authorization': `Token ${this.token}` } : {},
+            headers: auth ? { 'Authorization': auth } : {},
         });
     }
 
@@ -375,16 +426,47 @@ class APIService {
      * Upload user content for community review (multipart/form-data).
      */
     uploadContent(formData) {
+        const auth = this._authHeader();
         return this.request('/social/posts/', {
             method: 'POST',
             body: formData,
-            headers: this.token ? { 'Authorization': `Token ${this.token}` } : {},
+            headers: auth ? { 'Authorization': auth } : {},
         });
     }
 }
 
 // Create global instance
 const apiService = new APIService();
+
+// ── Global auth helpers — usable by any script on the page ──────────────────
+// Returns the best available Authorization header value (Firebase token first,
+// DRF token fallback) or null when no token is stored.
+window._pageAuthHeader = function () {
+    const fbToken = localStorage.getItem('firebaseIdToken');
+    if (fbToken) return `FirebaseToken ${fbToken}`;
+    const token = localStorage.getItem('djangoAuthToken') || localStorage.getItem('authToken');
+    if (token) return `Token ${token}`;
+    return null;
+};
+
+// Returns true if the user has any auth token stored.
+window._pageIsAuthed = function () {
+    return !!(localStorage.getItem('firebaseIdToken')
+           || localStorage.getItem('djangoAuthToken')
+           || localStorage.getItem('authToken'));
+};
+
+// Logout helper — clears all stored tokens and redirects to auth page.
+window._pageLogout = function () {
+    localStorage.removeItem('djangoAuthToken');
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('token');
+    localStorage.removeItem('firebaseIdToken');
+    localStorage.removeItem('pageUser');
+    localStorage.removeItem('user');
+    localStorage.removeItem('authSource');
+    window.location.href = 'pages/auth.html';
+};
 
 // Export for use in other scripts
 if (typeof module !== 'undefined' && module.exports) {

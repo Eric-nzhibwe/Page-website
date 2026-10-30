@@ -99,8 +99,11 @@ async function initFirebase() {
 }
 
 function getAuthHeaders() {
-    const token = localStorage.getItem('djangoAuthToken');
-    return token ? { 'Authorization': `Token ${token}` } : {};
+    const fbToken  = localStorage.getItem('firebaseIdToken');
+    const drfToken = localStorage.getItem('djangoAuthToken');
+    if (fbToken)  return { 'Authorization': `FirebaseToken ${fbToken}` };
+    if (drfToken) return { 'Authorization': `Token ${drfToken}` };
+    return {};
 }
 
 // ── Boot ──────────────────────────────────────────────────────
@@ -226,6 +229,23 @@ function runSplash() {
 
 // ── Already logged in? Skip the auth page ────────────────────
 async function checkAuthStatus() {
+    // Check for Firebase ID token first (Firebase-only mode)
+    const fbToken = localStorage.getItem('firebaseIdToken');
+    if (fbToken) {
+        try {
+            const res = await fetchWithTimeout(`${API_BASE_URL}/auth/profile/`, {
+                headers: { 'Authorization': `FirebaseToken ${fbToken}` }
+            }, 5000);
+            if (res.ok) {
+                window.location.href = '../index.html';
+                return;
+            }
+        } catch {
+            // Firebase token might be expired — fall through to DRF token check
+        }
+    }
+
+    // Check for DRF token (legacy / full-DB mode)
     const token = localStorage.getItem('djangoAuthToken');
     if (!token) return;
     try {
@@ -506,16 +526,37 @@ async function _registerWithFirebase(email, password, username) {
 // ─────────────────────────────────────────────────────────────
 
 async function _exchangeFirebaseToken(idToken) {
-    // Primary: exchange Firebase token for Django DRF token (needs Postgres)
+    // Primary: exchange Firebase token for Django DRF token (needs DB)
+    // The response now always includes firebase_token so the frontend
+    // can use FirebaseToken auth for subsequent API calls even if the
+    // DRF token wasn't issued (DB unavailable).
     try {
         const res  = await fetchWithTimeout(`${API_BASE_URL}/auth/firebase-login/`, {
             method:  'POST',
             headers: { 'Content-Type': 'application/json' },
             body:    JSON.stringify({ firebase_token: idToken }),
-        }, 8000); // reduced from 15s
+        }, 8000);
         const data = await res.json().catch(() => ({}));
 
-        if (res.ok) return { success: true, token: data.token, user: data.user };
+        if (res.ok) {
+            // Store the Firebase ID token regardless of whether a DRF token was issued
+            if (data.firebase_token) {
+                localStorage.setItem('firebaseIdToken', data.firebase_token);
+            }
+            // Full mode — DRF token + serialized user
+            if (data.token) {
+                return { success: true, token: data.token, user: data.user };
+            }
+            // Firebase-only mode — no DRF token, but we have the Firebase token + user
+            if (data.user) {
+                return {
+                    success: true,
+                    token:   null,       // no DRF token
+                    user:    data.user,
+                    source:  data.source || 'firestore',
+                };
+            }
+        }
 
         // 503 with fallback:true means Firebase isn't configured server-side
         if (res.status === 503 && data.fallback === true) {
@@ -536,12 +577,12 @@ async function _exchangeFirebaseToken(idToken) {
             method:  'POST',
             headers: { 'Content-Type': 'application/json' },
             body:    JSON.stringify({ firebase_token: idToken }),
-        }, 6000); // reduced from 12s
+        }, 6000);
         const data = await res.json().catch(() => ({}));
 
         if (res.ok && data.user) {
-            // No DRF token available — store Firebase token as the auth credential
-            // The user can browse but actions needing the DB will gracefully degrade
+            // Store the Firebase ID token for FirebaseToken auth
+            localStorage.setItem('firebaseIdToken', idToken);
             return {
                 success: true,
                 token:   null,          // no DRF token
@@ -556,11 +597,14 @@ async function _exchangeFirebaseToken(idToken) {
 
 async function _patchUsername(token, username) {
     try {
+        const authHeader = token ? `Token ${token}` :
+            (localStorage.getItem('firebaseIdToken') ? `FirebaseToken ${localStorage.getItem('firebaseIdToken')}` : null);
+        if (!authHeader) return;
         await fetchWithTimeout(`${API_BASE_URL}/auth/profile/`, {
             method:  'PATCH',
             headers: {
                 'Content-Type':  'application/json',
-                'Authorization': `Token ${token}`,
+                'Authorization': authHeader,
             },
             body: JSON.stringify({ username }),
         }, 8000);
@@ -571,6 +615,15 @@ function _storeSession(token, user, source) {
     if (token) {
         localStorage.setItem('djangoAuthToken', token);
         localStorage.setItem('token', token);
+    }
+    // Always store the Firebase ID token if available — it works even
+    // when the Django database is unavailable (FirebaseToken auth).
+    const fbToken = localStorage.getItem('firebaseIdToken');
+    if (fbToken) {
+        // Already stored by _exchangeFirebaseToken — just make sure apiService picks it up
+        if (typeof apiService !== 'undefined' && apiService.setFirebaseToken) {
+            apiService.setFirebaseToken(fbToken);
+        }
     }
     if (user) {
         localStorage.setItem('pageUser', JSON.stringify(user));

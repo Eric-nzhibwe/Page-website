@@ -290,13 +290,13 @@ class StoryViewer {
 
         if (liked) {
             // Call the react endpoint — records reaction + sends notification to author
-            const token = localStorage.getItem('djangoAuthToken');
+            const authHeader = window._pageAuthHeader ? window._pageAuthHeader() : null;
             const API   = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
                 ? 'http://localhost:8000/api' : `${location.origin}/api`;
             try {
                 await fetch(`${API}/social/stories/${story.id}/react/`, {
                     method:  'POST',
-                    headers: { 'Authorization': `Token ${token}`, 'Content-Type': 'application/json' },
+                    headers: { ...(authHeader ? { 'Authorization': authHeader } : {}), 'Content-Type': 'application/json' },
                     body:    JSON.stringify({ reaction: '❤️' }),
                 });
             } catch { /* silent */ }
@@ -314,7 +314,7 @@ class StoryViewer {
         const story = this.stories[this.currentIndex];
         if (!story) return;
 
-        const token = localStorage.getItem('djangoAuthToken');
+        const authHeader = window._pageAuthHeader ? window._pageAuthHeader() : null;
         const API   = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
             ? 'http://localhost:8000/api' : `${location.origin}/api`;
 
@@ -322,7 +322,7 @@ class StoryViewer {
         try {
             const res = await fetch(`${API}/social/stories/${story.id}/reply/`, {
                 method:  'POST',
-                headers: { 'Authorization': `Token ${token}`, 'Content-Type': 'application/json' },
+                headers: { ...(authHeader ? { 'Authorization': authHeader } : {}), 'Content-Type': 'application/json' },
                 body:    JSON.stringify({ message: msg }),
             });
             if (res.ok) {
@@ -338,8 +338,8 @@ class StoryViewer {
 
     async _sendInboxMessage(story, message) {
         if (!message) return false;
-        const token = localStorage.getItem('djangoAuthToken');
-        if (!token) return false;
+        const authHeader = window._pageAuthHeader ? window._pageAuthHeader() : null;
+        if (!authHeader) return false;
 
         const API = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
             ? 'http://localhost:8000/api'
@@ -349,7 +349,7 @@ class StoryViewer {
             // Find or create a conversation with the story author, then send the message
             const convRes = await fetch(`${API}/messenger/conversations/`, {
                 method:  'POST',
-                headers: { 'Authorization': `Token ${token}`, 'Content-Type': 'application/json' },
+                headers: { 'Authorization': authHeader, 'Content-Type': 'application/json' },
                 body:    JSON.stringify({ recipient_id: story.author?.id }),
             });
             if (!convRes.ok) return false;
@@ -359,7 +359,7 @@ class StoryViewer {
             const prefix = `💬 Story reply: `;
             const msgRes = await fetch(`${API}/messenger/conversations/${convId}/messages/`, {
                 method:  'POST',
-                headers: { 'Authorization': `Token ${token}`, 'Content-Type': 'application/json' },
+                headers: { 'Authorization': authHeader, 'Content-Type': 'application/json' },
                 body:    JSON.stringify({ text: prefix + message }),
             });
             return msgRes.ok;
@@ -385,26 +385,26 @@ class StoryViewer {
     // ── Mark viewed ─────────────────────────────────────────────────
     async _markViewed(storyId) {
         if (!storyId) return;
-        const token = localStorage.getItem('djangoAuthToken');
-        if (!token) return;
+        const authHeader = window._pageAuthHeader ? window._pageAuthHeader() : null;
+        if (!authHeader) return;
         const API = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
             ? 'http://localhost:8000/api' : `${location.origin}/api`;
         try {
             const res = await fetch(`${API}/social/stories/${storyId}/view/`, {
                 method: 'POST',
-                headers: { 'Authorization': `Token ${token}`, 'Content-Type': 'application/json' },
+                headers: { 'Authorization': authHeader, 'Content-Type': 'application/json' },
             });
             if (res.ok) {
                 // Refresh viewer count and list after marking viewed
-                this._loadViewers(storyId, API, token);
+                this._loadViewers(storyId, API, authHeader);
             }
         } catch { /* silent */ }
     }
 
-    async _loadViewers(storyId, API, token) {
+    async _loadViewers(storyId, API, authHeader) {
         try {
             const res = await fetch(`${API}/social/stories/${storyId}/viewers/`, {
-                headers: { 'Authorization': `Token ${token}` },
+                headers: { 'Authorization': authHeader },
             });
             if (!res.ok) return;
             const viewers = await res.json();

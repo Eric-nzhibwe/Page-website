@@ -19,9 +19,11 @@ const _RT_BASE = (
   : `${window.location.origin}/api`;
 
 function _rtHeaders() {
+    const authHeader = window._pageAuthHeader ? window._pageAuthHeader() : null;
     const token = localStorage.getItem('djangoAuthToken');
     const h = { 'Content-Type': 'application/json' };
-    if (token) h['Authorization'] = `Token ${token}`;
+    if (authHeader) h['Authorization'] = authHeader;
+    else if (token) h['Authorization'] = `Token ${token}`;
     return h;
 }
 
@@ -637,7 +639,7 @@ function _wsBase() {
 }
 
 async function _connectNotifWs() {
-    const token = localStorage.getItem('djangoAuthToken');
+    const token = localStorage.getItem('djangoAuthToken') || localStorage.getItem('firebaseIdToken');
     if (!token || _notifWsDisabled) return;
 
     if (_notifWs && (_notifWs.readyState === WebSocket.OPEN || _notifWs.readyState === WebSocket.CONNECTING)) return;
@@ -836,7 +838,7 @@ async function _pollNotifications() {
 //  INIT
 // ─────────────────────────────────────────────────────────────────────────────
 async function _initRealtimeUpdates() {
-    const token = localStorage.getItem('djangoAuthToken');
+    const token = localStorage.getItem('djangoAuthToken') || localStorage.getItem('firebaseIdToken');
     if (!token) return; // Not logged in — nothing to do
 
     // ── 1. Check whether the server supports WebSockets before connecting ─────
@@ -1285,7 +1287,7 @@ function _startStatsPoller() {
 
 (function _extendRealtime() {
     const start = () => {
-        const token = localStorage.getItem('djangoAuthToken');
+        const token = localStorage.getItem('djangoAuthToken') || localStorage.getItem('firebaseIdToken');
         if (!token) return;
         _startStatsPoller();
 

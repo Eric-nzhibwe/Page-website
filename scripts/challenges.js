@@ -140,12 +140,17 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
 function checkAuth() {
-    const token = localStorage.getItem('djangoAuthToken') || localStorage.getItem('authToken');
+    // Check for any auth token (Firebase or DRF)
+    const hasToken = window._pageIsAuthed ? window._pageIsAuthed() :
+        !!(localStorage.getItem('djangoAuthToken') || localStorage.getItem('authToken') || localStorage.getItem('firebaseIdToken'));
     // Support both old pageUser key and the current pageUser object
     const userRaw = localStorage.getItem('pageUser') || localStorage.getItem('pageUser');
     currentUserId = userRaw ? (JSON.parse(userRaw)?.id || userRaw) : null;
-    if (token) apiService.setToken(token);
-    return currentUserId !== null && token !== null;
+    const drfToken = localStorage.getItem('djangoAuthToken') || localStorage.getItem('authToken');
+    if (drfToken) apiService.setToken(drfToken);
+    const fbToken = localStorage.getItem('firebaseIdToken');
+    if (fbToken && apiService.setFirebaseToken) apiService.setFirebaseToken(fbToken);
+    return currentUserId !== null && hasToken;
 }
 
 function loadPlayerData() {
@@ -168,11 +173,16 @@ function updateHeaderUI() {
 
 function logout() {
     if (confirm('Logout?')) {
-        localStorage.removeItem('djangoAuthToken');
-        localStorage.removeItem('authToken');
-        localStorage.removeItem('pageUser');
-        localStorage.removeItem('pageUser');
-        window.location.href = '/pages/auth.html';
+        if (window._pageLogout) {
+            window._pageLogout();
+        } else {
+            localStorage.removeItem('djangoAuthToken');
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('firebaseIdToken');
+            localStorage.removeItem('pageUser');
+            localStorage.removeItem('user');
+            window.location.href = '/pages/auth.html';
+        }
     }
 }
 
@@ -1434,6 +1444,29 @@ function _currentUsername() {
     try { return JSON.parse(localStorage.getItem('pageUser') || '{}').username || ''; } catch { return ''; }
 }
 
+function _creatorAvatarHTML(creator, size = 32) {
+    /* Renders a profile photo <img> or an fa-user icon fallback.
+       `creator` shape: { username, avatar_url, display_name, id } — or just a plain string username. */
+    if (!creator) return `<span class="sc-avatar-icon"><i class="fas fa-user"></i></span>`;
+
+    const username    = (typeof creator === 'string') ? creator : (creator.username || '?');
+    const avatarUrl   = (typeof creator === 'object') ? (creator.avatar_url || '') : '';
+    const displayName = (typeof creator === 'object') ? (creator.display_name || username) : username;
+    const userId      = (typeof creator === 'object') ? (creator.id || '') : '';
+    const profileHref = userId ? `user.html?id=${encodeURIComponent(userId)}` : `user.html?username=${encodeURIComponent(username)}`;
+
+    if (avatarUrl) {
+        return `<a href="${profileHref}" class="sc-creator-link" title="${escHtml(displayName)}">
+            <img src="${escHtml(avatarUrl)}" alt="${escHtml(displayName)}"
+                 class="sc-avatar-img" width="${size}" height="${size}"
+                 onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'sc-avatar-icon',innerHTML:'<i class=\\'fas fa-user\\'></i>'}))">
+        </a>`;
+    }
+    return `<a href="${profileHref}" class="sc-creator-link" title="${escHtml(displayName)}">
+        <span class="sc-avatar-icon"><i class="fas fa-user"></i></span>
+    </a>`;
+}
+
 function _renderDebateCard(c) {
     const dur = _fmtDur(c.duration_days);
     const sideA = escHtml(c.side_a || 'For');
@@ -1444,10 +1477,15 @@ function _renderDebateCard(c) {
     const deleteBtn = isOwner
         ? `<button class="social-card-delete-btn" onclick="deleteSocialChallenge('debates','${id}','${escHtml(c.title)}')" title="Delete challenge"><i class="fas fa-trash"></i></button>`
         : '';
+    const avatarHTML = _creatorAvatarHTML(c.creator || c.created_by);
+    const detailUrl  = `challenge.html?id=${encodeURIComponent(id)}&type=debate`;
 
     return `<div class="challenge-card" data-status="active" data-category="debates" data-id="${id}">
         <div class="debate-card-header">
-            <span class="debate-type-label"><i class="fas fa-gavel"></i> Debate</span>
+            <div style="display:flex;align-items:center;gap:8px;">
+                ${avatarHTML}
+                <span class="sc-creator-name"><a href="${c.creator?.id ? `user.html?id=${encodeURIComponent(c.creator.id)}` : `user.html?username=${encodeURIComponent(c.created_by)}`}" class="sc-creator-name-link">${escHtml(c.creator?.display_name || c.created_by)}</a></span>
+            </div>
             <span style="font-size:11px;color:#888;">${dur}</span>
         </div>
         <!-- Clickable title area opens the live modal -->
@@ -1502,6 +1540,7 @@ function _renderDebateCard(c) {
             </div>
         </div>
         <div class="debate-card-footer">
+            <a href="${detailUrl}" class="sc-detail-link"><i class="fas fa-expand-alt"></i> Full page</a>
             <div style="display:flex;align-items:center;gap:8px;margin-left:auto;">
                 <span class="debate-joined-badge" id="debateJoinedBadge_${id}" style="display:none;font-size:11px;color:#1b7f3a;font-weight:700;">
                     <i class="fas fa-check-circle"></i> Joined
@@ -1519,6 +1558,8 @@ function _renderPollCard(c) {
     const deleteBtn = isOwner
         ? `<button class="social-card-delete-btn" onclick="deleteSocialChallenge('polls','${id}','${escHtml(c.title)}')" title="Delete poll"><i class="fas fa-trash"></i></button>`
         : '';
+    const avatarHTML = _creatorAvatarHTML(c.creator || c.created_by);
+    const detailUrl  = `challenge.html?id=${encodeURIComponent(id)}&type=poll`;
     const optionsHTML = opts.map((opt, i) => `
         <button class="poll-vote-btn" onclick="_chCastPollVote('${id}', ${i}, this)">
             <div class="poll-vote-bar" style="width:${c.vote_counts ? Math.round((c.vote_counts[i] || 0) / (c.total_votes || 1) * 100) : 0}%"></div>
@@ -1528,9 +1569,13 @@ function _renderPollCard(c) {
 
     return `<div class="challenge-card" data-status="active" data-category="polls" data-id="${id}">
         <div class="poll-header-bar">
-            <div class="poll-avatar"><span class="poll-avatar-placeholder"><i class="fas fa-poll"></i></span></div>
-            <h3 class="poll-title">${escHtml(c.title)}</h3>
+            <div style="display:flex;align-items:center;gap:8px;">
+                ${avatarHTML}
+                <span class="sc-creator-name"><a href="${c.creator?.id ? `user.html?id=${encodeURIComponent(c.creator.id)}` : `user.html?username=${encodeURIComponent(c.created_by)}`}" class="sc-creator-name-link">${escHtml(c.creator?.display_name || c.created_by)}</a></span>
+            </div>
+            <span class="poll-type-label"><i class="fas fa-poll"></i> Poll</span>
         </div>
+        <h3 class="poll-title">${escHtml(c.title)}</h3>
         <div class="poll-options-list">${optionsHTML}</div>
         <div class="poll-card-footer">
             <div class="poll-meta">
@@ -1538,6 +1583,7 @@ function _renderPollCard(c) {
                 <span><i class="fas fa-clock"></i> ${_fmtDur(c.duration_days)} left</span>
             </div>
             <div style="display:flex;align-items:center;gap:8px;">
+                <a href="${detailUrl}" class="sc-detail-link"><i class="fas fa-expand-alt"></i> Full page</a>
                 ${deleteBtn}
             </div>
         </div>
@@ -1551,6 +1597,8 @@ function _renderQACard(c) {
     const deleteBtn = isOwner
         ? `<button class="social-card-delete-btn" onclick="deleteSocialChallenge('qa','${id}','${escHtml(c.title)}')" title="Delete Q&A"><i class="fas fa-trash"></i></button>`
         : '';
+    const avatarHTML = _creatorAvatarHTML(c.creator || c.created_by);
+    const detailUrl  = `challenge.html?id=${encodeURIComponent(id)}&type=qa`;
 
     const imgSection = c.image_url ? `
         <div class="qa-img-preview-wrap" id="qaImgWrap_${id}">
@@ -1576,8 +1624,12 @@ function _renderQACard(c) {
     }).join('');
 
     return `<div class="challenge-card" data-status="active" data-category="qa" data-id="${id}">
-        <div class="qa-creator-avatar-wrap">
-            <div class="qa-creator-avatar"><i class="fas fa-question"></i></div>
+        <div class="qa-header-bar">
+            <div style="display:flex;align-items:center;gap:8px;">
+                ${avatarHTML}
+                <span class="sc-creator-name"><a href="${c.creator?.id ? `user.html?id=${encodeURIComponent(c.creator.id)}` : `user.html?username=${encodeURIComponent(c.created_by)}`}" class="sc-creator-name-link">${escHtml(c.creator?.display_name || c.created_by)}</a></span>
+            </div>
+            <span class="qa-type-label"><i class="fas fa-question-circle"></i> Q&amp;A</span>
         </div>
         <p class="qa-question">${escHtml(c.title)}</p>
         ${imgSection}
@@ -1596,6 +1648,7 @@ function _renderQACard(c) {
                 <span><i class="fas fa-clock"></i> ${_fmtDur(c.duration_days)} left</span>
             </div>
             <div style="display:flex;align-items:center;gap:8px;">
+                <a href="${detailUrl}" class="sc-detail-link"><i class="fas fa-expand-alt"></i> Full page</a>
                 ${deleteBtn}
             </div>
         </div>
@@ -1622,10 +1675,12 @@ const _CH_API = (window.location.hostname === 'localhost' || window.location.hos
     : `${window.location.origin}/api/challenges`;
 
 async function _chPost(url, body) {
-    const token = localStorage.getItem('djangoAuthToken') || localStorage.getItem('authToken') || '';
+    const authHeader = window._pageAuthHeader ? window._pageAuthHeader() : null;
+    const headers = { 'Content-Type': 'application/json' };
+    if (authHeader) headers['Authorization'] = authHeader;
     const r = await fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Token ${token}` } : {}) },
+        headers,
         body: JSON.stringify(body),
     });
     return { ok: r.ok, data: await r.json().catch(() => ({})) };
@@ -1846,9 +1901,9 @@ function _dlmLoadExistingComments(id) {
 
 async function _dlmRefreshCounts(id) {
     try {
-        const token = localStorage.getItem('djangoAuthToken') || '';
+        const authHeader = window._pageAuthHeader ? window._pageAuthHeader() : null;
         const resp = await fetch(`${_CH_API}/debates/`, {
-            headers: { Authorization: `Token ${token}` },
+            headers: authHeader ? { Authorization: authHeader } : {},
         });
         const data = await resp.json();
         const debate = (data || []).find(d => String(d.id) === String(id));
@@ -1868,11 +1923,11 @@ async function dlmJoinSide(side) {
     const btn = side === 'a' ? btnA : btnB;
     if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; }
 
-    const token = localStorage.getItem('djangoAuthToken') || '';
+    const authHeader = window._pageAuthHeader ? window._pageAuthHeader() : null;
     try {
         const r = await fetch(`${_CH_API}/debates/${_dlm.id}/join/`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: `Token ${token}` },
+            headers: { 'Content-Type': 'application/json', ...(authHeader ? { Authorization: authHeader } : {}) },
             body: JSON.stringify({ side }),
         });
         const data = await r.json();
@@ -1956,10 +2011,10 @@ async function dlmSubmitComment() {
     _dlmAddComment(username, text, _dlm.userSide, true);
     _chAddDebateComment(_dlm.id, username, text, _dlm.userSide);
 
-    const token = localStorage.getItem('djangoAuthToken') || '';
+    const authHeader = window._pageAuthHeader ? window._pageAuthHeader() : null;
     fetch(`${_CH_API}/debates/${_dlm.id}/comment/`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Token ${token}` },
+        headers: { 'Content-Type': 'application/json', ...(authHeader ? { Authorization: authHeader } : {}) },
         body: JSON.stringify({ text, side: _dlm.userSide }),
     }).catch(() => { });
 }

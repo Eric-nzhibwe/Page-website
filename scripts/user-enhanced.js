@@ -9,9 +9,17 @@ const _EH_API = (
     window.location.hostname === '127.0.0.1'
 ) ? 'http://localhost:8000/api' : `${window.location.origin}/api`;
 
-function _ehToken() { return localStorage.getItem('djangoAuthToken') || ''; }
+function _ehToken() {
+    // Prefer Firebase token if available, fall back to DRF token
+    const fbToken = localStorage.getItem('firebaseIdToken');
+    if (fbToken) return fbToken;
+    return localStorage.getItem('djangoAuthToken') || '';
+}
 function _ehHeaders() {
-    return { 'Authorization': `Token ${_ehToken()}`, 'Content-Type': 'application/json' };
+    const fbToken = localStorage.getItem('firebaseIdToken');
+    const drfToken = localStorage.getItem('djangoAuthToken');
+    const auth = fbToken ? `FirebaseToken ${fbToken}` : (drfToken ? `Token ${drfToken}` : '');
+    return { 'Authorization': auth, 'Content-Type': 'application/json' };
 }
 
 // ═══════════════════════════════════════════════════════

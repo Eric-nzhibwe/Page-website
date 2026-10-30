@@ -7,11 +7,12 @@ let submissionFiles = [];
 // ─── API helpers ────────────────────────────────────────────────────────────
 const API = '/api/challenges';
 
-// Read token using the same key auth.js writes — 'djangoAuthToken'
+// Read token using the same key auth.js writes — supports both DRF and Firebase tokens
 function getAuthToken() {
     return localStorage.getItem('djangoAuthToken')
         || localStorage.getItem('authToken')
         || localStorage.getItem('token')
+        || localStorage.getItem('firebaseIdToken')
         || '';
 }
 
@@ -20,6 +21,10 @@ function isLoggedIn() {
 }
 
 function authHeaders() {
+    const authHeader = window._pageAuthHeader ? window._pageAuthHeader() : null;
+    if (authHeader) {
+        return { 'Content-Type': 'application/json', 'Authorization': authHeader };
+    }
     const token = getAuthToken();
     return {
         'Content-Type': 'application/json',
@@ -673,10 +678,10 @@ function toggleDebateVoice(challengeId) {
             // Upload to backend (best-effort)
             const fd = new FormData();
             fd.append('audio', blob, 'voice.webm');
-            const token = getAuthToken();
+            const authHeader = window._pageAuthHeader ? window._pageAuthHeader() : null;
             fetch(`${API}/debates/${challengeId}/voice/`, {
                 method: 'POST',
-                headers: token ? { 'Authorization': `Token ${token}` } : {},
+                headers: authHeader ? { 'Authorization': authHeader } : {},
                 body: fd,
             }).catch(() => { });
         };
@@ -1012,9 +1017,9 @@ async function verifyChallengeSubmission(submission) {
 
     // For now, use client-side verification
     // In production, this should call Django backend API
-    const token = localStorage.getItem('djangoAuthToken');
+    const authHeader = window._pageAuthHeader ? window._pageAuthHeader() : null;
 
-    if (token) {
+    if (authHeader) {
         // Try to verify with backend
         try {
             const API_BASE_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
@@ -1022,7 +1027,7 @@ async function verifyChallengeSubmission(submission) {
             const response = await fetch(`${API_BASE_URL}/challenges/verify/`, {
                 method: 'POST',
                 headers: {
-                    'Authorization': `Token ${token}`,
+                    'Authorization': authHeader,
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
@@ -1078,9 +1083,9 @@ async function verifyChallengeSubmission(submission) {
 
 // Add money to wallet via backend
 async function addMoneyToWalletBackend(amount, challengeId) {
-    const token = localStorage.getItem('djangoAuthToken');
+    const authHeader = window._pageAuthHeader ? window._pageAuthHeader() : null;
 
-    if (token) {
+    if (authHeader) {
         // Add earnings via Django backend
         try {
             const API_BASE_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
@@ -1088,7 +1093,7 @@ async function addMoneyToWalletBackend(amount, challengeId) {
             const response = await fetch(`${API_BASE_URL}/payments/wallet/add-earnings/`, {
                 method: 'POST',
                 headers: {
-                    'Authorization': `Token ${token}`,
+                    'Authorization': authHeader,
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({

@@ -21,8 +21,9 @@ const ACT_META = {
 
 // ── Init ──────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
-    const token = localStorage.getItem('djangoAuthToken');
-    if (!token) { window.location.href = '/pages/auth.html'; return; }
+    const isAuthed = window._pageIsAuthed ? window._pageIsAuthed() :
+        !!(localStorage.getItem('djangoAuthToken') || localStorage.getItem('firebaseIdToken'));
+    if (!isAuthed) { window.location.href = '/pages/auth.html'; return; }
 
     // Restore saved profile photo immediately (before API responds) to avoid icon flash
     try {
@@ -51,10 +52,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 // ── Load own profile ──────────────────────────────────────────
 async function loadProfile() {
-    const token = localStorage.getItem('djangoAuthToken');
+    const authHeader = window._pageAuthHeader ? window._pageAuthHeader() : null;
     try {
         const res = await fetch(`${PROFILE_API}/auth/stats/`, {
-            headers: { 'Authorization': `Token ${token}` }
+            headers: authHeader ? { 'Authorization': authHeader } : {}
         });
         if (!res.ok) throw new Error('Failed');
         const data = await res.json();
@@ -68,7 +69,7 @@ async function loadProfile() {
 
 // ── Load another user's profile ───────────────────────────────
 async function loadOtherProfile(userId) {
-    const token = localStorage.getItem('djangoAuthToken');
+    const authHeader = window._pageAuthHeader ? window._pageAuthHeader() : null;
 
     // Hide own-profile actions, show follow button, hide settings
     const btnEdit     = document.getElementById('btnEditProfile');
@@ -84,7 +85,7 @@ async function loadOtherProfile(userId) {
         // Fetch public profile (reuse the stats endpoint with user_id param if available,
         // or fall back to discover list match)
         const res = await fetch(`${PROFILE_API}/auth/discover/?limit=100`, {
-            headers: { 'Authorization': `Token ${token}` }
+            headers: authHeader ? { 'Authorization': authHeader } : {}
         });
         if (res.ok) {
             const users = await res.json();
@@ -121,10 +122,10 @@ function renderOtherProfile(u) {
 
 // ── Load and display follow counts ───────────────────────────
 async function loadFollowCounts(userId, checkIsFollowing = false) {
-    const token = localStorage.getItem('djangoAuthToken');
+    const authHeader = window._pageAuthHeader ? window._pageAuthHeader() : null;
     try {
         const res = await fetch(`${PROFILE_API}/social/follows/counts/?user_id=${userId}`, {
-            headers: { 'Authorization': `Token ${token}` }
+            headers: authHeader ? { 'Authorization': authHeader } : {}
         });
         if (!res.ok) return;
         const data = await res.json();
@@ -157,7 +158,7 @@ function _styleProfileFollowBtn(isFollowing) {
 
 async function toggleProfileFollow() {
     if (!_profileViewedId) return;
-    const token    = localStorage.getItem('djangoAuthToken');
+    const authHeader = window._pageAuthHeader ? window._pageAuthHeader() : null;
     const endpoint = _profileIsFollowing
         ? `${PROFILE_API}/social/follows/unfollow/`
         : `${PROFILE_API}/social/follows/follow/`;
@@ -169,7 +170,7 @@ async function toggleProfileFollow() {
     try {
         const res = await fetch(endpoint, {
             method:  'POST',
-            headers: { 'Authorization': `Token ${token}`, 'Content-Type': 'application/json' },
+            headers: { ...(authHeader ? { 'Authorization': authHeader } : {}), 'Content-Type': 'application/json' },
             body:    JSON.stringify({ user_id: _profileViewedId }),
         });
         if (!res.ok) {
@@ -365,11 +366,11 @@ function renderSocial(connections) {
 
 // ── Activity ──────────────────────────────────────────────────
 async function loadActivities() {
-    const token = localStorage.getItem('djangoAuthToken');
+    const authHeader = window._pageAuthHeader ? window._pageAuthHeader() : null;
     const list  = document.getElementById('activityList');
     try {
         const res = await fetch(`${PROFILE_API}/auth/activities/`, {
-            headers: { 'Authorization': `Token ${token}` }
+            headers: authHeader ? { 'Authorization': authHeader } : {}
         });
         if (!res.ok) throw new Error('Failed');
         const data = await res.json();
@@ -423,7 +424,7 @@ function closeEditModal() {
 }
 
 async function saveProfile() {
-    const token = localStorage.getItem('djangoAuthToken');
+    const authHeader = window._pageAuthHeader ? window._pageAuthHeader() : null;
     const btn   = document.querySelector('.mbtn.primary');
     const body  = {
         display_name: document.getElementById('editDisplayName').value.trim(),
@@ -438,7 +439,7 @@ async function saveProfile() {
     try {
         const res = await fetch(`${PROFILE_API}/auth/profile/`, {
             method: 'PATCH',
-            headers: { 'Authorization': `Token ${token}`, 'Content-Type': 'application/json' },
+            headers: { ...(authHeader ? { 'Authorization': authHeader } : {}), 'Content-Type': 'application/json' },
             body: JSON.stringify(body)
         });
         if (res.ok) {
@@ -464,7 +465,7 @@ async function uploadAvatar(input) {
     if (!file) return;
     if (file.size > 5 * 1024 * 1024) { showToast('Max file size is 5 MB'); return; }
 
-    const token = localStorage.getItem('djangoAuthToken');
+    const authHeader = window._pageAuthHeader ? window._pageAuthHeader() : null;
     const form  = new FormData();
     form.append('avatar', file);  // dedicated upload endpoint expects 'avatar'
 
@@ -472,7 +473,7 @@ async function uploadAvatar(input) {
     try {
         const res  = await fetch(`${PROFILE_API}/auth/avatar/`, {
             method:  'POST',
-            headers: { 'Authorization': `Token ${token}` },
+            headers: authHeader ? { 'Authorization': authHeader } : {},
             body:    form,
         });
         const data = await res.json().catch(() => ({}));

@@ -895,9 +895,15 @@ async function _dmLoadSuggestedUsers() {
     if (!results) return;
     results.innerHTML = '<div class="dm-empty-state"><div class="dm-spinner"></div></div>';
 
-    // Ensure apiService has the latest token (it may have been set after construction)
-    if (typeof apiService !== 'undefined' && !apiService.token) {
-        apiService.token = localStorage.getItem('djangoAuthToken') || localStorage.getItem('authToken') || null;
+    // Ensure apiService has the latest tokens (they may have been set after construction)
+    if (typeof apiService !== 'undefined') {
+        if (!apiService.token) {
+            apiService.token = localStorage.getItem('djangoAuthToken') || localStorage.getItem('authToken') || null;
+        }
+        if (!apiService.firebaseToken && apiService.setFirebaseToken) {
+            const fbToken = localStorage.getItem('firebaseIdToken');
+            if (fbToken) apiService.setFirebaseToken(fbToken);
+        }
     }
 
     try {
@@ -921,9 +927,15 @@ async function dmSearchUsers(query) {
         return;
     }
 
-    // Ensure apiService has the latest token
-    if (typeof apiService !== 'undefined' && !apiService.token) {
-        apiService.token = localStorage.getItem('djangoAuthToken') || localStorage.getItem('authToken') || null;
+    // Ensure apiService has the latest tokens
+    if (typeof apiService !== 'undefined') {
+        if (!apiService.token) {
+            apiService.token = localStorage.getItem('djangoAuthToken') || localStorage.getItem('authToken') || null;
+        }
+        if (!apiService.firebaseToken && apiService.setFirebaseToken) {
+            const fbToken = localStorage.getItem('firebaseIdToken');
+            if (fbToken) apiService.setFirebaseToken(fbToken);
+        }
     }
 
     _dm.searchDebounce = setTimeout(async () => {
@@ -1042,8 +1054,15 @@ function _dmApiBase() {
 
 // Shared headers helper
 function _dmHeaders() {
-    // Always read fresh from localStorage — apiService may have been constructed
-    // before the token was stored (e.g. after a redirect from login)
+    // Prefer Firebase token (works without DB), fall back to DRF token
+    const fbToken = localStorage.getItem('firebaseIdToken');
+    if (fbToken) {
+        if (typeof apiService !== 'undefined' && apiService.setFirebaseToken) {
+            apiService.setFirebaseToken(fbToken);
+        }
+        return { 'Content-Type': 'application/json', 'Authorization': `FirebaseToken ${fbToken}` };
+    }
+
     const token = localStorage.getItem('djangoAuthToken')
                || localStorage.getItem('authToken')
                || (typeof apiService !== 'undefined' ? apiService.token : null)

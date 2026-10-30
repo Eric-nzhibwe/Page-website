@@ -283,14 +283,15 @@ window._fbRTMarkRead = async function(notifId) {
         if (_fbRT.ready && _fbRT.db) {
             await _fbRT.db.collection(NOTIF_COLL).doc(notifId).update({ is_read: true });
         }
-        // Also hit the REST endpoint so PostgreSQL stays in sync
-        const token = localStorage.getItem('djangoAuthToken') || localStorage.getItem('authToken');
-        if (token) {
+        // Also hit the REST endpoint so the DB stays in sync
+        const authHeader = window._pageAuthHeader ? window._pageAuthHeader() :
+            (() => { const t = localStorage.getItem('djangoAuthToken') || localStorage.getItem('authToken'); return t ? `Token ${t}` : null; })();
+        if (authHeader) {
             const base = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
                 ? 'http://localhost:8000/api' : `${window.location.origin}/api`;
             fetch(`${base}/notifications/read/`, {
                 method:  'POST',
-                headers: { 'Content-Type': 'application/json', Authorization: `Token ${token}` },
+                headers: { 'Content-Type': 'application/json', Authorization: authHeader },
                 body:    JSON.stringify({ ids: [notifId] }),
             }).catch(() => {});
         }
@@ -306,16 +307,16 @@ window._fbRTMarkRead = async function(notifId) {
 // Mark ALL notifications as read (for "mark all read" button)
 window.fbRTMarkAllRead = async function() {
     try {
-        const token = localStorage.getItem('djangoAuthToken') || localStorage.getItem('authToken');
-        if (!token) return;
+        const authHeader = window._pageAuthHeader ? window._pageAuthHeader() :
+            (() => { const t = localStorage.getItem('djangoAuthToken') || localStorage.getItem('authToken'); return t ? `Token ${t}` : null; })();
+        if (!authHeader) return;
         const base = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
             ? 'http://localhost:8000/api' : `${window.location.origin}/api`;
         await fetch(`${base}/notifications/read/`, {
             method:  'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: `Token ${token}` },
+            headers: { 'Content-Type': 'application/json', Authorization: authHeader },
             body:    JSON.stringify({}),   // empty = mark all
         });
-        // Firestore docs will be updated server-side via the REST endpoint
         _fbRTUpdateBellBadge(0);
     } catch (_) { /* non-critical */ }
 };
@@ -456,16 +457,16 @@ function _fbRTLoadSDK() {
 
 async function _fbRTFetchConfig() {
     try {
-        // Try auth endpoint first (available on all pages)
-        const token = localStorage.getItem('djangoAuthToken') || localStorage.getItem('authToken');
-        if (!token) return null;
+        const authHeader = window._pageAuthHeader ? window._pageAuthHeader() :
+            (() => { const t = localStorage.getItem('djangoAuthToken') || localStorage.getItem('authToken'); return t ? `Token ${t}` : null; })();
+        if (!authHeader) return null;
 
         const base = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
             ? 'http://localhost:8000/api' : `${window.location.origin}/api`;
 
-        // Use the messenger firebase-config endpoint (already exists and returns the same data)
+        // Use the messenger firebase-config endpoint
         const res = await fetch(`${base}/messenger/firebase-config/`, {
-            headers: { Authorization: `Token ${token}` }
+            headers: { Authorization: authHeader }
         });
         if (!res.ok) return null;
         return await res.json();
@@ -555,8 +556,9 @@ function _fbRTSuppressLegacyNotifWS() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', async () => {
-    const token = localStorage.getItem('djangoAuthToken') || localStorage.getItem('authToken');
-    if (!token) return; // Not logged in
+    const isAuthed = window._pageIsAuthed ? window._pageIsAuthed() :
+        !!(localStorage.getItem('djangoAuthToken') || localStorage.getItem('authToken') || localStorage.getItem('firebaseIdToken'));
+    if (!isAuthed) return; // Not logged in
 
     // Small delay to let realtime-updates.js finish its own DOMContentLoaded setup
     await new Promise(r => setTimeout(r, 200));

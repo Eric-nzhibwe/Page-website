@@ -1,10 +1,10 @@
-databases:
-  # PostgreSQL Database (free tier)
-  - name: page-db
-    databaseName: page_platform
-    user: page_user
-    plan: free
-    region: oregon
+# ── PAGE Platform Render Config ──────────────────────────────────────────────
+# Authentication is handled by Firebase Auth + Firestore — no external database
+# required.  Django uses SQLite on the ephemeral disk for internal tables
+# (admin, sessions, migrations) which is recreated on each deploy via
+# `python manage.py migrate` in start.sh.
+#
+# Firebase env vars (FIREBASE_*) must be set in the Render dashboard.
 
 services:
   # Django Backend Web Service (serves both API and frontend)
@@ -16,7 +16,8 @@ services:
     branch: main
     rootDir: django_backend
     buildCommand: bash build.sh
-    startCommand: bash start.sh    envVars:
+    startCommand: bash start.sh
+    envVars:
       - key: PYTHON_VERSION
         value: 3.11.9
       - key: SECRET_KEY
@@ -25,30 +26,33 @@ services:
         value: false
       - key: ALLOWED_HOSTS
         value: .onrender.com
-      - key: DATABASE_URL
-        fromDatabase:
-          name: page-db
-          property: connectionString
-      - key: DB_NAME
-        fromDatabase:
-          name: page-db
-          property: database
-      - key: DB_USER
-        fromDatabase:
-          name: page-db
-          property: user
-      - key: DB_PASSWORD
-        fromDatabase:
-          name: page-db
-          property: password
-      - key: DB_HOST
-        fromDatabase:
-          name: page-db
-          property: host
-      - key: DB_PORT
-        fromDatabase:
-          name: page-db
-          property: port
+      # ── Firebase (Auth + Firestore — primary data store) ──────────────────
+      # Paste the entire contents of your serviceAccountKey.json as one line.
+      - key: FIREBASE_SERVICE_ACCOUNT_JSON
+        sync: false
+      # Public web SDK config (safe to expose — used by the frontend)
+      - key: FIREBASE_WEB_API_KEY
+        sync: false
+      - key: FIREBASE_AUTH_DOMAIN
+        sync: false
+      - key: FIREBASE_PROJECT_ID
+        sync: false
+      - key: FIREBASE_STORAGE_BUCKET
+        sync: false
+      - key: FIREBASE_MESSAGING_SENDER_ID
+        sync: false
+      - key: FIREBASE_APP_ID
+        sync: false
+      # Firestore feature flags — read user profiles from Firestore
+      - key: FS_USERS
+        value: "true"
+      - key: FS_SOCIAL
+        value: "true"
+      - key: FS_CHALLENGES
+        value: "true"
+      - key: FS_NOTIFICATIONS
+        value: "true"
+      # ── Email ─────────────────────────────────────────────────────────────
       - key: EMAIL_PROVIDER
         value: resend
       - key: RESEND_API_KEY
