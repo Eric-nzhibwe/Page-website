@@ -3,40 +3,16 @@ WebSocket consumers for real-time social features.
 
 Connections are authenticated via a `token` query-param:
   ws://host/ws/social/feed/?token=<DRF auth token>
+  ws://host/ws/social/feed/?token=fb:<Firebase ID token>
 """
 import json
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
 from django.core.serializers.json import DjangoJSONEncoder
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-#  TOKEN AUTH HELPER
-# ─────────────────────────────────────────────────────────────────────────────
-@database_sync_to_async
-def _get_user_from_token(token_key):
-    """Return (user, error_str).  error_str is None on success."""
-    if not token_key:
-        return None, 'no_token'
-    try:
-        from rest_framework.authtoken.models import Token
-        token = Token.objects.select_related('user').get(key=token_key)
-        if not token.user.is_active:
-            return None, 'inactive'
-        return token.user, None
-    except Token.DoesNotExist:
-        return None, 'invalid_token'
-    except Exception as e:
-        return None, str(e)
-
-
-def _token_from_scope(scope):
-    """Extract token from ?token= query string."""
-    qs = scope.get('query_string', b'').decode()
-    for part in qs.split('&'):
-        if part.startswith('token='):
-            return part.split('=', 1)[1]
-    return None
+# Shared auth helper — supports both DRF tokens and Firebase ID tokens
+from page_platform.ws_auth import get_user_from_token as _get_user_from_token
+from page_platform.ws_auth import _token_from_scope
 
 
 def _send(payload):

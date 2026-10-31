@@ -40,7 +40,10 @@ class RealtimeService {
     }
 
     _challengeWsUrl(challengeId) {
-        return `${this._wsBase()}/ws/challenges/${challengeId}/`;
+        const fb  = localStorage.getItem('firebaseIdToken');
+        const drf = localStorage.getItem('djangoAuthToken') || localStorage.getItem('authToken');
+        const tok = fb ? `fb:${fb}` : (drf || '');
+        return `${this._wsBase()}/ws/challenges/${challengeId}/?token=${encodeURIComponent(tok)}`;
     }
 
     // ── Connection ───────────────────────────────────────────────────────────

@@ -23,9 +23,24 @@
 const _WS_HOST = window.location.host;
 const _WS_PROTO = window.location.protocol === 'https:' ? 'wss' : 'ws';
 
+/**
+ * Build a WebSocket token param that the backend can verify.
+ * - DRF token users  → plain token string
+ * - Firebase users   → "fb:<firebase_id_token>" (backend ws_auth.py strips the prefix)
+ * Uses the sync read — callers that need a fresh Firebase token should call
+ * _pageAuthHeaderAsync() first and re-connect, but for initial connect this
+ * is fine (Firebase SDK will have cached a recent token from the last HTTP call).
+ */
+function _wsToken() {
+    const fbToken  = localStorage.getItem('firebaseIdToken');
+    const drfToken = localStorage.getItem('djangoAuthToken') || localStorage.getItem('authToken');
+    if (fbToken)  return `fb:${fbToken}`;
+    if (drfToken) return drfToken;
+    return '';
+}
+
 function _wsUrl(path) {
-    const token = localStorage.getItem('djangoAuthToken') || '';
-    return `${_WS_PROTO}://${_WS_HOST}/ws/social/${path}?token=${encodeURIComponent(token)}`;
+    return `${_WS_PROTO}://${_WS_HOST}/ws/social/${path}?token=${encodeURIComponent(_wsToken())}`;
 }
 
 // ─── One-time WS support probe ────────────────────────────────────────────────
@@ -283,8 +298,7 @@ class PAGEWebSocketClient {
         this._messengerConn = new _WSConn(
             'messenger',
             () => {
-                const token = localStorage.getItem('djangoAuthToken') || '';
-                return `${_WS_PROTO}://${_WS_HOST}/ws/messenger/?token=${encodeURIComponent(token)}`;
+                return `${_WS_PROTO}://${_WS_HOST}/ws/messenger/?token=${encodeURIComponent(_wsToken())}`;
             },
             msg => this._handleMessenger(msg, callbacks)
         );

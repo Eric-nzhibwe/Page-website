@@ -639,8 +639,13 @@ function _wsBase() {
 }
 
 async function _connectNotifWs() {
-    const token = localStorage.getItem('djangoAuthToken') || localStorage.getItem('firebaseIdToken');
-    if (!token || _notifWsDisabled) return;
+    const fbToken  = localStorage.getItem('firebaseIdToken');
+    const drfToken = localStorage.getItem('djangoAuthToken');
+    const rawToken = fbToken || drfToken;
+    // Backend expects "fb:<token>" for Firebase, plain string for DRF
+    const wsToken  = fbToken ? `fb:${fbToken}` : (drfToken || '');
+
+    if (!wsToken || _notifWsDisabled) return;
 
     if (_notifWs && (_notifWs.readyState === WebSocket.OPEN || _notifWs.readyState === WebSocket.CONNECTING)) return;
 
@@ -670,7 +675,7 @@ async function _connectNotifWs() {
         }
     }
 
-    _notifWs = new WebSocket(`${_wsBase()}/ws/notifications/?token=${token}`);
+    _notifWs = new WebSocket(`${_wsBase()}/ws/notifications/?token=${encodeURIComponent(wsToken)}`);
 
     _notifWs.onopen = () => {
         _notifWsRetries = 0;

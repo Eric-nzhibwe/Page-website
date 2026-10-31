@@ -7,6 +7,16 @@ let submissionFiles = [];
 // ─── API helpers ────────────────────────────────────────────────────────────
 const API = '/api/challenges';
 
+// Returns the correct WS token param value.
+// Firebase users get "fb:<id_token>" — the backend ws_auth.py strips the prefix.
+function _chWsToken() {
+    const fb  = localStorage.getItem('firebaseIdToken');
+    const drf = localStorage.getItem('djangoAuthToken') || localStorage.getItem('authToken');
+    if (fb)  return `fb:${fb}`;
+    if (drf) return drf;
+    return '';
+}
+
 // Read token using the same key auth.js writes — supports both DRF and Firebase tokens
 function getAuthToken() {
     return localStorage.getItem('djangoAuthToken')
@@ -1523,8 +1533,7 @@ function openPollWS(pollId) {
     _checkWsSupport().then(supported => {
         if (!supported) return; // polling fallback already running
         const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-        const _wsToken = localStorage.getItem('djangoAuthToken') || '';
-        const ws = new WebSocket(`${proto}://${location.host}/ws/poll/${pollId}/?token=${encodeURIComponent(_wsToken)}`);
+        const ws = new WebSocket(`${proto}://${location.host}/ws/poll/${pollId}/?token=${encodeURIComponent(_chWsToken())}`);
 
         ws.onopen = () => { _wsRetries[key] = 0; _startWsHeartbeat(key); };
 
@@ -1568,8 +1577,7 @@ function openDebateWS(debateId) {
     _checkWsSupport().then(supported => {
         if (!supported) { _pollDebateComments(debateId); return; }
         const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-        const _wsToken = localStorage.getItem('djangoAuthToken') || '';
-        const ws = new WebSocket(`${proto}://${location.host}/ws/debate/${debateId}/?token=${encodeURIComponent(_wsToken)}`);
+        const ws = new WebSocket(`${proto}://${location.host}/ws/debate/${debateId}/?token=${encodeURIComponent(_chWsToken())}`);
 
         ws.onopen = () => { _wsRetries[key] = 0; _startWsHeartbeat(key); };
 
@@ -1613,8 +1621,7 @@ function openQAWS(qaId) {
     _checkWsSupport().then(supported => {
         if (!supported) { _pollQAAnswers(qaId); return; }
         const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-        const _wsToken = localStorage.getItem('djangoAuthToken') || '';
-        const ws = new WebSocket(`${proto}://${location.host}/ws/qa/${qaId}/?token=${encodeURIComponent(_wsToken)}`);
+        const ws = new WebSocket(`${proto}://${location.host}/ws/qa/${qaId}/?token=${encodeURIComponent(_chWsToken())}`);
 
         ws.onopen = () => { _wsRetries[key] = 0; _startWsHeartbeat(key); };
 
