@@ -714,8 +714,17 @@ def upload_avatar_view(request):
         return Response({'error': 'Could not process image.'}, status=status.HTTP_400_BAD_REQUEST)
 
     user = request.user
-    user.avatar_url = data_uri
-    user.save(update_fields=['avatar_url'])
+
+    # EphemeralUser (Firebase-only mode — DB unavailable) cannot be saved to the DB.
+    # Fall through to Firestore-only sync so the avatar still persists.
+    from users.firebase_token_auth import EphemeralUser
+    is_ephemeral = isinstance(user, EphemeralUser)
+
+    if not is_ephemeral:
+        user.avatar_url = data_uri
+        user.save(update_fields=['avatar_url'])
+    else:
+        user.avatar_url = data_uri  # in-memory only for this request
 
     # Sync to Firestore so the avatar appears in discover list, stories, messenger
     try:

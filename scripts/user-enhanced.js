@@ -10,13 +10,20 @@ const _EH_API = (
 ) ? 'http://localhost:8000/api' : `${window.location.origin}/api`;
 
 function _ehToken() {
-    // Prefer Firebase token if available, fall back to DRF token
-    const fbToken = localStorage.getItem('firebaseIdToken');
-    if (fbToken) return fbToken;
-    return localStorage.getItem('djangoAuthToken') || '';
+    // Prefer DRF token (persistent). Firebase token is handled by _pageAuthHeaderAsync.
+    return localStorage.getItem('djangoAuthToken') || localStorage.getItem('authToken') || '';
+}
+async function _ehHeadersAsync() {
+    // Use async builder so expired Firebase tokens are refreshed automatically
+    const authHeader = window._pageAuthHeaderAsync
+        ? await window._pageAuthHeaderAsync()
+        : (window._pageAuthHeader ? window._pageAuthHeader() : null);
+    const h = {};
+    if (authHeader) h['Authorization'] = authHeader;
+    return h;
 }
 function _ehHeaders() {
-    const fbToken = localStorage.getItem('firebaseIdToken');
+    const fbToken  = localStorage.getItem('firebaseIdToken');
     const drfToken = localStorage.getItem('djangoAuthToken');
     const auth = fbToken ? `FirebaseToken ${fbToken}` : (drfToken ? `Token ${drfToken}` : '');
     return { 'Authorization': auth, 'Content-Type': 'application/json' };
@@ -410,7 +417,7 @@ function _ehInitActivityFilters() {
 async function _ehFetchAndCacheActivities() {
     try {
         const res  = await fetch(`${_EH_API}/auth/activities/?limit=100`, {
-            headers: { 'Authorization': `Token ${_ehToken()}` }
+            headers: await _ehHeadersAsync()
         });
         if (!res.ok) return;
         const data = await res.json();
@@ -543,7 +550,7 @@ async function _ehLoadFollowList(tab) {
         const endpoint = tab === 'followers'
             ? `${_EH_API}/social/follows/followers/?user_id=${uid}`
             : `${_EH_API}/social/follows/following/?user_id=${uid}`;
-        const res  = await fetch(endpoint, { headers: { 'Authorization': `Token ${_ehToken()}` } });
+        const res  = await fetch(endpoint, { headers: await _ehHeadersAsync() });
         if (!res.ok) throw new Error('Failed');
         const data = await res.json();
         const users = Array.isArray(data) ? data : (data.results || data.followers || data.following || []);
@@ -615,9 +622,11 @@ window.uploadCover = async function(input) {
     const form = new FormData();
     form.append('cover_image', file);
     try {
+        // Refresh token before upload so Firebase users don't get 401
+        const uploadHeaders = await _ehHeadersAsync();
         const res = await fetch(`${_EH_API}/auth/profile/`, {
             method:  'PATCH',
-            headers: { 'Authorization': `Token ${_ehToken()}` },
+            headers: uploadHeaders,
             body:    form,
         });
         if (res.ok) {

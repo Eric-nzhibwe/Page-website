@@ -465,7 +465,10 @@ async function uploadAvatar(input) {
     if (!file) return;
     if (file.size > 5 * 1024 * 1024) { showToast('Max file size is 5 MB'); return; }
 
-    const authHeader = window._pageAuthHeader ? window._pageAuthHeader() : null;
+    // Use async header builder so an expired Firebase token is refreshed first
+    const authHeader = window._pageAuthHeaderAsync
+        ? await window._pageAuthHeaderAsync()
+        : (window._pageAuthHeader ? window._pageAuthHeader() : null);
     const form  = new FormData();
     form.append('avatar', file);  // dedicated upload endpoint expects 'avatar'
 

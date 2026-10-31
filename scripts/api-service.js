@@ -439,14 +439,60 @@ class APIService {
 const apiService = new APIService();
 
 // ── Global auth helpers — usable by any script on the page ──────────────────
-// Returns the best available Authorization header value (Firebase token first,
-// DRF token fallback) or null when no token is stored.
+
+/**
+ * Synchronous header builder — returns whatever token is in localStorage.
+ * Safe for non-critical reads (e.g. GET requests that degrade gracefully).
+ * For write/mutation requests use the async _pageAuthHeaderAsync() below
+ * so expired Firebase tokens are refreshed before the call is made.
+ */
 window._pageAuthHeader = function () {
     const fbToken = localStorage.getItem('firebaseIdToken');
     if (fbToken) return `FirebaseToken ${fbToken}`;
     const token = localStorage.getItem('djangoAuthToken') || localStorage.getItem('authToken');
     if (token) return `Token ${token}`;
     return null;
+};
+
+/**
+ * Async header builder — refreshes an expired Firebase ID token before
+ * returning the header value.  Always use this for POST/PATCH/PUT/DELETE
+ * requests so 401s from stale tokens don't silently drop writes.
+ *
+ * Falls back gracefully:
+ *   • Firebase active  → refresh token if <5 min left, return FirebaseToken
+ *   • Firebase inactive / user not signed in → return Token <drfToken>
+ *   • No token at all  → return null
+ *
+ * @returns {Promise<string|null>}
+ */
+window._pageAuthHeaderAsync = async function () {
+    // ── 1. Try refreshing via Firebase SDK if it's loaded ─────────────────
+    try {
+        // Firebase SDK is lazy-loaded in auth.js — check if it's available
+        const { getAuth } = await import(
+            'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js'
+        ).catch(() => ({}));
+
+        if (getAuth) {
+            const auth = getAuth();
+            const user = auth.currentUser;
+            if (user) {
+                // forceRefresh=false: Firebase SDK returns cached token if still valid,
+                // or silently fetches a new one if expired — no manual expiry math needed.
+                const freshToken = await user.getIdToken(false);
+                if (freshToken) {
+                    localStorage.setItem('firebaseIdToken', freshToken);
+                    return `FirebaseToken ${freshToken}`;
+                }
+            }
+        }
+    } catch (_) {
+        // Firebase not loaded or user not signed in — fall through
+    }
+
+    // ── 2. Fall back to whatever is already in localStorage ───────────────
+    return window._pageAuthHeader();
 };
 
 // Returns true if the user has any auth token stored.
