@@ -1954,134 +1954,230 @@
     border: 2px solid #e4e6ea;
 }
 
+/* ============================================================
+   Q&A CARD — Glassmorphism redesign
+   All opaque blacks (#0f0f0f, #1e1e1e) and flat whites
+   are replaced with translucent glass layers so the card
+   feels light and modern in both dark and light themes.
+   ============================================================ */
+
+/* Card shell — frosted glass base */
+.qa-glass-card {
+    background: rgba(255, 255, 255, 0.06);
+    backdrop-filter: blur(14px) saturate(160%);
+    -webkit-backdrop-filter: blur(14px) saturate(160%);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 18px;
+    overflow: hidden;
+    transition: transform 0.3s cubic-bezier(0.34, 1.4, 0.64, 1),
+                box-shadow 0.3s ease,
+                border-color 0.3s ease;
+}
+.qa-glass-card:hover {
+    transform: translateY(-6px);
+    border-color: rgba(255, 255, 255, 0.28);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35),
+                0 0 0 1px rgba(255, 255, 255, 0.08),
+                inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+/* Accent glow strip at top on hover — matches the rest of the grid */
 .challenge-card[data-category="qa"]:hover {
     border-color: var(--page-primary);
 }
 
-/* Creator avatar floating above card body */
-.qa-creator-avatar-wrap {
-    display: flex;
-    justify-content: center;
-    padding-top: 18px;
-    background: #fff;
-}
-
-.qa-creator-avatar {
-    width: 56px;
-    height: 56px;
-    border-radius: 50%;
-    border: 3px solid #fff;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.18);
-    overflow: hidden;
-    background: linear-gradient(135deg, var(--page-accent), var(--page-primary));
+/* ── Header bar ── */
+.qa-header-bar {
     display: flex;
     align-items: center;
-    justify-content: center;
-    font-size: 22px;
-    font-weight: 700;
-    color: #fff;
+    justify-content: space-between;
+    padding: 14px 16px 10px;
+    background: rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
 }
 
-.qa-creator-avatar img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
+.qa-creator-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
-/* Question title — big, centered */
+/* ── Question text ── */
 .qa-question {
-    font-size: 18px;
+    font-size: 15px;
     font-weight: 800;
-    color: #1c1e21;
-    text-align: center;
-    padding: 12px 20px 14px;
-    line-height: 1.3;
+    color: var(--theme-text, #e4e6eb);
+    text-align: left;
+    padding: 14px 16px 6px;
+    line-height: 1.35;
     margin: 0;
+    letter-spacing: -0.2px;
 }
 
-/* Live answers pane — dark, scrollable, like DMs */
+.qa-description {
+    font-size: 13px;
+    color: var(--theme-text-muted, #b0b3b8);
+    padding: 0 16px 10px;
+    margin: 0;
+    line-height: 1.5;
+}
+
+/* ── Live answers pane — glass, no black ── */
 .qa-live-pane {
-    background: #0f0f0f;
+    /* Frosted glass — reads well over any background */
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px) saturate(140%);
+    -webkit-backdrop-filter: blur(10px) saturate(140%);
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
     min-height: 110px;
-    max-height: 150px;
+    max-height: 158px;
     overflow-y: auto;
     padding: 10px 12px;
     display: flex;
     flex-direction: column;
-    gap: 7px;
+    gap: 8px;
     scroll-behavior: smooth;
 }
 
 .qa-live-pane::-webkit-scrollbar { width: 3px; }
-.qa-live-pane::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+.qa-live-pane::-webkit-scrollbar-track { background: transparent; }
+.qa-live-pane::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.18);
+    border-radius: 4px;
+}
 
+/* Empty state hint */
+.qa-empty-hint {
+    font-size: 12px;
+    color: var(--theme-text-muted, #b0b3b8);
+    text-align: center;
+    padding: 16px 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    opacity: 0.8;
+    margin: 0;
+}
+.qa-empty-hint i { font-size: 16px; opacity: 0.5; }
+
+/* ── Individual answer bubbles ── */
 .qa-live-msg {
     display: flex;
     align-items: flex-start;
     gap: 8px;
-    animation: commentSlideIn 0.35s ease;
+    animation: commentSlideIn 0.3s ease;
 }
 
 .qa-live-avatar {
-    width: 24px;
-    height: 24px;
+    width: 26px;
+    height: 26px;
     border-radius: 50%;
-    background: linear-gradient(135deg, var(--page-accent), var(--page-primary));
     flex-shrink: 0;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 700;
     color: #fff;
+    /* Thin glass ring */
+    box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.25);
 }
 
+/* Glass bubble — replaces hard #1e1e1e */
 .qa-live-bubble {
-    background: #1e1e1e;
-    border-radius: 0 10px 10px 10px;
-    padding: 6px 10px;
-    max-width: calc(100% - 36px);
+    background: rgba(255, 255, 255, 0.10);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 4px 12px 12px 12px;
+    padding: 7px 11px;
+    max-width: calc(100% - 38px);
+    transition: background 0.2s;
+}
+.qa-live-bubble:hover {
+    background: rgba(255, 255, 255, 0.15);
 }
 
 .qa-live-user {
     font-size: 10px;
     font-weight: 700;
-    color: var(--theme-text-muted);
-    margin-bottom: 2px;
+    color: var(--theme-text-muted, #b0b3b8);
+    margin-bottom: 3px;
     display: block;
+    letter-spacing: 0.2px;
 }
 
 .qa-live-text {
-    font-size: 12px;
-    color: #e8e8e8;
-    line-height: 1.4;
+    font-size: 12.5px;
+    color: var(--theme-text, #e4e6eb);
+    line-height: 1.45;
     word-break: break-word;
 }
 
-/* Own message (sent by the user) — right-aligned */
+/* Own message — right-aligned, accent tinted glass */
 .qa-live-msg.own {
     flex-direction: row-reverse;
 }
-
 .qa-live-msg.own .qa-live-bubble {
-    background: var(--page-primary);
-    border-radius: 10px 0 10px 10px;
+    background: rgba(var(--page-primary-rgb, 55, 65, 81), 0.35);
+    border-color: rgba(255, 255, 255, 0.18);
+    border-radius: 12px 4px 12px 12px;
+}
+.qa-live-msg.own .qa-live-user  { text-align: right; color: rgba(255, 255, 255, 0.65); }
+.qa-live-msg.own .qa-live-text  { color: #fff; }
+
+/* ── Participant pip strip ── */
+.qa-participants {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px 4px;
 }
 
-.qa-live-msg.own .qa-live-user { text-align: right; color: rgba(255,255,255,0.7); }
-.qa-live-msg.own .qa-live-text { color: #fff; }
+.qa-participant-avatars {
+    display: flex;
+    align-items: center;
+}
 
-/* Input row */
+.qa-participant-pip {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    font-weight: 800;
+    color: #fff;
+    border: 2px solid rgba(255, 255, 255, 0.18);
+    margin-left: -6px;
+    transition: transform 0.18s ease;
+    cursor: default;
+}
+.qa-participant-pip:first-child { margin-left: 0; }
+.qa-participant-pip:hover { transform: translateY(-2px) scale(1.15); z-index: 1; }
+
+.qa-answer-count {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--theme-text-muted, #b0b3b8);
+    margin-left: 4px;
+}
+
+/* ── Input row — glass tray ── */
 .qa-input-row {
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 10px 14px 14px;
-    background: #fff;
-    border-top: 1px solid #f0f2f5;
+    padding: 10px 14px 4px;
+    background: rgba(255, 255, 255, 0.04);
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-/* Wrap input + counter together */
 .qa-input-wrap {
     flex: 1;
     position: relative;
@@ -2089,118 +2185,121 @@
     flex-direction: column;
 }
 
+/* Character counter — below the input */
 .qa-char-counter {
-    font-size: 11px;
-    color: var(--theme-text-muted, #999);
+    font-size: 10px;
+    color: var(--theme-text-muted, #b0b3b8);
     text-align: right;
-    padding-right: 4px;
-    margin-top: 2px;
-    line-height: 1;
+    padding: 2px 16px 6px;
+    opacity: 0.7;
 }
 
+/* Glass input field */
 .qa-type-input {
     flex: 1;
-    border: 1.5px solid #e4e6ea;
+    background: rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1.5px solid rgba(255, 255, 255, 0.15);
     border-radius: 22px;
     padding: 9px 16px;
-    font-size: 14px;
-    outline: none;
-    background: #f2f3f5;
-    transition: border-color 0.2s, background 0.2s;
-    color: #1c1e21;
-}
-
-.qa-type-input::placeholder { color: var(--theme-text-muted); }
-.qa-type-input:focus { border-color: var(--page-primary); background: #fff; }
-
-/* Description line below the question */
-.qa-description {
     font-size: 13px;
-    color: var(--theme-text-muted, #666);
-    padding: 0 14px 8px;
-    margin: 0;
-    line-height: 1.5;
+    outline: none;
+    color: var(--theme-text, #e4e6eb);
+    transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+    width: 100%;
+}
+.qa-type-input::placeholder {
+    color: var(--theme-text-muted, #b0b3b8);
+    opacity: 0.75;
+}
+.qa-type-input:focus {
+    border-color: var(--page-primary, #4caf50);
+    background: rgba(255, 255, 255, 0.13);
+    box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.15);
 }
 
+/* Send button */
 .qa-send-btn {
-    width: 36px; height: 36px;
-    background: var(--page-primary);
+    width: 36px;
+    height: 36px;
+    background: var(--page-primary, #4caf50);
     color: #fff;
     border: none;
     border-radius: 50%;
     cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
     flex-shrink: 0;
-    transition: opacity 0.2s, transform 0.15s;
+    transition: opacity 0.2s, transform 0.15s, box-shadow 0.2s;
+    box-shadow: 0 2px 10px rgba(76, 175, 80, 0.35);
 }
+.qa-send-btn:hover  { opacity: 0.9; transform: scale(1.1); box-shadow: 0 4px 16px rgba(76, 175, 80, 0.45); }
+.qa-send-btn:active { transform: scale(0.95); }
 
-.qa-send-btn:hover { opacity: 0.85; transform: scale(1.08); }
-
-/* Card footer — prize + meta */
+/* ── Card footer ── */
 .qa-card-footer {
     display: flex;
     align-items: center;
     justify-content: space-between;
     padding: 8px 14px 12px;
-    background: #fafafa;
-    border-top: 1px solid #f0f2f5;
+    background: rgba(255, 255, 255, 0.03);
+    border-top: 1px solid rgba(255, 255, 255, 0.07);
 }
 
 .qa-meta {
     font-size: 12px;
-    color: var(--theme-text-muted);
+    color: var(--theme-text-muted, #b0b3b8);
     display: flex;
-    gap: 12px;
+    align-items: center;
+    gap: 10px;
 }
-
 .qa-meta span { display: flex; align-items: center; gap: 4px; }
 
 .qa-prize-badge {
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 700;
-    background: linear-gradient(to right, #ffd700, #ffed4e);
-    color: #000;
-    padding: 4px 12px;
+    background: rgba(255, 193, 7, 0.18);
+    border: 1px solid rgba(255, 193, 7, 0.35);
+    color: #fbbf24;
+    padding: 3px 10px;
     border-radius: 20px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
 }
 
-/* Legacy classes — keep so old references don't break */
-.qa-card-body { padding: 0; }
-.qa-answer-input { display: none; }
-.qa-answers-preview { display: none; }
-.qa-answer-box { display: none; }
-.qa-image-wrap { width: 100%; overflow: hidden; }
-.qa-image-wrap img { width: 100%; display: block; object-fit: cover; }
-
-/* ── Q&A image preview (toggle) ── */
+/* ── Image preview toggle ── */
 .qa-img-preview-wrap {
-    padding: 0 14px 4px;
-    background: #fff;
+    padding: 0 14px 6px;
+    background: transparent;
 }
 
 .qa-img-toggle-btn {
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 6px;
     width: 100%;
     padding: 7px 12px;
-    background: #f2f3f5;
-    border: 1px solid #e4e6ea;
+    background: rgba(255, 255, 255, 0.07);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 8px;
-    font-size: 13px;
+    font-size: 12.5px;
     font-weight: 600;
-    color: #444;
+    color: var(--theme-text-muted, #b0b3b8);
     cursor: pointer;
-    transition: background 0.18s, color 0.18s;
-    justify-content: center;
+    transition: background 0.18s, border-color 0.18s, color 0.18s;
 }
-
 .qa-img-toggle-btn:hover {
-    background: #e8e9eb;
+    background: rgba(255, 255, 255, 0.13);
+    border-color: var(--page-primary, #4caf50);
     color: var(--page-primary, #4caf50);
 }
-
 .qa-img-toggle-btn i { font-size: 13px; }
 
 .qa-img-panel {
@@ -2216,8 +2315,80 @@
     object-fit: cover;
     max-height: 240px;
     border-radius: 10px;
-    border: 1px solid #e4e6ea;
+    border: 1px solid rgba(255, 255, 255, 0.10);
 }
+
+/* ── Light-theme overrides ─────────────────────────────────── */
+/* Glass layers remain transparent but the tint shifts to darker */
+[data-theme="light"] .qa-glass-card {
+    background: rgba(255, 255, 255, 0.55);
+    border-color: rgba(0, 0, 0, 0.08);
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+}
+[data-theme="light"] .qa-glass-card:hover {
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.12);
+    border-color: rgba(0, 0, 0, 0.14);
+}
+[data-theme="light"] .qa-header-bar {
+    background: rgba(0, 0, 0, 0.03);
+    border-bottom-color: rgba(0, 0, 0, 0.07);
+}
+[data-theme="light"] .qa-question { color: #1c1e21; }
+[data-theme="light"] .qa-live-pane {
+    background: rgba(0, 0, 0, 0.03);
+    border-color: rgba(0, 0, 0, 0.07);
+}
+[data-theme="light"] .qa-live-pane::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.15); }
+[data-theme="light"] .qa-live-bubble {
+    background: rgba(0, 0, 0, 0.05);
+    border-color: rgba(0, 0, 0, 0.08);
+}
+[data-theme="light"] .qa-live-bubble:hover { background: rgba(0, 0, 0, 0.08); }
+[data-theme="light"] .qa-live-text { color: #1c1e21; }
+[data-theme="light"] .qa-live-user { color: #65676b; }
+[data-theme="light"] .qa-type-input {
+    background: rgba(0, 0, 0, 0.04);
+    border-color: rgba(0, 0, 0, 0.12);
+    color: #1c1e21;
+}
+[data-theme="light"] .qa-type-input:focus {
+    background: rgba(255, 255, 255, 0.9);
+    border-color: var(--page-primary, #4caf50);
+}
+[data-theme="light"] .qa-input-row {
+    background: rgba(0, 0, 0, 0.02);
+    border-top-color: rgba(0, 0, 0, 0.07);
+}
+[data-theme="light"] .qa-card-footer {
+    background: rgba(0, 0, 0, 0.02);
+    border-top-color: rgba(0, 0, 0, 0.06);
+}
+[data-theme="light"] .qa-img-toggle-btn {
+    background: rgba(0, 0, 0, 0.04);
+    border-color: rgba(0, 0, 0, 0.10);
+    color: #444;
+}
+[data-theme="light"] .qa-participant-pip {
+    border-color: rgba(255, 255, 255, 0.8);
+}
+
+/* Legacy classes — kept so old references don't break */
+.qa-card-body          { padding: 0; }
+.qa-answer-input       { display: none; }
+.qa-answers-preview    { display: none; }
+.qa-answer-box         { display: none; }
+.qa-image-wrap         { width: 100%; overflow: hidden; }
+.qa-image-wrap img     { width: 100%; display: block; object-fit: cover; }
+.qa-creator-avatar-wrap { display: flex; justify-content: center; padding-top: 18px; }
+.qa-creator-avatar     {
+    width: 56px; height: 56px; border-radius: 50%;
+    border: 3px solid rgba(255,255,255,0.25);
+    overflow: hidden;
+    background: linear-gradient(135deg, var(--page-accent), var(--page-primary));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; font-weight: 700; color: #fff;
+}
+.qa-creator-avatar img { width: 100%; height: 100%; object-fit: cover; }
 
 
 /* ============================================

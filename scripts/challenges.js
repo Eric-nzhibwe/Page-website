@@ -1591,15 +1591,18 @@ function _renderPollCard(c) {
 }
 
 function _renderQACard(c) {
-    const id = c.id;
+    const id      = c.id;
     const answers = (c.answers || []);
     const isOwner = c.created_by === _currentUsername();
+    const currentUser = _currentUsername();
+
     const deleteBtn = isOwner
         ? `<button class="social-card-delete-btn" onclick="deleteSocialChallenge('qa','${id}','${escHtml(c.title)}')" title="Delete Q&A"><i class="fas fa-trash"></i></button>`
         : '';
     const avatarHTML = _creatorAvatarHTML(c.creator || c.created_by);
     const detailUrl  = `challenge.html?id=${encodeURIComponent(id)}&type=qa`;
 
+    // ── Optional image toggle ─────────────────────────────────────────────
     const imgSection = c.image_url ? `
         <div class="qa-img-preview-wrap" id="qaImgWrap_${id}">
             <button class="qa-img-toggle-btn" onclick="toggleQAImage('${id}')" aria-expanded="false">
@@ -1612,10 +1615,12 @@ function _renderQACard(c) {
             </div>
         </div>` : '';
 
+    // ── Last 3 answers rendered as glass bubbles ──────────────────────────
     const answersHTML = answers.slice(-3).map(a => {
-        const hue = a.user.split('').reduce((s, ch) => s + ch.charCodeAt(0), 0) % 360;
-        return `<div class="qa-live-msg">
-            <div class="qa-live-avatar" style="background:hsl(${hue},50%,38%);">${a.user[0]}</div>
+        const isOwn = a.user === currentUser;
+        const hue   = a.user.split('').reduce((s, ch) => s + ch.charCodeAt(0), 0) % 360;
+        return `<div class="qa-live-msg${isOwn ? ' own' : ''}">
+            <div class="qa-live-avatar" style="background:hsl(${hue},55%,40%);">${a.user[0].toUpperCase()}</div>
             <div class="qa-live-bubble">
                 <span class="qa-live-user">${escHtml(a.user)}</span>
                 <span class="qa-live-text">${escHtml(a.text)}</span>
@@ -1623,29 +1628,67 @@ function _renderQACard(c) {
         </div>`;
     }).join('');
 
-    return `<div class="challenge-card" data-status="active" data-category="qa" data-id="${id}">
+    // ── Participant mini-avatars (last 4 unique answerers) ────────────────
+    const uniqueUsers = [...new Set(answers.map(a => a.user))].slice(-4);
+    const participantAvatars = uniqueUsers.length ? `
+        <div class="qa-participants">
+            <div class="qa-participant-avatars">
+                ${uniqueUsers.map(u => {
+                    const hue = u.split('').reduce((s, ch) => s + ch.charCodeAt(0), 0) % 360;
+                    return `<span class="qa-participant-pip" style="background:hsl(${hue},55%,40%);" title="${escHtml(u)}">${u[0].toUpperCase()}</span>`;
+                }).join('')}
+            </div>
+            <span class="qa-answer-count">${answers.length} answer${answers.length !== 1 ? 's' : ''}</span>
+        </div>` : '';
+
+    return `<div class="challenge-card qa-glass-card" data-status="active" data-category="qa" data-id="${id}">
+
+        <!-- Header: creator + type badge -->
         <div class="qa-header-bar">
-            <div style="display:flex;align-items:center;gap:8px;">
+            <div class="qa-creator-row">
                 ${avatarHTML}
-                <span class="sc-creator-name"><a href="${c.creator?.id ? `user.html?id=${encodeURIComponent(c.creator.id)}` : `user.html?username=${encodeURIComponent(c.created_by)}`}" class="sc-creator-name-link">${escHtml(c.creator?.display_name || c.created_by)}</a></span>
+                <span class="sc-creator-name">
+                    <a href="${c.creator?.id ? `user.html?id=${encodeURIComponent(c.creator.id)}` : `user.html?username=${encodeURIComponent(c.created_by)}`}"
+                       class="sc-creator-name-link">${escHtml(c.creator?.display_name || c.created_by)}</a>
+                </span>
             </div>
             <span class="qa-type-label"><i class="fas fa-question-circle"></i> Q&amp;A</span>
         </div>
+
+        <!-- Question text -->
         <p class="qa-question">${escHtml(c.title)}</p>
+        ${c.description ? `<p class="qa-description">${escHtml(c.description)}</p>` : ''}
+
+        <!-- Optional image -->
         ${imgSection}
+
+        <!-- Live answers feed (glassmorphism pane) -->
         <div class="qa-live-pane" id="qaLive_${id}">
-            ${answersHTML || '<p style="color:var(--text-muted);font-size:12px;padding:8px;">No answers yet — be first!</p>'}
+            ${answersHTML || `<p class="qa-empty-hint"><i class="fas fa-comment-dots"></i> No answers yet — be first!</p>`}
         </div>
+
+        <!-- Participants strip -->
+        ${participantAvatars}
+
+        <!-- Input row -->
         <div class="qa-input-row">
-            <input class="qa-type-input" placeholder="Type your answer..." id="qaInput_${id}"
-                onkeydown="if(event.key==='Enter') _chSubmitQA('${id}')">
-            <button class="qa-send-btn" onclick="_chSubmitQA('${id}')">
+            <input class="qa-type-input" placeholder="Share your answer…" id="qaInput_${id}"
+                   maxlength="280"
+                   onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();_chSubmitQA('${id}')}"
+                   oninput="this.closest('.challenge-card').querySelector('.qa-char-counter').textContent=this.value.length+'/280'">
+            <button class="qa-send-btn" onclick="_chSubmitQA('${id}')" title="Send answer" aria-label="Send answer">
                 <i class="fas fa-paper-plane"></i>
             </button>
         </div>
+        <div class="qa-char-counter">0/280</div>
+
+        <!-- Footer -->
         <div class="qa-card-footer">
             <div class="qa-meta">
                 <span><i class="fas fa-clock"></i> ${_fmtDur(c.duration_days)} left</span>
+                ${c.prize_amount && parseFloat(c.prize_amount) > 0
+                    ? `<span class="qa-prize-badge"><i class="fas fa-trophy"></i> K${parseFloat(c.prize_amount).toFixed(0)}</span>`
+                    : ''}
             </div>
             <div style="display:flex;align-items:center;gap:8px;">
                 <a href="${detailUrl}" class="sc-detail-link"><i class="fas fa-expand-alt"></i> Full page</a>
