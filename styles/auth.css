@@ -24,7 +24,6 @@ body {
     width: 100%;
     height: 100%;
     background: white;
-    color: rgba(255, 107, 107, .4);
     display: flex;
     justify-content: center;
     align-items: center;
@@ -82,7 +81,7 @@ body {
     left: 0;
     width: 100%;
     height: 100%;
-    background: linear-gradient(135deg, #0f2419 0%, #1a3a2e 40%, #2d5a3d 100%);
+    background: linear-gradient(135deg, whitesmoke 0%, lightgray 40%);
     display: flex;
     flex-direction: column;
     opacity: 0;        /* JS sets this to 1 after splash exits */
@@ -122,6 +121,7 @@ body {
     flex: 1;
     display: flex;
     align-items: center;
+    background: linear-gradient(140deg, white 0%, whitesmoke 30%);
     justify-content: center;
     gap: 80px;
     padding: 0 60px;
@@ -217,7 +217,7 @@ body {
     line-height: 1.1;
     display: flex;
     flex-direction: column;
-    color: #e8e8d0;
+    color: black;
     letter-spacing: -1px;
 }
 
@@ -227,7 +227,7 @@ body {
 
 .landing-subtitle {
     font-size: 22px;
-    color: rgba(232, 232, 208, 0.7);
+    color: rgba(255, 255, 255, 0.1);
     margin-bottom: 40px;
     font-weight: 300;
     font-style: italic;
@@ -262,7 +262,7 @@ body {
 
 .stat-label {
     font-size: 12px;
-    color: rgba(232,232,208,0.6);
+    color: rgba(232,232,208,0.2);
     text-transform: uppercase;
     letter-spacing: 1.5px;
     margin-top: 4px;
@@ -271,7 +271,7 @@ body {
 .stat-divider {
     width: 1px;
     height: 36px;
-    background: rgba(255,255,255,0.15);
+    background: black;
 }
 
 /* ── Footer bar ── */
@@ -286,11 +286,11 @@ body {
 
 .footer-copy {
     font-size: 12px;
-    color: rgba(232,232,208,0.4);
+    color: rgba(232,232,208,0.2);
 }
 
 .footer-links {
-    color: rgba(232,232,208,0.5);
+    color: rgba(232,232,208,0.2);
     font-size: 12px;
     display: flex;
     align-items: center;
@@ -298,13 +298,13 @@ body {
 }
 
 .footer-links a {
-    color: rgba(232,232,208,0.5);
+    color: rgba(232,232,208,0.52);
     text-decoration: none;
     transition: color 0.3s;
 }
 
 .footer-links a:hover {
-    color: #e8e8d0;
+    color: #6b6b63;
 }
 
 .footer-links span {

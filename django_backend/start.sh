@@ -28,6 +28,12 @@ done
 echo "==> Ensuring superuser exists..."
 python manage.py ensure_superuser || echo "   WARNING: ensure_superuser failed (env vars may not be set)."
 
+echo "==> Restoring users from Firebase Auth + Firestore..."
+# This rebuilds the Django User table from Firebase/Firestore on every deploy.
+# Completely safe to run repeatedly — idempotent, never overwrites good data.
+# Ensures users are never lost even after an SQLite wipe (Render ephemeral disk).
+python manage.py restore_users_from_firebase || echo "   WARNING: restore_users_from_firebase failed (Firebase may not be configured yet)."
+
 echo "==> Syncing users to Firestore backup..."
 python manage.py sync_users_to_firestore || echo "   WARNING: Firestore sync failed (Firebase may not be configured)."
 
