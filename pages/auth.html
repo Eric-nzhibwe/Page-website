@@ -27,11 +27,13 @@
 
         <!-- Top nav bar -->
         <nav class="landing-nav">
-            <div class="landing-nav-logo"><i class fas fa-flame-curved></i> PAGE</div>
+            <div class="landing-nav-logo"><i class="fas fa-flame-curved"></i> PAGE</div>
             <div class="landing-nav-links">
                 <button class="btn-footer" onclick="showAbout()">About</button>
                 <button class="btn-footer" onclick="showContact()">Contact</button>
                 <a href="#" class="social-link"><i class="fab fa-instagram"></i></a>
+                <a href="#" class="social-link"><i class="fab fa-x-twitter"></i></a>
+                <a href="#" class="social-link"><i class="fab fa-snapchat"></i></a>
             </div>
         </nav>
 
@@ -82,7 +84,7 @@
                     <div class="stat-divider"></div>
                     <div class="stat-item">
                         <span class="stat-number">Day 1</span>
-                        <span class="stat-label">Be A Founder</span>
+                        <span class="stat-label">Create</span>
                     </div>
                 </div>
 
@@ -634,6 +636,10 @@
                         <i class="fab fa-x-twitter"></i>
                         <span>Twitter / X</span>
                     </a>
+                    <a href="#" class="contact-social-btn" aria-label="Twitter / X">
+                        <i class="fab fa-snapchat"></i>
+                        <span>Snaptchat</span>
+                    </a>
                 </div>
 
             </div>
@@ -968,8 +974,28 @@
          Firebase keys are kept below for email/password auth — do not remove them.
     ══════════════════════════════════════════ -->
     <script>
-        // ── Google OAuth 2.0 Client ID (public — safe in HTML) ────────────────
-        window._PAGE_GOOGLE_CLIENT_ID = 'YOUR_GOOGLE_CLIENT_ID';
+        // ── Google Client ID — fetched from backend (set via Render env var) ──────
+        // Never hardcode this in HTML. The backend reads it from GOOGLE_CLIENT_ID
+        // in the environment and serves it via /api/auth/google-config/.
+        window._PAGE_GOOGLE_CLIENT_ID = '';  // will be populated by fetchGoogleConfig()
+
+        async function fetchGoogleConfig() {
+            try {
+                const res = await fetch('/api/auth/google-config/');
+                if (!res.ok) return;
+                const data = await res.json();
+                if (data.client_id) {
+                    window._PAGE_GOOGLE_CLIENT_ID = data.client_id;
+                    // GIS SDK may already be loaded by now — trigger setup immediately.
+                    // Call via window.setupGIS (set by initGIS IIFE below) to avoid
+                    // a temporal dead zone — fetchGoogleConfig runs before the IIFE executes.
+                    if (window.setupGIS) window.setupGIS();
+                }
+            } catch (_) {
+                // Network error — Google Sign-In will be unavailable; fallback buttons remain visible
+            }
+        }
+        fetchGoogleConfig();
 
         // ── Firebase config (used only for email/password auth fallback) ───────
         window._PAGE_FIREBASE_API_KEY             = 'AIzaSyDwO9EU_oT6ibtiIzqoCOf1edFoxT-aZ2U';
@@ -979,21 +1005,23 @@
         window._PAGE_FIREBASE_MESSAGING_SENDER_ID = '706337215631';
         window._PAGE_FIREBASE_APP_ID              = '1:706337215631:web:7e97a8aec7b057a1de4cfa';
 
-        // ── Initialise GIS once the SDK has loaded ─────────────────────────────
-        // The SDK is async — we poll until google.accounts.id is available.
+        // ── Initialise GIS once both the SDK AND the Client ID are ready ──────────
+        // Two async events race: the GIS <script async> load and the fetchGoogleConfig()
+        // fetch above. setupGIS() is safe to call from either path — it self-guards.
         (function initGIS() {
-            function setup() {
+            function setupGIS() {
                 if (!window._PAGE_GOOGLE_CLIENT_ID ||
-                     window._PAGE_GOOGLE_CLIENT_ID === '706337215631-omgqd9mvfq1r4kbeepdh63ct5f5213k7.apps.googleusercontent.com') return;
+                     window._PAGE_GOOGLE_CLIENT_ID === 'YOUR_GOOGLE_CLIENT_ID') return;
+                if (!window.google?.accounts?.id) return;
 
                 window.google.accounts.id.initialize({
-                    client_id:            window._PAGE_GOOGLE_CLIENT_ID,
-                    callback:             window.handleGoogleCredential,
-                    auto_select:          false,
+                    client_id:             window._PAGE_GOOGLE_CLIENT_ID,
+                    callback:              window.handleGoogleCredential,
+                    auto_select:           false,
                     cancel_on_tap_outside: true,
-                    context:              'signin',
-                    ux_mode:              'popup',
-                    itp_support:          true,
+                    context:               'signin',
+                    ux_mode:               'popup',
+                    itp_support:           true,
                 });
 
                 const btnCfg = {
@@ -1024,8 +1052,11 @@
                 }
             }
 
+            // Expose so fetchGoogleConfig() above can call it after the fetch resolves
+            window.setupGIS = setupGIS;
+
             function waitForGIS() {
-                if (window.google?.accounts?.id) { setup(); return; }
+                if (window.google?.accounts?.id) { setupGIS(); return; }
                 setTimeout(waitForGIS, 100);
             }
 

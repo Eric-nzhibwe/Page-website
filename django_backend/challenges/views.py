@@ -150,6 +150,15 @@ class ChallengeViewSet(viewsets.ModelViewSet):
         # ── Polls ─────────────────────────────────────────────────────────────
         from .models import PollChallenge, DebateChallenge, QAChallenge, DebateComment
 
+        def _creator_info(user):
+            """Return a small creator dict with username + avatar (for profile URL on challenge page)."""
+            return {
+                'username':   user.username,
+                'avatar_url': user.avatar_url or '',
+                'display_name': user.display_name or user.username,
+                'id':         str(user.id),
+            }
+
         polls = PollChallenge.objects.filter(is_active=True).select_related('created_by')
         polls_data = [
             {
@@ -162,6 +171,7 @@ class ChallengeViewSet(viewsets.ModelViewSet):
                 'difficulty':     p.difficulty,
                 'duration_days':  p.duration_days,
                 'created_by':     p.created_by.username,
+                'creator':        _creator_info(p.created_by),
                 'created_at':     p.created_at.isoformat(),
                 'total_votes':    p.total_votes(),
                 'vote_counts':    p.vote_counts(),
@@ -183,6 +193,7 @@ class ChallengeViewSet(viewsets.ModelViewSet):
                 'difficulty':     d.difficulty,
                 'duration_days':  d.duration_days,
                 'created_by':     d.created_by.username,
+                'creator':        _creator_info(d.created_by),
                 'created_at':     d.created_at.isoformat(),
                 'participants':   d.participant_counts(),
             }
@@ -202,6 +213,7 @@ class ChallengeViewSet(viewsets.ModelViewSet):
                 'difficulty':     q.difficulty,
                 'duration_days':  q.duration_days,
                 'created_by':     q.created_by.username,
+                'creator':        _creator_info(q.created_by),
                 'created_at':     q.created_at.isoformat(),
             }
             for q in qas

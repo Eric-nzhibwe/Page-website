@@ -25,6 +25,25 @@ logger = logging.getLogger(__name__)
 channel_layer = get_channel_layer()
 
 
+def _creator_obj(user):
+    """Return a consistent creator dict with id, username, display_name, avatar_url."""
+    if not user:
+        return None
+    avatar = getattr(user, 'avatar_url', '') or ''
+    if not avatar:
+        try:
+            if user.profile_image:
+                avatar = user.profile_image.url
+        except Exception:
+            pass
+    return {
+        'id':           str(user.id),
+        'username':     user.username,
+        'display_name': user.display_name or user.username,
+        'avatar_url':   avatar,
+    }
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 #  xPoints
 # ─────────────────────────────────────────────────────────────────────────────
@@ -65,6 +84,7 @@ def poll_list(request):
             'difficulty':   p.difficulty,
             'duration_days': p.duration_days,
             'created_by':   p.created_by.username,
+            'creator':      _creator_obj(p.created_by),
             'created_at':   p.created_at.isoformat(),
             'total_votes':  total,
             'vote_counts':  counts,
@@ -190,6 +210,7 @@ def debate_list(request):
             'difficulty':   d.difficulty,
             'duration_days': d.duration_days,
             'created_by':   d.created_by.username,
+            'creator':      _creator_obj(d.created_by),
             'created_at':   d.created_at.isoformat(),
             'participants': counts,
             'user_joined':  str(d.id) in [str(v) for v in user_joined],
@@ -400,6 +421,7 @@ def qa_list(request):
             'difficulty':   q.difficulty,
             'duration_days': q.duration_days,
             'created_by':   q.created_by.username,
+            'creator':      _creator_obj(q.created_by),
             'created_at':   q.created_at.isoformat(),
             'answers': [
                 {

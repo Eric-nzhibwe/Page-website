@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Challenge — PAGE</title>
+    <link rel="icon" type="image/jpeg" href="../images/Page.jpeg">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredericka+the+Great&display=swap" rel="stylesheet">
+    <!-- Shared styles -->
+    <link rel="stylesheet" href="../styles/styles.css">
+    <link rel="stylesheet" href="../styles/icon-nav.css">
+    <link rel="stylesheet" href="../styles/challenges.css">
+    <link rel="stylesheet" href="../styles/challenges-enhanced.css">
+    <!-- Detail page styles -->
+    <link rel="stylesheet" href="../styles/challenge-detail.css">
+    <script src="../scripts/theme.js"></script>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     BACK NAV
+══════════════════════════════════════════════════════════════════════════ -->
+<header class="cd-topbar">
+    <button class="cd-back-btn" onclick="history.back()" aria-label="Back">
+        <i class="fas fa-arrow-left"></i>
+    </button>
+    <span class="cd-topbar-title" id="cdTopbarTitle">Challenge</span>
+    <div class="cd-topbar-spacer"></div>
+</header>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     LOADING STATE
+══════════════════════════════════════════════════════════════════════════ -->
+<div id="cdLoading" class="cd-loading-screen">
+    <div class="cd-spinner"></div>
+    <p>Loading challenge…</p>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     ERROR STATE
+══════════════════════════════════════════════════════════════════════════ -->
+<div id="cdError" class="cd-error-screen" style="display:none;">
+    <i class="fas fa-exclamation-triangle"></i>
+    <p id="cdErrorMsg">Challenge not found.</p>
+    <button class="cd-btn-primary" onclick="history.back()">Go Back</button>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     MAIN CONTENT
+══════════════════════════════════════════════════════════════════════════ -->
+<main id="cdMain" class="cd-main" style="display:none;">
+
+    <!-- ── CREATOR CARD ──────────────────────────────────────────────── -->
+    <section class="cd-creator-card" id="cdCreatorCard">
+        <a id="cdCreatorLink" href="#" class="cd-creator-avatar-wrap" aria-label="View creator profile">
+            <!-- Avatar: filled by JS — photo or fa-user fallback -->
+            <div class="cd-creator-avatar" id="cdCreatorAvatar">
+                <i class="fas fa-user"></i>
+            </div>
+        </a>
+        <div class="cd-creator-meta">
+            <a id="cdCreatorNameLink" href="#" class="cd-creator-name">—</a>
+            <span class="cd-creator-label">Challenge Creator</span>
+        </div>
+        <span class="cd-type-badge" id="cdTypeBadge"></span>
+    </section>
+
+    <!-- ── CHALLENGE HEADER ──────────────────────────────────────────── -->
+    <section class="cd-header">
+        <h1 class="cd-title" id="cdTitle"></h1>
+        <p class="cd-description" id="cdDescription"></p>
+        <div class="cd-meta-row" id="cdMetaRow"></div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════════════
+         DEBATE LAYOUT
+    ═══════════════════════════════════════════════════════════════════ -->
+    <div id="cdDebateBody" style="display:none;">
+
+        <div class="cd-debate-arena">
+            <!-- Side A -->
+            <div class="cd-debate-pane cd-pane-a">
+                <div class="cd-pane-header">
+                    <span class="cd-pane-tag">A</span>
+                    <span class="cd-pane-name" id="cdSideA"></span>
+                    <span class="cd-pane-count" id="cdCountA"><i class="fas fa-user-friends"></i> 0</span>
+                </div>
+                <div class="cd-comments-feed" id="cdFeedA">
+                    <p class="cd-feed-empty">No comments yet for Side A.</p>
+                </div>
+            </div>
+            <!-- Side B -->
+            <div class="cd-debate-pane cd-pane-b">
+                <div class="cd-pane-header">
+                    <span class="cd-pane-tag">B</span>
+                    <span class="cd-pane-name" id="cdSideB"></span>
+                    <span class="cd-pane-count" id="cdCountB"><i class="fas fa-user-friends"></i> 0</span>
+                </div>
+                <div class="cd-comments-feed" id="cdFeedB">
+                    <p class="cd-feed-empty">No comments yet for Side B.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Side picker -->
+        <div class="cd-side-picker" id="cdSidePicker">
+            <p class="cd-side-prompt">Pick your side to join the debate:</p>
+            <div class="cd-side-btns">
+                <button class="cd-side-btn cd-side-btn-a" id="cdJoinA" onclick="cdJoinDebate('a')">
+                    <span class="cd-side-tag">A</span>
+                    <span id="cdSideALabel"></span>
+                </button>
+                <button class="cd-side-btn cd-side-btn-b" id="cdJoinB" onclick="cdJoinDebate('b')">
+                    <span class="cd-side-tag">B</span>
+                    <span id="cdSideBLabel"></span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Comment input (shown after joining) -->
+        <div class="cd-comment-input-wrap" id="cdCommentRow" style="display:none;">
+            <div class="cd-joined-badge" id="cdJoinedBadge"></div>
+            <div class="cd-input-row">
+                <input class="cd-text-input" id="cdCommentInput" placeholder="Share your argument…"
+                       onkeydown="if(event.key==='Enter') cdPostComment()">
+                <button class="cd-send-btn" onclick="cdPostComment()">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════════
+         POLL LAYOUT
+    ═══════════════════════════════════════════════════════════════════ -->
+    <div id="cdPollBody" style="display:none;">
+        <div class="cd-poll-options" id="cdPollOptions"></div>
+        <div class="cd-poll-footer">
+            <span class="cd-poll-total"><i class="fas fa-users"></i> <span id="cdTotalVotes">0</span> votes</span>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════════
+         Q&A LAYOUT
+    ═══════════════════════════════════════════════════════════════════ -->
+    <div id="cdQABody" style="display:none;">
+        <!-- Optional image -->
+        <div class="cd-qa-image-wrap" id="cdQAImageWrap" style="display:none;">
+            <img id="cdQAImage" src="" alt="Challenge image" class="cd-qa-image" loading="lazy">
+        </div>
+        <!-- Answer feed -->
+        <div class="cd-qa-feed" id="cdQAFeed">
+            <p class="cd-feed-empty">No answers yet — be first!</p>
+        </div>
+        <!-- Answer input -->
+        <div class="cd-input-row cd-qa-input-row">
+            <input class="cd-text-input" id="cdQAInput" placeholder="Type your answer…"
+                   onkeydown="if(event.key==='Enter') cdPostAnswer()">
+            <button class="cd-send-btn" onclick="cdPostAnswer()">
+                <i class="fas fa-paper-plane"></i>
+            </button>
+        </div>
+    </div>
+
+</main>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     TOAST
+══════════════════════════════════════════════════════════════════════════ -->
+<div id="cdToastContainer" class="cd-toast-container"></div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     SCRIPTS
+══════════════════════════════════════════════════════════════════════════ -->
+<script>
+// ─────────────────────────────────────────────────────────────────────────────
+//  challenge.html — Challenge Detail Page
+//
+//  URL params:   ?id=<uuid>&type=debate|poll|qa
+//
+//  Flow:
+//    1. Parse ?id and ?type from the URL
+//    2. Fetch challenge data from the correct API endpoint
+//    3. Render creator card with profile URL (fa-user fallback if no avatar)
+//    4. Render type-specific body (debate / poll / qa)
+//    5. Wire up participation actions (join side, vote, post answer)
+// ─────────────────────────────────────────────────────────────────────────────
+
+const API_BASE = (
+    window.location.hostname === 'localhost' ||
+    window.location.hostname === '127.0.0.1'
+) ? 'http://localhost:8000/api' : `${window.location.origin}/api`;
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let _challenge  = null;
+let _type       = null;
+let _id         = null;
+let _joinedSide = null;   // 'a' | 'b' | null (debate)
+let _voted      = false;  // poll
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+    const params = new URLSearchParams(window.location.search);
+    _id   = params.get('id');
+    _type = (params.get('type') || '').toLowerCase();
+
+    if (!_id || !['debate', 'poll', 'qa'].includes(_type)) {
+        showError('Invalid challenge URL.');
+        return;
+    }
+
+    loadChallenge();
+});
+
+// ── Fetch ─────────────────────────────────────────────────────────────────────
+async function loadChallenge() {
+    showLoading(true);
+    try {
+        const endpointMap = {
+            debate: `${API_BASE}/challenges/debates/`,
+            poll:   `${API_BASE}/challenges/polls/`,
+            qa:     `${API_BASE}/challenges/qa/`,
+        };
+
+        const token = localStorage.getItem('djangoAuthToken') || localStorage.getItem('authToken');
+        const headers = token ? { Authorization: `Token ${token}` } : {};
+
+        const res  = await fetch(endpointMap[_type], { headers });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const list = await res.json();
+
+        _challenge = (Array.isArray(list) ? list : (list.results || [])).find(
+            c => String(c.id) === String(_id)
+        );
+
+        if (!_challenge) { showError('Challenge not found.'); return; }
+
+        render();
+    } catch (err) {
+        showError('Could not load challenge. Please try again.');
+        console.error(err);
+    } finally {
+        showLoading(false);
+    }
+}
+
+// ── Render orchestrator ───────────────────────────────────────────────────────
+function render() {
+    const c = _challenge;
+
+    // Title bar
+    document.getElementById('cdTopbarTitle').textContent = c.title || 'Challenge';
+    document.title = `${c.title} — PAGE`;
+
+    // Creator card
+    renderCreator(c.creator, c.created_by);
+
+    // Type badge
+    const badges = { debate: 'Debate', poll: 'Poll', qa: 'Q&A' };
+    const badgeIcons = { debate: 'fa-gavel', poll: 'fa-poll', qa: 'fa-question-circle' };
+    const badge = document.getElementById('cdTypeBadge');
+    badge.innerHTML = `<i class="fas ${badgeIcons[_type]}"></i> ${badges[_type]}`;
+    badge.dataset.type = _type;
+
+    // Header
+    document.getElementById('cdTitle').textContent = c.title;
+    document.getElementById('cdDescription').textContent = c.description || '';
+
+    // Meta row
+    renderMetaRow(c);
+
+    // Type-specific body
+    if (_type === 'debate') renderDebate(c);
+    if (_type === 'poll')   renderPoll(c);
+    if (_type === 'qa')     renderQA(c);
+
+    // Show main
+    document.getElementById('cdMain').style.display = 'block';
+}
+
+// ── Creator card ──────────────────────────────────────────────────────────────
+function renderCreator(creator, fallbackUsername) {
+    /*
+     * `creator` shape (from updated backend): { id, username, display_name, avatar_url }
+     * Falls back to `fallbackUsername` (plain string) if creator object is missing.
+     * If no avatar_url → shows <i class="fas fa-user"></i> icon.
+     */
+    const username    = creator?.username    || fallbackUsername || 'Unknown';
+    const displayName = creator?.display_name || username;
+    const avatarUrl   = creator?.avatar_url   || '';
+    const userId      = creator?.id           || '';
+
+    // Profile URL: prefer /pages/profile/[id] if ID is available,
+    // otherwise fall back to username query param
+    const profileHref = userId
+        ? `user.html?id=${encodeURIComponent(userId)}`
+        : `user.html?username=${encodeURIComponent(username)}`;
+
+    // Wire up both the avatar link and the name link
+    document.getElementById('cdCreatorLink').href     = profileHref;
+    document.getElementById('cdCreatorNameLink').href = profileHref;
+    document.getElementById('cdCreatorNameLink').textContent = displayName;
+
+    // Avatar — photo if available, fa-user icon otherwise
+    const avatarEl = document.getElementById('cdCreatorAvatar');
+    if (avatarUrl) {
+        avatarEl.innerHTML = `
+            <img src="${escHtml(avatarUrl)}"
+                 alt="${escHtml(displayName)}"
+                 class="cd-creator-avatar-img"
+                 onerror="this.parentElement.innerHTML='<i class=\\'fas fa-user\\'></i>'">`;
+    } else {
+        // No photo set — show default fa-user icon
+        avatarEl.innerHTML = '<i class="fas fa-user"></i>';
+    }
+}
+
+// ── Meta row ─────────────────────────────────────────────────────────────────
+function renderMetaRow(c) {
+    const container = document.getElementById('cdMetaRow');
+    const parts = [];
+
+    if (c.duration_days) {
+        parts.push(`<span class="cd-meta-item"><i class="fas fa-clock"></i> ${c.duration_days}d left</span>`);
+    }
+    if (c.difficulty) {
+        parts.push(`<span class="cd-meta-item cd-diff-${c.difficulty}"><i class="fas fa-signal"></i> ${cap(c.difficulty)}</span>`);
+    }
+    if (c.prize_amount && parseFloat(c.prize_amount) > 0) {
+        parts.push(`<span class="cd-meta-item cd-prize"><i class="fas fa-trophy"></i> K${parseFloat(c.prize_amount).toFixed(2)}</span>`);
+    }
+
+    container.innerHTML = parts.join('');
+}
+
+// ── Debate ────────────────────────────────────────────────────────────────────
+function renderDebate(c) {
+    document.getElementById('cdDebateBody').style.display = 'block';
+
+    // Side labels
+    const sideA = c.side_a || 'For';
+    const sideB = c.side_b || 'Against';
+    document.getElementById('cdSideA').textContent      = sideA;
+    document.getElementById('cdSideB').textContent      = sideB;
+    document.getElementById('cdSideALabel').textContent = sideA;
+    document.getElementById('cdSideBLabel').textContent = sideB;
+
+    // Participant counts
+    document.getElementById('cdCountA').innerHTML = `<i class="fas fa-user-friends"></i> ${c.participants?.a || 0} joined`;
+    document.getElementById('cdCountB').innerHTML = `<i class="fas fa-user-friends"></i> ${c.participants?.b || 0} joined`;
+
+    // Comments
+    const comments = c.comments || [];
+    renderDebateComments(comments);
+
+    // Check if already joined (user_joined flag + local storage)
+    if (c.user_joined) {
+        const savedSide = localStorage.getItem(`debate_side_${c.id}`);
+        _joinedSide = savedSide || 'a';
+        showCommentInput(_joinedSide);
+    }
+}
+
+function renderDebateComments(comments) {
+    const feedA = document.getElementById('cdFeedA');
+    const feedB = document.getElementById('cdFeedB');
+    const sideAComments = comments.filter(c => c.side === 'a');
+    const sideBComments = comments.filter(c => c.side === 'b');
+
+    feedA.innerHTML = sideAComments.length
+        ? sideAComments.map(c => commentBubble(c)).join('')
+        : '<p class="cd-feed-empty">No comments yet for Side A.</p>';
+
+    feedB.innerHTML = sideBComments.length
+        ? sideBComments.map(c => commentBubble(c)).join('')
+        : '<p class="cd-feed-empty">No comments yet for Side B.</p>';
+
+    // Scroll to bottom of each feed
+    [feedA, feedB].forEach(f => { f.scrollTop = f.scrollHeight; });
+}
+
+function commentBubble(c) {
+    const hue = (c.user || '').split('').reduce((s, ch) => s + ch.charCodeAt(0), 0) % 360;
+    const initial = (c.user || '?')[0].toUpperCase();
+    return `<div class="cd-comment">
+        <div class="cd-comment-avatar" style="background:hsl(${hue},50%,38%);">${initial}</div>
+        <div class="cd-comment-bubble">
+            <span class="cd-comment-user">${escHtml(c.user)}</span>
+            <span class="cd-comment-text">${escHtml(c.text)}</span>
+        </div>
+    </div>`;
+}
+
+function showCommentInput(side) {
+    _joinedSide = side;
+    document.getElementById('cdSidePicker').style.display = 'none';
+    const row = document.getElementById('cdCommentRow');
+    row.style.display = 'block';
+    const badge = document.getElementById('cdJoinedBadge');
+    badge.innerHTML = `<i class="fas fa-check-circle"></i> Joined Side ${side.toUpperCase()}: ${escHtml(side === 'a' ? (_challenge?.side_a || 'For') : (_challenge?.side_b || 'Against'))}`;
+    badge.dataset.side = side;
+}
+
+async function cdJoinDebate(side) {
+    const btn = document.getElementById(side === 'a' ? 'cdJoinA' : 'cdJoinB');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+    try {
+        const token = getToken();
+        if (!token) { showToast('Please log in to join the debate.', 'error'); return; }
+
+        const res = await fetch(`${API_BASE}/challenges/debates/${_id}/join/`, {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Token ${token}` },
+            body:    JSON.stringify({ side }),
+        });
+        const data = await res.json().catch(() => ({}));
+
+        if (!res.ok) {
+            showToast(data.error || 'Could not join debate.', 'error');
+            return;
+        }
+
+        localStorage.setItem(`debate_side_${_id}`, side);
+        showCommentInput(side);
+        showToast(`Joined Side ${side.toUpperCase()}! 🔥`, 'success');
+
+        // Update count
+        const countEl = document.getElementById(side === 'a' ? 'cdCountA' : 'cdCountB');
+        const current = parseInt(countEl.textContent) || 0;
+        countEl.innerHTML = `<i class="fas fa-user-friends"></i> ${current + 1} joined`;
+
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = side === 'a'
+            ? `<span class="cd-side-tag">A</span> ${escHtml(_challenge?.side_a || 'For')}`
+            : `<span class="cd-side-tag">B</span> ${escHtml(_challenge?.side_b || 'Against')}`;
+    }
+}
+
+async function cdPostComment() {
+    const input = document.getElementById('cdCommentInput');
+    const text  = input.value.trim();
+    if (!text || !_joinedSide) return;
+
+    const token = getToken();
+    if (!token) { showToast('Please log in to comment.', 'error'); return; }
+
+    input.disabled = true;
+    try {
+        const res = await fetch(`${API_BASE}/challenges/debates/${_id}/comment/`, {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Token ${token}` },
+            body:    JSON.stringify({ text, side: _joinedSide }),
+        });
+        const data = await res.json().catch(() => ({}));
+
+        if (!res.ok) { showToast(data.error || 'Could not post comment.', 'error'); return; }
+
+        input.value = '';
+        const feed = document.getElementById(_joinedSide === 'a' ? 'cdFeedA' : 'cdFeedB');
+        const user = getCurrentUsername();
+        const bubble = commentBubble({ user, text });
+        const empty = feed.querySelector('.cd-feed-empty');
+        if (empty) empty.remove();
+        feed.insertAdjacentHTML('beforeend', bubble);
+        feed.scrollTop = feed.scrollHeight;
+
+    } finally {
+        input.disabled = false;
+        input.focus();
+    }
+}
+
+// ── Poll ──────────────────────────────────────────────────────────────────────
+function renderPoll(c) {
+    document.getElementById('cdPollBody').style.display = 'block';
+
+    const opts      = c.options || [];
+    const counts    = c.vote_counts || {};
+    const total     = c.total_votes || 0;
+    _voted          = c.user_voted || false;
+
+    document.getElementById('cdTotalVotes').textContent = total;
+
+    const container = document.getElementById('cdPollOptions');
+    container.innerHTML = opts.map((opt, i) => {
+        const count = counts[i] || 0;
+        const pct   = total > 0 ? Math.round((count / total) * 100) : 0;
+        return `
+        <button class="cd-poll-option ${_voted ? 'cd-voted' : ''}"
+                onclick="${_voted ? '' : `cdCastVote(${i}, this)`}"
+                data-index="${i}" ${_voted ? 'disabled' : ''}>
+            <div class="cd-poll-bar" style="width:${pct}%"></div>
+            <span class="cd-poll-label">${escHtml(opt)}</span>
+            <span class="cd-poll-pct">${pct}%</span>
+        </button>`;
+    }).join('');
+}
+
+async function cdCastVote(optionIndex, btn) {
+    const token = getToken();
+    if (!token) { showToast('Please log in to vote.', 'error'); return; }
+    if (_voted)  { showToast('You have already voted.', 'info'); return; }
+
+    // Optimistic UI
+    _voted = true;
+    document.querySelectorAll('.cd-poll-option').forEach(b => { b.disabled = true; });
+
+    try {
+        const res = await fetch(`${API_BASE}/challenges/polls/${_id}/vote/`, {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Token ${token}` },
+            body:    JSON.stringify({ option_index: optionIndex }),
+        });
+        const data = await res.json().catch(() => ({}));
+
+        if (!res.ok) {
+            showToast(data.error || 'Could not cast vote.', 'error');
+            _voted = false;
+            document.querySelectorAll('.cd-poll-option').forEach(b => { b.disabled = false; });
+            return;
+        }
+
+        // Re-render with fresh counts
+        _challenge.vote_counts  = data.vote_counts  || _challenge.vote_counts;
+        _challenge.total_votes  = data.total_votes  || _challenge.total_votes;
+        _challenge.user_voted   = true;
+        renderPoll(_challenge);
+        document.getElementById('cdTotalVotes').textContent = _challenge.total_votes;
+        showToast('Vote cast! 🗳️', 'success');
+
+    } catch {
+        showToast('Could not reach server. Try again.', 'error');
+        _voted = false;
+        document.querySelectorAll('.cd-poll-option').forEach(b => { b.disabled = false; });
+    }
+}
+
+// ── Q&A ───────────────────────────────────────────────────────────────────────
+function renderQA(c) {
+    document.getElementById('cdQABody').style.display = 'block';
+
+    // Optional image
+    if (c.image_url) {
+        const imgWrap = document.getElementById('cdQAImageWrap');
+        const img     = document.getElementById('cdQAImage');
+        img.src        = c.image_url;
+        imgWrap.style.display = 'block';
+    }
+
+    // Answers feed
+    const feed    = document.getElementById('cdQAFeed');
+    const answers = c.answers || [];
+    feed.innerHTML = answers.length
+        ? answers.map(a => answerBubble(a)).join('')
+        : '<p class="cd-feed-empty">No answers yet — be first!</p>';
+
+    feed.scrollTop = feed.scrollHeight;
+}
+
+function answerBubble(a) {
+    const hue     = (a.user || '').split('').reduce((s, ch) => s + ch.charCodeAt(0), 0) % 360;
+    const initial = (a.user || '?')[0].toUpperCase();
+    const when    = a.created_at ? timeAgo(a.created_at) : '';
+    return `<div class="cd-answer">
+        <div class="cd-answer-avatar" style="background:hsl(${hue},50%,38%);">${initial}</div>
+        <div class="cd-answer-bubble">
+            <div class="cd-answer-header">
+                <span class="cd-answer-user">${escHtml(a.user)}</span>
+                ${when ? `<span class="cd-answer-time">${when}</span>` : ''}
+            </div>
+            <p class="cd-answer-text">${escHtml(a.text)}</p>
+        </div>
+    </div>`;
+}
+
+async function cdPostAnswer() {
+    const input = document.getElementById('cdQAInput');
+    const text  = input.value.trim();
+    if (!text) return;
+
+    const token = getToken();
+    if (!token) { showToast('Please log in to answer.', 'error'); return; }
+
+    input.disabled = true;
+    try {
+        const res = await fetch(`${API_BASE}/challenges/qa/${_id}/answer/`, {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Token ${token}` },
+            body:    JSON.stringify({ text }),
+        });
+        const data = await res.json().catch(() => ({}));
+
+        if (!res.ok) { showToast(data.error || 'Could not post answer.', 'error'); return; }
+
+        input.value = '';
+        const feed  = document.getElementById('cdQAFeed');
+        const user  = getCurrentUsername();
+        const empty = feed.querySelector('.cd-feed-empty');
+        if (empty) empty.remove();
+        feed.insertAdjacentHTML('beforeend', answerBubble({ user, text, created_at: new Date().toISOString() }));
+        feed.scrollTop = feed.scrollHeight;
+        showToast('Answer posted! 💬', 'success');
+
+    } finally {
+        input.disabled = false;
+        input.focus();
+    }
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function getToken() {
+    return localStorage.getItem('djangoAuthToken') || localStorage.getItem('authToken') || '';
+}
+
+function getCurrentUsername() {
+    try { return JSON.parse(localStorage.getItem('pageUser') || '{}').username || 'You'; }
+    catch { return 'You'; }
+}
+
+function showLoading(on) {
+    document.getElementById('cdLoading').style.display = on ? 'flex' : 'none';
+}
+
+function showError(msg) {
+    showLoading(false);
+    document.getElementById('cdErrorMsg').textContent = msg;
+    document.getElementById('cdError').style.display  = 'flex';
+}
+
+function escHtml(s) {
+    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function cap(s) { return s ? s[0].toUpperCase() + s.slice(1) : s; }
+
+function timeAgo(isoString) {
+    const diff = Date.now() - new Date(isoString).getTime();
+    const m = Math.floor(diff / 60000);
+    if (m < 1)  return 'just now';
+    if (m < 60) return `${m}m ago`;
+    const h = Math.floor(m / 60);
+    if (h < 24) return `${h}h ago`;
+    return `${Math.floor(h / 24)}d ago`;
+}
+
+function showToast(msg, type = 'info') {
+    const container = document.getElementById('cdToastContainer');
+    const toast = document.createElement('div');
+    toast.className = `cd-toast cd-toast--${type}`;
+    const icons = { success: 'fa-check-circle', error: 'fa-times-circle', info: 'fa-info-circle' };
+    toast.innerHTML = `<i class="fas ${icons[type] || icons.info}"></i><span>${msg}</span>`;
+    container.appendChild(toast);
+    requestAnimationFrame(() => toast.classList.add('cd-toast--visible'));
+    setTimeout(() => {
+        toast.classList.remove('cd-toast--visible');
+        toast.addEventListener('transitionend', () => toast.remove(), { once: true });
+    }, 3500);
+}
+</script>
+
+</body>
+</html>
