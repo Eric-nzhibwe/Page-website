@@ -663,60 +663,82 @@ def upload_avatar_view(request):
     """
     Upload / replace the user's profile avatar.
 
-    Accepts a multipart file upload ('avatar' field).
-    Resizes the image to 256×256, converts it to a JPEG base64 data URI,
-    and stores it in user.avatar_url — no external storage service required.
+    Accepts two formats:
+      A) JSON body:      { "avatar_base64": "data:image/jpeg;base64,..." }
+         The frontend resizes + encodes to 256×256 JPEG before sending.
+         This avoids multipart auth issues with Firebase tokens.
+
+      B) Multipart form: 'avatar' file field (legacy / fallback).
+         The server resizes to 256×256 JPEG and encodes to base64 here.
+
+    The final data_uri is stored in user.avatar_url and synced to Firestore.
     """
-    if 'avatar' not in request.FILES:
-        return Response({'error': 'No file provided.'}, status=status.HTTP_400_BAD_REQUEST)
+    import io, base64, logging
+    log = logging.getLogger(__name__)
 
-    file = request.FILES['avatar']
-    allowed_types = ('image/jpeg', 'image/png', 'image/gif', 'image/webp')
-    if file.content_type not in allowed_types:
-        return Response({'error': 'Unsupported file type.'}, status=status.HTTP_400_BAD_REQUEST)
+    data_uri = None
 
-    if file.size > 5 * 1024 * 1024:  # 5 MB limit
-        return Response({'error': 'File too large. Max 5 MB.'}, status=status.HTTP_400_BAD_REQUEST)
+    # ── Path A: base64 JSON (preferred — no multipart auth issues) ───────────
+    if request.content_type and 'application/json' in request.content_type:
+        raw = (request.data.get('avatar_base64') or '').strip()
+        if not raw:
+            return Response({'error': 'avatar_base64 is required.'}, status=status.HTTP_400_BAD_REQUEST)
 
-    # ── Resize to 256×256 and encode as base64 data URI ──────────────────────
-    try:
-        from PIL import Image
-        import io, base64
+        # Validate it looks like a data URI
+        if not raw.startswith('data:image/'):
+            return Response({'error': 'avatar_base64 must be a data: URI.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        img = Image.open(file)
+        # Rough size guard — base64 of a 256×256 JPEG is ~30 KB; 300 KB is generous
+        if len(raw) > 400_000:
+            return Response({'error': 'Image too large. Max ~300 KB base64.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Convert palette / RGBA modes to RGB so JPEG save works
-        if img.mode in ('RGBA', 'LA', 'P'):
-            background = Image.new('RGB', img.size, (255, 255, 255))
-            if img.mode == 'P':
-                img = img.convert('RGBA')
-            background.paste(img, mask=img.split()[-1] if img.mode == 'RGBA' else None)
-            img = background
-        elif img.mode != 'RGB':
-            img = img.convert('RGB')
+        data_uri = raw
 
-        # Crop to square from centre, then resize
-        w, h   = img.size
-        side   = min(w, h)
-        left   = (w - side) // 2
-        top    = (h - side) // 2
-        img    = img.crop((left, top, left + side, top + side))
-        img    = img.resize((256, 256), Image.LANCZOS)
+    # ── Path B: multipart file upload (legacy fallback) ──────────────────────
+    else:
+        if 'avatar' not in request.FILES:
+            return Response({'error': 'No file provided.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        buf = io.BytesIO()
-        img.save(buf, format='JPEG', quality=85, optimize=True)
-        encoded = base64.b64encode(buf.getvalue()).decode('utf-8')
-        data_uri = f'data:image/jpeg;base64,{encoded}'
+        file = request.FILES['avatar']
+        allowed_types = ('image/jpeg', 'image/png', 'image/gif', 'image/webp')
+        if file.content_type not in allowed_types:
+            return Response({'error': 'Unsupported file type.'}, status=status.HTTP_400_BAD_REQUEST)
 
-    except Exception as exc:
-        import logging
-        logging.getLogger(__name__).error(f'Avatar resize failed: {exc}')
-        return Response({'error': 'Could not process image.'}, status=status.HTTP_400_BAD_REQUEST)
+        if file.size > 5 * 1024 * 1024:
+            return Response({'error': 'File too large. Max 5 MB.'}, status=status.HTTP_400_BAD_REQUEST)
 
+        try:
+            from PIL import Image
+
+            img = Image.open(file)
+            if img.mode in ('RGBA', 'LA', 'P'):
+                background = Image.new('RGB', img.size, (255, 255, 255))
+                if img.mode == 'P':
+                    img = img.convert('RGBA')
+                background.paste(img, mask=img.split()[-1] if img.mode == 'RGBA' else None)
+                img = background
+            elif img.mode != 'RGB':
+                img = img.convert('RGB')
+
+            w, h  = img.size
+            side  = min(w, h)
+            left  = (w - side) // 2
+            top   = (h - side) // 2
+            img   = img.crop((left, top, left + side, top + side))
+            img   = img.resize((256, 256), Image.LANCZOS)
+
+            buf = io.BytesIO()
+            img.save(buf, format='JPEG', quality=85, optimize=True)
+            encoded  = base64.b64encode(buf.getvalue()).decode('utf-8')
+            data_uri = f'data:image/jpeg;base64,{encoded}'
+
+        except Exception as exc:
+            log.error(f'Avatar resize failed: {exc}')
+            return Response({'error': 'Could not process image.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    # ── Persist ───────────────────────────────────────────────────────────────
     user = request.user
 
-    # EphemeralUser (Firebase-only mode — DB unavailable) cannot be saved to the DB.
-    # Fall through to Firestore-only sync so the avatar still persists.
     from users.firebase_token_auth import EphemeralUser
     is_ephemeral = isinstance(user, EphemeralUser)
 
@@ -724,9 +746,9 @@ def upload_avatar_view(request):
         user.avatar_url = data_uri
         user.save(update_fields=['avatar_url'])
     else:
-        user.avatar_url = data_uri  # in-memory only for this request
+        user.avatar_url = data_uri  # in-memory only — Firestore is the store
 
-    # Sync to Firestore so the avatar appears in discover list, stories, messenger
+    # ── Sync to Firestore ─────────────────────────────────────────────────────
     try:
         from page_platform.firebase_client import get_firestore
         db = get_firestore()
@@ -740,10 +762,9 @@ def upload_avatar_view(request):
                 merge=True,
             )
     except Exception:
-        pass  # Firestore sync is best-effort
+        pass  # best-effort
 
-    # Push avatar update to all followers via WebSocket so their pages update
-    # immediately without a reload (avatars in post cards, suggest list, etc.)
+    # ── WebSocket broadcast to followers ──────────────────────────────────────
     try:
         from channels.layers import get_channel_layer
         from asgiref.sync import async_to_sync
@@ -760,10 +781,10 @@ def upload_avatar_view(request):
                 }
             )
     except Exception:
-        pass  # WS broadcast is best-effort
+        pass  # best-effort
 
     return Response({
-        'message': 'Avatar updated successfully.',
+        'message':           'Avatar updated successfully.',
         'avatar_url':        data_uri,
         'profile_image_url': data_uri,
         'profile_image':     data_uri,

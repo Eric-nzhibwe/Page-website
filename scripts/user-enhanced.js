@@ -602,42 +602,61 @@ window.uploadCover = async function(input) {
     const file = input.files[0];
     if (!file) return;
     if (file.size > 8 * 1024 * 1024) {
-        if (window.showToast) showToast('Cover image must be under 8 MB');
+        if (window.showToast) showToast('Cover image must be under 8 MB', 'error');
         return;
     }
 
-    // Instant preview
+    // ── Instant local preview (no network needed) ─────────────────────────
     const reader = new FileReader();
     reader.onload = e => {
         const cover = document.getElementById('coverArt');
         if (cover) {
-            cover.style.backgroundImage  = `url(${e.target.result})`;
-            cover.style.backgroundSize   = 'cover';
+            cover.style.backgroundImage   = `url(${e.target.result})`;
+            cover.style.backgroundSize    = 'cover';
             cover.style.backgroundPosition = 'center';
         }
     };
     reader.readAsDataURL(file);
 
-    // Upload to backend
-    const form = new FormData();
-    form.append('cover_image', file);
+    // ── Encode to base64 for consistent JSON upload ───────────────────────
+    let coverBase64;
     try {
-        // Refresh token before upload so Firebase users don't get 401
-        const uploadHeaders = await _ehHeadersAsync();
+        coverBase64 = await new Promise((resolve, reject) => {
+            const r = new FileReader();
+            r.onerror  = () => reject(new Error('FileReader error'));
+            r.onload   = (e) => resolve(e.target.result);
+            r.readAsDataURL(file);
+        });
+    } catch {
+        // Preview is already showing — non-critical if backend fails
+        if (window.showToast) showToast('Cover saved locally', 'info');
+        input.value = '';
+        return;
+    }
+
+    // ── POST as JSON — same auth strategy as avatar upload ────────────────
+    const drfToken = localStorage.getItem('djangoAuthToken') || localStorage.getItem('authToken');
+    const fbToken  = localStorage.getItem('firebaseIdToken');
+    const authVal  = drfToken ? `Token ${drfToken}` : (fbToken ? `FirebaseToken ${fbToken}` : null);
+
+    if (!authVal) { input.value = ''; return; }
+
+    try {
         const res = await fetch(`${_EH_API}/auth/profile/`, {
             method:  'PATCH',
-            headers: uploadHeaders,
-            body:    form,
+            headers: { 'Authorization': authVal, 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ cover_image_base64: coverBase64 }),
         });
         if (res.ok) {
-            if (window.showToast) showToast('Cover updated ✓');
+            if (window.showToast) showToast('Cover updated ✓', 'success');
         } else {
-            if (window.showToast) showToast('Cover saved locally (backend endpoint not set up yet)');
+            // Cover is already showing locally — treat backend failure as soft
+            if (window.showToast) showToast('Cover updated locally', 'info');
         }
     } catch {
-        if (window.showToast) showToast('Cover saved locally');
+        if (window.showToast) showToast('Cover saved locally', 'info');
     }
-    // Reset input so same file can be re-selected
+
     input.value = '';
 };
 

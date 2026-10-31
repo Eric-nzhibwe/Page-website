@@ -460,58 +460,153 @@ async function saveProfile() {
 }
 
 // ── Avatar upload ─────────────────────────────────────────────
+//
+// Strategy: resize + encode entirely in the browser using Canvas,
+// then POST the base64 data URI as JSON.
+//
+// Why: multipart uploads require a fresh auth token at the moment of the
+// fetch(). Firebase tokens expire hourly and the Firebase SDK is only
+// initialized on auth.html — so token refresh is unreliable on user.html.
+// Sending JSON lets the DRF TokenAuthentication path handle auth, which
+// never expires (the DRF token is always stored alongside the Firebase one).
+//
 async function uploadAvatar(input) {
     const file = input.files[0];
     if (!file) return;
-    if (file.size > 5 * 1024 * 1024) { showToast('Max file size is 5 MB'); return; }
 
-    // Use async header builder so an expired Firebase token is refreshed first
-    const authHeader = window._pageAuthHeaderAsync
-        ? await window._pageAuthHeaderAsync()
-        : (window._pageAuthHeader ? window._pageAuthHeader() : null);
-    const form  = new FormData();
-    form.append('avatar', file);  // dedicated upload endpoint expects 'avatar'
+    const ALLOWED = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    if (!ALLOWED.includes(file.type)) {
+        showToast('Unsupported file type. Use JPEG, PNG, GIF or WebP.', 'error');
+        input.value = '';
+        return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+        showToast('Max file size is 5 MB.', 'error');
+        input.value = '';
+        return;
+    }
+
+    showToast('Processing…');
+
+    // ── 1. Read file → Image element ──────────────────────────────────────
+    let dataUri;
+    try {
+        dataUri = await _resizeToBase64(file, 256);
+    } catch (err) {
+        console.error('Avatar encode error:', err);
+        showToast('Could not process image. Try another file.', 'error');
+        input.value = '';
+        return;
+    }
+
+    // ── 2. Show instant local preview ─────────────────────────────────────
+    applyAvatarEverywhere(dataUri);
+
+    // ── 3. Build auth header — prefer DRF token (never expires) ──────────
+    //    Fall back to FirebaseToken if DRF token is absent.
+    const drfToken = localStorage.getItem('djangoAuthToken') || localStorage.getItem('authToken');
+    const fbToken  = localStorage.getItem('firebaseIdToken');
+    const authHeader = drfToken
+        ? `Token ${drfToken}`
+        : (fbToken ? `FirebaseToken ${fbToken}` : null);
+
+    if (!authHeader) {
+        showToast('Not logged in. Please sign in again.', 'error');
+        return;
+    }
 
     showToast('Uploading…');
+
+    // ── 4. POST as JSON — no multipart, no Content-Type header tricks ─────
     try {
         const res  = await fetch(`${PROFILE_API}/auth/avatar/`, {
             method:  'POST',
-            headers: authHeader ? { 'Authorization': authHeader } : {},
-            body:    form,
+            headers: {
+                'Authorization': authHeader,
+                'Content-Type':  'application/json',
+            },
+            body: JSON.stringify({ avatar_base64: dataUri }),
         });
         const data = await res.json().catch(() => ({}));
-        if (!res.ok) { showToast(data.error || 'Upload failed'); return; }
 
-        const imgUrl = data.profile_image_url || data.profile_image || data.avatar_url;
-        if (!imgUrl) { showToast('Upload failed — no URL returned'); return; }
+        if (!res.ok) {
+            showToast(data.error || 'Upload failed. Please try again.', 'error');
+            return;
+        }
 
-        // 1. Persist to localStorage so every page reload restores the photo
+        const imgUrl = data.profile_image_url || data.avatar_url || data.profile_image || dataUri;
+
+        // ── 5. Persist to localStorage ────────────────────────────────────
         try {
             const stored = JSON.parse(localStorage.getItem('pageUser') || '{}');
             stored.profile_image     = imgUrl;
             stored.profile_image_url = imgUrl;
+            stored.avatar_url        = imgUrl;
             localStorage.setItem('pageUser', JSON.stringify(stored));
             localStorage.setItem('user',     JSON.stringify(stored));
         } catch (_) { /* non-critical */ }
 
-        // 2. Update in-memory profileData
+        // ── 6. Update in-memory profileData ──────────────────────────────
         if (profileData) {
             profileData.profile_image     = imgUrl;
             profileData.profile_image_url = imgUrl;
+            profileData.avatar_url        = imgUrl;
         }
 
-        // 3. Update every avatar slot on this page immediately
+        // ── 7. Stamp every avatar slot on the page ────────────────────────
         applyAvatarEverywhere(imgUrl);
 
-        // 4. Broadcast so other scripts on this page can react
+        // ── 8. Broadcast to other scripts ─────────────────────────────────
         window.dispatchEvent(new CustomEvent('page:avatarChanged', { detail: { url: imgUrl } }));
 
-        showToast('Profile photo updated ✓');
-    } catch (e) {
-        console.error('Avatar upload error:', e);
-        showToast('Upload failed. Please try again.');
+        showToast('Profile photo updated ✓', 'success');
+
+    } catch (err) {
+        console.error('Avatar upload error:', err);
+        showToast('Upload failed. Please check your connection and try again.', 'error');
     }
-    input.value = ''; // reset so the same file can be re-selected
+
+    input.value = ''; // allow re-selecting the same file
+}
+
+/**
+ * Resize an image File to a square of `size` px and return a JPEG data URI.
+ * Uses a Canvas so the browser does the heavy lifting — no server round-trip.
+ *
+ * @param {File}   file  - image File object from <input type="file">
+ * @param {number} size  - target width and height in pixels (default 256)
+ * @returns {Promise<string>} data URI string: "data:image/jpeg;base64,..."
+ */
+function _resizeToBase64(file, size = 256) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onerror = () => reject(new Error('FileReader error'));
+        reader.onload  = (e) => {
+            const img  = new Image();
+            img.onerror = () => reject(new Error('Image load error'));
+            img.onload  = () => {
+                // Centre-crop to square
+                const side = Math.min(img.width, img.height);
+                const sx   = (img.width  - side) / 2;
+                const sy   = (img.height - side) / 2;
+
+                const canvas = document.createElement('canvas');
+                canvas.width  = size;
+                canvas.height = size;
+                const ctx = canvas.getContext('2d');
+
+                // White background handles transparent PNGs / GIFs
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, size, size);
+                ctx.drawImage(img, sx, sy, side, side, 0, 0, size, size);
+
+                // 0.88 quality ≈ 30–50 KB for a 256×256 face photo
+                resolve(canvas.toDataURL('image/jpeg', 0.88));
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    });
 }
 
 // ── Helpers ───────────────────────────────────────────────────
