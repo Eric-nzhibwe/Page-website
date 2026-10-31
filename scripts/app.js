@@ -876,17 +876,19 @@ function filterHistory(type) {
     console.log(`Filtering history by: ${type}`);
 }
 
-// Logout function
+// Logout function — delegates to the complete _pageLogout helper in api-service.js
+// which signs out of Firebase, clears all auth keys, and redirects correctly.
 function logout() {
     if (confirm('Are you sure you want to logout?')) {
-        // Remove auth token
-        localStorage.removeItem('djangoAuthToken');
-        
-        // Clear user data
-        currentUser = null;
-        
-        // Redirect to auth page
-        window.location.href = '/pages/auth.html';
+        if (window._pageLogout) {
+            window._pageLogout();
+        } else {
+            // Fallback if api-service.js hasn't loaded yet (shouldn't happen)
+            ['djangoAuthToken', 'authToken', 'token', 'firebaseIdToken',
+             'pageUser', 'user', 'userId', 'authSource']
+                .forEach(k => localStorage.removeItem(k));
+            window.location.href = '/pages/auth.html';
+        }
     }
 }
 

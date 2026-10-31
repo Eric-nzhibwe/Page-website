@@ -503,15 +503,32 @@ window._pageIsAuthed = function () {
 };
 
 // Logout helper — clears all stored tokens and redirects to auth page.
-window._pageLogout = function () {
-    localStorage.removeItem('djangoAuthToken');
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('token');
-    localStorage.removeItem('firebaseIdToken');
-    localStorage.removeItem('pageUser');
-    localStorage.removeItem('user');
-    localStorage.removeItem('authSource');
-    window.location.href = 'pages/auth.html';
+window._pageLogout = async function () {
+    // ── 1. Sign out of Firebase so the SDK doesn't auto-restore the session ──
+    // This is the critical step for Firebase users — without it the SDK still
+    // holds an authenticated state in memory and IndexedDB, which means
+    // _pageIsAuthed() returns true again on the next page load.
+    try {
+        const { getAuth, signOut } = await import(
+            'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js'
+        );
+        const auth = getAuth();
+        if (auth.currentUser) await signOut(auth);
+    } catch (_) {
+        // Firebase not initialised on this page — safe to ignore
+    }
+
+    // ── 2. Wipe every auth key from localStorage ──────────────────────────────
+    const AUTH_KEYS = [
+        'djangoAuthToken', 'authToken', 'token',
+        'firebaseIdToken',
+        'pageUser', 'user', 'userId',
+        'authSource',
+    ];
+    AUTH_KEYS.forEach(k => localStorage.removeItem(k));
+
+    // ── 3. Use an absolute path so this works from any page depth ────────────
+    window.location.href = '/pages/auth.html';
 };
 
 // Export for use in other scripts
