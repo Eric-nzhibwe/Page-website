@@ -639,6 +639,13 @@ function _wsBase() {
 }
 
 async function _connectNotifWs() {
+    // Refresh the Firebase token before connecting so an expired token
+    // doesn't immediately cause a 403. Falls back to DRF token if Firebase
+    // is not available or the user is signed in via Django only.
+    if (window._pageAuthHeaderAsync) {
+        try { await window._pageAuthHeaderAsync(); } catch (_) { /* non-fatal */ }
+    }
+
     const fbToken  = localStorage.getItem('firebaseIdToken');
     const drfToken = localStorage.getItem('djangoAuthToken');
     const rawToken = fbToken || drfToken;
@@ -806,6 +813,12 @@ function _startNotifPoller() {
 async function _pollNotifications() {
     // Skip if WS is live — no need to poll
     if (_notifWs?.readyState === WebSocket.OPEN) return;
+
+    // Ensure we have a fresh token before polling — prevents perpetual 401s
+    // when the Firebase ID token expires (1-hour lifetime).
+    if (window._pageAuthHeaderAsync) {
+        try { await window._pageAuthHeaderAsync(); } catch (_) { /* non-fatal */ }
+    }
 
     try {
         const res = await fetch(`${_RT_BASE}/notifications/`, { headers: _rtHeaders() });

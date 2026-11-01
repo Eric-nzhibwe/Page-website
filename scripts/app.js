@@ -941,12 +941,6 @@ let currentConversation = null;
 let conversations = [];
 let messages = {};
 
-// Toggle User Menu Dropdown
-function toggleUserMenu() {
-    const dropdown = document.getElementById('userDropdown');
-    dropdown.classList.toggle('show');
-}
-
 // Toggle Quick Menu / User Menu (used by multiple pages)
 function toggleQuickMenu() {
     const qm = document.getElementById('quickMenuDropdown');
@@ -960,7 +954,13 @@ function toggleUserMenu() {
     const um = document.getElementById('userMenuDropdown');
     const qm = document.getElementById('quickMenuDropdown');
     if (qm) qm.classList.remove('show');
-    if (um) um.classList.toggle('show');
+    if (!um) return;
+    // Clear any inline positioning left over from the mobile bottom-nav toggle
+    um.style.removeProperty('top');
+    um.style.removeProperty('bottom');
+    um.style.removeProperty('right');
+    um.style.removeProperty('position');
+    um.classList.toggle('show');
 }
 
 // Close dropdowns when clicking outside header controls
