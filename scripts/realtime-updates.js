@@ -639,19 +639,31 @@ function _wsBase() {
 }
 
 async function _connectNotifWs() {
-    // Refresh the Firebase token before connecting so an expired token
-    // doesn't immediately cause a 403. Falls back to DRF token if Firebase
-    // is not available or the user is signed in via Django only.
-    if (window._pageAuthHeaderAsync) {
-        try { await window._pageAuthHeaderAsync(); } catch (_) { /* non-fatal */ }
-    }
-
     const fbToken  = localStorage.getItem('firebaseIdToken');
     const drfToken = localStorage.getItem('djangoAuthToken');
-    const rawToken = fbToken || drfToken;
-    // Backend expects "fb:<token>" for Firebase, plain string for DRF
-    const wsToken  = fbToken ? `fb:${fbToken}` : (drfToken || '');
 
+    // ── Guard: don't attempt connection with an expired Firebase token ────────
+    // Decode the JWT payload and check exp before opening the socket.
+    // A 403 from an expired token causes unnecessary retries and log noise.
+    if (fbToken) {
+        try {
+            const payload = JSON.parse(atob(fbToken.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')));
+            if (Date.now() > payload.exp * 1000) {
+                // Token is expired — remove it so the DRF path is used instead
+                localStorage.removeItem('firebaseIdToken');
+                // If there's also no DRF token, fall through to polling — can't WS
+                if (!drfToken) {
+                    _notifWsDisabled = true;
+                    if (!_notifTimer) _startNotifPoller();
+                    return;
+                }
+                // Retry immediately with the DRF token
+                return _connectNotifWs();
+            }
+        } catch (_) { /* malformed JWT — let it through and let the backend reject it */ }
+    }
+
+    const wsToken = fbToken ? `fb:${fbToken}` : (drfToken || '');
     if (!wsToken || _notifWsDisabled) return;
 
     if (_notifWs && (_notifWs.readyState === WebSocket.OPEN || _notifWs.readyState === WebSocket.CONNECTING)) return;
@@ -664,7 +676,6 @@ async function _connectNotifWs() {
         return;
     }
     if (cached === null) {
-        // Haven't probed yet — do it now
         try {
             const r = await fetch('/api/ws-status/');
             const d = await r.json();
@@ -697,8 +708,14 @@ async function _connectNotifWs() {
         _notifWs = null;
         if (_notifWsDisabled) return;
 
-        // If connection was refused immediately (code 1006 on first try),
-        // treat as "WS not supported" and switch to polling permanently
+        // 4001 = our backend rejected auth (expired / invalid token)
+        // Don't retry — fall straight to polling to avoid a flood of 403s
+        if (ev.code === 4001) {
+            _notifWsDisabled = true;
+            if (!_notifTimer) _startNotifPoller();
+            return;
+        }
+
         if (ev.code === 1006 && _notifWsRetries === 0) {
             _notifWsDisabled = true;
             sessionStorage.setItem('ws_supported', 'false');
@@ -707,7 +724,6 @@ async function _connectNotifWs() {
         }
 
         if (_notifWsRetries >= 5) {
-            // Give up after 5 attempts — fall back to polling
             _notifWsDisabled = true;
             if (!_notifTimer) _startNotifPoller();
             return;
@@ -721,7 +737,6 @@ async function _connectNotifWs() {
 
     _notifWs.onerror = () => { _notifWs?.close(); };
 
-    // Keep-alive ping every 25 s
     setInterval(() => {
         if (_notifWs?.readyState === WebSocket.OPEN) {
             _notifWs.send(JSON.stringify({ action: 'ping' }));
@@ -814,15 +829,35 @@ async function _pollNotifications() {
     // Skip if WS is live — no need to poll
     if (_notifWs?.readyState === WebSocket.OPEN) return;
 
-    // Ensure we have a fresh token before polling — prevents perpetual 401s
-    // when the Firebase ID token expires (1-hour lifetime).
-    if (window._pageAuthHeaderAsync) {
-        try { await window._pageAuthHeaderAsync(); } catch (_) { /* non-fatal */ }
-    }
-
     try {
         const res = await fetch(`${_RT_BASE}/notifications/`, { headers: _rtHeaders() });
+
+        // 401 = token is expired or invalid.
+        // Clear the offending Firebase token so subsequent calls use the DRF
+        // token instead. Do not stop the poller — the next tick will retry
+        // with the DRF token if one exists, or stay quiet if the user is
+        // genuinely unauthenticated.
+        if (res.status === 401) {
+            const fbToken = localStorage.getItem('firebaseIdToken');
+            if (fbToken) {
+                try {
+                    const payload = JSON.parse(atob(fbToken.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')));
+                    if (Date.now() > payload.exp * 1000) {
+                        localStorage.removeItem('firebaseIdToken');
+                        console.warn('[PAGE] Expired Firebase token cleared after 401 on notifications poll.');
+                    }
+                } catch (_) { /* malformed token — leave it for the logout flow */ }
+            }
+            // If no DRF token either, stop polling to avoid flooding the server
+            const hasDrfToken = !!(localStorage.getItem('djangoAuthToken') || localStorage.getItem('authToken'));
+            if (!hasDrfToken) {
+                if (_notifTimer) { clearInterval(_notifTimer); _notifTimer = null; }
+            }
+            return;
+        }
+
         if (!res.ok) return;
+
         const data  = await res.json();
         const list  = data.notifications || (Array.isArray(data) ? data : (data.results || []));
         let   badge = data.unread_count ?? 0;
@@ -849,7 +884,7 @@ async function _pollNotifications() {
         }
 
         _updateBellBadge(badge);
-    } catch { /* silent */ }
+    } catch { /* silent — network error is fine */ }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

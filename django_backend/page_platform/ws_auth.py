@@ -97,6 +97,10 @@ def _resolve_firebase_token(id_token):
     try:
         import firebase_admin.auth as fb_auth
         decoded = fb_auth.verify_id_token(id_token)
+    except fb_auth.ExpiredIdTokenError:
+        # Specific log for expired tokens — reduces noise vs the generic path
+        logger.info("Firebase WS: token expired — client should refresh and reconnect.")
+        return None, "token_expired"
     except Exception as exc:
         logger.warning("Firebase WS token verification failed: %s", exc)
         return None, f"firebase_invalid: {exc}"

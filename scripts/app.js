@@ -5,6 +5,58 @@ const API_BASE_URL = (window.location.hostname === 'localhost' || window.locatio
     ? 'http://localhost:8000/api'
     : `${window.location.origin}/api`;
 
+// ── Firebase token refresh — runs once at boot ────────────────────────────────
+// Firebase ID tokens expire after 1 hour. If the stored token is expired (or
+// within 5 minutes of expiry), this silently fetches a fresh one and updates
+// localStorage before any API or WebSocket call is attempted.
+// Works by decoding the JWT payload — no network round-trip needed to check expiry.
+(async function _refreshFirebaseTokenIfNeeded() {
+    try {
+        const stored = localStorage.getItem('firebaseIdToken');
+        if (!stored) return;  // user is using DRF token path — nothing to refresh
+
+        // Decode JWT payload (middle segment, base64url) — no signature verification needed here
+        const parts = stored.split('.');
+        if (parts.length !== 3) return;
+        const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+        const expiresAt = payload.exp * 1000;          // convert to ms
+        const fiveMinutes = 5 * 60 * 1000;
+
+        // Token is still valid for more than 5 min — nothing to do
+        if (Date.now() < expiresAt - fiveMinutes) return;
+
+        // Token is expired or expiring soon — ask Firebase SDK for a fresh one
+        const { getAuth } = await import(
+            'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js'
+        ).catch(() => ({}));
+
+        if (!getAuth) return;  // Firebase SDK not available on this page
+        const auth = getAuth();
+        const user = auth.currentUser;
+
+        if (user) {
+            // forceRefresh=true forces a network call even if the cached token looks valid
+            const fresh = await user.getIdToken(true);
+            if (fresh) {
+                localStorage.setItem('firebaseIdToken', fresh);
+                console.info('[PAGE] Firebase token refreshed at boot.');
+            }
+        } else {
+            // currentUser is null — Firebase app not initialized on this page (e.g. index.html)
+            // Fall back: clear the expired token so it stops causing 401s.
+            // The DRF token (djangoAuthToken) will be used instead if present.
+            if (Date.now() > expiresAt) {
+                localStorage.removeItem('firebaseIdToken');
+                console.info('[PAGE] Expired Firebase token cleared — DRF token will be used.');
+            }
+        }
+    } catch (err) {
+        // Non-fatal — worst case the token stays stale and the backend
+        // returns 401, which existing error handlers already deal with.
+        console.warn('[PAGE] Firebase token refresh at boot failed:', err.message);
+    }
+})();
+
 // ── Auth helper — Firebase token takes priority over DRF token ───────────────
 // Call this instead of reading djangoAuthToken directly so Firebase-only
 // sessions (no database) keep working.

@@ -319,7 +319,8 @@
     z-index: 1010;
     animation: dropdownSlide .22s ease;
     border: 1px solid rgba(0,0,0,0.06);
-    overflow: hidden;
+    /* overflow:hidden removed — it clips nav links on smaller screens.
+       border-radius on individual child sections handles visual rounding. */
 }
 
 @media (min-width: 768px) {
@@ -335,6 +336,9 @@
     padding: 16px;
     background: linear-gradient(135deg, var(--page-primary-dk), var(--page-primary));
     color: white;
+    /* Clip the gradient to the top rounded corners */
+    border-radius: 14px 14px 0 0;
+    overflow: hidden;
 }
 
 .user-menu-avatar {

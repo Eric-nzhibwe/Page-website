@@ -438,6 +438,63 @@ class APIService {
 // Create global instance
 const apiService = new APIService();
 
+// ── Proactive Firebase token refresh ─────────────────────────────────────────
+// Firebase ID tokens expire after 60 minutes. This interval fires every
+// 50 minutes and forces a token refresh so the stored token never goes stale
+// during an active session. Works alongside the boot-time check in app.js.
+(function _startFirebaseTokenRefreshInterval() {
+    const REFRESH_INTERVAL_MS = 50 * 60 * 1000; // 50 minutes
+
+    async function _doRefresh() {
+        // Only run if the user has a Firebase token — DRF token users don't need this.
+        const stored = localStorage.getItem('firebaseIdToken');
+        if (!stored) return;
+
+        try {
+            const [appModule, authModule] = await Promise.all([
+                import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js').catch(() => ({})),
+                import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js').catch(() => ({})),
+            ]);
+
+            const { getAuth } = authModule || {};
+            const { getApps, initializeApp } = appModule || {};
+            if (!getAuth || !getApps) return;
+
+            let auth;
+            if (getApps().length === 0) {
+                try {
+                    const cfgRes = await fetch(`${API_BASE_URL}/users/firebase-config/`);
+                    if (cfgRes.ok) {
+                        const cfg = await cfgRes.json();
+                        if (cfg.apiKey && cfg.projectId) {
+                            auth = getAuth(initializeApp(cfg));
+                        }
+                    }
+                } catch (_) { return; }
+            } else {
+                auth = getAuth();
+            }
+
+            if (!auth) return;
+            if (auth.authStateReady) await auth.authStateReady();
+
+            const user = auth.currentUser;
+            if (user) {
+                // forceRefresh=true — always get a new token on the interval tick
+                const fresh = await user.getIdToken(true);
+                if (fresh) {
+                    localStorage.setItem('firebaseIdToken', fresh);
+                    console.info('[PAGE] Firebase token refreshed (interval).');
+                }
+            }
+        } catch (_) {
+            // Non-fatal — the expiry-check in _pageAuthHeader will catch it
+        }
+    }
+
+    setInterval(_doRefresh, REFRESH_INTERVAL_MS);
+})();
+
 // ── Global auth helpers — usable by any script on the page ──────────────────
 
 /**
@@ -445,10 +502,25 @@ const apiService = new APIService();
  * Safe for non-critical reads (e.g. GET requests that degrade gracefully).
  * For write/mutation requests use the async _pageAuthHeaderAsync() below
  * so expired Firebase tokens are refreshed before the call is made.
+ *
+ * Skips an expired Firebase token and falls through to the DRF token so a
+ * stale token (e.g. after an hour-long idle session) never causes a 401.
  */
 window._pageAuthHeader = function () {
     const fbToken = localStorage.getItem('firebaseIdToken');
-    if (fbToken) return `FirebaseToken ${fbToken}`;
+    if (fbToken) {
+        // Cheap expiry check — decode JWT payload without a network call.
+        // If the token is expired, skip it so the DRF token is used instead.
+        try {
+            const payload = JSON.parse(atob(fbToken.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+            if (Date.now() < payload.exp * 1000) {
+                return `FirebaseToken ${fbToken}`;
+            }
+            // Token is expired — fall through to DRF token
+        } catch (_) {
+            // Malformed token — fall through to DRF token
+        }
+    }
     const token = localStorage.getItem('djangoAuthToken') || localStorage.getItem('authToken');
     if (token) return `Token ${token}`;
     return null;
@@ -467,31 +539,62 @@ window._pageAuthHeader = function () {
  * @returns {Promise<string|null>}
  */
 window._pageAuthHeaderAsync = async function () {
-    // ── 1. Try refreshing via Firebase SDK if it's loaded ─────────────────
+    // ── 1. Try refreshing via Firebase SDK ────────────────────────────────
     try {
-        // Firebase SDK is lazy-loaded in auth.js — check if it's available
-        const { getAuth } = await import(
-            'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js'
-        ).catch(() => ({}));
+        const [appModule, authModule] = await Promise.all([
+            import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js').catch(() => ({})),
+            import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js').catch(() => ({})),
+        ]);
 
-        if (getAuth) {
-            const auth = getAuth();
-            const user = auth.currentUser;
-            if (user) {
-                // forceRefresh=false: Firebase SDK returns cached token if still valid,
-                // or silently fetches a new one if expired — no manual expiry math needed.
-                const freshToken = await user.getIdToken(false);
-                if (freshToken) {
-                    localStorage.setItem('firebaseIdToken', freshToken);
-                    return `FirebaseToken ${freshToken}`;
+        const { getAuth, initializeAuth, browserLocalPersistence } = authModule || {};
+        const { getApps, initializeApp } = appModule || {};
+
+        if (getAuth && getApps) {
+            let auth;
+
+            // If no Firebase app is initialized yet on this page, initialize one.
+            // This covers all non-auth.html pages (index, user, challenge, etc.)
+            // where auth.js never ran but we still need token refresh.
+            if (getApps().length === 0) {
+                // Fetch config from backend (public endpoint, no auth required)
+                try {
+                    const cfgRes = await fetch(`${API_BASE_URL}/users/firebase-config/`);
+                    if (cfgRes.ok) {
+                        const cfg = await cfgRes.json();
+                        if (cfg.apiKey && cfg.projectId) {
+                            const app = initializeApp(cfg);
+                            auth = getAuth(app);
+                        }
+                    }
+                } catch (_) { /* network unavailable — fall through */ }
+            } else {
+                auth = getAuth();
+            }
+
+            if (auth) {
+                // Wait for the SDK to restore the persisted session from IndexedDB.
+                // authStateReady() resolves once currentUser is settled (null or User).
+                if (auth.authStateReady) {
+                    await auth.authStateReady();
+                }
+
+                const user = auth.currentUser;
+                if (user) {
+                    // forceRefresh=false: SDK returns cached token if still valid,
+                    // fetches a new one silently if expired.
+                    const freshToken = await user.getIdToken(false);
+                    if (freshToken) {
+                        localStorage.setItem('firebaseIdToken', freshToken);
+                        return `FirebaseToken ${freshToken}`;
+                    }
                 }
             }
         }
     } catch (_) {
-        // Firebase not loaded or user not signed in — fall through
+        // Firebase SDK unavailable or user not signed in — fall through
     }
 
-    // ── 2. Fall back to whatever is already in localStorage ───────────────
+    // ── 2. Fall back to whatever is in localStorage (expiry-checked) ──────
     return window._pageAuthHeader();
 };
 

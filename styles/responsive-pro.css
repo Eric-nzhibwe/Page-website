@@ -278,7 +278,8 @@ body {
   border-radius: var(--page-radius-md) !important;
   box-shadow: var(--page-shadow-lg) !important;
   border: 1px solid var(--page-border) !important;
-  overflow: hidden !important;
+  /* overflow:hidden removed — clips nav links on small screens.
+     .user-menu-header clips its own corners for the gradient rounding. */
 }
 
 .quick-menu-dropdown.show,
@@ -361,6 +362,9 @@ body {
   gap: 12px !important;
   padding: 16px !important;
   border-bottom: 1px solid var(--page-border) !important;
+  /* Clip the gradient background to the top rounded corners of the dropdown */
+  border-radius: var(--page-radius-md) var(--page-radius-md) 0 0 !important;
+  overflow: hidden !important;
 }
 
 .user-menu-avatar {
