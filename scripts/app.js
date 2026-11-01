@@ -1888,3 +1888,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }, 1500);
 });
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Expose critical functions to window scope for inline onclick handlers
+// ══════════════════════════════════════════════════════════════════════════════
+window.toggleQuickMenu = toggleQuickMenu;
+window.toggleUserMenu = toggleUserMenu;
+window.showNotifications = showNotifications;
+window.logout = logout;
+window.showSettings = showSettings;
+window.switchView = switchView;
+window.showDashboardView = showDashboardView;

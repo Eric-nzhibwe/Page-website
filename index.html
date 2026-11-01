@@ -83,7 +83,8 @@
                 <i class="fas fa-grid-2"></i>
             </button>
             <div class="user-avatar-btn" onclick="toggleUserMenu()" data-current-user-avatar>
-                <!-- Stamped by realtime-updates.js -->
+                <!-- Stamped by realtime-updates.js; fallback letter-circle if empty -->
+                <i class="fas fa-user"></i>
             </div>
         </div>
 
@@ -1939,6 +1940,54 @@
                 <script src="scripts/story-viewer.js"></script>
                 <!-- Firebase real-time listeners: notifications badge + messenger badge -->
                 <script src="scripts/firebase-realtime.js"></script>
+                
+                <!-- Diagnostic Script for Avatar & Dropdown Issues -->
+                <script>
+                    document.addEventListener('DOMContentLoaded', function() {
+                        // Wait a bit for all scripts to initialize
+                        setTimeout(function() {
+                            console.log('=== PAGE Diagnostic Check ===');
+                            
+                            // Check localStorage user data
+                            const pageUser = localStorage.getItem('pageUser');
+                            console.log('1. pageUser in localStorage:', pageUser ? 'EXISTS' : 'MISSING');
+                            if (pageUser) {
+                                try {
+                                    const user = JSON.parse(pageUser);
+                                    console.log('   - Username:', user.username || 'N/A');
+                                    console.log('   - Profile Image:', user.profile_image_url || user.profile_image || 'N/A');
+                                } catch(e) {
+                                    console.error('   - Error parsing pageUser:', e);
+                                }
+                            }
+                            
+                            // Check avatar button
+                            const avatarBtn = document.querySelector('.user-avatar-btn');
+                            console.log('2. Avatar Button:', avatarBtn ? 'FOUND' : 'MISSING');
+                            if (avatarBtn) {
+                                console.log('   - Content:', avatarBtn.innerHTML.substring(0, 100));
+                                console.log('   - Click handler:', typeof toggleUserMenu);
+                            }
+                            
+                            // Check dropdown
+                            const dropdown = document.getElementById('userMenuDropdown');
+                            console.log('3. User Menu Dropdown:', dropdown ? 'FOUND' : 'MISSING');
+                            if (dropdown) {
+                                const styles = window.getComputedStyle(dropdown);
+                                console.log('   - Display:', styles.display);
+                                console.log('   - Position:', styles.position);
+                                console.log('   - Z-index:', styles.zIndex);
+                            }
+                            
+                            // Check utility functions
+                            console.log('4. Utility Functions:');
+                            console.log('   - pageLetterAvatar:', typeof window.pageLetterAvatar);
+                            console.log('   - toggleUserMenu:', typeof window.toggleUserMenu || typeof toggleUserMenu);
+                            
+                            console.log('=== End Diagnostic ===');
+                        }, 1000);
+                    });
+                </script>
 
                 <!-- Bootstrap JS Bundle (includes Popper) -->
                 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
