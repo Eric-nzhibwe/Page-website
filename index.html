@@ -75,15 +75,17 @@
 
         <!-- Right Side Icons -->
         <div class="header-right d-flex align-items-center">
-            <button class="header-icon-btn" onclick="showNotifications()" title="Notifications">
+            <button class="header-icon-btn" id="notifBtn" title="Notifications">
                 <i class="fas fa-bell"></i>
                 <span class="notification-badge" id="notificationBadge" style="display: none;">0</span>
             </button>
-            <button class="header-icon-btn" onclick="toggleQuickMenu()" title="Menu">
+            <button class="header-icon-btn" id="quickMenuBtn" title="Menu">
                 <i class="fas fa-grid-2"></i>
             </button>
-            <div class="user-avatar-btn" onclick="toggleUserMenu()" data-current-user-avatar>
-                <!-- Stamped by realtime-updates.js; fallback letter-circle if empty -->
+            <div class="user-avatar-btn" id="userAvatarBtn" data-current-user-avatar
+                role="button" tabindex="0" aria-haspopup="menu" aria-expanded="false"
+                onclick="toggleUserMenu(event)"
+                onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleUserMenu(event); }">
                 <i class="fas fa-user"></i>
             </div>
         </div>
@@ -133,9 +135,7 @@
     <!-- User Menu Dropdown -->
     <div class="user-menu-dropdown" id="userMenuDropdown">
         <div class="user-menu-header">
-            <div class="user-menu-avatar" data-current-user-avatar>
-                <!-- Stamped by realtime-updates.js -->
-            </div>
+            <div class="user-menu-avatar" data-current-user-avatar></div>
             <div class="user-menu-info">
                 <h4 id="userMenuName">Player</h4>
                 <p id="userMenuTier">Bronze Tier</p>
@@ -156,26 +156,155 @@
             </div>
         </div>
         <div class="user-menu-links">
-            <a href="pages/user.html">
-                <i class="fas fa-id-card"></i> View Profile
-            </a>
-            <a href="pages/challenges.html">
-                <i class="fas fa-trophy"></i> Challenges
-            </a>
-            <a href="pages/chatbot.html">
-                <i class="fas fa-robot"></i> PAGE AI
-            </a>
-            <a href="pages/payment.html">
-                <i class="fas fa-wallet"></i> My Wallet
-            </a>
-            <a href="#" onclick="showSettings(); return false;">
-                <i class="fas fa-gear"></i> Settings
-            </a>
-            <a href="#" onclick="logout(); return false;" class="logout-link">
-                <i class="fas fa-right-from-bracket"></i> Logout
-            </a>
+            <a href="pages/user.html"><i class="fas fa-id-card"></i> View Profile</a>
+            <a href="pages/challenges.html"><i class="fas fa-trophy"></i> Challenges</a>
+            <a href="pages/chatbot.html"><i class="fas fa-robot"></i> PAGE AI</a>
+            <a href="pages/payment.html"><i class="fas fa-wallet"></i> My Wallet</a>
+            <a href="pages/followers.html"><i class="fas fa-user-plus"></i> Followers</a>
+            <a href="#" id="settingsLink"><i class="fas fa-gear"></i> Settings</a>
+            <a href="#" id="logoutLink" class="logout-link"><i class="fas fa-right-from-bracket"></i> Logout</a>
         </div>
     </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         DROPDOWN CONTROLLER — self-contained, zero external dependencies.
+         Runs as soon as this <script> is parsed, which is after the two
+         dropdown divs are in the DOM but before any other JS file loads.
+         addEventListener approach avoids all onclick-attribute race conditions.
+    ════════════════════════════════════════════════════════════════════════ -->
+    <script>
+    (function () {
+        'use strict';
+
+        /* ── helpers ─────────────────────────────────────────────────── */
+        function openMenu(id) {
+            var el = document.getElementById(id);
+            if (el) el.classList.add('show');
+            if (id === 'userMenuDropdown') {
+                var avatarBtn = document.getElementById('userAvatarBtn');
+                if (avatarBtn) avatarBtn.setAttribute('aria-expanded', 'true');
+            }
+        }
+        function closeMenu(id) {
+            var el = document.getElementById(id);
+            if (el) {
+                el.classList.remove('show');
+                el.style.removeProperty('top');
+                el.style.removeProperty('bottom');
+                el.style.removeProperty('right');
+                el.style.removeProperty('position');
+            }
+            if (id === 'userMenuDropdown') {
+                var avatarBtn = document.getElementById('userAvatarBtn');
+                if (avatarBtn) avatarBtn.setAttribute('aria-expanded', 'false');
+            }
+        }
+        function toggleMenu(id, closeOther) {
+            var el = document.getElementById(id);
+            if (!el) return;
+            var isOpen = el.classList.contains('show');
+            closeMenu(closeOther);
+            if (isOpen) { closeMenu(id); } else { openMenu(id); }
+        }
+
+        /* Expose so app.js helpers still work if called from other scripts */
+        window.toggleUserMenu  = function () { toggleMenu('userMenuDropdown',  'quickMenuDropdown'); };
+        window.toggleQuickMenu = function () { toggleMenu('quickMenuDropdown', 'userMenuDropdown'); };
+        window.closeUserMenu   = function () { closeMenu('userMenuDropdown'); };
+
+        /* ── wire buttons once DOM is ready ──────────────────────────── */
+        function wireButtons() {
+            var avatarBtn   = document.getElementById('userAvatarBtn');
+            var quickBtn    = document.getElementById('quickMenuBtn');
+            var notifBtn    = document.getElementById('notifBtn');
+            var settingsLnk = document.getElementById('settingsLink');
+            var followsBtn  = document.getElementById('followBTn')
+            var logoutLnk   = document.getElementById('logoutLink');
+            var um          = document.getElementById('userMenuDropdown');
+            var qm          = document.getElementById('quickMenuDropdown');
+
+            /* Avatar button uses the inline toggleUserMenu binding, defined above.
+               This avoids registering a second click handler and toggling twice. */
+
+            /* Grid button → quick menu */
+            if (quickBtn) {
+                quickBtn.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    toggleMenu('quickMenuDropdown', 'userMenuDropdown');
+                });
+            }
+
+            /* Bell button → notifications */
+            if (notifBtn) {
+                notifBtn.addEventListener('click', function () {
+                    if (typeof showNotifications === 'function') {
+                        showNotifications();
+                    } else {
+                        window.location.href = 'pages/notifications.html';
+                    }
+                });
+            }
+
+            /* Settings link inside dropdown */
+            if (settingsLnk) {
+                settingsLnk.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    closeMenu('userMenuDropdown');
+                    if (typeof showSettings === 'function') showSettings();
+                });
+            }
+
+            /* Logout link inside dropdown */
+            if (logoutLnk) {
+                logoutLnk.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    closeMenu('userMenuDropdown');
+                    if (typeof logout === 'function') {
+                        logout();
+                    } else {
+                        ['djangoAuthToken','authToken','token','firebaseIdToken',
+                         'pageUser','user','userId','authSource']
+                            .forEach(function (k) { localStorage.removeItem(k); });
+                        window.location.href = '/pages/auth.html';
+                    }
+                });
+            }
+
+            /* Click-outside dismissal — document level, capture phase */
+            document.addEventListener('click', function (e) {
+                /* User menu */
+                if (um && um.classList.contains('show') && !um.style.bottom) {
+                    if (!um.contains(e.target) && e.target !== avatarBtn &&
+                        !(avatarBtn && avatarBtn.contains(e.target))) {
+                        closeMenu('userMenuDropdown');
+                    }
+                }
+                /* Quick menu */
+                if (qm && qm.classList.contains('show')) {
+                    if (!qm.contains(e.target) && e.target !== quickBtn &&
+                        !(quickBtn && quickBtn.contains(e.target))) {
+                        closeMenu('quickMenuDropdown');
+                    }
+                }
+            });
+
+            /* Escape key */
+            document.addEventListener('keydown', function (e) {
+                if (e.key === 'Escape') {
+                    closeMenu('userMenuDropdown');
+                    closeMenu('quickMenuDropdown');
+                }
+            });
+        }
+
+        /* Run immediately if DOM is ready, otherwise wait */
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', wireButtons);
+        } else {
+            wireButtons();
+        }
+    })();
+    </script>
 
     <div class="container-fluid p-0 m-0">
         <!-- Social Feed View (New Main View) -->
@@ -1873,7 +2002,6 @@
                     // Sync both the header icon-nav and bottom mobile nav active states
                     function switchView(viewName) {
                         showView(viewName);
-                        // Update icon-nav-btns in both header and bottom nav
                         document.querySelectorAll('.icon-nav-btn[data-view]').forEach(function (btn) {
                             btn.classList.toggle('active', btn.getAttribute('data-view') === viewName);
                         });
@@ -1881,18 +2009,11 @@
 
                     // Mobile bottom-nav "More" — opens the user menu anchored above the nav bar
                     function toggleMobileMoreMenu(btn) {
-                        const dropdown = document.getElementById('userMenuDropdown');
-                        const quickMenu = document.getElementById('quickMenuDropdown');
-
-                        // Close quick menu if open
-                        if (quickMenu && quickMenu.classList.contains('show')) {
-                            quickMenu.classList.remove('show');
-                        }
-
+                        var dropdown = document.getElementById('userMenuDropdown');
+                        var quickMenu = document.getElementById('quickMenuDropdown');
+                        if (quickMenu) quickMenu.classList.remove('show');
                         if (!dropdown) return;
-
-                        const isOpen = dropdown.classList.contains('show');
-
+                        var isOpen = dropdown.classList.contains('show');
                         if (isOpen) {
                             dropdown.classList.remove('show');
                             dropdown.style.removeProperty('top');
@@ -1900,8 +2021,7 @@
                             dropdown.style.removeProperty('right');
                             dropdown.style.removeProperty('position');
                         } else {
-                            // Position above the bottom nav
-                            const navH = document.getElementById('mobileBottomNav').offsetHeight;
+                            var navH = document.getElementById('mobileBottomNav').offsetHeight;
                             dropdown.style.position = 'fixed';
                             dropdown.style.bottom = (navH + 8) + 'px';
                             dropdown.style.top = 'auto';
@@ -1909,22 +2029,6 @@
                             dropdown.classList.add('show');
                         }
                     }
-
-                    // Close mobile more menu when clicking outside
-                    document.addEventListener('click', function (e) {
-                        const dropdown = document.getElementById('userMenuDropdown');
-                        if (dropdown && dropdown.classList.contains('show') && dropdown.style.bottom) {
-                            // Only handle closing when opened from the bottom nav (has inline bottom style)
-                            const moreBtn = document.querySelector('.mobile-bottom-nav .icon-nav-btn[title="More"]');
-                            if (!dropdown.contains(e.target) && (!moreBtn || !moreBtn.contains(e.target))) {
-                                dropdown.classList.remove('show');
-                                dropdown.style.removeProperty('top');
-                                dropdown.style.removeProperty('bottom');
-                                dropdown.style.removeProperty('right');
-                                dropdown.style.removeProperty('position');
-                            }
-                        }
-                    });
                 </script>
 
                 <script src="scripts/websocket-client.js"></script>

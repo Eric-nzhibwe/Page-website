@@ -289,6 +289,7 @@
 </div>
 
 <script src="../scripts/utils.js"></script>
+<script src="../scripts/api-service.js"></script>
 <script>
 'use strict';
 
@@ -298,11 +299,30 @@ const FLW_API = (
 ) ? 'http://localhost:8000/api'
   : `${window.location.origin}/api`;
 
-function flwHeaders() {
-    const t = localStorage.getItem('djangoAuthToken');
-    return t
-        ? { 'Content-Type': 'application/json', 'Authorization': `Token ${t}` }
-        : { 'Content-Type': 'application/json' };
+async function flwHeaders() {
+    if (window._pageAuthHeaderAsync) {
+        const authHeader = await window._pageAuthHeaderAsync();
+        return {
+            'Content-Type': 'application/json',
+            ...(authHeader ? { 'Authorization': authHeader } : {})
+        };
+    }
+    if (window._pageAuthHeader) {
+        const authHeader = window._pageAuthHeader();
+        return {
+            'Content-Type': 'application/json',
+            ...(authHeader ? { 'Authorization': authHeader } : {})
+        };
+    }
+    const firebaseToken = localStorage.getItem('firebaseIdToken');
+    const djangoToken = localStorage.getItem('djangoAuthToken') || localStorage.getItem('authToken');
+    const authHeader = firebaseToken
+        ? `FirebaseToken ${firebaseToken}`
+        : (djangoToken ? `Token ${djangoToken}` : null);
+    return {
+        'Content-Type': 'application/json',
+        ...(authHeader ? { 'Authorization': authHeader } : {})
+    };
 }
 
 // ── State ──────────────────────────────────────────────────────────────────
@@ -327,7 +347,7 @@ async function flwLoadProfile() {
         const endpoint = _flwViewUserId
             ? `${FLW_API}/auth/profile/?id=${_flwViewUserId}`
             : `${FLW_API}/auth/profile/`;
-        const res  = await fetch(endpoint, { headers: flwHeaders() });
+        const res  = await fetch(endpoint, { headers: await flwHeaders() });
         if (!res.ok) throw new Error();
         const u = await res.json();
 
@@ -346,10 +366,11 @@ async function flwLoadProfile() {
 async function flwLoadAll() {
     const uid = _flwViewUserId || '';
     const qp  = uid ? `?user_id=${uid}` : '';
+    const headers = await flwHeaders();
 
     try {
         // Load own following set (always self) for follow buttons
-        const myRes = await fetch(`${FLW_API}/social/follows/following/`, { headers: flwHeaders() });
+        const myRes = await fetch(`${FLW_API}/social/follows/following/`, { headers });
         if (myRes.ok) {
             const myData = await myRes.json();
             const myList = Array.isArray(myData) ? myData : (myData.results || []);
@@ -361,8 +382,8 @@ async function flwLoadAll() {
 
         // Load followers and following for the viewed profile
         const [frsRes, fngRes] = await Promise.all([
-            fetch(`${FLW_API}/social/follows/followers/${qp}`, { headers: flwHeaders() }),
-            fetch(`${FLW_API}/social/follows/following/${qp}`, { headers: flwHeaders() }),
+            fetch(`${FLW_API}/social/follows/followers/${qp}`, { headers }),
+            fetch(`${FLW_API}/social/follows/following/${qp}`, { headers }),
         ]);
 
         if (frsRes.ok) {
@@ -372,6 +393,18 @@ async function flwLoadAll() {
         if (fngRes.ok) {
             const d = await fngRes.json();
             _flwFollowing = Array.isArray(d) ? d : (d.results || []);
+        }
+
+        // If either connection list is empty, populate it with all active users
+        // so this page remains useful even for users with no followers yet.
+        if (!_flwFollowers.length || !_flwFollowing.length) {
+            const discoverRes = await fetch(`${FLW_API}/auth/discover/?limit=100`, { headers });
+            if (discoverRes.ok) {
+                const discovered = await discoverRes.json();
+                const activeUsers = Array.isArray(discovered) ? discovered : (discovered.results || []);
+                if (!_flwFollowers.length) _flwFollowers = activeUsers;
+                if (!_flwFollowing.length) _flwFollowing = activeUsers;
+            }
         }
 
         // Update counts
@@ -489,7 +522,7 @@ async function flwToggleFollow(userId, btnEl) {
     try {
         const res = await fetch(endpoint, {
             method: 'POST',
-            headers: flwHeaders(),
+            headers: await flwHeaders(),
             body: JSON.stringify({ user_id: userId })
         });
         if (!res.ok) throw new Error(`${res.status}`);

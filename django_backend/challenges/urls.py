@@ -13,6 +13,7 @@ from .social_views import (
     poll_list, create_poll, cast_poll_vote, delete_poll,
     debate_list, create_debate, join_debate, post_debate_comment, delete_debate,
     qa_list, create_qa, post_qa_answer, delete_qa,
+    poll_detail, debate_detail, qa_detail,
 )
 
 router = DefaultRouter()
@@ -27,17 +28,20 @@ urlpatterns = [
     path('xpoints/',                          xpoints_balance,       name='xpoints-balance'),
     # Polls
     path('polls/',                            poll_list,             name='poll-list'),
+    path('polls/<uuid:poll_id>/detail/',      poll_detail,           name='poll-detail'),
     path('polls/create/',                     create_poll,           name='poll-create'),
     path('polls/<uuid:poll_id>/vote/',        cast_poll_vote,        name='poll-vote'),
     path('polls/<uuid:poll_id>/delete/',      delete_poll,           name='poll-delete'),
     # Debates
     path('debates/',                          debate_list,           name='debate-list'),
+    path('debates/<uuid:debate_id>/detail/',  debate_detail,         name='debate-detail'),
     path('debates/create/',                   create_debate,         name='debate-create'),
     path('debates/<uuid:debate_id>/join/',    join_debate,           name='debate-join'),
     path('debates/<uuid:debate_id>/comment/', post_debate_comment,   name='debate-comment'),
     path('debates/<uuid:debate_id>/delete/',  delete_debate,         name='debate-delete'),
     # Q&A
     path('qa/',                               qa_list,               name='qa-list'),
+    path('qa/<uuid:qa_id>/detail/',           qa_detail,             name='qa-detail'),
     path('qa/create/',                        create_qa,             name='qa-create'),
     path('qa/<uuid:qa_id>/answer/',           post_qa_answer,        name='qa-answer'),
     path('qa/<uuid:qa_id>/delete/',           delete_qa,             name='qa-delete'),

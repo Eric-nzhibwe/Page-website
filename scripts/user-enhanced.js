@@ -20,6 +20,12 @@ async function _ehHeadersAsync() {
         : (window._pageAuthHeader ? window._pageAuthHeader() : null);
     const h = {};
     if (authHeader) h['Authorization'] = authHeader;
+    if (!authHeader) {
+        const firebaseToken = localStorage.getItem('firebaseIdToken');
+        const djangoToken = localStorage.getItem('djangoAuthToken') || localStorage.getItem('authToken');
+        if (firebaseToken) h['Authorization'] = `FirebaseToken ${firebaseToken}`;
+        else if (djangoToken) h['Authorization'] = `Token ${djangoToken}`;
+    }
     return h;
 }
 function _ehHeaders() {
@@ -511,11 +517,11 @@ let _ehFollowModalTab = 'followers';
 let _ehFollowUserId   = null;
 
 window.openFollowersModal = async function(tab) {
-    // Only works on own profile
     const params  = new URLSearchParams(window.location.search);
     const myId    = localStorage.getItem('userId');
     const viewId  = params.get('id');
-    _ehFollowUserId = (viewId && String(viewId) !== String(myId)) ? viewId : myId;
+    const ownId   = myId || window._lastProfileData?.id || null;
+    _ehFollowUserId = viewId || ownId;
 
     const modal = document.getElementById('followModal');
     if (modal) modal.classList.add('open');
@@ -541,19 +547,29 @@ async function _ehLoadFollowList(tab) {
     list.innerHTML = '<div class="skeleton-list"><div class="sk-row"></div><div class="sk-row short"></div><div class="sk-row"></div></div>';
 
     try {
-        // Fall back to current user if _ehFollowUserId is somehow null
-        const uid = _ehFollowUserId || localStorage.getItem('userId');
-        if (!uid) {
-            list.innerHTML = '<div class="empty-state"><i class="fas fa-users"></i><span>Not logged in</span></div>';
-            return;
-        }
+        const uid = _ehFollowUserId || localStorage.getItem('userId') || window._lastProfileData?.id;
+        const headers = await _ehHeadersAsync();
+        const qp = uid ? `?user_id=${encodeURIComponent(uid)}` : '';
         const endpoint = tab === 'followers'
-            ? `${_EH_API}/social/follows/followers/?user_id=${uid}`
-            : `${_EH_API}/social/follows/following/?user_id=${uid}`;
-        const res  = await fetch(endpoint, { headers: await _ehHeadersAsync() });
-        if (!res.ok) throw new Error('Failed');
-        const data = await res.json();
-        const users = Array.isArray(data) ? data : (data.results || data.followers || data.following || []);
+            ? `${_EH_API}/social/follows/followers/${qp}`
+            : `${_EH_API}/social/follows/following/${qp}`;
+        let users = [];
+        const res = await fetch(endpoint, { headers });
+        if (res.ok) {
+            const data = await res.json();
+            const rows = Array.isArray(data) ? data : (data.results || data.followers || data.following || []);
+            users = rows.map(row => row?.user || row).filter(Boolean);
+        }
+
+        // A profile should never become unusable just because its connection list is empty.
+        // Load every active database user as the discovery fallback.
+        if (!users.length) {
+            const discoverRes = await fetch(`${_EH_API}/auth/discover/?limit=100`, { headers });
+            if (discoverRes.ok) {
+                const discovered = await discoverRes.json();
+                users = Array.isArray(discovered) ? discovered : (discovered.results || []);
+            }
+        }
 
         if (!users.length) {
             list.innerHTML = `<div class="empty-state"><i class="fas fa-users"></i><span>No ${tab} yet</span></div>`;

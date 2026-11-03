@@ -93,6 +93,38 @@ def poll_list(request):
     return Response(data)
 
 
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def poll_detail(request, poll_id):
+    """Return one active poll and the requesting user's vote state."""
+    try:
+        poll = PollChallenge.objects.select_related('created_by').get(
+            id=poll_id, is_active=True
+        )
+    except PollChallenge.DoesNotExist:
+        return Response({'error': 'Poll not found.'}, status=404)
+
+    user_voted = False
+    if request.user.is_authenticated:
+        user_voted = PollVote.objects.filter(poll=poll, user=request.user).exists()
+
+    return Response({
+        'id': str(poll.id),
+        'title': poll.title,
+        'description': poll.description,
+        'options': poll.options,
+        'prize_amount': str(poll.prize_amount),
+        'difficulty': poll.difficulty,
+        'duration_days': poll.duration_days,
+        'created_by': poll.created_by.username,
+        'creator': _creator_obj(poll.created_by),
+        'created_at': poll.created_at.isoformat(),
+        'total_votes': poll.total_votes(),
+        'vote_counts': poll.vote_counts(),
+        'user_voted': user_voted,
+    })
+
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def create_poll(request):
@@ -225,6 +257,53 @@ def debate_list(request):
             ],
         })
     return Response(data)
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def debate_detail(request, debate_id):
+    """Return one active debate, its participants, and recent comments."""
+    try:
+        debate = DebateChallenge.objects.select_related('created_by').get(
+            id=debate_id, is_active=True
+        )
+    except DebateChallenge.DoesNotExist:
+        return Response({'error': 'Debate not found.'}, status=404)
+
+    user_joined = False
+    if request.user.is_authenticated:
+        user_joined = DebateParticipant.objects.filter(
+            debate=debate, user=request.user
+        ).exists()
+
+    comments = list(
+        debate.comments.select_related('user')
+        .order_by('-created_at')[:20]
+    )
+    return Response({
+        'id': str(debate.id),
+        'title': debate.title,
+        'description': debate.description,
+        'side_a': debate.side_a,
+        'side_b': debate.side_b,
+        'prize_amount': str(debate.prize_amount),
+        'difficulty': debate.difficulty,
+        'duration_days': debate.duration_days,
+        'created_by': debate.created_by.username,
+        'creator': _creator_obj(debate.created_by),
+        'created_at': debate.created_at.isoformat(),
+        'participants': debate.participant_counts(),
+        'user_joined': user_joined,
+        'comments': [
+            {
+                'user': c.user.username,
+                'text': c.text,
+                'side': c.side,
+                'created_at': c.created_at.isoformat(),
+            }
+            for c in reversed(comments)
+        ],
+    })
 
 
 @api_view(['POST'])
@@ -433,6 +512,43 @@ def qa_list(request):
             ],
         })
     return Response(data)
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def qa_detail(request, qa_id):
+    """Return one active Q&A challenge and its recent answers."""
+    try:
+        qa = QAChallenge.objects.select_related('created_by').get(
+            id=qa_id, is_active=True
+        )
+    except QAChallenge.DoesNotExist:
+        return Response({'error': 'Q&A not found.'}, status=404)
+
+    answers = list(
+        qa.answers.select_related('user')
+        .order_by('-created_at')[:20]
+    )
+    return Response({
+        'id': str(qa.id),
+        'title': qa.title,
+        'description': qa.description,
+        'image_url': qa.image_url,
+        'prize_amount': str(qa.prize_amount),
+        'difficulty': qa.difficulty,
+        'duration_days': qa.duration_days,
+        'created_by': qa.created_by.username,
+        'creator': _creator_obj(qa.created_by),
+        'created_at': qa.created_at.isoformat(),
+        'answers': [
+            {
+                'user': a.user.username,
+                'text': a.text,
+                'created_at': a.created_at.isoformat(),
+            }
+            for a in reversed(answers)
+        ],
+    })
 
 
 @api_view(['POST'])

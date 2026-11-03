@@ -1,0 +1,369 @@
+/* OTP Verification Page Styles */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(to right, whitesmoke, var(--page-primary));
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    position: relative;
+}
+
+.circle {
+    position: absolute;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+    animation: float 20s infinite ease-in-out;
+}
+
+@keyframes float {
+    0%, 100% {
+        transform: translate(0, 0) scale(1);
+    }
+    33% {
+        transform: translate(30px, -30px) scale(1.1);
+    }
+    66% {
+        transform: translate(-20px, 20px) scale(0.9);
+    }
+}
+
+/* OTP Container */
+.otp-container {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 500px;
+    padding: 20px;
+}
+
+/* OTP Card */
+.otp-card {
+    background: white;
+    border-radius: 24px;
+    padding: 50px 40px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    text-align: center;
+    animation: slideUp 0.6s ease;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(50px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Logo */
+.otp-logo {
+    width: 80px;
+    height: 80px;
+    margin: 0 auto 30px;
+    background: linear-gradient(to right, whitesmoke, var(--page-primary));
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.5rem;
+    color: black;
+    box-shadow: 0 10px 30px rgba(255, 255, 255, 0.1);
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 10px 30px rgba(255, 255, 255, 0.1);
+    }
+    50% {
+        transform: scale(1.05);
+        box-shadow: 0 15px 40px rgba(255, 255, 255, 0.1);
+    }
+}
+
+/* Title */
+.otp-card h1 {
+    font-size: 2rem;
+    color: #333;
+    margin-bottom: 15px;
+    font-weight: 700;
+}
+
+.otp-subtitle {
+    color: #666;
+    font-size: 1rem;
+    margin-bottom: 40px;
+    line-height: 1.6;
+}
+
+.otp-subtitle strong {
+    color: var(--page-primary);
+    font-weight: 600;
+}
+
+/* OTP Inputs */
+.otp-inputs {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    margin-bottom: 30px;
+}
+
+.otp-input {
+    width: 60px;
+    height: 70px;
+    font-size: 2rem;
+    text-align: center;
+    border: 2px solid var(--page-accent);
+    border-radius: 12px;
+    outline: none;
+    transition: all 0.3s ease;
+    font-weight: 600;
+    color: #333;
+    background: #f8f9fa;
+}
+
+.otp-input:focus {
+    border-color: var(--page-primary);
+    background: white;
+    box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.1);
+    transform: scale(1.05);
+}
+
+.otp-input.filled {
+    border-color: #4caf50;
+    background: #f1f8f4;
+}
+
+.otp-input.error {
+    border-color: #f44336;
+    background: #ffebee;
+    animation: shake 0.5s;
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-10px); }
+    75% { transform: translateX(10px); }
+}
+
+/* Error Message */
+.error-message {
+    background: #ffebee;
+    color: #f44336;
+    padding: 12px 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    font-size: 0.9rem;
+    animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Verify Button */
+.btn-verify {
+    width: 100%;
+    padding: 16px;
+    background: linear-gradient(to right, whitesmoke, var(--page-primary));
+    color: black;
+    border: none;
+    border-radius: 12px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.btn-verify:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 30px rgba(255, 255, 255, 0.1);
+}
+
+.btn-verify:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+.btn-verify:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.btn-loader {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+/* Resend Section */
+.resend-section {
+    margin-top: 30px;
+    padding-top: 30px;
+}
+
+.resend-section p {
+    color: #666;
+    font-size: 0.95rem;
+    margin-bottom: 15px;
+}
+
+.btn-resend {
+    background: transparent;
+    color: var(--page-primary);
+    border: 2px solid var(--page-accent);
+    padding: 10px 24px;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-resend:hover:not(:disabled) {
+    background: var(--page-primary);
+    color: black;
+    transform: translateY(-2px);
+}
+
+.btn-resend:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.resend-timer {
+    color: #999;
+    font-size: 0.9rem;
+    margin-top: 10px;
+}
+
+.resend-timer span {
+    color: var(--page-primary);
+    font-weight: 600;
+}
+
+/* Back Link */
+.back-link {
+    margin-top: 25px;
+}
+
+.back-link a {
+    color: #666;
+    text-decoration: none;
+    font-size: 0.95rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s ease;
+}
+
+.back-link a:hover {
+    color: var(--page-primary);
+    gap: 12px;
+}
+
+/* Security Badge */
+.security-badge {
+    margin-top: 30px;
+    text-align: center;
+    color: white;
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    opacity: 0.9;
+}
+
+.security-badge i {
+    font-size: 1rem;
+    color: var(--page-primary);
+}
+
+/* Success Animation */
+@keyframes successPulse {
+    0% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.2);
+        opacity: 0.8;
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+.success-icon {
+    animation: successPulse 0.6s ease;
+}
+
+/* Responsive Design */
+@media (max-width: 600px) {
+    .otp-card {
+        padding: 40px 25px;
+    }
+
+    .otp-card h1 {
+        font-size: 1.6rem;
+    }
+
+    .otp-inputs {
+        gap: 8px;
+    }
+
+    .otp-input {
+        width: 50px;
+        height: 60px;
+        font-size: 1.6rem;
+    }
+
+    .otp-logo {
+        width: 70px;
+        height: 70px;
+        font-size: 2rem;
+    }
+}
+
+@media (max-width: 400px) {
+    .otp-inputs {
+        gap: 6px;
+    }
+
+    .otp-input {
+        width: 45px;
+        height: 55px;
+        font-size: 1.4rem;
+    }
+}

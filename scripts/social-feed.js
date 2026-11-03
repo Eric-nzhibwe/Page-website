@@ -1576,3 +1576,15 @@ document.addEventListener('DOMContentLoaded', () => {
     // Infinite scroll for more posts
     _initInfiniteScroll();
 });
+
+// Expose to window so inline onclick handlers in index.html can call these
+window.showDashboardView    = showDashboardView;
+window.scrollToSection      = scrollToSection;
+window.openCreatePostModal  = openCreatePostModal;
+window.closeCreatePostModal = closeCreatePostModal;
+window.publishPost          = publishPost;
+window.openCreateStoryModal = openCreateStoryModal;
+window.toggleVoiceRecording = toggleVoiceRecording;
+window.discardVoiceRecording = discardVoiceRecording;
+window.postVoiceRecording   = postVoiceRecording;
+window.searchUsers          = searchUsers;

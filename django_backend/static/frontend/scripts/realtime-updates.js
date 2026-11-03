@@ -1,0 +1,1423 @@
+/**
+ * PAGE Real-time Updates & Social Graph
+ * ─────────────────────────────────────
+ * • Smart polling (feed, notifications, online users)
+ * • Full follow / unfollow with optimistic UI
+ * • User discovery + live search
+ * • Deduplication — no notification or post rendered twice
+ */
+
+'use strict';
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  CONFIG
+// ─────────────────────────────────────────────────────────────────────────────
+const _RT_BASE = (
+    window.location.hostname === 'localhost' ||
+    window.location.hostname === '127.0.0.1'
+) ? 'http://localhost:8000/api'
+  : `${window.location.origin}/api`;
+
+function _rtHeaders() {
+    const authHeader = window._pageAuthHeader ? window._pageAuthHeader() : null;
+    const token = localStorage.getItem('djangoAuthToken');
+    const h = { 'Content-Type': 'application/json' };
+    if (authHeader) h['Authorization'] = authHeader;
+    else if (token) h['Authorization'] = `Token ${token}`;
+    return h;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  TOAST  (safe re-use — checks if auth.js version exists)
+// ─────────────────────────────────────────────────────────────────────────────
+function _rtToast(msg, type = 'info') {
+    if (typeof socialToast === 'function') { socialToast(msg, type); return; }
+    if (typeof showToast   === 'function') { showToast(msg, type);   return; }
+    console.info(`[PAGE] ${type.toUpperCase()}: ${msg}`);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  ESCAPE HTML  (shared helper)
+// ─────────────────────────────────────────────────────────────────────────────
+function _rtEsc(s) {
+    const d = document.createElement('div');
+    d.textContent = String(s ?? '');
+    return d.innerHTML;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  AVATAR HELPERS  (other-user avatars — prefers profile_image_url/avatar_url)
+// ─────────────────────────────────────────────────────────────────────────────
+/**
+ * Get the best available avatar URL for any user object returned by the API.
+ * Prefers profile_image_url (set from avatar_url / base64) over profile_image
+ * (legacy ImageField that can 404). Returns null if no valid URL found.
+ */
+function _rtGetAvatarUrl(user) {
+    if (!user) return null;
+    const url = user.profile_image_url || user.avatar_url || user.profile_image || null;
+    if (!url) return null;
+    // Resolve backend-relative "/media/..." paths to an absolute URL
+    return (typeof resolveMediaUrl === 'function')
+        ? resolveMediaUrl(url)
+        : url;
+}
+
+/**
+ * Build avatar HTML for any user — photo if available, letter-circle fallback.
+ * @param {object} user  - user object from API
+ * @param {string} [cls] - optional extra CSS class for the <img>
+ * @returns {string} HTML string
+ */
+function _rtAvatarHTML(user, cls = 'page-user-avatar-img') {
+    const url  = _rtGetAvatarUrl(user);
+    const name = (user && (user.display_name || user.username)) || '?';
+    const init = name.charAt(0).toUpperCase();
+    if (url) {
+        // onerror swaps to letter-circle so a broken img never shows
+        return `<img src="${_rtEsc(url)}" alt="${_rtEsc(name)}" class="${cls}"
+                    onerror="this.replaceWith(window._rtLetterAvatar('${_rtEsc(init)}'))">`;
+    }
+    // Letter-circle — never a bare icon
+    return window._rtLetterAvatar ? window._rtLetterAvatar(init).outerHTML
+        : `<span style="display:inline-flex;align-items:center;justify-content:center;width:100%;height:100%;border-radius:50%;background:#6c63ff;color:#fff;font-weight:700;font-size:14px;">${init}</span>`;
+}
+
+/**
+ * Create a coloured letter-avatar DOM element.
+ * Exposed on window so onerror handlers can call it as a string expression.
+ */
+window._rtLetterAvatar = function(letter) {
+    const colours = ['#6c63ff','#e74c3c','#2ecc71','#f39c12','#1abc9c','#9b59b6','#3498db','#e67e22'];
+    const colour  = colours[(letter || '?').charCodeAt(0) % colours.length];
+    const el = document.createElement('span');
+    el.style.cssText = [
+        'display:inline-flex','align-items:center','justify-content:center',
+        'width:100%','height:100%','border-radius:50%',
+        `background:${colour}`,'color:#fff','font-weight:700','font-size:14px',
+        'user-select:none',
+    ].join(';');
+    el.textContent = letter || '?';
+    return el;
+};
+
+function _rtTimeAgo(iso) {
+    const s = Math.floor((Date.now() - new Date(iso)) / 1000);
+    if (s < 60)  return 'just now';
+    const m = Math.floor(s / 60);   if (m < 60)  return `${m}m ago`;
+    const h = Math.floor(m / 60);   if (h < 24)  return `${h}h ago`;
+    const d = Math.floor(h / 24);   if (d < 7)   return `${d}d ago`;
+    return new Date(iso).toLocaleDateString();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  FOLLOW / UNFOLLOW  (the core of what was broken)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** In-memory set of user-ids the current user is following. */
+const _followingSet = new Set();
+
+/**
+ * Toggle follow state for a user.
+ * Called from any follow button: onclick="toggleFollow(userId, this)"
+ */
+async function toggleFollow(userId, btnEl) {
+    if (!userId) return;
+
+    const isFollowing = _followingSet.has(String(userId));
+    const endpoint    = isFollowing
+        ? `${_RT_BASE}/social/follows/unfollow/`
+        : `${_RT_BASE}/social/follows/follow/`;
+
+    // Optimistic UI
+    _applyFollowState(userId, !isFollowing, btnEl);
+
+    try {
+        const res = await fetch(endpoint, {
+            method:  'POST',
+            headers: _rtHeaders(),
+            body:    JSON.stringify({ user_id: userId })
+        });
+
+        if (!res.ok) {
+            // Rollback
+            _applyFollowState(userId, isFollowing, btnEl);
+            const err = await res.json().catch(() => ({}));
+            _rtToast(err.error || 'Could not update follow status.', 'error');
+            return;
+        }
+
+        if (!isFollowing) {
+            _followingSet.add(String(userId));
+            _rtToast('Following! 🎉', 'success');
+        } else {
+            _followingSet.delete(String(userId));
+            _rtToast('Unfollowed.', 'info');
+        }
+
+        // Update ALL buttons for this user across the page
+        _updateAllFollowButtons(userId);
+
+        // Refresh follower count displayed anywhere on the page
+        _refreshFollowCounts(userId);
+
+    } catch {
+        _applyFollowState(userId, isFollowing, btnEl);
+        _rtToast('Network error. Please try again.', 'error');
+    }
+}
+
+/** Kept for backward compat — old code calls followUser(id) */
+async function followUser(userId) {
+    if (_followingSet.has(String(userId))) return; // already following
+    const btn = document.querySelector(`[data-user-id="${userId}"] .page-follow-btn`);
+    await toggleFollow(userId, btn);
+}
+
+async function unfollowUser(userId) {
+    if (!_followingSet.has(String(userId))) return; // not following
+    const btn = document.querySelector(`[data-user-id="${userId}"] .page-follow-btn`);
+    await toggleFollow(userId, btn);
+}
+
+function _applyFollowState(userId, following, btnEl) {
+    if (following) {
+        _followingSet.add(String(userId));
+    } else {
+        _followingSet.delete(String(userId));
+    }
+    if (btnEl) _styleFollowBtn(btnEl, following);
+}
+
+function _styleFollowBtn(btn, following) {
+    btn.dataset.following = following ? '1' : '0';
+    if (following) {
+        btn.innerHTML     = '<i class="fas fa-check"></i> Following';
+        btn.classList.add('page-follow-btn--following');
+    } else {
+        btn.innerHTML     = '<i class="fas fa-user-plus"></i> Follow';
+        btn.classList.remove('page-follow-btn--following');
+    }
+}
+
+function _updateAllFollowButtons(userId) {
+    const following = _followingSet.has(String(userId));
+    document.querySelectorAll(`.page-follow-btn[data-uid="${userId}"]`)
+        .forEach(btn => _styleFollowBtn(btn, following));
+}
+
+/** Fetch and update follower/following counts after a follow action */
+async function _refreshFollowCounts(userId) {
+    try {
+        const res = await fetch(`${_RT_BASE}/social/follows/counts/?user_id=${userId}`, {
+            headers: _rtHeaders()
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        // Update any elements on the page that show counts for this user
+        const fcEl = document.getElementById('statFollowers');
+        const fgEl = document.getElementById('statFollowing');
+        if (fcEl) fcEl.textContent = data.followers_count ?? fcEl.textContent;
+        if (fgEl) fgEl.textContent = data.following_count ?? fgEl.textContent;
+    } catch { /* silent */ }
+}
+
+/** Build a follow button element */
+function _makeFollowBtn(userId, isFollowing) {
+    const btn = document.createElement('button');
+    btn.className     = `page-follow-btn${isFollowing ? ' page-follow-btn--following' : ''}`;
+    btn.dataset.uid   = userId;
+    btn.setAttribute('aria-label', isFollowing ? 'Unfollow' : 'Follow');
+    btn.innerHTML     = isFollowing
+        ? '<i class="fas fa-check"></i> Following'
+        : '<i class="fas fa-user-plus"></i> Follow';
+    btn.addEventListener('click', () => toggleFollow(userId, btn));
+    return btn;
+}
+
+/** Load current user's following list to seed _followingSet */
+async function _loadFollowingSet() {
+    try {
+        const res = await fetch(`${_RT_BASE}/social/follows/following/`, {
+            headers: _rtHeaders()
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        const list = Array.isArray(data) ? data : (data.results || []);
+        list.forEach(f => {
+            const id = f.user?.id ?? f.following?.id ?? f.id;
+            if (id) _followingSet.add(String(id));
+        });
+    } catch { /* silent — offline is fine */ }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  USER DISCOVERY  (Discover Users + Suggested sidebar)
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function loadDiscoverUsers() {
+    const container = document.getElementById('discoverUsersList');
+    const mobileContainer = document.getElementById('discoverUsersListMobile');
+    if (!container && !mobileContainer) return;
+
+    if (container) _showUserSkeleton(container, 4);
+    if (mobileContainer) _showUserSkeleton(mobileContainer, 4);
+
+    try {
+        const res = await fetch(`${_RT_BASE}/auth/discover/`, { headers: _rtHeaders() });
+        if (!res.ok) throw new Error('API error');
+        const users = await res.json();
+        if (container) _renderDiscoverList(container, users, 'discover');
+        if (mobileContainer) _renderDiscoverList(mobileContainer, users, 'discover');
+    } catch {
+        const err = '<p class="page-no-users">Could not load users.</p>';
+        if (container) container.innerHTML = err;
+        if (mobileContainer) mobileContainer.innerHTML = err;
+    }
+}
+
+async function loadSuggestedUsers() {
+    const container = document.getElementById('suggestedUsersList');
+    const mobileContainer = document.getElementById('suggestedUsersListMobile');
+    if (!container && !mobileContainer) return;
+
+    if (container) _showUserSkeleton(container, 3);
+    if (mobileContainer) _showUserSkeleton(mobileContainer, 3);
+
+    try {
+        const res = await fetch(`${_RT_BASE}/auth/discover/?limit=6`, { headers: _rtHeaders() });
+        if (!res.ok) throw new Error('API error');
+        const users = await res.json();
+        if (container) _renderDiscoverList(container, users.slice(0, 6), 'suggested');
+        if (mobileContainer) _renderDiscoverList(mobileContainer, users.slice(0, 6), 'suggested');
+    } catch {
+        const err = '<p class="page-no-users">Could not load suggestions.</p>';
+        if (container) container.innerHTML = err;
+        if (mobileContainer) mobileContainer.innerHTML = err;
+    }
+}
+
+async function searchUsers(query) {
+    const container = document.getElementById('discoverUsersList');
+    const mobileContainer = document.getElementById('discoverUsersListMobile');
+
+    if (!container && !mobileContainer) return;
+
+    if (!query || query.trim().length < 1) {
+        loadDiscoverUsers();
+        return;
+    }
+
+    if (container) _showUserSkeleton(container, 3);
+    if (mobileContainer) _showUserSkeleton(mobileContainer, 3);
+
+    try {
+        const res = await fetch(`${_RT_BASE}/auth/search/?q=${encodeURIComponent(query)}`, {
+            headers: _rtHeaders()
+        });
+        if (!res.ok) throw new Error('API error');
+        const users = await res.json();
+        const noResult = `<p class="page-no-users">No users found for "<strong>${_rtEsc(query)}</strong>"</p>`;
+        if (users.length === 0) {
+            if (container) container.innerHTML = noResult;
+            if (mobileContainer) mobileContainer.innerHTML = noResult;
+        } else {
+            if (container) _renderDiscoverList(container, users, 'search');
+            if (mobileContainer) _renderDiscoverList(mobileContainer, users, 'search');
+        }
+    } catch {
+        const err = '<p class="page-no-users">Search failed. Please try again.</p>';
+        if (container) container.innerHTML = err;
+        if (mobileContainer) mobileContainer.innerHTML = err;
+    }
+}
+
+function _renderDiscoverList(container, users, mode) {
+    if (!users || users.length === 0) {
+        container.innerHTML = '<p class="page-no-users">No users to show right now.</p>';
+        return;
+    }
+
+    container.innerHTML = '';
+    users.forEach(u => {
+        const isFollowing = _followingSet.has(String(u.id));
+        const item = document.createElement('div');
+        item.className       = 'page-user-item';
+        item.dataset.userId  = u.id;
+
+        // Use profile_image_url (avatar_url/base64) first, fall back gracefully
+        const avatarHtml = _rtAvatarHTML(u);
+
+        item.innerHTML = `
+          <div class="page-user-avatar">${avatarHtml}</div>
+          <div class="page-user-info">
+            <strong class="page-user-name">${_rtEsc(u.display_name || u.username)}</strong>
+            <span class="page-user-tier page-tier--${(u.access_tier||'bronze').toLowerCase()}">
+              ${_rtEsc(u.access_tier || 'Bronze')}
+            </span>
+          </div>`;
+
+        const btn = _makeFollowBtn(u.id, isFollowing);
+        item.appendChild(btn);
+        container.appendChild(item);
+    });
+}
+
+function _showUserSkeleton(container, count) {
+    container.innerHTML = Array.from({ length: count }, () => `
+      <div class="page-user-skel">
+        <div class="page-skel-circle"></div>
+        <div class="page-skel-lines">
+          <div class="page-skel-line page-skel-line--70"></div>
+          <div class="page-skel-line page-skel-line--40"></div>
+        </div>
+      </div>`).join('');
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  ONLINE USERS  (right sidebar)
+// ─────────────────────────────────────────────────────────────────────────────
+const _onlineMap  = new Map();
+let   _onlinePollTimer = null;
+
+function _startOnlinePoller() {
+    _pollOnlineUsers();
+    _onlinePollTimer = setInterval(_pollOnlineUsers, 45_000); // every 45 s
+}
+
+async function _pollOnlineUsers() {
+    // The backend has no dedicated "online" endpoint yet — approximate with
+    // recent active users from the discover list.
+    try {
+        const res = await fetch(`${_RT_BASE}/auth/discover/?limit=8`, { headers: _rtHeaders() });
+        if (!res.ok) return;
+        const users = await res.json();
+        _renderOnlineUsers(users.slice(0, 8));
+    } catch { /* silent */ }
+}
+
+function _renderOnlineUsers(users) {
+    const container = document.getElementById('onlineUsers');
+    const mobileContainer = document.getElementById('onlineUsersMobile');
+
+    const noUsers = '<p class="page-no-users">No users online right now.</p>';
+    const noUsersMobile = '<p class="people-loading">No users online right now.</p>';
+
+    if (!users || users.length === 0) {
+        if (container) container.innerHTML = noUsers;
+        if (mobileContainer) mobileContainer.innerHTML = noUsersMobile;
+        return;
+    }
+
+    // Desktop sidebar render
+    if (container) {
+        container.innerHTML = '';
+        users.forEach(u => {
+            const isFollowing = _followingSet.has(String(u.id));
+            const item = document.createElement('div');
+            item.className = 'page-online-item';
+            item.dataset.userId = u.id;
+            const avatarHtml = _rtAvatarHTML(u);
+            item.innerHTML = `
+              <div class="page-online-avatar">
+                ${avatarHtml}
+                <span class="page-online-dot" title="Online"></span>
+              </div>
+              <div class="page-user-info">
+                <strong class="page-user-name">${_rtEsc(u.display_name || u.username)}</strong>
+                <span class="page-online-label">Active</span>
+              </div>`;
+            const btn = _makeFollowBtn(u.id, isFollowing);
+            btn.classList.add('page-follow-btn--sm');
+            item.appendChild(btn);
+            container.appendChild(item);
+        });
+    }
+
+    // Mobile people view — horizontal avatar chips
+    if (mobileContainer) {
+        mobileContainer.innerHTML = '';
+        users.forEach(u => {
+            const chip = document.createElement('div');
+            chip.className = 'online-user-chip';
+            chip.title = u.display_name || u.username;
+            const avatarInner = _rtAvatarHTML(u);
+            chip.innerHTML = `
+              <div class="chip-avatar">
+                ${avatarInner}
+                <span class="chip-badge"></span>
+              </div>
+              <span class="chip-name">${_rtEsc((u.display_name || u.username).split(' ')[0])}</span>`;
+            chip.onclick = () => window.location.href = `pages/user.html?id=${u.id}`;
+            mobileContainer.appendChild(chip);
+        });
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  FEED POLLING  (smart — only updates counts, doesn't wipe DOM)
+// ─────────────────────────────────────────────────────────────────────────────
+let _feedPollTimer     = null;
+let _seenPostIds       = new Set();     // dedup — never re-insert a post
+let _lastFeedPoll      = 0;
+const FEED_POLL_MS     = 30_000;        // 30 seconds — kind to the server
+
+function _startFeedPoller() {
+    _pollFeed();
+    _feedPollTimer = setInterval(_pollFeed, FEED_POLL_MS);
+}
+
+async function _pollFeed() {
+    const now = Date.now();
+    if (now - _lastFeedPoll < FEED_POLL_MS - 1000) return; // guard double-fire
+    _lastFeedPoll = now;
+
+    try {
+        const res = await fetch(`${_RT_BASE}/social/posts/`, { headers: _rtHeaders() });
+        if (!res.ok) return;
+        const data  = await res.json();
+        const posts = Array.isArray(data) ? data : (data.results || []);
+
+        const container = document.getElementById('feedPosts');
+        if (!container) return;
+
+        // If feed is still showing only static sample posts, replace them
+        const hasSampleOnly = !container.querySelector('[data-post-id^="post-"]')
+            || !container.querySelector('[data-post-id]:not([data-post-id^="post-"])');
+
+        if (hasSampleOnly && posts.length > 0 && _seenPostIds.size === 0) {
+            // First real load — replace static sample posts
+            const sampleCards = container.querySelectorAll('[data-post-id^="post-"]');
+            sampleCards.forEach(c => c.remove());
+        }
+
+        // Prepend only NEW posts (newest first from API)
+        const newPosts = posts.filter(p => !_seenPostIds.has(String(p.id)));
+
+        newPosts.forEach(p => {
+            _seenPostIds.add(String(p.id));
+            const el = _buildPostCard(p);
+            el.classList.add('post-card--new');
+            container.insertBefore(el, container.firstChild);
+        });
+
+        // For existing posts — silently update their counts only
+        posts.forEach(p => {
+            _patchPostCounts(p.id, p.reaction_count, p.comment_count, p.share_count);
+        });
+
+    } catch { /* silent — offline is fine */ }
+}
+
+function _patchPostCounts(postId, reactions, comments, shares) {
+    const card = document.querySelector(`[data-post-id="${postId}"]`);
+    if (!card) return;
+    const rEl = card.querySelector('.reaction-count');
+    if (rEl && reactions != null) rEl.textContent = reactions;
+    const cEl = card.querySelector('.comment-count');
+    if (cEl && comments != null) cEl.textContent = comments;
+    const sEl = card.querySelector('.share-count');
+    if (sEl && shares   != null) sEl.textContent = shares;
+}
+
+/** Build a full post card DOM element from API data */
+function _buildPostCard(post) {
+    const div = document.createElement('div');
+    div.className = 'post-card';
+    div.setAttribute('data-post-id', post.id);
+    div.setAttribute('data-author-id', String(post.author?.id || ''));
+
+    const author   = post.author || {};
+    const name     = _rtEsc(author.display_name || author.username || 'User');
+    const when     = _rtTimeAgo(post.created_at);
+    const content  = _rtEsc(post.content || '');
+
+    const _rtInit    = (author.display_name || author.username || '?').charAt(0).toUpperCase();
+    const _rtRaw     = author.profile_image_url || author.profile_image || null;
+    const _rtAvatar  = _rtRaw ? ((typeof resolveMediaUrl === 'function') ? resolveMediaUrl(_rtRaw) : _rtRaw) : null;
+    const avatarHTML = _rtAvatar
+        ? `<img src="${_rtEsc(_rtAvatar)}" alt="${name}" class="page-user-avatar-img"
+               onerror="this.replaceWith(window._rtLetterAvatar('${_rtInit}'))">`
+        : (window._rtLetterAvatar ? window._rtLetterAvatar(_rtInit).outerHTML
+            : `<span style="display:inline-flex;align-items:center;justify-content:center;width:100%;height:100%;border-radius:50%;background:#6c63ff;color:#fff;font-weight:700;font-size:14px;">${_rtInit}</span>`);
+
+    // Prefer resolved_media_url (server file) over legacy media_url; resolve relative paths
+    const _rawRtMedia = post.resolved_media_url || post.media_url || null;
+    const mediaSrc = _rawRtMedia
+        ? ((typeof resolveMediaUrl === 'function') ? resolveMediaUrl(_rawRtMedia) : _rawRtMedia)
+        : null;
+
+    let mediaHTML = '';
+    if (post.post_type === 'voice' && mediaSrc) {
+        const dur = post.voice_duration
+            ? ` · ${Math.floor(post.voice_duration / 60)}:${String(post.voice_duration % 60).padStart(2, '0')}`
+            : '';
+        mediaHTML = `<div class="post-media">
+            <audio class="voice-note-player" controls preload="metadata" src="${_rtEsc(mediaSrc)}"
+                   style="width:100%;border-radius:8px;margin-top:4px;"></audio>
+            <span style="font-size:12px;color:#888;display:block;margin-top:4px;">
+                <i class="fas fa-microphone"></i> Voice message${dur}
+            </span>
+        </div>`;
+    } else if (post.media_type === 'audio' && mediaSrc) {
+        mediaHTML = `<div class="post-media">
+            <audio controls preload="metadata" src="${_rtEsc(mediaSrc)}"
+                   style="width:100%;border-radius:8px;margin-top:4px;"></audio>
+        </div>`;
+    } else if (mediaSrc && post.media_type === 'video') {
+        mediaHTML = `<div class="post-media">
+            <video src="${_rtEsc(mediaSrc)}" controls preload="metadata" playsinline
+                   style="width:100%;border-radius:8px;max-height:420px;"></video>
+        </div>`;
+    } else if (mediaSrc) {
+        mediaHTML = `<div class="post-media"><img src="${_rtEsc(mediaSrc)}" alt="Post media" loading="lazy"></div>`;
+    }
+    if (post.achievement_badge && post.achievement_badge.title) {
+        const ab = post.achievement_badge;
+        mediaHTML = `<div class="post-media">
+          <div class="achievement-badge-large">
+            <i class="fas fa-trophy"></i>
+            <h3>${_rtEsc(ab.title)}</h3>
+            <p>${_rtEsc(ab.description || '')}</p>
+          </div></div>`;
+    }
+
+    div.innerHTML = `
+      <div class="post-header">
+        <div class="post-author">
+          <div class="post-avatar">${avatarHTML}</div>
+          <div class="post-author-info">
+            <h4>${name}</h4>
+            <span class="post-time">${when}</span>
+          </div>
+        </div>
+        <button class="post-menu-btn" onclick="showPostMenu('${post.id}')">
+          <i class="fas fa-ellipsis-h"></i>
+        </button>
+      </div>
+      <div class="post-content"><p>${content}</p></div>
+      ${mediaHTML}
+      <div class="post-stats">
+        <span><i class="fas fa-fire"></i>
+          <span class="reaction-count">${post.reaction_count ?? 0}</span> reactions</span>
+        <span><span class="comment-count">${post.comment_count ?? 0}</span> comments
+          · <span class="share-count">${post.share_count ?? 0}</span> shares</span>
+      </div>
+      <div class="post-actions">
+        <button class="post-action-btn reaction-btn${post.user_reaction ? ' reacted' : ''}"
+          data-post-id="${post.id}"
+          data-active-reaction="${post.user_reaction || ''}">
+          <i class="fas fa-fire"></i><span>React</span>
+        </button>
+        <button class="post-action-btn" onclick="openCommentModal('${post.id}')">
+          <i class="fas fa-comment"></i><span>Comment</span>
+        </button>
+        <button class="post-action-btn" onclick="openShareModal('${post.id}')">
+          <i class="fas fa-share"></i><span>Share</span>
+        </button>
+      </div>
+      <div class="post-comments"></div>`;
+
+    return div;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  NOTIFICATION WebSocket  (real-time bell badge + toasts)
+// ─────────────────────────────────────────────────────────────────────────────
+let _notifWs        = null;
+let _notifWsRetries = 0;
+let _notifWsDisabled = false;   // true when WS not supported — use polling only
+const _seenNotifIds = new Set();
+let   _notifTimer   = null;
+
+function _wsBase() {
+    const proto = window.location.protocol === 'https:' ? 'wss' : 'ws';
+    const host  = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+        ? 'localhost:8000'
+        : window.location.host;
+    return `${proto}://${host}`;
+}
+
+async function _connectNotifWs() {
+    const fbToken  = localStorage.getItem('firebaseIdToken');
+    const drfToken = localStorage.getItem('djangoAuthToken');
+
+    // ── Guard: don't attempt connection with an expired Firebase token ────────
+    // Decode the JWT payload and check exp before opening the socket.
+    // A 403 from an expired token causes unnecessary retries and log noise.
+    if (fbToken) {
+        try {
+            const payload = JSON.parse(atob(fbToken.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')));
+            if (Date.now() > payload.exp * 1000) {
+                // Token is expired — remove it so the DRF path is used instead
+                localStorage.removeItem('firebaseIdToken');
+                // If there's also no DRF token, fall through to polling — can't WS
+                if (!drfToken) {
+                    _notifWsDisabled = true;
+                    if (!_notifTimer) _startNotifPoller();
+                    return;
+                }
+                // Retry immediately with the DRF token
+                return _connectNotifWs();
+            }
+        } catch (_) { /* malformed JWT — let it through and let the backend reject it */ }
+    }
+
+    const wsToken = fbToken ? `fb:${fbToken}` : (drfToken || '');
+    if (!wsToken || _notifWsDisabled) return;
+
+    if (_notifWs && (_notifWs.readyState === WebSocket.OPEN || _notifWs.readyState === WebSocket.CONNECTING)) return;
+
+    // Check Redis/WS support — reuse the cached result from ws-status probe
+    const cached = sessionStorage.getItem('ws_supported');
+    if (cached === 'false') {
+        _notifWsDisabled = true;
+        if (!_notifTimer) _startNotifPoller();
+        return;
+    }
+    if (cached === null) {
+        try {
+            const r = await fetch('/api/ws-status/');
+            const d = await r.json();
+            const supported = !!d.ws_supported;
+            sessionStorage.setItem('ws_supported', String(supported));
+            if (!supported) {
+                _notifWsDisabled = true;
+                if (!_notifTimer) _startNotifPoller();
+                return;
+            }
+        } catch (_) {
+            _notifWsDisabled = true;
+            if (!_notifTimer) _startNotifPoller();
+            return;
+        }
+    }
+
+    _notifWs = new WebSocket(`${_wsBase()}/ws/notifications/?token=${encodeURIComponent(wsToken)}`);
+
+    _notifWs.onopen = () => {
+        _notifWsRetries = 0;
+        if (_notifTimer) { clearInterval(_notifTimer); _notifTimer = null; }
+    };
+
+    _notifWs.onmessage = (e) => {
+        try { _handleNotifMessage(JSON.parse(e.data)); } catch { /* ignore */ }
+    };
+
+    _notifWs.onclose = (ev) => {
+        _notifWs = null;
+        if (_notifWsDisabled) return;
+
+        // 4001 = our backend rejected auth (expired / invalid token)
+        // Don't retry — fall straight to polling to avoid a flood of 403s
+        if (ev.code === 4001) {
+            _notifWsDisabled = true;
+            if (!_notifTimer) _startNotifPoller();
+            return;
+        }
+
+        if (ev.code === 1006 && _notifWsRetries === 0) {
+            _notifWsDisabled = true;
+            sessionStorage.setItem('ws_supported', 'false');
+            if (!_notifTimer) _startNotifPoller();
+            return;
+        }
+
+        if (_notifWsRetries >= 5) {
+            _notifWsDisabled = true;
+            if (!_notifTimer) _startNotifPoller();
+            return;
+        }
+
+        const delay = Math.min(2000 * Math.pow(2, _notifWsRetries), 30_000);
+        _notifWsRetries++;
+        setTimeout(_connectNotifWs, delay);
+        if (!_notifTimer) _startNotifPoller();
+    };
+
+    _notifWs.onerror = () => { _notifWs?.close(); };
+
+    setInterval(() => {
+        if (_notifWs?.readyState === WebSocket.OPEN) {
+            _notifWs.send(JSON.stringify({ action: 'ping' }));
+        }
+    }, 25_000);
+}
+
+function _handleNotifMessage(msg) {
+    switch (msg.type) {
+
+        case 'notifications_snapshot': {
+            // Initial snapshot on connect — seed seen-ids and set badge
+            const list = msg.notifications || [];
+            list.forEach(n => _seenNotifIds.add(n.id));
+            _updateBellBadge(msg.unread_count ?? 0);
+            break;
+        }
+
+        case 'new_notification': {
+            const n = msg.notification;
+            if (!n || _seenNotifIds.has(n.id)) break;
+            _seenNotifIds.add(n.id);
+
+            // Toast
+            const toastMsg = n.type === 'follow'
+                ? `${n.actor?.display_name || 'Someone'} started following you 👤`
+                : n.type === 'comment'
+                    ? `${n.actor?.display_name || 'Someone'} commented on your post 💬`
+                    : n.type === 'reaction'
+                        ? `${n.actor?.display_name || 'Someone'} reacted to your post 🔥`
+                        : (n.title || 'New notification');
+            _rtToast(toastMsg, 'info');
+
+            // Increment badge
+            const badge = document.getElementById('notificationBadge');
+            if (badge) {
+                const current = parseInt(badge.textContent, 10) || 0;
+                _updateBellBadge(current + 1);
+            }
+
+            // Prepend to open notification dropdown if it's visible
+            _prependNotifToDropdown(n);
+            break;
+        }
+
+        case 'marked_read': {
+            _updateBellBadge(0);
+            break;
+        }
+    }
+}
+
+function _updateBellBadge(count) {
+    const badge = document.getElementById('notificationBadge');
+    if (!badge) return;
+    badge.textContent    = count > 99 ? '99+' : count;
+    badge.style.display  = count > 0 ? 'inline-block' : 'none';
+}
+
+function _prependNotifToDropdown(n) {
+    // Only insert if the dropdown panel is currently open/visible
+    const panel = document.getElementById('notificationsPanel') ||
+                  document.querySelector('.notifications-dropdown');
+    if (!panel || panel.style.display === 'none' || panel.hidden) return;
+
+    const list = panel.querySelector('.notifications-list, .notif-list, ul');
+    if (!list) return;
+
+    const actor = n.actor?.display_name || n.actor?.username || 'Someone';
+    const item  = document.createElement('li');
+    item.className = 'notif-item notif-item--new';
+    item.innerHTML = `
+        <a href="${_rtEsc(n.link || '#')}" class="notif-link">
+            <strong>${_rtEsc(actor)}</strong> ${_rtEsc(n.title)}
+            <span class="notif-time">just now</span>
+        </a>`;
+    list.insertBefore(item, list.firstChild);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  NOTIFICATION POLLING  (fallback when WS is disconnected)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function _startNotifPoller() {
+    _pollNotifications();
+    _notifTimer = setInterval(_pollNotifications, 20_000); // 20 s
+}
+
+async function _pollNotifications() {
+    // Skip if WS is live — no need to poll
+    if (_notifWs?.readyState === WebSocket.OPEN) return;
+
+    try {
+        const res = await fetch(`${_RT_BASE}/notifications/`, { headers: _rtHeaders() });
+
+        // 401 = token is expired or invalid.
+        // Clear the offending Firebase token so subsequent calls use the DRF
+        // token instead. Do not stop the poller — the next tick will retry
+        // with the DRF token if one exists, or stay quiet if the user is
+        // genuinely unauthenticated.
+        if (res.status === 401) {
+            const fbToken = localStorage.getItem('firebaseIdToken');
+            if (fbToken) {
+                try {
+                    const payload = JSON.parse(atob(fbToken.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')));
+                    if (Date.now() > payload.exp * 1000) {
+                        localStorage.removeItem('firebaseIdToken');
+                        console.warn('[PAGE] Expired Firebase token cleared after 401 on notifications poll.');
+                    }
+                } catch (_) { /* malformed token — leave it for the logout flow */ }
+            }
+            // If no DRF token either, stop polling to avoid flooding the server
+            const hasDrfToken = !!(localStorage.getItem('djangoAuthToken') || localStorage.getItem('authToken'));
+            if (!hasDrfToken) {
+                if (_notifTimer) { clearInterval(_notifTimer); _notifTimer = null; }
+            }
+            return;
+        }
+
+        if (!res.ok) return;
+
+        const data  = await res.json();
+        const list  = data.notifications || (Array.isArray(data) ? data : (data.results || []));
+        let   badge = data.unread_count ?? 0;
+        const newIds = [];
+
+        list.forEach(n => {
+            if (_seenNotifIds.has(n.id)) return;
+            _seenNotifIds.add(n.id);
+            newIds.push(n.id);
+            if (!n.is_read) {
+                const msg = n.type === 'follow'
+                    ? `${n.actor?.display_name || 'Someone'} started following you 👤`
+                    : (n.message || n.title || 'New notification');
+                _rtToast(msg, 'info');
+            }
+        });
+
+        if (newIds.length > 0) {
+            fetch(`${_RT_BASE}/notifications/read/`, {
+                method: 'POST',
+                headers: _rtHeaders(),
+                body: JSON.stringify({ ids: newIds }),
+            }).catch(() => {});
+        }
+
+        _updateBellBadge(badge);
+    } catch { /* silent — network error is fine */ }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  INIT
+// ─────────────────────────────────────────────────────────────────────────────
+async function _initRealtimeUpdates() {
+    const token = localStorage.getItem('djangoAuthToken') || localStorage.getItem('firebaseIdToken');
+    if (!token) return; // Not logged in — nothing to do
+
+    // ── 1. Check whether the server supports WebSockets before connecting ─────
+    // On Render free tier without Redis, WS connections 404 immediately.
+    // The ws-status endpoint tells us upfront so we don't spam the logs.
+    let wsSupported = false;
+    try {
+        const wsCheck = await fetch(`${_RT_BASE}/ws-status/`);
+        if (wsCheck.ok) {
+            const wsData = await wsCheck.json();
+            wsSupported = wsData.ws_supported === true;
+        }
+    } catch { /* if the check fails, stay with polling */ }
+
+    if (wsSupported) {
+        wsClient.connectFeed();
+
+    // When we get the feed snapshot, replace static sample posts
+    wsClient.on('feed', 'snapshot', ({ posts }) => {
+        if (!posts?.length) return;
+        const container = document.getElementById('feedPosts');
+        if (!container) return;
+        // Remove static sample cards (data-post-id="post-1" etc.)
+        container.querySelectorAll('[data-post-id^="post-"]').forEach(c => c.remove());
+        // Mark them all as seen then insert
+        posts.forEach(p => {
+            if (!_seenPostIds.has(String(p.id))) {
+                _seenPostIds.add(String(p.id));
+                container.appendChild(_buildPostCard(p));
+            }
+        });
+    });
+
+    // New post broadcast from another user
+    wsClient.on('feed', 'new_post', ({ post }) => {
+        // Ignore the echo of a post this user is currently uploading —
+        // the upload flow already rendered it optimistically.
+        if (_socialEchoSuppressed(post)) return;
+        if (_seenPostIds.has(String(post.id))) return;
+        _seenPostIds.add(String(post.id));
+        const container = document.getElementById('feedPosts');
+        if (!container) return;
+        const el = _buildPostCard(post);
+        el.classList.add('post-card--new');
+        container.insertBefore(el, container.firstChild);
+    });
+
+    // Count patches (reactions / comments / shares from other users)
+    wsClient.on('feed', 'post_update', data => {
+        _patchPostCounts(data.post_id, data.reaction_count, data.comment_count, data.share_count);
+    });
+
+    // Live activity ticker (sidebar)
+    wsClient.on('feed', 'live_activity', ({ user, action }) => {
+        const feed = document.querySelector('.live-feed');
+        if (!feed) return;
+        const item = document.createElement('div');
+        item.className = 'live-item';
+        item.style.animation = 'fadeInCard .4s ease';
+        item.innerHTML = `
+            <span class="live-dot"></span>
+            <div class="live-info">
+                <strong>${_rtEsc(user)}</strong> ${_rtEsc(action)}
+                <span class="live-time">Just now</span>
+            </div>`;
+        feed.insertBefore(item, feed.firstChild);
+        while (feed.children.length > 5) feed.removeChild(feed.lastChild);
+    });
+
+    // New story from someone we follow
+    wsClient.on('feed', 'new_story', ({ story }) => {
+        if (!story) return;
+        // Ignore our own upload echo — the upload flow owns that ring.
+        if (_socialEchoSuppressed(story)) return;
+        if (_storySeen(story.id) || document.querySelector(`[data-story-id="${story.id}"]`)) return;
+        _markStorySeen(story.id);
+        _appendStoryCard(story);
+    });
+
+    // ── 2. Stories WS connection ──────────────────────────────────────────────
+    wsClient.connectToStories({
+        onSnapshot: stories => {
+            if (!stories?.length) return;
+            const container = document.querySelector('.stories-container');
+            if (!container) return;
+            const createCard = container.querySelector('.create-story');
+            stories.forEach(s => {
+                if (!container.querySelector(`[data-story-id="${s.id}"]`)) {
+                    const card = _buildStoryCard(s);
+                    if (createCard?.nextSibling) container.insertBefore(card, createCard.nextSibling);
+                    else container.appendChild(card);
+                }
+                _markStorySeen(s.id);
+            });
+        },
+        // Gap fix: handle story_created pushed by _broadcast_new_story() in views.py
+        onCreate: story => {
+            if (!story) return;
+            if (_socialEchoSuppressed(story)) return;
+            if (_storySeen(story.id) || document.querySelector(`[data-story-id="${story.id}"]`)) return;
+            _markStorySeen(story.id);
+            _appendStoryCard(story);
+        },
+    });
+
+    } // end if (wsSupported)
+
+    // ── 3. Follower-feed WebSocket — new posts/stories/avatar from followed accounts ──
+    // Delivered via wsClient so it goes through the same Redis probe / backoff logic.
+    wsClient.connectUserFeed({
+        onNewPost: post => {
+            // Ignore our own upload echo — the upload flow owns that card.
+            if (_socialEchoSuppressed(post)) return;
+            if (!post || _seenPostIds.has(String(post.id))) return;
+            _seenPostIds.add(String(post.id));
+            const container = document.getElementById('feedPosts');
+            if (!container) return;
+            const el = _buildPostCard(post);
+            el.classList.add('post-card--new');
+            container.insertBefore(el, container.firstChild);
+            const authorName = post.author?.display_name || post.author?.username || 'Someone';
+            _rtToast(`${authorName} just posted`, 'info');
+        },
+        onNewStory: story => {
+            if (!story) return;
+            // Ignore our own upload echo — the upload flow owns that ring.
+            if (_socialEchoSuppressed(story)) return;
+            if (_storySeen(story.id) || document.querySelector(`[data-story-id="${story.id}"]`)) return;
+            _markStorySeen(story.id);
+            _appendStoryCard(story);
+            const authorName = story.author?.display_name || story.author?.username || 'Someone';
+            _rtToast(`${authorName} added a story`, 'info');
+        },
+        onAvatarUpdated: ({ user_id, avatar_url }) => {
+            if (user_id && avatar_url) _patchUserAvatarEverywhere(user_id, avatar_url);
+        },
+    });
+
+    // ── 4. Load who we're following first so follow buttons render correctly ──
+    _loadFollowingSet().then(() => {
+        loadDiscoverUsers();
+        loadSuggestedUsers();
+        _renderOnlineUsers([]);
+        _startOnlinePoller();
+    });
+
+    // ── 4b. Feed polling fallback — used when WS is unavailable or as a
+    //        safety net to catch any posts missed by the WS layer.
+    //        _startFeedPoller does an immediate fetch then polls every 30 s.
+    if (!wsSupported) {
+        _startFeedPoller();
+    }
+
+    // ── 5. Notification WebSocket (real-time bell badge + toasts) ────────────
+    _connectNotifWs();
+    // Fallback poller starts automatically if WS fails to connect
+
+    // ── 6. Pause everything when tab is hidden ────────────────────────────────
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+            clearInterval(_notifTimer);
+            clearInterval(_onlinePollTimer);
+            clearInterval(_feedPollTimer);
+            _notifTimer = _onlinePollTimer = _feedPollTimer = null;
+        } else {
+            _connectNotifWs();
+            wsClient.connectUserFeed();   // reconnect follower feed WS
+            wsClient.connectToStories();  // reconnect stories WS
+            _startOnlinePoller();
+            // Always resume feed polling on visibility restore — catches any
+            // posts published while the tab was hidden (WS or polling path)
+            if (!_feedPollTimer) _startFeedPoller();
+            // If WS not available, re-fetch stories to catch any posted while hidden
+            if (!wsClient.storyConnected) _pollStories();
+        }
+    });
+}
+
+// ── Story card builder (for WS-pushed stories) ────────────────────────────────
+function _buildStoryCard(story) {
+    const card = document.createElement('div');
+    const author   = story.author || {};
+    card.className = 'story-card';
+    card.dataset.storyId  = story.id;
+    card.dataset.authorId = String(author.id || '');
+    const name     = author.display_name || author.username || 'User';
+    // Prefer resolved_media_url (uploaded file) over legacy media_url
+    const mediaSrc = story.resolved_media_url || story.media_url || null;
+    const isVideo  = story.media_type === 'video';
+
+    // Use story media as thumbnail; fall back to author's profile photo, then gradient
+    const authorAvatarUrl = _rtGetAvatarUrl(author);
+    const bgStyle  = (mediaSrc && !isVideo)
+        ? `background-image:url('${_rtEsc(mediaSrc)}');background-size:cover;background-position:center`
+        : (authorAvatarUrl
+            ? `background:url('${_rtEsc(authorAvatarUrl)}') center/cover`
+            : `background:linear-gradient(135deg,#556b2f,#8bc34a)`);
+
+    card.innerHTML = `
+        <div class="story-ring-wrap" title="${_rtEsc(name)}">
+            <div class="story-image" style="${bgStyle}">
+                ${isVideo && mediaSrc
+                    ? `<video src="${_rtEsc(mediaSrc)}" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;" muted playsinline></video>`
+                    : ''}
+            </div>
+        </div>
+        <span class="story-name">${_rtEsc(name)}</span>`;
+
+    card.onclick = () => {
+        if (window.storyViewer) {
+            storyViewer.openStory(story.id, [story]);
+        }
+    };
+    return card;
+}
+
+function _appendStoryCard(story) {
+    const container  = document.querySelector('.stories-container');
+    const createCard = container?.querySelector('.create-story');
+    if (!container) return;
+    const card = _buildStoryCard(story);
+    if (createCard?.nextSibling) container.insertBefore(card, createCard.nextSibling);
+    else container.appendChild(card);
+}
+
+/**
+ * Polling fallback for stories — used when WS is unavailable.
+ * Fetches the stories feed and adds any new stories to the rail.
+ */
+async function _pollStories() {
+    try {
+        const res = await fetch(`${_RT_BASE}/social/stories/feed/`, {
+            headers: _rtHeaders()
+        });
+        if (!res.ok) return;
+        const stories = await res.json();
+        const container = document.querySelector('.stories-container');
+        if (!container) return;
+        const createCard = container.querySelector('.create-story');
+        (Array.isArray(stories) ? stories : (stories.results || [])).forEach(s => {
+            if (_storySeen(s.id) || container.querySelector(`[data-story-id="${s.id}"]`)) return;
+            _markStorySeen(s.id);
+            const card = _buildStoryCard(s);
+            if (createCard?.nextSibling) container.insertBefore(card, createCard.nextSibling);
+            else container.appendChild(card);
+        });
+    } catch { /* silent */ }
+}
+
+document.addEventListener('DOMContentLoaded', _initRealtimeUpdates);
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  CURRENT USER AVATAR — stamp on load + live update on upload
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Apply the current user's avatar URL to every avatar slot for the logged-in
+ * user that exists on the current page.
+ *
+ * Called:
+ *  • on DOMContentLoaded (shows the stored URL immediately, no API call needed)
+ *  • when the page:avatarChanged event fires (after a successful upload)
+ */
+function _stampCurrentUserAvatar(imgUrl) {
+    if (!imgUrl) return;
+
+    // Resolve backend-relative "/media/..." paths so the browser can load them
+    const resolved = (typeof resolveMediaUrl === 'function')
+        ? resolveMediaUrl(imgUrl)
+        : imgUrl;
+
+    const imgTag = `<img src="${resolved}" alt="Your avatar"
+        style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;"
+        onerror="this.replaceWith(window.pageLetterAvatar ? window.pageLetterAvatar((localStorage.getItem('pageUser') && JSON.parse(localStorage.getItem('pageUser')).username || '?').charAt(0).toUpperCase()) : (()=>{var s=document.createElement('span');s.style='display:inline-flex;align-items:center;justify-content:center;width:100%;height:100%;border-radius:50%;background:#6c63ff;color:#fff;font-weight:700;font-size:14px;';s.textContent='?';return s;})())">`;
+
+    // ── Named IDs (covers all pages) ──────────────────────────
+    [
+        'avatarDisplay',
+        'modalAvatar',
+        'umAvatar',
+        'navAvatar',
+        'smAvatarImg',
+        'heroAvatar',
+        'profileAvatar',
+        'settingsAvatarPreview',
+    ].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.innerHTML = imgTag;
+    });
+
+    // ── Class / attribute selectors ───────────────────────────
+    document.querySelectorAll([
+        '.user-avatar-btn',
+        '.user-menu-avatar',
+        '.nav-avatar',
+        '.header-avatar',
+        '.profile-avatar',
+        '.current-user-avatar',
+        '.post-avatar.current-user',
+        '.post-creator-avatar',
+        '.page-composer-avatar',
+        '[data-avatar="current-user"]',
+        '[data-current-user-avatar]',
+    ].join(', ')).forEach(el => { el.innerHTML = imgTag; });
+
+    // ── Own post card avatars ─────────────────────────────────
+    // Post cards created by the current user carry data-author-id.
+    // Use the same mechanism as _patchUserAvatarEverywhere so the
+    // logged-in user always sees their latest profile photo on their
+    // own posts immediately after uploading — no reload needed.
+    try {
+        const selfId = String(JSON.parse(localStorage.getItem('pageUser') || '{}').id || '');
+        if (selfId) {
+            document.querySelectorAll(
+                `.post-card[data-author-id="${selfId}"] .post-avatar`
+            ).forEach(el => { el.innerHTML = imgTag; });
+        }
+    } catch (_) { /* non-critical */ }
+}
+
+// Boot: stamp avatar from localStorage as soon as DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+    try {
+        const user = JSON.parse(localStorage.getItem('pageUser') || '{}');
+        const url  = user.profile_image_url || user.profile_image || null;
+        if (url) _stampCurrentUserAvatar(url);
+    } catch (_) { /* non-critical */ }
+});
+
+// Live update: fired by settings.js _smUploadAvatar after a successful upload
+window.addEventListener('page:avatarChanged', e => {
+    const url = e.detail?.url;
+    if (url) _stampCurrentUserAvatar(url);
+});
+
+window._stampCurrentUserAvatar = _stampCurrentUserAvatar;
+
+window.addEventListener('beforeunload', () => {
+    clearInterval(_feedPollTimer);
+    clearInterval(_notifTimer);
+    clearInterval(_onlinePollTimer);
+    clearInterval(_statsPollTimer);
+    _feedPollTimer = _notifTimer = _onlinePollTimer = _statsPollTimer = null;
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  USER STATS AUTO-REFRESH  (prestige, tier, streak, wallet, badges)
+// ─────────────────────────────────────────────────────────────────────────────
+let _statsPollTimer  = null;
+const STATS_POLL_MS  = 60_000;  // every 60 s — stats don't change every second
+
+/**
+ * Fetch the current user's profile and silently patch any DOM elements
+ * that show stats. Doesn't re-render the whole profile — just updates
+ * the specific values that can change during a session.
+ */
+async function _pollUserStats() {
+    // Only run when page is visible
+    if (document.hidden) return;
+
+    try {
+        const res = await fetch(`${_RT_BASE}/auth/profile/`, { headers: _rtHeaders() });
+        if (!res.ok) return;
+        const u = await res.json();
+
+        // ── Patch DOM elements by their IDs ───────────────────────────────────
+        const patch = (id, val) => {
+            const el = document.getElementById(id);
+            if (el && el.textContent !== String(val)) el.textContent = val;
+        };
+        const patchAttr = (id, attr, val) => {
+            const el = document.getElementById(id);
+            if (el) el.setAttribute(attr, val);
+        };
+
+        const pts     = (u.prestige_points || 0).toLocaleString();
+        const streak  = u.current_streak || 0;
+        const tier    = u.access_tier   || 'Bronze';
+        const balance = `K${parseFloat(u.total_earnings || 0).toFixed(0)}`;
+        const wins    = u.tournament_wins || 0;
+        const level   = u.level || 1;
+
+        // Sidebar + header stat elements (index.html)
+        patch('sidebarPrestige',   pts);
+        patch('userMenuPrestige',  pts);
+        patch('userMenuStreak',    streak);
+        patch('userMenuBalance',   balance);
+        patch('userMenuTier',      `${tier} Tier`);
+
+        // Profile page stats (user.html via user.js set())
+        patch('statPrestige',      pts);
+        patch('statLevel',         level);
+        patch('statStreak',        streak);
+        patch('statWins',          wins);
+        patch('statEarnings',      balance);
+        patch('statFollowers',     u.followers_count ?? '');
+        patch('statFollowing',     u.following_count ?? '');
+        patch('prestigePoints',    pts);
+
+        // Tier badge anywhere on page
+        ['profileTier', 'sidebarTier', 'menuTier', 'userMenuTier'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                const newVal = id.includes('Tier') ? `${tier} Tier` : tier;
+                if (el.textContent !== newVal) el.textContent = newVal;
+            }
+        });
+
+        // Update cached user object in localStorage — include avatar URLs so
+        // every page load immediately shows the correct profile picture
+        try {
+            const stored = JSON.parse(localStorage.getItem('pageUser') || '{}');
+            const updated = {
+                ...stored,
+                prestige_points:   u.prestige_points,
+                current_streak:    u.current_streak,
+                access_tier:       u.access_tier,
+                level:             u.level,
+                tournament_wins:   u.tournament_wins,
+                total_earnings:    u.total_earnings,
+                followers_count:   u.followers_count,
+                following_count:   u.following_count,
+                // Always refresh the avatar URL from the server
+                profile_image_url: u.profile_image_url || stored.profile_image_url || null,
+                profile_image:     u.profile_image_url || u.profile_image || stored.profile_image || null,
+            };
+            localStorage.setItem('pageUser', JSON.stringify(updated));
+
+            // Re-stamp avatar if the server returned one (handles first load after upload)
+            const freshUrl = updated.profile_image_url || updated.profile_image;
+            if (freshUrl) _stampCurrentUserAvatar(freshUrl);
+        } catch (_) { /* non-critical */ }
+
+    } catch (_) { /* silent — don't disrupt the UI */ }
+}
+
+function _startStatsPoller() {
+    _pollUserStats();  // immediate first fetch
+    _statsPollTimer = setInterval(_pollUserStats, STATS_POLL_MS);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Hook into existing init — add stats poller only
+//  (challenges list auto-refresh is built into challenges.js directly)
+// ─────────────────────────────────────────────────────────────────────────────
+
+(function _extendRealtime() {
+    const start = () => {
+        const token = localStorage.getItem('djangoAuthToken') || localStorage.getItem('firebaseIdToken');
+        if (!token) return;
+        _startStatsPoller();
+
+        // Resume on tab visibility restore
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) _pollUserStats();
+        });
+    };
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', start);
+    } else {
+        setTimeout(start, 100);
+    }
+})();
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  GLOBAL EXPORTS  (called from inline HTML and other scripts)
+// ─────────────────────────────────────────────────────────────────────────────
+window.toggleFollow    = toggleFollow;
+window.followUser      = followUser;
+window.unfollowUser    = unfollowUser;
+window.searchUsers     = searchUsers;         // wires up the sidebar search input
+window.loadDiscoverUsers  = loadDiscoverUsers;
+window.loadSuggestedUsers = loadSuggestedUsers;
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  FOLLOWER FEED WebSocket
+//  Managed entirely by wsClient.connectUserFeed() in _initRealtimeUpdates above.
+//  The handlers (followed_new_post, followed_new_story, followed_avatar_updated)
+//  are registered via wsClient.on('userFeed', ...) callbacks in that function.
+//  _patchUserAvatarEverywhere is kept here as it is called from multiple places.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Update every avatar `<img>` on the page that belongs to a specific user.
+ * Looks for elements with data-user-id or data-author-id attributes,
+ * plus the messenger chat header avatar.
+ *
+ * @param {string} userId    - The author's user id (string)
+ * @param {string} avatarUrl - New avatar URL / base64 data URI
+ */
+function _patchUserAvatarEverywhere(userId, avatarUrl) {
+    if (!userId || !avatarUrl) return;
+
+    // Resolve backend-relative "/media/..." paths to an absolute URL
+    const resolved = (typeof resolveMediaUrl === 'function')
+        ? resolveMediaUrl(avatarUrl)
+        : avatarUrl;
+
+    const imgTag = `<img src="${_rtEsc(resolved)}" alt="avatar"
+        style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;"
+        onerror="this.replaceWith(window._rtLetterAvatar('?'))">`;
+
+    // Post card author avatars
+    document.querySelectorAll(
+        `.post-card[data-author-id="${userId}"] .post-avatar,
+         .post-card .post-author [data-user-id="${userId}"]`
+    ).forEach(el => { el.innerHTML = imgTag; });
+
+    // Discover / online user list items
+    document.querySelectorAll(
+        `[data-user-id="${userId}"] .page-user-avatar,
+         [data-user-id="${userId}"] .page-online-avatar,
+         [data-user-id="${userId}"] .chip-avatar`
+    ).forEach(el => { el.innerHTML = imgTag; });
+
+    // Messenger chat header (if that user is the open conversation partner)
+    const chatAvatar = document.getElementById('dmChatAvatar');
+    if (chatAvatar && chatAvatar.dataset.userId === String(userId)) {
+        chatAvatar.innerHTML = imgTag;
+    }
+
+    // Story author rings in the stories rail
+    document.querySelectorAll(`.story-card[data-author-id="${userId}"] .story-image`)
+        .forEach(el => {
+            el.style.backgroundImage = `url('${avatarUrl}')`;
+            el.style.backgroundSize = 'cover';
+        });
+}

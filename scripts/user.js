@@ -104,6 +104,7 @@ async function loadOtherProfile(userId) {
 
 // ── Render another user's basic info ─────────────────────────
 function renderOtherProfile(u) {
+    window._lastProfileData = u;
     set('profileDisplayName', u.display_name || u.username);
     set('profileUsername', `@${u.username}`);
     set('profileTier', u.access_tier || 'Bronze');

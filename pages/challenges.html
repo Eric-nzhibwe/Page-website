@@ -51,7 +51,11 @@
             <button class="header-icon-btn" onclick="toggleQuickMenu()" title="Menu">
                 <i class="fas fa-grid-2"></i>
             </button>
-            <div class="user-avatar-btn" onclick="toggleUserMenu()" data-current-user-avatar></div>
+            <div class="user-avatar-btn" id="userAvatarBtn" onclick="toggleUserMenu()" data-current-user-avatar
+                role="button" tabindex="0" aria-haspopup="menu" aria-expanded="false"
+                onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleUserMenu();}">
+                <i class="fas fa-user"></i>
+            </div>
         </div>
 
         <!-- Quick Menu Dropdown -->
@@ -73,7 +77,7 @@
                     <i class="fas fa-wallet"></i><span>Wallet</span>
                 </a>
                 <a href="chatbot.html" class="quick-menu-item">
-                    <i class="fas fa-robot"></i><span>AI Assistant</span>
+                    <i class="fas fa-robot"></i><span>PAGE AI</span>
                 </a>
                 <a href="influencers.html" class="quick-menu-item">
                     <i class="fas fa-star"></i><span>Influencers</span>
@@ -84,7 +88,9 @@
         <!-- User Menu Dropdown -->
         <div class="user-menu-dropdown" id="userMenuDropdown">
             <div class="user-menu-header">
-                <div class="user-menu-avatar" data-current-user-avatar></div>
+                <div class="user-menu-avatar" data-current-user-avatar>
+                    <i class="fas fa-user"></i>
+                </div>
                 <div class="user-menu-info">
                     <h4 id="menuUsername">Player</h4>
                     <p id="menuTier">Bronze Tier</p>
@@ -108,6 +114,7 @@
                 <a href="user.html"><i class="fas fa-id-card"></i> View Profile</a>
                 <a href="payment.html"><i class="fas fa-wallet"></i> My Wallet</a>
                 <a href="chatbot.html"><i class="fas fa-robot"></i> PAGE AI</a>
+                <a href="followers.html"><i class="fas fa-user-plus"></i> Followers</a>
                 <a href="#" onclick="logout(); return false;" class="logout-link"><i
                         class="fas fa-right-from-bracket"></i> Logout</a>
             </div>
@@ -1027,6 +1034,8 @@
             const qm = document.getElementById('quickMenuDropdown');
             if (qm) qm.classList.remove('show');
             if (um) um.classList.toggle('show');
+            document.getElementById('userAvatarBtn')?.setAttribute('aria-expanded',
+                um?.classList.contains('show') ? 'true' : 'false');
         }
 
         /* Close dropdowns on outside click */
@@ -1039,21 +1048,89 @@
             }
         });
 
-        /* Populate user menu from player data already loaded by challenges.js */
-        document.addEventListener('DOMContentLoaded', () => {
-            setTimeout(() => {
-                const raw = localStorage.getItem('pageUser') || localStorage.getItem('artCurrentUser');
-                if (!raw) return;
-                try {
-                    const u = typeof JSON.parse(raw) === 'object' ? JSON.parse(raw) : {};
-                    const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
-                    set('menuUsername', u.username || 'Player');
-                    set('menuTier', (u.access_tier || 'Bronze') + ' Tier');
-                    set('menuStreak', u.current_streak ?? 0);
-                    set('menuPrestige', u.prestige_points ?? 0);
-                    set('menuBalance', u.wallet_balance != null ? `K${Number(u.wallet_balance).toFixed(0)}` : 'K0');
-                } catch { /* silent */ }
-            }, 600);
+        function syncChallengeUserMenu(user) {
+            const raw = user || (() => {
+                try { return JSON.parse(localStorage.getItem('pageUser') || localStorage.getItem('artCurrentUser') || '{}'); }
+                catch (_) { return {}; }
+            })();
+
+            const username = raw.display_name || raw.username || 'Player';
+            const set = (id, val) => {
+                const el = document.getElementById(id);
+                if (el) el.textContent = val;
+            };
+            set('menuUsername', username);
+            set('menuTier', `${raw.access_tier || 'Bronze'} Tier`);
+            set('menuStreak', raw.current_streak ?? 0);
+            set('menuPrestige', raw.prestige_points ?? 0);
+            set('menuBalance', raw.wallet_balance != null
+                ? `K${Number(raw.wallet_balance).toFixed(0)}`
+                : raw.total_earnings != null ? `K${Number(raw.total_earnings).toFixed(0)}` : 'K0');
+
+            const avatarUrl = typeof getAvatarUrl === 'function'
+                ? getAvatarUrl(raw)
+                : (raw.profile_image_url || raw.avatar_url || raw.profile_image || null);
+
+            document.querySelectorAll('.user-avatar-btn, .user-menu-avatar, [data-current-user-avatar]').forEach(container => {
+                container.querySelectorAll('img').forEach(img => img.remove());
+                if (!avatarUrl) {
+                    if (!container.querySelector('.fas.fa-user')) {
+                        container.insertAdjacentHTML('beforeend', '<i class="fas fa-user"></i>');
+                    }
+                    return;
+                }
+
+                container.querySelectorAll('.fas.fa-user').forEach(icon => icon.remove());
+                const img = document.createElement('img');
+                img.src = avatarUrl;
+                img.alt = username;
+                img.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;';
+                img.addEventListener('error', () => {
+                    img.remove();
+                    if (!container.querySelector('.fas.fa-user')) {
+                        container.insertAdjacentHTML('beforeend', '<i class="fas fa-user"></i>');
+                    }
+                }, { once: true });
+                container.appendChild(img);
+            });
+        }
+
+        /* Populate immediately, after DOM scripts, and after avatar/API updates. */
+        function initializeChallengeUserMenu() {
+            syncChallengeUserMenu();
+
+            const base = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+                ? 'http://localhost:8000/api' : `${window.location.origin}/api`;
+            const token = localStorage.getItem('djangoAuthToken') || localStorage.getItem('authToken');
+            if (!token) return;
+
+            fetch(`${base}/auth/profile/`, { headers: { Authorization: `Token ${token}` } })
+                .then(res => res.ok ? res.json() : null)
+                .then(user => {
+                    if (!user) return;
+                    const stored = (() => {
+                        try { return JSON.parse(localStorage.getItem('pageUser') || '{}'); }
+                        catch (_) { return {}; }
+                    })();
+                    const merged = { ...stored, ...user,
+                        profile_image_url: user.profile_image_url || user.avatar_url || stored.profile_image_url || stored.profile_image || null,
+                        avatar_url: user.avatar_url || user.profile_image_url || stored.avatar_url || null
+                    };
+                    localStorage.setItem('pageUser', JSON.stringify(merged));
+                    syncChallengeUserMenu(merged);
+                })
+                .catch(() => {});
+        }
+
+        document.addEventListener('DOMContentLoaded', initializeChallengeUserMenu);
+        window.addEventListener('page:avatarChanged', event => {
+            try {
+                const user = JSON.parse(localStorage.getItem('pageUser') || '{}');
+                user.profile_image_url = event.detail?.url || user.profile_image_url;
+                user.avatar_url = event.detail?.url || user.avatar_url;
+                localStorage.setItem('pageUser', JSON.stringify(user));
+                syncChallengeUserMenu(user);
+            } catch (_) {}
         });
     </script>
 

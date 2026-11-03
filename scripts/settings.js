@@ -925,3 +925,23 @@ window.addEventListener('page:avatarChanged', e => {
         if (url) _applyAvatarEverywhere(url);
     } catch { /* non-critical */ }
 })();
+
+// Expose to window so inline onclick handlers in index.html can call these
+window.showSettings         = showSettings;
+window.closeSettings        = closeSettings;
+window.showSettingsTab      = showSettingsTab;
+window.saveAccountSettings  = saveAccountSettings;
+window.saveProfileSettings  = saveProfileSettings;
+window.savePrivacySettings  = savePrivacySettings;
+window.saveNotificationSettings = saveNotificationSettings;
+window.saveAppearanceSettings   = saveAppearanceSettings;
+window.changeTheme          = changeTheme;
+window.changeFontSize       = changeFontSize;
+window.selectAccentColor    = selectAccentColor;
+window.changePassword       = changePassword;
+window.checkPasswordStrength = checkPasswordStrength;
+window.togglePasswordVisibility = togglePasswordVisibility;
+window.setup2FA             = setup2FA;
+window.logoutAllDevices     = logoutAllDevices;
+window.toggleSocialLink     = toggleSocialLink;
+window.changeAvatar         = changeAvatar;

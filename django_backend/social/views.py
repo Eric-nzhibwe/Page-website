@@ -12,6 +12,7 @@ from rest_framework.authentication import TokenAuthentication, SessionAuthentica
 from rest_framework.pagination import PageNumberPagination
 from django.shortcuts import get_object_or_404
 from django.db.models import Q
+from users.firebase_token_auth import FirebaseTokenAuthentication
 from .models import Post, Comment, PostReaction, CommentReaction, PostShare, Follow, Story, StoryView
 from .serializers import (
     PostSerializer, CommentSerializer, PostReactionSerializer,
@@ -540,7 +541,7 @@ class FollowViewSet(viewsets.ViewSet):
     ViewSet for Follow relationships with real-time updates
     """
     permission_classes = [IsAuthenticated]
-    authentication_classes = [TokenAuthentication, SessionAuthentication]
+    authentication_classes = [FirebaseTokenAuthentication, TokenAuthentication, SessionAuthentication]
     
     @action(detail=False, methods=['post'])
     def follow(self, request):

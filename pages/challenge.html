@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Challenge — PAGE</title>
+    <title>Challenge</title>
     <link rel="icon" type="image/jpeg" href="../images/Page.jpeg">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -24,7 +24,7 @@
      BACK NAV
 ══════════════════════════════════════════════════════════════════════════ -->
 <header class="cd-topbar">
-    <button class="cd-back-btn" onclick="history.back()" aria-label="Back">
+    <button class="cd-back-btn" onclick="cdGoBack()" aria-label="Back to challenges">
         <i class="fas fa-arrow-left"></i>
     </button>
     <span class="cd-topbar-title" id="cdTopbarTitle">Challenge</span>
@@ -45,7 +45,7 @@
 <div id="cdError" class="cd-error-screen" style="display:none;">
     <i class="fas fa-exclamation-triangle"></i>
     <p id="cdErrorMsg">Challenge not found.</p>
-    <button class="cd-btn-primary" onclick="history.back()">Go Back</button>
+    <button class="cd-btn-primary" onclick="cdGoBack()">Go Back</button>
 </div>
 
 <!-- ══════════════════════════════════════════════════════════════════════════
@@ -220,25 +220,24 @@ async function loadChallenge() {
     showLoading(true);
     try {
         const endpointMap = {
-            debate: `${API_BASE}/challenges/debates/`,
-            poll:   `${API_BASE}/challenges/polls/`,
-            qa:     `${API_BASE}/challenges/qa/`,
+            debate: `${API_BASE}/challenges/debates/${_id}/detail/`,
+            poll:   `${API_BASE}/challenges/polls/${_id}/detail/`,
+            qa:     `${API_BASE}/challenges/qa/${_id}/detail/`,
         };
 
         const token = localStorage.getItem('djangoAuthToken') || localStorage.getItem('authToken');
         const headers = token ? { Authorization: `Token ${token}` } : {};
 
         const res  = await fetch(endpointMap[_type], { headers });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const list = await res.json();
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+            showError(data.error || (res.status === 404 ? 'Challenge not found.' : 'Could not load challenge.'));
+            return;
+        }
 
-        _challenge = (Array.isArray(list) ? list : (list.results || [])).find(
-            c => String(c.id) === String(_id)
-        );
-
-        if (!_challenge) { showError('Challenge not found.'); return; }
-
+        _challenge = data;
         render();
+        connectChallengeLiveUpdates();
     } catch (err) {
         showError('Could not load challenge. Please try again.');
         console.error(err);
@@ -616,6 +615,62 @@ async function cdPostAnswer() {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function getToken() {
     return localStorage.getItem('djangoAuthToken') || localStorage.getItem('authToken') || '';
+}
+
+function cdGoBack() {
+    if (document.referrer && new URL(document.referrer).origin === window.location.origin
+        && document.referrer.includes('/pages/challenges.html')) {
+        history.back();
+        return;
+    }
+    window.location.href = 'challenges.html';
+}
+
+let _challengeLiveSocket = null;
+
+function connectChallengeLiveUpdates() {
+    const token = getToken();
+    if (!token || !window.WebSocket) return;
+
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const routes = {
+        debate: `/ws/debate/${_id}/`,
+        poll: `/ws/poll/${_id}/`,
+        qa: `/ws/qa/${_id}/`,
+    };
+    const socketUrl = `${protocol}//${window.location.host}${routes[_type]}?token=${encodeURIComponent(token)}`;
+
+    if (_challengeLiveSocket) _challengeLiveSocket.close();
+    _challengeLiveSocket = new WebSocket(socketUrl);
+    _challengeLiveSocket.onmessage = (event) => {
+        let message;
+        try { message = JSON.parse(event.data); } catch (_) { return; }
+        const payload = message.payload || {};
+
+        if (message.type === 'debate_comment' && payload.user && payload.text && payload.side) {
+            if (payload.user !== getCurrentUsername()) {
+                const feed = document.getElementById(payload.side === 'b' ? 'cdFeedB' : 'cdFeedA');
+                feed.querySelector('.cd-feed-empty')?.remove();
+                feed.insertAdjacentHTML('beforeend', commentBubble(payload));
+                feed.scrollTop = feed.scrollHeight;
+            }
+        }
+
+        if (message.type === 'poll_vote' && payload.vote_counts) {
+            _challenge.vote_counts = payload.vote_counts;
+            _challenge.total_votes = payload.total_votes || 0;
+            renderPoll(_challenge);
+        }
+
+        if (message.type === 'qa_answer' && payload.user && payload.text) {
+            if (payload.user !== getCurrentUsername()) {
+                const feed = document.getElementById('cdQAFeed');
+                feed.querySelector('.cd-feed-empty')?.remove();
+                feed.insertAdjacentHTML('beforeend', answerBubble(payload));
+                feed.scrollTop = feed.scrollHeight;
+            }
+        }
+    };
 }
 
 function getCurrentUsername() {

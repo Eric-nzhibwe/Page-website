@@ -1421,3 +1421,21 @@ function _patchUserAvatarEverywhere(userId, avatarUrl) {
             el.style.backgroundSize = 'cover';
         });
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  showNotifications — called by the bell button in index.html header
+//  Opens the notifications page (simplest reliable approach since there is
+//  no inline notifications dropdown panel in index.html)
+// ─────────────────────────────────────────────────────────────────────────────
+function showNotifications() {
+    window.location.href = 'pages/notifications.html';
+}
+
+// Expose functions used by inline onclick handlers across index.html
+window.showNotifications     = showNotifications;
+window.toggleFollow          = toggleFollow;
+window.followUser            = followUser;
+window.unfollowUser          = unfollowUser;
+window.loadDiscoverUsers     = loadDiscoverUsers;
+window.loadSuggestedUsers    = loadSuggestedUsers;
+window.searchUsers           = searchUsers;

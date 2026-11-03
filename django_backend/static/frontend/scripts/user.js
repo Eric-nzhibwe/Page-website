@@ -1,0 +1,641 @@
+// PAGE — Profile  ·  user.js
+
+const PROFILE_API = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+    ? 'http://localhost:8000/api'
+    : `${window.location.origin}/api`;
+
+let profileData = null;
+
+const ACT_META = {
+    prestige_gained:    { icon: 'fa-star',         bg: 'linear-gradient(135deg,#b45309,#f59e0b)' },
+    level_up:           { icon: 'fa-arrow-trend-up',bg: 'linear-gradient(135deg,#16a34a,#4ade80)' },
+    tier_upgrade:       { icon: 'fa-crown',         bg: 'linear-gradient(135deg,#92400e,#f59e0b)' },
+    tournament_entry:   { icon: 'fa-trophy',        bg: 'linear-gradient(135deg,#1d4ed8,#60a5fa)' },
+    tournament_win:     { icon: 'fa-medal',         bg: 'linear-gradient(135deg,#92400e,#fbbf24)' },
+    alliance_join:      { icon: 'fa-users',         bg: 'linear-gradient(135deg,#6d28d9,#a78bfa)' },
+    alliance_create:    { icon: 'fa-flag',          bg: 'linear-gradient(135deg,#6d28d9,#f472b6)' },
+    payment_made:       { icon: 'fa-credit-card',   bg: 'linear-gradient(135deg,#0e7490,#22d3ee)' },
+    submission_success: { icon: 'fa-check-double',  bg: 'linear-gradient(135deg,#15803d,#4ade80)' },
+    submission_failed:  { icon: 'fa-xmark',         bg: 'linear-gradient(135deg,#b91c1c,#f87171)' },
+};
+
+// ── Init ──────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', async () => {
+    const isAuthed = window._pageIsAuthed ? window._pageIsAuthed() :
+        !!(localStorage.getItem('djangoAuthToken') || localStorage.getItem('firebaseIdToken'));
+    if (!isAuthed) { window.location.href = '/pages/auth.html'; return; }
+
+    // Restore saved profile photo immediately (before API responds) to avoid icon flash
+    try {
+        const stored = JSON.parse(localStorage.getItem('pageUser') || '{}');
+        const savedUrl = stored.profile_image_url || stored.profile_image;
+        if (savedUrl) applyAvatarEverywhere(savedUrl);
+    } catch (_) { /* non-critical */ }
+
+    // Also react to avatar changes triggered from the settings modal on this page
+    window.addEventListener('page:avatarChanged', e => {
+        if (e.detail?.url) applyAvatarEverywhere(e.detail.url);
+    });
+
+    // Check if we're viewing another user's profile (?id=X)
+    const params     = new URLSearchParams(window.location.search);
+    const viewUserId = params.get('id');
+    const myId       = localStorage.getItem('userId');
+
+    if (viewUserId && String(viewUserId) !== String(myId)) {
+        await loadOtherProfile(viewUserId);
+    } else {
+        await loadProfile();
+        await loadActivities();
+    }
+});
+
+// ── Load own profile ──────────────────────────────────────────
+async function loadProfile() {
+    const authHeader = window._pageAuthHeader ? window._pageAuthHeader() : null;
+    try {
+        const res = await fetch(`${PROFILE_API}/auth/stats/`, {
+            headers: authHeader ? { 'Authorization': authHeader } : {}
+        });
+        if (!res.ok) throw new Error('Failed');
+        const data = await res.json();
+        profileData = data.user;
+        renderProfile(profileData, data.rank);
+        await loadFollowCounts(profileData.id);
+    } catch (e) {
+        console.error('Profile load error:', e);
+    }
+}
+
+// ── Load another user's profile ───────────────────────────────
+async function loadOtherProfile(userId) {
+    const authHeader = window._pageAuthHeader ? window._pageAuthHeader() : null;
+
+    // Hide own-profile actions, show follow button, hide settings
+    const btnEdit     = document.getElementById('btnEditProfile');
+    const btnSettings = document.getElementById('btnSettings');
+    const btnFollow   = document.getElementById('btnFollowProfile');
+    const avatarCam   = document.querySelector('.av-cam');
+    if (btnEdit)     btnEdit.style.display     = 'none';
+    if (btnSettings) btnSettings.style.display = 'none';
+    if (btnFollow)   btnFollow.style.display   = 'inline-flex';
+    if (avatarCam)   avatarCam.style.display   = 'none';
+
+    try {
+        // Fetch public profile (reuse the stats endpoint with user_id param if available,
+        // or fall back to discover list match)
+        const res = await fetch(`${PROFILE_API}/auth/discover/?limit=100`, {
+            headers: authHeader ? { 'Authorization': authHeader } : {}
+        });
+        if (res.ok) {
+            const users = await res.json();
+            const list  = Array.isArray(users) ? users : (users.results || []);
+            const u     = list.find(x => String(x.id) === String(userId));
+            if (u) {
+                renderOtherProfile(u);
+            }
+        }
+        // Load follow counts + is_following state
+        await loadFollowCounts(userId, true);
+    } catch (e) {
+        console.error('Other profile load error:', e);
+    }
+}
+
+// ── Render another user's basic info ─────────────────────────
+function renderOtherProfile(u) {
+    window._lastProfileData = u;
+    set('profileDisplayName', u.display_name || u.username);
+    set('profileUsername', `@${u.username}`);
+    set('profileTier', u.access_tier || 'Bronze');
+    set('profileRank', u.power_rank || '—');
+    set('heroBio', u.bio || '');
+    set('profileBio', u.bio || 'No bio yet.');
+    set('statPrestige', (u.prestige_points || 0).toLocaleString());
+    set('statLevel', u.level || 1);
+    // Resolve backend-relative "/media/..." paths to an absolute URL
+    const avatarUrl = u.profile_image_url || u.profile_image || null;
+    const _resolvedUrl = avatarUrl ? ((typeof resolveMediaUrl === 'function') ? resolveMediaUrl(avatarUrl) : avatarUrl) : null;
+    if (_resolvedUrl) setAvatarImg(_resolvedUrl);
+    if (window.applyTierPalette) applyTierPalette(u.access_tier);
+    document.title = `PAGE — ${u.display_name || u.username}`;
+}
+
+// ── Load and display follow counts ───────────────────────────
+async function loadFollowCounts(userId, checkIsFollowing = false) {
+    const authHeader = window._pageAuthHeader ? window._pageAuthHeader() : null;
+    try {
+        const res = await fetch(`${PROFILE_API}/social/follows/counts/?user_id=${userId}`, {
+            headers: authHeader ? { 'Authorization': authHeader } : {}
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        set('statFollowers', data.followers_count ?? 0);
+        set('statFollowing', data.following_count ?? 0);
+
+        if (checkIsFollowing) {
+            const btnFollow = document.getElementById('btnFollowProfile');
+            if (btnFollow) {
+                _profileIsFollowing = data.is_following;
+                _profileViewedId    = userId;
+                _styleProfileFollowBtn(data.is_following);
+            }
+        }
+    } catch { /* silent */ }
+}
+
+// ── Follow button state for profile page ─────────────────────
+let _profileIsFollowing = false;
+let _profileViewedId    = null;
+
+function _styleProfileFollowBtn(isFollowing) {
+    const btn = document.getElementById('btnFollowProfile');
+    if (!btn) return;
+    btn.innerHTML = isFollowing
+        ? '<i class="fas fa-check"></i> Following'
+        : '<i class="fas fa-user-plus"></i> Follow';
+    btn.classList.toggle('btn-following', isFollowing);
+}
+
+async function toggleProfileFollow() {
+    if (!_profileViewedId) return;
+    const authHeader = window._pageAuthHeader ? window._pageAuthHeader() : null;
+    const endpoint = _profileIsFollowing
+        ? `${PROFILE_API}/social/follows/unfollow/`
+        : `${PROFILE_API}/social/follows/follow/`;
+
+    // Optimistic
+    _profileIsFollowing = !_profileIsFollowing;
+    _styleProfileFollowBtn(_profileIsFollowing);
+
+    try {
+        const res = await fetch(endpoint, {
+            method:  'POST',
+            headers: { ...(authHeader ? { 'Authorization': authHeader } : {}), 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ user_id: _profileViewedId }),
+        });
+        if (!res.ok) {
+            // Rollback
+            _profileIsFollowing = !_profileIsFollowing;
+            _styleProfileFollowBtn(_profileIsFollowing);
+            return;
+        }
+        // Refresh counts
+        await loadFollowCounts(_profileViewedId, false);
+    } catch {
+        _profileIsFollowing = !_profileIsFollowing;
+        _styleProfileFollowBtn(_profileIsFollowing);
+    }
+}
+
+// ── Render ────────────────────────────────────────────────────
+function renderProfile(u, rank) {
+    window._lastProfileData = u; // shared with user-enhanced.js
+
+    // Identity
+    set('profileDisplayName', u.display_name || u.username);
+    set('profileUsername', `@${u.username}`);
+    set('profileTier', u.access_tier);
+    set('profileRank', u.power_rank);
+    set('heroBio', u.bio || '');
+    set('profileBio', u.bio || 'No bio yet.');
+    set('profileEmail', u.email);
+    set('profileJoined', new Date(u.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }));
+    set('profileVerLevel', u.verification_level);
+    if (u.is_verified) show('profileVerified');
+
+    // Avatar level orb
+    const lvl = document.getElementById('avatarLevel');
+    if (lvl) lvl.querySelector('b').textContent = u.level;
+
+    // Avatar image — resolve backend-relative "/media/..." paths to an absolute URL
+    const _avatarRaw = u.profile_image_url || u.profile_image || null;
+    const _avatarUrl = _avatarRaw ? ((typeof resolveMediaUrl === 'function') ? resolveMediaUrl(_avatarRaw) : _avatarRaw) : null;
+    if (_avatarUrl) {
+        setAvatarImg(_avatarUrl);
+    }
+
+    // Tier palette (cover + ring colour)
+    if (window.applyTierPalette) applyTierPalette(u.access_tier);
+
+    // Stats row
+    set('statPrestige', u.prestige_points.toLocaleString());
+    set('statLevel', u.level);
+    set('statStreak', u.current_streak);
+    set('statWins', u.tournament_wins);
+    set('statSuccessRate', `${u.success_rate}%`);
+    set('statEarnings', `K${parseFloat(u.total_earnings).toFixed(0)}`);
+    // Follow counts (returned by serializer)
+    set('statFollowers', u.followers_count ?? 0);
+    set('statFollowing', u.following_count ?? 0);
+
+    // Prestige XP bar
+    const pts = u.prestige_points;
+    const milestones = [0, 200, 500, 1000, 1500, 2500, 5000, 10000];
+    const next = milestones.find(m => m > pts) || milestones[milestones.length - 1];
+    const prev = [...milestones].reverse().find(m => m <= pts) || 0;
+    const pct  = prev === next ? 100 : ((pts - prev) / (next - prev)) * 100;
+    set('prestigePoints', pts.toLocaleString());
+    set('prestigeNext', next.toLocaleString());
+    delay(() => { setW('prestigeBar', Math.min(pct, 100)); }, 350);
+
+    // Tier nodes
+    const TIERS = ['Bronze','Silver','Gold','Platinum','Diamond','Elite','Legendary'];
+    const activeIdx = TIERS.indexOf(u.access_tier);
+    document.querySelectorAll('.tnode').forEach((n, i) => {
+        n.classList.remove('active','passed','legendary');
+        if (i < activeIdx) n.classList.add('passed');
+        if (i === activeIdx) n.classList.add('active');
+        if (n.dataset.tier === 'Legendary') n.classList.add('legendary');
+    });
+    document.querySelectorAll('.tline').forEach((l, i) => {
+        l.classList.toggle('passed', i < activeIdx);
+    });
+
+    // Performance
+    const wrong = u.total_submissions - u.successful_submissions;
+    set('perfSubmissions', u.total_submissions);
+    set('perfCorrect', u.successful_submissions);
+    set('perfWrong', wrong);
+    set('perfWins', u.tournament_wins);
+    set('successRateLabel', `${u.success_rate}%`);
+    set('dlCorrect', u.successful_submissions);
+    set('dlWrong', wrong);
+    set('dlTotal', u.total_submissions);
+    set('donutPct', `${u.success_rate}%`);
+    delay(() => { setW('successBar', u.success_rate); }, 500);
+    delay(() => { buildDonut(u.successful_submissions, u.total_submissions); }, 500);
+
+    // Nav user menu
+    set('menuUsername', u.display_name || u.username);
+    set('menuTier', `${u.access_tier} Tier`);
+    set('menuPrestige', u.prestige_points.toLocaleString());
+    set('menuStreak', u.current_streak);
+    set('menuEarnings', `K${parseFloat(u.total_earnings).toFixed(0)}`);
+
+    // Social
+    renderSocial(u.social_connections || {});
+
+    // Show the stats row now that data is populated
+    const statsRow = document.getElementById('statsRow');
+    if (statsRow) statsRow.style.display = '';
+}
+
+function setAvatarImg(src) {
+    // Legacy wrapper — delegates to the unified function
+    applyAvatarEverywhere(src);
+}
+
+/**
+ * Apply a profile image URL to every avatar slot on the current page.
+ * Called on upload AND on page load to restore saved photo from localStorage.
+ */
+function applyAvatarEverywhere(imgUrl) {
+    if (!imgUrl) return;
+
+    // Resolve backend-relative "/media/..." paths to an absolute URL
+    const resolved = (typeof resolveMediaUrl === 'function')
+        ? resolveMediaUrl(imgUrl)
+        : imgUrl;
+
+    const imgTag = `<img src="${resolved}" alt="avatar"
+        style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;"
+        onerror="this.replaceWith(window.pageLetterAvatar ? window.pageLetterAvatar('?') : (()=>{var s=document.createElement('span');s.style='display:inline-flex;align-items:center;justify-content:center;width:100%;height:100%;border-radius:50%;background:#6c63ff;color:#fff;font-weight:700;font-size:inherit;';s.textContent='?';return s;})())">`;
+
+    // ── Named IDs ─────────────────────────────────────────────
+    [
+        'avatarDisplay',          // user.html main profile avatar
+        'modalAvatar',            // edit profile modal
+        'umAvatar',               // user menu avatar
+        'navAvatar',              // nav avatar
+        'smAvatarImg',            // sidebar mini avatar
+        'heroAvatar',             // hero section avatar
+        'profileAvatar',          // generic profile avatar
+        'settingsAvatarPreview',  // settings modal preview
+    ].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.innerHTML = imgTag;
+    });
+
+    // ── Class / attribute selectors covering every page ───────
+    document.querySelectorAll([
+        '.user-avatar-btn',          // top-right nav button (all pages)
+        '.user-menu-avatar',         // user dropdown header avatar (all pages)
+        '.nav-avatar',
+        '.header-avatar',
+        '.profile-avatar',
+        '.current-user-avatar',
+        '.post-avatar.current-user', // create-post bar
+        '.post-creator-avatar',      // create-post modal
+        '.page-composer-avatar',     // comment composer (social-features)
+        '[data-avatar="current-user"]',
+        '[data-current-user-avatar]',
+    ].join(', ')).forEach(el => { el.innerHTML = imgTag; });
+}
+
+// Donut
+function buildDonut(correct, total) {
+    const circ = 2 * Math.PI * 52; // r=52
+    const cFrac = total > 0 ? correct / total : 0;
+    const wFrac = total > 0 ? (total - correct) / total : 0;
+    const dc = document.getElementById('dCorrect');
+    const dw = document.getElementById('dWrong');
+    if (!dc || !dw) return;
+    dc.style.strokeDasharray = `${cFrac * circ} ${circ}`;
+    dc.style.strokeDashoffset = String(circ * 0.25);
+    dw.style.strokeDasharray = `${wFrac * circ} ${circ}`;
+    dw.style.strokeDashoffset = String(circ * 0.25 - cFrac * circ);
+}
+
+// ── Social ────────────────────────────────────────────────────
+function renderSocial(connections) {
+    const list = document.getElementById('socialList');
+    const platforms = Object.entries(connections).filter(([, v]) => v.connected);
+    if (!platforms.length) {
+        list.innerHTML = '<div class="empty-state"><i class="fas fa-link-slash"></i><span>No accounts linked</span></div>';
+        return;
+    }
+    const ICONS = { twitter:'fa-twitter', instagram:'fa-instagram', youtube:'fa-youtube', tiktok:'fa-tiktok', facebook:'fa-facebook' };
+    list.innerHTML = platforms.map(([p, d]) => `
+        <div class="social-row">
+            <i class="fab ${ICONS[p] || 'fa-link'}"></i>
+            <span class="soc-name">${p[0].toUpperCase()+p.slice(1)}</span>
+            <span class="soc-handle">@${d.username}</span>
+            ${d.verified ? '<i class="fas fa-circle-check soc-check"></i>' : ''}
+        </div>`).join('');
+}
+
+// ── Activity ──────────────────────────────────────────────────
+async function loadActivities() {
+    const authHeader = window._pageAuthHeader ? window._pageAuthHeader() : null;
+    const list  = document.getElementById('activityList');
+    try {
+        const res = await fetch(`${PROFILE_API}/auth/activities/`, {
+            headers: authHeader ? { 'Authorization': authHeader } : {}
+        });
+        if (!res.ok) throw new Error('Failed');
+        const data = await res.json();
+        const items = (data.results || data).slice(0, 15);
+
+        if (!items.length) {
+            list.innerHTML = '<div class="empty-state"><i class="fas fa-bolt-lightning"></i><span>No activity yet</span></div>';
+            return;
+        }
+
+        set('activityCount', items.length >= 15 ? '15+' : items.length);
+        window._allActivitiesCache = (data.results || data); // share with enhancements
+
+        list.innerHTML = items.map((a, i) => {
+            const m = ACT_META[a.activity_type] || { icon:'fa-circle', bg:'linear-gradient(135deg,#6b7280,#9ca3af)' };
+            return `
+            <div class="act-item" style="animation-delay:${i*0.04}s">
+                <div class="act-icon" style="background:${m.bg}">
+                    <i class="fas ${m.icon}"></i>
+                </div>
+                <div class="act-body">
+                    <div class="act-desc">${a.description}</div>
+                    <div class="act-time">${timeAgo(a.created_at)}</div>
+                </div>
+                ${a.points_change ? `<span class="act-pts">+${a.points_change}</span>` : ''}
+            </div>`;
+        }).join('');
+    } catch (e) {
+        list.innerHTML = '<div class="empty-state"><i class="fas fa-triangle-exclamation"></i><span>Could not load activity</span></div>';
+    }
+}
+
+// ── Edit modal ────────────────────────────────────────────────
+function openEditModal() {
+    if (!profileData) return;
+    document.getElementById('editDisplayName').value = profileData.display_name || '';
+    document.getElementById('editUsername').value    = profileData.username || '';
+    document.getElementById('editBio').value         = profileData.bio || '';
+    document.getElementById('bioCount').textContent  = (profileData.bio || '').length;
+    // Location & Website
+    const locEl = document.getElementById('editLocation');
+    const webEl = document.getElementById('editWebsite');
+    if (locEl) locEl.value = profileData.location || '';
+    if (webEl) webEl.value = profileData.website  || '';
+    document.getElementById('editError').style.display = 'none';
+    document.getElementById('editModal').classList.add('open');
+}
+
+function closeEditModal() {
+    document.getElementById('editModal').classList.remove('open');
+}
+
+async function saveProfile() {
+    const authHeader = window._pageAuthHeader ? window._pageAuthHeader() : null;
+    const btn   = document.querySelector('.mbtn.primary');
+    const body  = {
+        display_name: document.getElementById('editDisplayName').value.trim(),
+        bio:          document.getElementById('editBio').value.trim(),
+        username:     document.getElementById('editUsername').value.trim(),
+        location:     (document.getElementById('editLocation') || {}).value?.trim() || undefined,
+        website:      (document.getElementById('editWebsite')  || {}).value?.trim() || undefined,
+    };
+    // Strip undefined fields
+    Object.keys(body).forEach(k => body[k] === undefined && delete body[k]);
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving…'; }
+    try {
+        const res = await fetch(`${PROFILE_API}/auth/profile/`, {
+            method: 'PATCH',
+            headers: { ...(authHeader ? { 'Authorization': authHeader } : {}), 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+        if (res.ok) {
+            closeEditModal();
+            showToast('Profile updated ✓');
+            await loadProfile();
+        } else {
+            const err = await res.json();
+            const msg = Object.values(err).flat().join(' ');
+            const el = document.getElementById('editError');
+            el.textContent = msg || 'Save failed. Try again.';
+            el.style.display = 'block';
+        }
+    } catch (e) { console.error(e); }
+    finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-floppy-disk"></i> Save Changes'; }
+    }
+}
+
+// ── Avatar upload ─────────────────────────────────────────────
+//
+// Strategy: resize + encode entirely in the browser using Canvas,
+// then POST the base64 data URI as JSON.
+//
+// Why: multipart uploads require a fresh auth token at the moment of the
+// fetch(). Firebase tokens expire hourly and the Firebase SDK is only
+// initialized on auth.html — so token refresh is unreliable on user.html.
+// Sending JSON lets the DRF TokenAuthentication path handle auth, which
+// never expires (the DRF token is always stored alongside the Firebase one).
+//
+async function uploadAvatar(input) {
+    const file = input.files[0];
+    if (!file) return;
+
+    const ALLOWED = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    if (!ALLOWED.includes(file.type)) {
+        showToast('Unsupported file type. Use JPEG, PNG, GIF or WebP.', 'error');
+        input.value = '';
+        return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+        showToast('Max file size is 5 MB.', 'error');
+        input.value = '';
+        return;
+    }
+
+    showToast('Processing…');
+
+    // ── 1. Read file → Image element ──────────────────────────────────────
+    let dataUri;
+    try {
+        dataUri = await _resizeToBase64(file, 256);
+    } catch (err) {
+        console.error('Avatar encode error:', err);
+        showToast('Could not process image. Try another file.', 'error');
+        input.value = '';
+        return;
+    }
+
+    // ── 2. Show instant local preview ─────────────────────────────────────
+    applyAvatarEverywhere(dataUri);
+
+    // ── 3. Build auth header — prefer DRF token (never expires) ──────────
+    //    Fall back to FirebaseToken if DRF token is absent.
+    const drfToken = localStorage.getItem('djangoAuthToken') || localStorage.getItem('authToken');
+    const fbToken  = localStorage.getItem('firebaseIdToken');
+    const authHeader = drfToken
+        ? `Token ${drfToken}`
+        : (fbToken ? `FirebaseToken ${fbToken}` : null);
+
+    if (!authHeader) {
+        showToast('Not logged in. Please sign in again.', 'error');
+        return;
+    }
+
+    showToast('Uploading…');
+
+    // ── 4. POST as JSON — no multipart, no Content-Type header tricks ─────
+    try {
+        const res  = await fetch(`${PROFILE_API}/auth/avatar/`, {
+            method:  'POST',
+            headers: {
+                'Authorization': authHeader,
+                'Content-Type':  'application/json',
+            },
+            body: JSON.stringify({ avatar_base64: dataUri }),
+        });
+        const data = await res.json().catch(() => ({}));
+
+        if (!res.ok) {
+            showToast(data.error || 'Upload failed. Please try again.', 'error');
+            return;
+        }
+
+        const imgUrl = data.profile_image_url || data.avatar_url || data.profile_image || dataUri;
+
+        // ── 5. Persist to localStorage ────────────────────────────────────
+        try {
+            const stored = JSON.parse(localStorage.getItem('pageUser') || '{}');
+            stored.profile_image     = imgUrl;
+            stored.profile_image_url = imgUrl;
+            stored.avatar_url        = imgUrl;
+            localStorage.setItem('pageUser', JSON.stringify(stored));
+            localStorage.setItem('user',     JSON.stringify(stored));
+        } catch (_) { /* non-critical */ }
+
+        // ── 6. Update in-memory profileData ──────────────────────────────
+        if (profileData) {
+            profileData.profile_image     = imgUrl;
+            profileData.profile_image_url = imgUrl;
+            profileData.avatar_url        = imgUrl;
+        }
+
+        // ── 7. Stamp every avatar slot on the page ────────────────────────
+        applyAvatarEverywhere(imgUrl);
+
+        // ── 8. Broadcast to other scripts ─────────────────────────────────
+        window.dispatchEvent(new CustomEvent('page:avatarChanged', { detail: { url: imgUrl } }));
+
+        showToast('Profile photo updated ✓', 'success');
+
+    } catch (err) {
+        console.error('Avatar upload error:', err);
+        showToast('Upload failed. Please check your connection and try again.', 'error');
+    }
+
+    input.value = ''; // allow re-selecting the same file
+}
+
+/**
+ * Resize an image File to a square of `size` px and return a JPEG data URI.
+ * Uses a Canvas so the browser does the heavy lifting — no server round-trip.
+ *
+ * @param {File}   file  - image File object from <input type="file">
+ * @param {number} size  - target width and height in pixels (default 256)
+ * @returns {Promise<string>} data URI string: "data:image/jpeg;base64,..."
+ */
+function _resizeToBase64(file, size = 256) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onerror = () => reject(new Error('FileReader error'));
+        reader.onload  = (e) => {
+            const img  = new Image();
+            img.onerror = () => reject(new Error('Image load error'));
+            img.onload  = () => {
+                // Centre-crop to square
+                const side = Math.min(img.width, img.height);
+                const sx   = (img.width  - side) / 2;
+                const sy   = (img.height - side) / 2;
+
+                const canvas = document.createElement('canvas');
+                canvas.width  = size;
+                canvas.height = size;
+                const ctx = canvas.getContext('2d');
+
+                // White background handles transparent PNGs / GIFs
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, size, size);
+                ctx.drawImage(img, sx, sy, side, side, 0, 0, size, size);
+
+                // 0.88 quality ≈ 30–50 KB for a 256×256 face photo
+                resolve(canvas.toDataURL('image/jpeg', 0.88));
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
+// ── Helpers ───────────────────────────────────────────────────
+function set(id, val) { const el = document.getElementById(id); if (el) el.textContent = val; }
+function show(id)     { const el = document.getElementById(id); if (el) el.style.display = 'inline-flex'; }
+function setW(id, pct){ const el = document.getElementById(id); if (el) el.style.width = `${pct}%`; }
+function delay(fn, ms){ setTimeout(fn, ms); }
+
+function timeAgo(d) {
+    const diff = Date.now() - new Date(d).getTime();
+    if (diff < 60000)    return 'Just now';
+    if (diff < 3600000)  return `${Math.floor(diff/60000)}m ago`;
+    if (diff < 86400000) return `${Math.floor(diff/3600000)}h ago`;
+    if (diff < 604800000)return `${Math.floor(diff/86400000)}d ago`;
+    return new Date(d).toLocaleDateString();
+}
+
+function showToast(msg) {
+    const t = document.getElementById('toast');
+    if (!t) return;
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// Exports
+window.openEditModal  = openEditModal;
+window.closeEditModal = closeEditModal;
+window.saveProfile    = saveProfile;
+window.uploadAvatar   = uploadAvatar;
+window.showToast      = showToast;

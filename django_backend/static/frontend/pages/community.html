@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="PAGE Community — posts, top creators, and rewards">
+    <title>Community</title>
+    <link rel="icon" type="image/jpeg" href="../images/Page.jpeg">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+    <link rel="stylesheet" href="../styles/styles.css">
+    <link rel="stylesheet" href="../styles/icon-nav.css">
+    <link rel="stylesheet" href="../styles/community.css">
+    <link rel="stylesheet" href="../styles/responsive-pro.css">
+    <script src="../scripts/theme.js"></script>
+</head>
+<body>
+
+<!-- ═══════════════════════ NAVBAR (matches index.html) ═══════════════════════ -->
+<header class="header w-100">
+    <div class="header-left d-flex align-items-center">
+        <div class="logo" onclick="window.location.href='../index.html'" style="cursor:pointer">
+            <i class="fas fa-fire-flame-curved"></i>PAGE
+        </div>
+        <div class="search-bar d-none d-md-flex align-items-center">
+            <i class="fas fa-magnifying-glass"></i>
+            <input type="text" placeholder="Search PAGE..." id="headerSearch">
+        </div>
+    </div>
+
+    <nav class="icon-nav d-flex justify-content-center flex-grow-1">
+        <button class="icon-nav-btn" title="Home" onclick="window.location.href='../index.html'">
+            <i class="fas fa-house"></i>
+        </button>
+        <button class="icon-nav-btn" title="Challenges" onclick="window.location.href='challenges.html'">
+            <i class="fas fa-trophy"></i>
+        </button>
+        <button class="icon-nav-btn" title="Messages" onclick="window.location.href='messenger.html'">
+            <i class="fas fa-comment-dots"></i>
+        </button>
+        <button class="icon-nav-btn active" title="Community">
+            <i class="fas fa-people-group"></i>
+        </button>
+    </nav>
+
+    <!-- Right Side Icons -->
+    <div class="header-right d-flex align-items-center">
+        <button class="header-icon-btn" onclick="window.location.href='../index.html'" title="Notifications">
+            <i class="fas fa-bell"></i>
+        </button>
+        <button class="header-icon-btn" onclick="toggleQuickMenu()" title="Menu">
+            <i class="fas fa-grid-2"></i>
+        </button>
+        <div class="user-avatar-btn" onclick="toggleUserMenu()" data-current-user-avatar></div>
+    </div>
+
+    <!-- Quick Menu Dropdown -->
+    <div class="quick-menu-dropdown" id="quickMenuDropdown">
+        <div class="quick-menu-header"><h3>Quick Access</h3></div>
+        <div class="quick-menu-grid">
+            <a href="../index.html" class="quick-menu-item">
+                <i class="fas fa-chart-line"></i><span>Dashboard</span>
+            </a>
+            <a href="challenges.html" class="quick-menu-item">
+                <i class="fas fa-trophy"></i><span>Challenges</span>
+            </a>
+            <a href="community.html" class="quick-menu-item">
+                <i class="fas fa-people-group"></i><span>Community</span>
+            </a>
+            <a href="payment.html" class="quick-menu-item">
+                <i class="fas fa-wallet"></i><span>Wallet</span>
+            </a>
+            <a href="chatbot.html" class="quick-menu-item">
+                <i class="fas fa-robot"></i><span>PAGE AI</span>
+            </a>
+            <a href="influencers.html" class="quick-menu-item">
+                <i class="fas fa-star"></i><span>Influencers</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- User Menu Dropdown -->
+    <div class="user-menu-dropdown" id="userMenuDropdown">
+        <div class="user-menu-header">
+            <div class="user-menu-avatar" data-current-user-avatar></div>
+            <div class="user-menu-info">
+                <h4 id="menuUsername">Player</h4>
+                <p id="menuTier">Bronze Tier</p>
+            </div>
+        </div>
+        <div class="user-menu-stats">
+            <div class="user-menu-stat">
+                <i class="fas fa-bolt-lightning"></i>
+                <span id="menuStreak">0</span>
+            </div>
+            <div class="user-menu-stat">
+                <i class="fas fa-star"></i>
+                <span id="menuPrestige">0</span>
+            </div>
+            <div class="user-menu-stat">
+                <i class="fas fa-wallet"></i>
+                <span id="menuBalance">K0</span>
+            </div>
+        </div>
+        <div class="user-menu-links">
+            <a href="user.html"><i class="fas fa-id-card"></i> View Profile</a>
+            <a href="payment.html"><i class="fas fa-wallet"></i> My Wallet</a>
+            <a href="chatbot.html"><i class="fas fa-robot"></i> PAGE AI</a>
+            <a href="followers.html"><i class="fas fa-user-plus"></i> Followers</a>
+            <a href="#" onclick="logout(); return false;" class="logout-link"><i class="fas fa-right-from-bracket"></i> Logout</a>
+        </div>
+    </div>
+</header>
+
+<!-- ═══════════════════════ PAGE CONTENT ═══════════════════════ -->
+<div class="comm-page">
+
+    <!-- Tabs -->
+    <div class="comm-tabs">
+        <button class="comm-tab active" data-tab="feed" onclick="switchTab('feed', this)">
+            <i class="fas fa-fire"></i> Community Feed
+        </button>
+        <button class="comm-tab" data-tab="top" onclick="switchTab('top', this)">
+            <i class="fas fa-trophy"></i> Top Members
+        </button>
+        <button class="comm-tab" data-tab="rewards" onclick="switchTab('rewards', this)">
+            <i class="fas fa-gift"></i> Rewards Shop
+        </button>
+    </div>
+
+    <!-- ── FEED TAB ── -->
+    <section id="tab-feed" class="comm-section active">
+        <div class="comm-section-head">
+            <div>
+                <h2>Community Feed</h2>
+                <p class="comm-sub">Posts from your fellow PAGE members</p>
+            </div>
+            <button class="btn-new-post" onclick="openNewPostModal()">
+                <i class="fas fa-plus"></i> New Post
+            </button>
+        </div>
+
+        <div class="feed-filters">
+            <select id="sortFilter" onchange="loadFeed()">
+                <option value="recent">Most Recent</option>
+                <option value="popular">Most Reactions</option>
+            </select>
+        </div>
+
+        <div id="feedGrid" class="feed-grid">
+            <div class="comm-skeleton">
+                <div class="sk-card"></div>
+                <div class="sk-card"></div>
+                <div class="sk-card"></div>
+            </div>
+        </div>
+
+        <div id="feedPagination" class="feed-pagination" style="display:none">
+            <button id="loadMoreBtn" class="btn-load-more" onclick="loadMoreFeed()">
+                <i class="fas fa-chevron-down"></i> Load More
+            </button>
+        </div>
+    </section>
+
+    <!-- ── TOP MEMBERS TAB ── -->
+    <section id="tab-top" class="comm-section">
+        <div class="comm-section-head">
+            <div>
+                <h2>Top Members</h2>
+                <p class="comm-sub">The highest-ranked PAGE community members</p>
+            </div>
+            <div class="top-filters">
+                <button class="top-filter-btn active" onclick="loadTopMembers('prestige', this)">Prestige</button>
+                <button class="top-filter-btn" onclick="loadTopMembers('wins', this)">Wins</button>
+                <button class="top-filter-btn" onclick="loadTopMembers('streak', this)">Streak</button>
+            </div>
+        </div>
+        <div id="topList" class="top-list">
+            <div class="comm-skeleton">
+                <div class="sk-row"></div>
+                <div class="sk-row"></div>
+                <div class="sk-row"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ── REWARDS TAB ── -->
+    <section id="tab-rewards" class="comm-section">
+        <div class="comm-section-head">
+            <div>
+                <h2>Rewards Shop</h2>
+                <p class="comm-sub">Spend your prestige points on exclusive perks</p>
+            </div>
+            <div class="balance-chip">
+                <i class="fas fa-star"></i>
+                <span id="shopBalance">0</span> pts
+            </div>
+        </div>
+        <div class="rewards-grid">
+            <div class="reward-card" data-cost="50">
+                <div class="reward-icon" style="background:linear-gradient(135deg,#556b2f,#7cba3d)">
+                    <i class="fas fa-bolt"></i>
+                </div>
+                <h3>Challenge Boost</h3>
+                <p>2× points on your next challenge submission</p>
+                <div class="reward-footer">
+                    <span class="reward-price"><i class="fas fa-star"></i> 50 pts</span>
+                    <button class="btn-reward" onclick="buyReward('Challenge Boost', 50)">Get</button>
+                </div>
+            </div>
+            <div class="reward-card" data-cost="30">
+                <div class="reward-icon" style="background:linear-gradient(135deg,#0e7490,#22d3ee)">
+                    <i class="fas fa-clock"></i>
+                </div>
+                <h3>Extra Time</h3>
+                <p>+10 minutes on your next timed challenge</p>
+                <div class="reward-footer">
+                    <span class="reward-price"><i class="fas fa-star"></i> 30 pts</span>
+                    <button class="btn-reward" onclick="buyReward('Extra Time', 30)">Get</button>
+                </div>
+            </div>
+            <div class="reward-card" data-cost="100">
+                <div class="reward-icon" style="background:linear-gradient(135deg,#9333ea,#c084fc)">
+                    <i class="fas fa-crown"></i>
+                </div>
+                <h3>VIP Badge</h3>
+                <p>Display a VIP badge on your profile for 7 days</p>
+                <div class="reward-footer">
+                    <span class="reward-price"><i class="fas fa-star"></i> 100 pts</span>
+                    <button class="btn-reward" onclick="buyReward('VIP Badge', 100)">Get</button>
+                </div>
+            </div>
+            <div class="reward-card" data-cost="200">
+                <div class="reward-icon" style="background:linear-gradient(135deg,#b45309,#f59e0b)">
+                    <i class="fas fa-fire"></i>
+                </div>
+                <h3>Streak Shield</h3>
+                <p>Protect your streak from breaking once</p>
+                <div class="reward-footer">
+                    <span class="reward-price"><i class="fas fa-star"></i> 200 pts</span>
+                    <button class="btn-reward" onclick="buyReward('Streak Shield', 200)">Get</button>
+                </div>
+            </div>
+            <div class="reward-card" data-cost="150">
+                <div class="reward-icon" style="background:linear-gradient(135deg,#0f766e,#34d399)">
+                    <i class="fas fa-palette"></i>
+                </div>
+                <h3>Custom Theme</h3>
+                <p>Unlock a unique colour theme for your profile</p>
+                <div class="reward-footer">
+                    <span class="reward-price"><i class="fas fa-star"></i> 150 pts</span>
+                    <button class="btn-reward" onclick="buyReward('Custom Theme', 150)">Get</button>
+                </div>
+            </div>
+            <div class="reward-card" data-cost="500">
+                <div class="reward-icon" style="background:linear-gradient(135deg,#1d4ed8,#60a5fa)">
+                    <i class="fas fa-star"></i>
+                </div>
+                <h3>Prestige Surge</h3>
+                <p>Instantly gain +500 prestige points</p>
+                <div class="reward-footer">
+                    <span class="reward-price"><i class="fas fa-star"></i> 500 pts</span>
+                    <button class="btn-reward" onclick="buyReward('Prestige Surge', 500)">Get</button>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+
+<!-- ── POST DETAIL MODAL ── -->
+<div class="modal-veil" id="postModal">
+    <div class="post-modal-box">
+        <button class="modal-close-btn" onclick="closePostModal()"><i class="fas fa-xmark"></i></button>
+        <div id="postModalContent"></div>
+        <!-- Comments -->
+        <div class="comment-section">
+            <h4><i class="fas fa-comments"></i> Comments</h4>
+            <div id="commentsList" class="comments-list"></div>
+            <div class="comment-input-row">
+                <input id="commentInput" type="text" placeholder="Write a comment…" maxlength="500"
+                    onkeydown="if(event.key==='Enter') submitComment()">
+                <button onclick="submitComment()"><i class="fas fa-paper-plane"></i></button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── NEW POST MODAL ── -->
+<div class="modal-veil" id="newPostModal">
+    <div class="new-post-box">
+        <button class="modal-close-btn" onclick="closeNewPostModal()"><i class="fas fa-xmark"></i></button>
+        <h3><i class="fas fa-pen-to-square"></i> New Post</h3>
+        <div class="post-type-row" id="postTypeRow">
+            <button class="ptype-btn active" data-type="text" onclick="setPostType('text', this)"><i class="fas fa-align-left"></i> Text</button>
+            <button class="ptype-btn" data-type="achievement" onclick="setPostType('achievement', this)"><i class="fas fa-trophy"></i> Achievement</button>
+            <button class="ptype-btn" data-type="media" onclick="setPostType('media', this)"><i class="fas fa-image"></i> Media</button>
+        </div>
+        <textarea id="newPostContent" placeholder="What's on your mind? Share your PAGE journey…" maxlength="2000" rows="5"></textarea>
+        <div id="mediaUrlGroup" style="display:none">
+            <input type="url" id="newPostMediaUrl" placeholder="Media URL (image or video)">
+        </div>
+        <div class="np-char"><span id="npCharCount">0</span>/2000</div>
+        <div class="np-error" id="npError" style="display:none"></div>
+        <div class="np-footer">
+            <button class="btn-submit-post" onclick="submitNewPost()">
+                <i class="fas fa-paper-plane"></i> Post
+            </button>
+            <button class="btn-cancel-post" onclick="closeNewPostModal()">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<!-- Toast -->
+<div class="comm-toast" id="commToast"></div>
+
+<script src="../scripts/utils.js"></script>
+    <script src="../scripts/app.js"></script>
+<script src="../scripts/community.js"></script>
+<script>
+    /* Navbar dropdown toggles — identical to index.html */
+    function toggleQuickMenu() {
+        const qm = document.getElementById('quickMenuDropdown');
+        const um = document.getElementById('userMenuDropdown');
+        if (um) um.classList.remove('show');
+        if (qm) qm.classList.toggle('show');
+    }
+    function toggleUserMenu() {
+        const um = document.getElementById('userMenuDropdown');
+        const qm = document.getElementById('quickMenuDropdown');
+        if (qm) qm.classList.remove('show');
+        if (um) um.classList.toggle('show');
+    }
+    document.addEventListener('click', e => {
+        const qm = document.getElementById('quickMenuDropdown');
+        const um = document.getElementById('userMenuDropdown');
+        if (qm && !qm.contains(e.target) && !e.target.closest('.header-icon-btn'))
+            qm.classList.remove('show');
+        if (um && !um.contains(e.target) && !e.target.closest('.user-avatar-btn'))
+            um.classList.remove('show');
+    });
+</script>
+
+    <!-- Mobile Bottom Navigation Bar (hidden on desktop via CSS) -->
+    <nav class="mobile-bottom-nav" id="mobileBottomNav">
+        <button class="icon-nav-btn" title="Home" onclick="window.location.href='../index.html'">
+            <i class="fas fa-home"></i>
+        </button>
+        <button class="icon-nav-btn" title="Challenges" onclick="window.location.href='challenges.html'">
+            <i class="fas fa-trophy"></i>
+        </button>
+        <button class="icon-nav-btn" title="Messages" onclick="window.location.href='messenger.html'">
+            <i class="fas fa-comment-dots"></i>
+        </button>
+        <button class="icon-nav-btn active" title="People">
+            <i class="fas fa-users"></i>
+        </button>
+        <button class="icon-nav-btn" onclick="toggleMobileMoreMenu(this)" title="More">
+            <i class="fas fa-bars"></i>
+        </button>
+    </nav>
+
+    <script>
+    // Mobile more menu toggle
+    function toggleMobileMoreMenu(btn) {
+        const dropdown = document.getElementById('userMenuDropdown');
+        if (!dropdown) return;
+
+        const isOpen = dropdown.classList.contains('show');
+
+        if (isOpen) {
+            dropdown.classList.remove('show');
+            dropdown.style.removeProperty('top');
+            dropdown.style.removeProperty('bottom');
+            dropdown.style.removeProperty('right');
+            dropdown.style.removeProperty('position');
+        } else {
+            // Position above the bottom nav
+            const navH = document.getElementById('mobileBottomNav').offsetHeight;
+            dropdown.style.position  = 'fixed';
+            dropdown.style.bottom    = (navH + 8) + 'px';
+            dropdown.style.top       = 'auto';
+            dropdown.style.right     = '8px';
+            dropdown.classList.add('show');
+        }
+    }
+
+    // Close mobile more menu when clicking outside
+    document.addEventListener('click', function(e) {
+        const dropdown = document.getElementById('userMenuDropdown');
+        if (dropdown && dropdown.classList.contains('show') && dropdown.style.bottom) {
+            const moreBtn = document.querySelector('.mobile-bottom-nav .icon-nav-btn[title="More"]');
+            if (!dropdown.contains(e.target) && (!moreBtn || !moreBtn.contains(e.target))) {
+                dropdown.classList.remove('show');
+                dropdown.style.removeProperty('top');
+                dropdown.style.removeProperty('bottom');
+                dropdown.style.removeProperty('right');
+                dropdown.style.removeProperty('position');
+            }
+        }
+    });
+    </script>
+</body>
+</html>

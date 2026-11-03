@@ -994,7 +994,8 @@ let conversations = [];
 let messages = {};
 
 // Toggle Quick Menu / User Menu (used by multiple pages)
-function toggleQuickMenu() {
+function toggleQuickMenu(e) {
+    if (e) e.stopPropagation();
     const qm = document.getElementById('quickMenuDropdown');
     const um = document.getElementById('userMenuDropdown');
     if (um) um.classList.remove('show');
@@ -1002,35 +1003,24 @@ function toggleQuickMenu() {
 }
 
 // Normalize user menu toggle to match other pages
-function toggleUserMenu() {
+function toggleUserMenu(e) {
+    if (e) e.stopPropagation();
     const um = document.getElementById('userMenuDropdown');
     const qm = document.getElementById('quickMenuDropdown');
     if (qm) qm.classList.remove('show');
     if (!um) return;
-    // Clear any inline positioning left over from the mobile bottom-nav toggle
     um.style.removeProperty('top');
     um.style.removeProperty('bottom');
     um.style.removeProperty('right');
     um.style.removeProperty('position');
     um.classList.toggle('show');
+    const avatarBtn = document.getElementById('userAvatarBtn');
+    if (avatarBtn) {
+        avatarBtn.setAttribute('aria-expanded', um.classList.contains('show') ? 'true' : 'false');
+    }
 }
 
-// Close dropdowns when clicking outside header controls
-window.addEventListener('click', function(event) {
-    // quick menu: toggle via header-icon-btn; user menu: via user-avatar-btn
-    const qm = document.getElementById('quickMenuDropdown');
-    const um = document.getElementById('userMenuDropdown');
-
-    if (qm && qm.classList.contains('show')) {
-        const clickedQuickBtn = event.target.closest('.header-icon-btn');
-        if (!qm.contains(event.target) && !clickedQuickBtn) qm.classList.remove('show');
-    }
-
-    if (um && um.classList.contains('show')) {
-        const clickedUserBtn = event.target.closest('.user-avatar-btn');
-        if (!um.contains(event.target) && !clickedUserBtn) um.classList.remove('show');
-    }
-});
+// ── Click-outside dismissal handled inline in index.html ──────────────────
 
 // Open Messenger
 function openMessenger() {
@@ -1893,9 +1883,7 @@ document.addEventListener('DOMContentLoaded', () => {
 // Expose critical functions to window scope for inline onclick handlers
 // ══════════════════════════════════════════════════════════════════════════════
 window.toggleQuickMenu = toggleQuickMenu;
-window.toggleUserMenu = toggleUserMenu;
-window.showNotifications = showNotifications;
-window.logout = logout;
-window.showSettings = showSettings;
-window.switchView = switchView;
-window.showDashboardView = showDashboardView;
+window.toggleUserMenu  = toggleUserMenu;
+window.logout          = logout;
+// NOTE: showSettings lives in settings.js, showDashboardView/switchView in social-feed.js
+// Those files expose themselves — no need to assign here (would be undefined at this point).

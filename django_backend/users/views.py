@@ -355,21 +355,18 @@ class LeaderboardView(generics.ListAPIView):
 @permission_classes([permissions.IsAuthenticated])
 def discover_users_view(request):
     """
-    Return a paginated list of users the current user does NOT yet follow,
-    excluding themselves. Used for the "Discover Users" sidebar.
+    Return active users, excluding the current user.
+    This endpoint is used by followers/discovery UI and includes users the
+    current user already follows as well as users they have not followed yet.
     """
     from django.db.models import Q
     from django.conf import settings
-    from social.models import Follow
 
     q       = request.query_params.get('q', '').strip()
     use_fs  = settings.FIRESTORE_COLLECTIONS.get('users', False)
 
     if use_fs:
         from users.firestore_user_service import search_users, get_leaderboard
-        already_following = set(str(uid) for uid in
-            Follow.objects.filter(follower=request.user)
-                          .values_list('following_id', flat=True))
         if q:
             candidates = search_users(q, exclude_user_id=str(request.user.id))
         else:
@@ -377,15 +374,13 @@ def discover_users_view(request):
 
         data = [u for u in candidates
                 if u['id'] != str(request.user.id)
-                and u['id'] not in already_following][:30]
+                and u.get('is_active', True)][:30]
         return Response(data)
 
-    already_following = Follow.objects.filter(
-        follower=request.user
-    ).values_list('following_id', flat=True)
-
     qs = User.objects.exclude(
-        Q(id=request.user.id) | Q(id__in=already_following)
+        Q(id=request.user.id)
+    ).filter(
+        is_active=True
     ).order_by('-prestige_points')
 
     if q:

@@ -1,0 +1,2109 @@
+/**
+ * Challenges Page — PAGE Platform
+ */
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let currentUserId = null;
+let player = null;
+let challenges = [];
+let mySubmissions = [];
+let myChallenges = [];
+let currentChallenge = null;
+let challengeTimer = null;
+let challengeStartTime = null;
+let realtimeUpdateInterval = null;
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', async () => {
+    if (!checkAuth()) { window.location.href = 'auth.html'; return; }
+    loadPlayerData();
+    initializeRealtimeUpdates();
+    await Promise.all([loadChallenges(), loadMySubmissions(), loadMyChallenges()]);
+    renderChallenges();
+    renderMySubmissions();
+    renderMyChallenges();
+
+    (function _avatarBoot() {
+        function _stamp(imgUrl, username) {
+            const initial = (username || '?').charAt(0).toUpperCase();
+            const colours = ['#6c63ff', '#e74c3c', '#2ecc71', '#f39c12', '#1abc9c', '#9b59b6', '#3498db', '#e67e22'];
+            const colour = colours[initial.charCodeAt(0) % colours.length];
+            const resolved = imgUrl
+                ? ((typeof resolveMediaUrl === 'function') ? resolveMediaUrl(imgUrl) : imgUrl)
+                : null;
+            const imgTag = resolved
+                ? `<img src="${resolved}" alt="avatar"
+                    style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;"
+                    onerror="this.replaceWith((function(){var s=document.createElement('span');s.style.cssText='display:inline-flex;align-items:center;justify-content:center;width:100%;height:100%;border-radius:50%;background:${colour};color:#fff;font-weight:700;font-size:14px;';s.textContent='${initial}';return s;})())">`
+                : '<i class="fas fa-user" aria-hidden="true"></i>';
+
+            // IDs
+            ['avatarDisplay', 'modalAvatar', 'umAvatar', 'navAvatar',
+                'smAvatarImg', 'heroAvatar', 'profileAvatar', 'settingsAvatarPreview'
+            ].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.innerHTML = imgTag;
+            });
+
+            // Classes / attributes
+            document.querySelectorAll([
+                '.user-avatar-btn',
+                '.user-menu-avatar',
+                '.nav-avatar',
+                '.header-avatar',
+                '.profile-avatar',
+                '.current-user-avatar',
+                '.post-avatar.current-user',
+                '.post-creator-avatar',
+                '.page-composer-avatar',
+                '[data-avatar="current-user"]',
+                '[data-current-user-avatar]',
+            ].join(', ')).forEach(el => { el.innerHTML = imgTag; });
+        }
+
+        // Stamp as soon as DOM is ready
+        document.addEventListener('DOMContentLoaded', () => {
+            try {
+                const u = JSON.parse(localStorage.getItem('pageUser') || '{}');
+                const url = (typeof getAvatarUrl === 'function')
+                    ? getAvatarUrl(u)
+                    : (u.profile_image_url || u.avatar_url || null);
+                _stamp(url, u.username || u.display_name || '');
+            } catch (_) { /* non-critical */ }
+        });
+
+        // Live update when photo changes (upload on any page)
+        window.addEventListener('page:avatarChanged', e => {
+            try {
+                const u = JSON.parse(localStorage.getItem('pageUser') || '{}');
+                _stamp(e.detail?.url || null, u.username || '');
+            } catch (_) { _stamp(e.detail?.url || null, ''); }
+        });
+
+        // Expose so other scripts can call it directly if needed
+        window._stampCurrentUserAvatar = window._stampCurrentUserAvatar || _stamp;
+    })();
+
+
+    // ── Auto-refresh challenges list every 45s ─────────────────────────────
+    // Re-fetches active challenges and patches participant counts + new cards
+    // without wiping the user's current filter/search state.
+    setInterval(async () => {
+        if (document.hidden) return;
+        try {
+            const data = await apiService.getAllChallenges();
+            const fresh = Array.isArray(data) ? data : (data.results || []);
+            if (!fresh.length) return;
+
+            // Detect if anything actually changed before re-rendering
+            const oldIds = new Set(challenges.map(c => String(c.id)));
+            const newIds = new Set(fresh.map(c => String(c.id)));
+            const added = fresh.filter(c => !oldIds.has(String(c.id)));
+            const changed = fresh.filter(c => {
+                const old = challenges.find(o => String(o.id) === String(c.id));
+                return old && old.submission_count !== c.submission_count;
+            });
+
+            if (!added.length && !changed.length) return; // nothing changed
+
+            challenges = fresh;
+
+            // If new challenges arrived, do a full re-render
+            if (added.length) {
+                renderChallenges();
+                return;
+            }
+
+            // Otherwise just patch the counts on existing cards (no flicker)
+            const grid = document.getElementById('challengesGrid');
+            if (!grid) return;
+            changed.forEach(c => {
+                const card = grid.querySelector(`[data-id="${c.id}"]`);
+                if (!card) return;
+                // Update submission count pill
+                const pill = card.querySelector('.card-count-pill');
+                if (pill) pill.innerHTML = `<i class="fas fa-users"></i> ${c.submission_count}`;
+                // Flash subtle ring to signal new activity
+                card.style.transition = 'box-shadow 0.4s ease';
+                card.style.boxShadow = '0 0 0 3px rgba(85,107,47,0.35)';
+                setTimeout(() => { card.style.boxShadow = ''; }, 900);
+                card.dataset.cachedParticipants = c.submission_count;
+            });
+
+            // Update hero stats row
+            const setHero = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+            setHero('statActiveChallenges', challenges.length);
+            setHero('statTotalPlayers', challenges.reduce((s, c) => s + (c.submission_count || 0), 0).toLocaleString());
+        } catch { /* silent */ }
+    }, 45_000);
+});
+
+// ── Auth ──────────────────────────────────────────────────────────────────────
+function checkAuth() {
+    // Check for any auth token (Firebase or DRF)
+    const hasToken = window._pageIsAuthed ? window._pageIsAuthed() :
+        !!(localStorage.getItem('djangoAuthToken') || localStorage.getItem('authToken') || localStorage.getItem('firebaseIdToken'));
+    // Support both old pageUser key and the current pageUser object
+    const userRaw = localStorage.getItem('pageUser') || localStorage.getItem('pageUser');
+    currentUserId = userRaw ? (JSON.parse(userRaw)?.id || userRaw) : null;
+    const drfToken = localStorage.getItem('djangoAuthToken') || localStorage.getItem('authToken');
+    if (drfToken) apiService.setToken(drfToken);
+    const fbToken = localStorage.getItem('firebaseIdToken');
+    if (fbToken && apiService.setFirebaseToken) apiService.setFirebaseToken(fbToken);
+    return currentUserId !== null && hasToken;
+}
+
+function loadPlayerData() {
+    if (!currentUserId) return;
+    const saved = localStorage.getItem(`pagePlayer_${currentUserId}`);
+    if (saved) { player = JSON.parse(saved); updateHeaderUI(); }
+}
+
+function updateHeaderUI() {
+    if (!player) return;
+    setEl('username', player.username);
+    setEl('userPrestige', `${player.prestige_points || 0} pts`);
+    setEl('streakCount', player.current_streak || 0);
+    if (player.wallet_balance !== undefined) {
+        setEl('walletBalance', `K${Number(player.wallet_balance).toFixed(2)}`);
+        show('walletBalanceBadge');
+    }
+    if (player.access_tier) setEl('tierBadge', player.access_tier);
+}
+
+function logout() {
+    if (confirm('Logout?')) {
+        if (window._pageLogout) {
+            window._pageLogout();
+        } else {
+            localStorage.removeItem('djangoAuthToken');
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('firebaseIdToken');
+            localStorage.removeItem('pageUser');
+            localStorage.removeItem('user');
+            window.location.href = '/pages/auth.html';
+        }
+    }
+}
+
+// ── Real-time ─────────────────────────────────────────────────────────────────
+function initializeRealtimeUpdates() {
+    realtimeService.connect().catch(() => startPollingUpdates());
+    realtimeService.on('new_submission', () => { if (currentChallenge) updateChallengeStats(); });
+    realtimeService.on('leaderboard_update', d => { if (currentChallenge && currentChallenge.id === d.challenge_id) loadLeaderboard(); });
+    realtimeService.on('activity', d => { if (currentChallenge && currentChallenge.id === d.challenge_id) loadActivityFeed(); });
+}
+
+function startPollingUpdates() {
+    realtimeUpdateInterval = setInterval(() => { if (currentChallenge) updateChallengeStats(); }, 5000);
+}
+
+// ── Data loading ──────────────────────────────────────────────────────────────
+async function loadChallenges() {
+    try {
+        const data = await apiService.getAllChallenges();
+        challenges = Array.isArray(data) ? data : (data.results || []);
+    } catch (e) { console.error('loadChallenges:', e); challenges = []; }
+}
+
+async function loadMySubmissions() {
+    try {
+        const data = await apiService.getMySubmissions();
+        mySubmissions = Array.isArray(data) ? data : (data.results || []);
+    } catch (e) { console.error('loadMySubmissions:', e); mySubmissions = []; }
+}
+
+async function loadMyChallenges() {
+    try {
+        const data = await apiService.getMyChallenges();
+        myChallenges = Array.isArray(data) ? data : (data.results || []);
+    } catch (e) { console.error('loadMyChallenges:', e); myChallenges = []; }
+}
+
+// ── Filter ────────────────────────────────────────────────────────────────────
+let _activeFilter = 'all';
+let _searchQuery = '';
+
+function filterChallenges(difficulty, event) {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    if (event && event.target) event.target.classList.add('active');
+    _activeFilter = difficulty;
+    renderChallenges();
+}
+
+function searchChallenges(query) {
+    _searchQuery = query.toLowerCase().trim();
+    renderChallenges();
+}
+
+// ── Render grid ───────────────────────────────────────────────────────────────
+function renderChallenges() {
+    const container = document.getElementById('challengesGrid');
+    let filtered = _activeFilter === 'all' ? challenges : challenges.filter(c => c.difficulty === _activeFilter);
+    if (_searchQuery) {
+        filtered = filtered.filter(c =>
+            c.title.toLowerCase().includes(_searchQuery) ||
+            (c.description || '').toLowerCase().includes(_searchQuery)
+        );
+    }
+
+    // Populate hero stats
+    const setHero = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+    setHero('statActiveChallenges', challenges.length);
+    setHero('statTotalPlayers', challenges.reduce((s, c) => s + (c.submission_count || 0), 0).toLocaleString());
+    setHero('statMySubmissions', mySubmissions.length);
+    const raw = localStorage.getItem('pageUser') || localStorage.getItem('pageUser');
+    try { const u = JSON.parse(raw || '{}'); setHero('statMyPrestige', (u.prestige_points ?? 0).toLocaleString()); } catch { /* silent */ }
+
+    if (filtered.length === 0) {
+        container.innerHTML = `<div class="empty-state"><i class="fas fa-trophy"></i>
+            <p>${_searchQuery ? `No challenges matching "${escHtml(_searchQuery)}".` : _activeFilter === 'all' ? 'No challenges available right now.' : `No ${_activeFilter} challenges right now.`}</p></div>`;
+        return;
+    }
+
+    container.innerHTML = filtered.map(c => {
+        // ── Social challenge types rendered with their own card layout ────────
+        if (c.challenge_type === 'debate') return _renderDebateCard(c);
+        if (c.challenge_type === 'poll') return _renderPollCard(c);
+        if (c.challenge_type === 'qa') return _renderQACard(c);
+
+        const isImgInterp = c.challenge_type === 'image_interpretation';
+        const hasSubmitted = isImgInterp
+            ? mySubmissions.some(s => s.challenge === c.id) || c.user_has_img_submitted
+            : mySubmissions.some(s => s.challenge === c.id) || c.user_has_submitted;
+
+        // Time remaining with urgency class
+        const timeLeft = getTimeRemaining(c.ends_at);
+        const timeUrgent = timeLeft.includes('h left') && !timeLeft.includes('d');
+        const timeClass = timeUrgent ? 'meta-item time-urgent' : 'meta-item';
+
+        // Progress bar — submissions as % of a soft cap (100 feels "full")
+        const progressPct = Math.min(100, Math.round((c.submission_count / 100) * 100));
+
+        return `
+        <article class="challenge-card ${hasSubmitted ? 'card-submitted' : ''}" role="listitem" data-id="${c.id}" data-challenge-type="${c.challenge_type || 'text_interpretation'}">
+
+            <!-- Image banner -->
+            <div class="challenge-image-wrap" onclick="openChallengeWithFeeCheck('${c.id}','${c.challenge_type || "text_interpretation"}')">
+                ${isImgInterp ? `
+                <!-- Image interpretation: always blurred on card — only revealed inside the game -->
+                <img src="${escHtml(c.image_url || '')}" alt="${escHtml(c.title)}" class="challenge-image card-img-blurred" loading="lazy">
+                <div class="challenge-image-overlay"></div>
+                <div class="card-blur-lock-overlay">
+                    ${c.image_url
+                    ? '<i class="fas fa-eye-slash"></i><span>Revealed when you play</span>'
+                    : '<i class="fas fa-lock"></i><span>Deposit K10 to unlock</span>'}
+                </div>` : `
+                <img src="${escHtml(c.image_url)}" alt="${escHtml(c.title)}" class="challenge-image" loading="lazy">
+                <div class="challenge-image-overlay"></div>`}
+
+                <!-- Badges overlaid on image (top-left) -->
+                <div class="card-overlay-badges">
+                    <span class="difficulty-badge difficulty-${c.difficulty}">${c.difficulty}</span>
+                    ${isImgInterp ? '<span class="card-featured-tag"><i class="fas fa-image"></i> Image</span>' : ''}
+                    ${c.is_featured ? '<span class="card-featured-tag"><i class="fas fa-star"></i> Featured</span>' : ''}
+                </div>
+
+                <!-- Submission count pill (bottom-left) -->
+                <span class="card-count-pill">
+                    <i class="fas fa-users"></i> ${c.submission_count}
+                </span>
+
+                <!-- Points pill (bottom-right) -->
+                <span class="card-points-pill">
+                    <i class="fas fa-bolt"></i> ${c.min_points}–${c.max_points} pts
+                </span>
+            </div>
+
+            <!-- Body -->
+            <div class="challenge-body" onclick="openChallengeWithFeeCheck('${c.id}','${c.challenge_type || "text_interpretation"}')">
+                <h3 class="challenge-title">${escHtml(c.title)}</h3>
+                <p class="challenge-description">${escHtml(c.description)}</p>
+
+                <!-- Meta row — three equal columns -->
+                <div class="challenge-meta">
+                    <span class="${timeClass}">
+                        <i class="fas fa-clock"></i> ${timeLeft}
+                    </span>
+                    <span class="meta-item">
+                        <i class="fas fa-pen-nib"></i> ${c.time_limit} min
+                    </span>
+                    <span class="meta-item">
+                        ${isImgInterp
+                ? `<i class="fas fa-eye"></i> Image`
+                : `<i class="fas fa-align-left"></i> ${c.min_word_count}–${c.max_word_count}w`}
+                    </span>
+                </div>
+
+                <!-- Participation progress bar -->
+                <div class="card-progress-wrap">
+                    <div class="card-progress-bar" style="width:${progressPct}%"></div>
+                </div>
+            </div>
+
+            <!-- Footer actions -->
+            <div class="challenge-footer">
+                <button class="btn-card-details" data-action="details" data-id="${c.id}">
+                    <i class="fas fa-info-circle"></i> Details
+                </button>
+                <button class="btn-card-participate ${hasSubmitted ? 'btn-submitted' : ''}"
+                        data-action="participate" data-id="${c.id}" data-type="${c.challenge_type || 'text_interpretation'}"
+                        ${hasSubmitted ? 'disabled' : ''}>
+                    ${hasSubmitted
+                ? '<i class="fas fa-check-circle"></i> Submitted'
+                : isImgInterp
+                    ? '<i class="fas fa-gamepad"></i> Play'
+                    : '<i class="fas fa-play"></i> Participate'}
+                </button>
+            </div>
+        </article>`;
+    }).join('');
+
+    // Attach button listeners after render
+    container.querySelectorAll('[data-action="details"]').forEach(btn => {
+        btn.addEventListener('click', e => { e.stopPropagation(); viewChallengeDetails(btn.dataset.id); });
+    });
+    container.querySelectorAll('[data-action="participate"]:not([disabled])').forEach(btn => {
+        btn.addEventListener('click', e => {
+            e.stopPropagation();
+            const type = btn.dataset.type || 'text_interpretation';
+            openChallengeWithFeeCheck(btn.dataset.id, type);
+        });
+    });
+}
+
+function getTimeRemaining(endDate) {
+    const diff = new Date(endDate) - Date.now();
+    if (diff <= 0) return 'Ended';
+    const days = Math.floor(diff / 86400000);
+    const hours = Math.floor((diff % 86400000) / 3600000);
+    const mins = Math.floor((diff % 3600000) / 60000);
+    if (days > 0) return `${days}d ${hours}h left`;
+    if (hours > 0) return `${hours}h ${mins}m left`;
+    if (mins > 0) return `${mins}m left`;
+    return 'Ending soon';
+}
+
+// ── Entry fee gate ────────────────────────────────────────────────────────────
+// Shows a confirmation modal when the challenge has an entry fee.
+// If balance is sufficient → deduct then open game.
+// If balance is insufficient → offer to top up (link to wallet).
+let _pendingChallengeId = null;
+let _pendingChallengeType = null;
+
+async function openChallengeWithFeeCheck(challengeId, type) {
+    type = type || 'text_interpretation';
+    let challenge;
+    try {
+        challenge = await apiService.getChallenge(challengeId);
+    } catch (e) {
+        showToast('Could not load challenge. Please try again.', 'error');
+        return;
+    }
+
+    const entryFee = parseFloat(challenge.entry_fee || 0);
+
+    if (entryFee <= 0) {
+        // Free challenge — go straight in
+        if (type === 'image_interpretation') {
+            openImgInterpPreview(challengeId);
+        } else {
+            openChallenge(challengeId);
+        }
+        return;
+    }
+
+    // Paid challenge — show fee gate modal
+    _pendingChallengeId = challengeId;
+    _pendingChallengeType = type;
+
+    // Populate modal
+    const feeEl = document.getElementById('feeGateAmount');
+    const titleEl = document.getElementById('feeGateTitle');
+    const prizeEl = document.getElementById('feeGatePrize');
+    const balEl = document.getElementById('feeGateBalance');
+
+    if (titleEl) titleEl.textContent = challenge.title;
+    if (feeEl) feeEl.textContent = `K${entryFee.toFixed(2)}`;
+
+    const prize = parseFloat(challenge.prize_amount || 0);
+    if (prizeEl) {
+        prizeEl.textContent = prize > 0 ? `K${prize.toFixed(2)} prize pool` : 'Prestige points only';
+        prizeEl.style.color = prize > 0 ? 'var(--accent-green)' : 'var(--text-muted)';
+    }
+
+    // Try to get live wallet balance
+    let balance = 0;
+    try {
+        const raw = localStorage.getItem('pageUser') || localStorage.getItem('pageUser');
+        const u = raw ? JSON.parse(raw) : {};
+        balance = parseFloat(u.wallet_balance || 0);
+    } catch { /* fallback to 0 */ }
+
+    const hasFunds = balance >= entryFee;
+    if (balEl) {
+        balEl.textContent = `Your balance: K${balance.toFixed(2)}`;
+        balEl.style.color = hasFunds ? 'var(--accent-green)' : 'var(--accent-pink)';
+    }
+
+    const payBtn = document.getElementById('feeGatePayBtn');
+    const topUpBtn = document.getElementById('feeGateTopUpBtn');
+    if (payBtn) { payBtn.style.display = hasFunds ? 'flex' : 'none'; }
+    if (topUpBtn) { topUpBtn.style.display = hasFunds ? 'none' : 'flex'; }
+
+    document.getElementById('feeGateModal').style.display = 'flex';
+}
+
+function closeFeeGateModal() {
+    document.getElementById('feeGateModal').style.display = 'none';
+    _pendingChallengeId = null;
+    _pendingChallengeType = null;
+}
+
+async function confirmFeeAndEnter() {
+    if (!_pendingChallengeId) return;
+    const btn = document.getElementById('feeGatePayBtn');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing…'; }
+
+    try {
+        const challenge = await apiService.getChallenge(_pendingChallengeId);
+        const entryFee = parseFloat(challenge.entry_fee || 0);
+
+        if (entryFee > 0) {
+            await apiService.deductEntryFee(entryFee, _pendingChallengeId,
+                `Entry fee — ${challenge.title}`);
+        }
+
+        // Update local wallet balance
+        try {
+            const raw = localStorage.getItem('pageUser') || localStorage.getItem('pageUser');
+            const u = raw ? JSON.parse(raw) : {};
+            u.wallet_balance = Math.max(0, (parseFloat(u.wallet_balance || 0) - entryFee));
+            const key = localStorage.getItem('pageUser') ? 'pageUser' : 'pageUser';
+            localStorage.setItem(key, JSON.stringify(u));
+            const balEl = document.getElementById('walletBalance');
+            if (balEl) balEl.textContent = `K${u.wallet_balance.toFixed(2)}`;
+            const menuBal = document.getElementById('menuBalance');
+            if (menuBal) menuBal.textContent = `K${Math.floor(u.wallet_balance)}`;
+        } catch { /* non-critical */ }
+
+        const id = _pendingChallengeId;
+        const type = _pendingChallengeType;
+        closeFeeGateModal();
+
+        if (type === 'image_interpretation') {
+            openImgInterpPreview(id, true);
+        } else {
+            openChallenge(id);
+        }
+    } catch (err) {
+        showToast(err.message || 'Payment failed. Please try again.', 'error');
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-coins"></i> Pay & Enter'; }
+    }
+}
+
+function goTopUpWallet() {
+    // Store pending challenge so user can come back after topping up
+    if (_pendingChallengeId) {
+        sessionStorage.setItem('pendingChallengeId', _pendingChallengeId);
+        sessionStorage.setItem('pendingChallengeType', _pendingChallengeType || 'text_interpretation');
+    }
+    window.location.href = 'payment.html';
+}
+
+// On page load, check if user is returning from wallet top-up
+document.addEventListener('DOMContentLoaded', () => {
+    const pendingId = sessionStorage.getItem('pendingChallengeId');
+    const pendingType = sessionStorage.getItem('pendingChallengeType');
+    if (pendingId) {
+        sessionStorage.removeItem('pendingChallengeId');
+        sessionStorage.removeItem('pendingChallengeType');
+        // Wait for challenges to load, then re-trigger
+        setTimeout(() => openChallengeWithFeeCheck(pendingId, pendingType), 1200);
+    }
+});
+
+// ── Open challenge (participate) ──────────────────────────────────────────────
+async function openChallenge(challengeId) {
+    document.getElementById('challengeModal').style.display = 'block';
+    document.getElementById('challengeContent').innerHTML =
+        `<div class="loading-state" style="grid-column:unset;"><div class="spinner"></div><p>Loading challenge…</p></div>`;
+    try {
+        currentChallenge = await apiService.getChallenge(challengeId);
+        realtimeService.subscribeToChallengeUpdates(challengeId);
+        const hasSubmitted = mySubmissions.some(s => s.challenge === challengeId);
+        const rules = (currentChallenge.submission_rules || []).map(r => `<li>${escHtml(r)}</li>`).join('');
+
+        document.getElementById('challengeContent').innerHTML = `
+            <h2 style="font-size:22px;font-weight:700;margin-bottom:10px;">${escHtml(currentChallenge.title)}</h2>
+            <span class="difficulty-badge difficulty-${currentChallenge.difficulty}" style="margin-bottom:14px;display:inline-block;">${currentChallenge.difficulty}</span>
+            <img src="${escHtml(currentChallenge.image_url)}" alt="${escHtml(currentChallenge.title)}" class="challenge-detail-image">
+            <p style="color:var(--text-secondary);line-height:1.8;margin-bottom:16px;">${escHtml(currentChallenge.description)}</p>
+            <div class="challenge-rules">
+                <h3><i class="fas fa-list-check"></i> Submission Rules</h3>
+                <ul>${rules}</ul>
+                <p style="margin-top:12px;color:var(--text-muted);font-size:13px;">
+                    <i class="fas fa-info-circle"></i> Words: ${currentChallenge.min_word_count}–${currentChallenge.max_word_count}
+                </p>
+            </div>
+            ${hasSubmitted ? buildAlreadySubmittedBox() : buildSubmissionForm(currentChallenge)}
+            <div class="modal-section" id="leaderboardContainer">
+                <h3><i class="fas fa-trophy"></i> Top Players</h3>
+                <div id="leaderboardContent"><div class="spinner" style="margin:20px auto;"></div></div>
+            </div>
+            <div class="modal-section" id="activityContainer">
+                <h3><i class="fas fa-comment-dots"></i> Responses <span id="activityCount" style="font-size:12px;color:var(--text-muted);font-weight:500;margin-left:4px;"></span></h3>
+                <div id="activityContent"><div class="spinner" style="margin:20px auto;"></div></div>
+            </div>`;
+
+        if (!hasSubmitted) { challengeStartTime = Date.now(); startChallengeTimer(); }
+        loadLeaderboard();
+        loadActivityFeed();
+    } catch (e) {
+        console.error('openChallenge:', e);
+        document.getElementById('challengeContent').innerHTML =
+            `<div class="empty-state"><i class="fas fa-exclamation-circle"></i><p>Failed to load challenge. Please try again.</p></div>`;
+    }
+}
+
+function buildAlreadySubmittedBox() {
+    return `<div class="already-submitted-box">
+        <i class="fas fa-check-circle"></i>
+        <h3>Already Submitted!</h3>
+        <p>Check your submissions below to see your score.</p>
+    </div>`;
+}
+
+function buildSubmissionForm(c) {
+    return `
+        <div class="timer-warning">
+            <p><i class="fas fa-clock"></i> Time Limit: ${c.time_limit} minutes</p>
+            <div class="timer-display" id="timerDisplay">Ready to start</div>
+        </div>
+        <div class="submission-form">
+            <form onsubmit="submitInterpretation(event)" novalidate>
+                <div class="form-group">
+                    <label for="interpretationText">Your Interpretation</label>
+                    <textarea id="interpretationText" required rows="8"
+                        placeholder="Share your interpretation of this image…"
+                        oninput="updateWordCount()"></textarea>
+                    <p class="word-count" id="wordCount">0 / ${c.max_word_count} words</p>
+                </div>
+                <button type="submit" class="btn-primary btn-large" id="submitBtn">
+                    <i class="fas fa-paper-plane"></i> Submit Interpretation
+                </button>
+            </form>
+        </div>`;
+}
+
+function closeChallengeModal() {
+    document.getElementById('challengeModal').style.display = 'none';
+    if (challengeTimer) { clearInterval(challengeTimer); challengeTimer = null; }
+    if (currentChallenge) realtimeService.unsubscribeFromChallengeUpdates(currentChallenge.id);
+    currentChallenge = null;
+    challengeStartTime = null;
+}
+
+// ── Timer ─────────────────────────────────────────────────────────────────────
+function startChallengeTimer() {
+    if (!currentChallenge) return;
+    let timeRemaining = currentChallenge.time_limit * 60;
+    const display = document.getElementById('timerDisplay');
+    if (!display) return;
+    updateTimerDisplay(display, timeRemaining);
+    challengeTimer = setInterval(() => {
+        timeRemaining--;
+        updateTimerDisplay(display, timeRemaining);
+        if (timeRemaining <= 60) display.classList.add('urgent');
+        if (timeRemaining <= 0) {
+            clearInterval(challengeTimer); challengeTimer = null;
+            display.textContent = "Time's up!";
+            const btn = document.getElementById('submitBtn');
+            if (btn) btn.disabled = true;
+            showToast("Time is up! You can no longer submit.", 'error');
+        }
+    }, 1000);
+}
+
+function updateTimerDisplay(el, seconds) {
+    el.textContent = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+}
+
+// ── Word count ────────────────────────────────────────────────────────────────
+function updateWordCount() {
+    if (!currentChallenge) return;
+    const text = document.getElementById('interpretationText').value;
+    const count = text.trim() === '' ? 0 : text.trim().split(/\s+/).length;
+    const el = document.getElementById('wordCount');
+    if (!el) return;
+    el.textContent = `${count} / ${currentChallenge.max_word_count} words`;
+    el.className = 'word-count ' + (count < currentChallenge.min_word_count ? 'warn' : count > currentChallenge.max_word_count ? 'bad' : 'ok');
+}
+
+// ── Submit interpretation ─────────────────────────────────────────────────────
+async function submitInterpretation(event) {
+    event.preventDefault();
+    if (!currentChallenge) return;
+    const interpretation = document.getElementById('interpretationText').value.trim();
+    const wordCount = interpretation === '' ? 0 : interpretation.split(/\s+/).length;
+    if (wordCount < currentChallenge.min_word_count) {
+        showToast(`Too short — need at least ${currentChallenge.min_word_count} words (you have ${wordCount}).`, 'error'); return;
+    }
+    if (wordCount > currentChallenge.max_word_count) {
+        showToast(`Too long — max ${currentChallenge.max_word_count} words (you have ${wordCount}).`, 'error'); return;
+    }
+    const btn = document.getElementById('submitBtn');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting…'; }
+    try {
+        await apiService.submitChallenge(currentChallenge.id, interpretation, Math.floor((Date.now() - challengeStartTime) / 1000));
+        if (challengeTimer) { clearInterval(challengeTimer); challengeTimer = null; }
+        showToast('Interpretation submitted! Watch your submissions for your score.', 'success');
+        closeChallengeModal();
+        await Promise.all([loadChallenges(), loadMySubmissions()]);
+        renderChallenges(); renderMySubmissions();
+    } catch (e) {
+        console.error('submitInterpretation:', e);
+        showToast(`Submission failed: ${e.message}`, 'error');
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-paper-plane"></i> Submit Interpretation'; }
+    }
+}
+
+// ── View challenge details ─────────────────────────────────────────────────────
+async function viewChallengeDetails(challengeId) {
+    document.getElementById('challengeModal').style.display = 'block';
+    document.getElementById('challengeContent').innerHTML =
+        `<div class="loading-state" style="grid-column:unset;"><div class="spinner"></div><p>Loading details…</p></div>`;
+    try {
+        const [challenge, leaderboard] = await Promise.all([
+            apiService.getChallenge(challengeId),
+            apiService.getChallengeLeaderboard(challengeId),
+        ]);
+        // Stats may not exist yet for brand-new challenges — fetch separately and default gracefully
+        let stats = { unique_participants: 0, average_score: 0 };
+        try { stats = await apiService.getChallengeStats(challengeId); } catch (_) { /* new challenge, no stats yet */ }
+
+        const hasSubmitted = mySubmissions.some(s => s.challenge === challengeId)
+            || (challenge.challenge_type === 'image_interpretation' && challenge.user_has_img_submitted);
+        const isImgDetail = challenge.challenge_type === 'image_interpretation';
+        const rules = (challenge.submission_rules || []).map(r => `<li>${escHtml(r)}</li>`).join('');
+
+        // For image_interpretation: always show a blurred image in details.
+        // If backend withheld the URL (balance < K10), show a full lock placeholder.
+        const detailImageHTML = isImgDetail
+            ? `<div class="detail-blur-wrap">
+                    ${challenge.image_url
+                ? `<img src="${escHtml(challenge.image_url)}" alt="${escHtml(challenge.title)}" class="challenge-detail-image detail-img-blurred">`
+                : ''}
+                    <div class="detail-blur-overlay">
+                        ${challenge.image_url
+                ? '<i class="fas fa-eye-slash"></i><span>Image hidden — revealed only during gameplay</span>'
+                : '<i class="fas fa-lock"></i><span>Deposit K10 minimum to unlock this challenge</span>'}
+                    </div>
+               </div>`
+            : `<img src="${escHtml(challenge.image_url)}" alt="${escHtml(challenge.title)}" class="challenge-detail-image">`;
+
+        document.getElementById('challengeContent').innerHTML = `
+            <h2 style="font-size:22px;font-weight:700;margin-bottom:10px;">${escHtml(challenge.title)}</h2>
+            <span class="difficulty-badge difficulty-${challenge.difficulty}" style="margin-bottom:16px;display:inline-block;">${challenge.difficulty}</span>
+            ${detailImageHTML}
+            <div class="details-section">
+                <h3><i class="fas fa-align-left"></i> Description</h3>
+                <p style="color:var(--text-secondary);line-height:1.8;font-size:14px;">${escHtml(challenge.description)}</p>
+            </div>
+            <div class="details-grid">
+                <div class="detail-card"><i class="fas fa-clock"></i><h4>Time Limit</h4><p>${challenge.time_limit} min</p></div>
+                <div class="detail-card"><i class="fas fa-star"></i><h4>Reward</h4><p>${challenge.min_points}–${challenge.max_points} pts</p></div>
+                <div class="detail-card"><i class="fas fa-users"></i><h4>Participants</h4><p>${stats.unique_participants || 0}</p></div>
+                <div class="detail-card"><i class="fas fa-chart-bar"></i><h4>Avg Score</h4><p>${Number(stats.average_score || 0).toFixed(1)}</p></div>
+            </div>
+            <div class="details-section">
+                <h3><i class="fas fa-list-check"></i> Rules</h3>
+                <div class="challenge-rules" style="margin:0;"><ul>${rules}</ul>
+                    <p style="margin-top:12px;color:var(--text-muted);font-size:13px;">
+                        ${isImgDetail
+                ? `Hidden points: ${Array.isArray(challenge.hidden_points) ? challenge.hidden_points.length : '?'} &nbsp;|&nbsp;`
+                : `Words: ${challenge.min_word_count}–${challenge.max_word_count} &nbsp;|&nbsp;`}
+                        ${challenge.is_active ? '🟢 Active' : '🔴 Inactive'} &nbsp;|&nbsp; ${getTimeRemaining(challenge.ends_at)}
+                    </p>
+                </div>
+            </div>
+            <div class="details-section">
+                <h3><i class="fas fa-sliders"></i> Scoring</h3>
+                <div style="background:var(--bg-elevated);padding:16px 18px;border-radius:var(--radius-md);border:1px solid var(--border);">
+                    ${buildScoringBar('Creativity', challenge.creativity_weight, '#667eea')}
+                    ${buildScoringBar('Relevance', challenge.relevance_weight, '#764ba2')}
+                    ${buildScoringBar('Detail', challenge.detail_weight, '#f093fb')}
+                </div>
+            </div>
+            <div class="details-section">
+                <h3><i class="fas fa-trophy"></i> Top Submissions</h3>
+                ${buildLeaderboardTable(leaderboard)}
+            </div>
+            ${hasSubmitted
+                ? buildAlreadySubmittedBox()
+                : isImgDetail
+                    ? `<button class="btn-primary btn-large" onclick="closeChallengeModal(); openChallengeWithFeeCheck('${challenge.id}','image_interpretation');" style="margin-top:22px;">
+                           <i class="fas fa-gamepad"></i> Play Challenge
+                       </button>`
+                    : `<button class="btn-primary btn-large" onclick="openChallenge('${challenge.id}')" style="margin-top:22px;">
+                           <i class="fas fa-play"></i> Participate
+                       </button>`}`;
+    } catch (e) {
+        console.error('viewChallengeDetails:', e);
+        document.getElementById('challengeContent').innerHTML =
+            `<div class="empty-state"><i class="fas fa-exclamation-circle"></i><p>Failed to load details.</p></div>`;
+    }
+}
+
+function buildScoringBar(label, weight, color) {
+    return `<div class="scoring-bar-wrap">
+        <div class="scoring-bar-label"><span>${label}</span><span>${weight}%</span></div>
+        <div class="scoring-bar-track"><div class="scoring-bar-fill" style="width:${weight}%;background:${color};"></div></div>
+    </div>`;
+}
+
+function buildLeaderboardTable(leaderboard) {
+    const entries = leaderboard.top_submissions || [];
+    if (!entries.length) return `<div class="leaderboard-table"><div style="padding:24px;text-align:center;color:var(--text-muted);"><i class="fas fa-trophy" style="font-size:28px;opacity:0.3;"></i><p style="margin-top:8px;">No submissions yet</p></div></div>`;
+    return `<div class="leaderboard-table">
+        <div class="leaderboard-header"><div>Rank</div><div>Player</div><div>Score</div></div>
+        ${entries.slice(0, 10).map(e => `
+        <div class="leaderboard-row rank-${e.rank}">
+            <div class="rank-num">#${e.rank}</div>
+            <div>${escHtml(e.username)}</div>
+            <div class="leaderboard-score">${e.score} pts</div>
+        </div>`).join('')}
+    </div>`;
+}
+
+// ── Leaderboard & activity (live, inside modal) ───────────────────────────────
+async function loadLeaderboard() {
+    if (!currentChallenge) return;
+    const container = document.getElementById('leaderboardContent');
+    if (!container) return;
+    try {
+        const lb = await apiService.getChallengeLeaderboard(currentChallenge.id);
+        const entries = lb.top_submissions || [];
+        if (!entries.length) { container.innerHTML = `<p style="color:var(--text-muted);padding:12px 0;">No submissions yet — be the first!</p>`; return; }
+        container.innerHTML = buildLeaderboardTable(lb) + `
+            <div class="leaderboard-stats">
+                <div class="leaderboard-stat">Participants: <span>${lb.total_participants}</span></div>
+                <div class="leaderboard-stat">Avg: <span>${Number(lb.average_score).toFixed(1)}</span></div>
+                <div class="leaderboard-stat">Top: <span>${lb.highest_score}</span></div>
+            </div>`;
+    } catch (e) { if (container) container.innerHTML = `<p style="color:var(--text-muted);">Leaderboard unavailable.</p>`; }
+}
+
+async function loadActivityFeed() {
+    if (!currentChallenge) return;
+    const container = document.getElementById('activityContent');
+    if (!container) return;
+    try {
+        const activities = await apiService.getChallengeActivity(currentChallenge.id);
+        // Update the count badge in the section header
+        const countEl = document.getElementById('activityCount');
+        if (countEl && activities?.length) countEl.textContent = `· ${activities.length}`;
+
+        if (!activities || !activities.length) {
+            container.innerHTML = `<p style="color:var(--text-muted);padding:12px 0;font-size:13px;">No responses yet — be the first to submit!</p>`;
+            return;
+        }
+        container.innerHTML = `<div class="activity-feed">${activities.slice(0, 10).map(a => {
+            const username = a.user?.username || 'Unknown';
+            const initial = username.charAt(0).toUpperCase();
+            // Generate a deterministic hue from the username for varied avatar colours
+            const hue = username.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0) % 360;
+            const avatarBg = `hsl(${hue}, 55%, 42%)`;
+            return `
+            <div class="activity-item">
+                <div class="activity-avatar" style="background:${avatarBg};">${initial}</div>
+                <div class="activity-body">
+                    <span class="activity-username">${escHtml(username)}</span>
+                    <div class="activity-text">${escHtml(a.description)}</div>
+                </div>
+                <span class="activity-time">${formatTime(a.created_at)}</span>
+            </div>`;
+        }).join('')}</div>`;
+    } catch (e) {
+        if (container) container.innerHTML = `<p style="color:var(--text-muted);">Activity unavailable.</p>`;
+    }
+}
+
+async function updateChallengeStats() {
+    if (!currentChallenge) return;
+    try {
+        await apiService.getChallengeStats(currentChallenge.id);
+        if (document.getElementById('leaderboardContent')) loadLeaderboard();
+        if (document.getElementById('activityContent')) loadActivityFeed();
+    } catch (e) { /* silent */ }
+}
+
+// ── My submissions ─────────────────────────────────────────────────────────────
+function renderMySubmissions() {
+    const container = document.getElementById('mySubmissionsList');
+    if (!mySubmissions.length) {
+        container.innerHTML = `<div class="empty-state" style="grid-column:unset;"><i class="fas fa-scroll"></i><p>No submissions yet — start participating!</p></div>`;
+        return;
+    }
+    const sorted = [...mySubmissions].sort((a, b) => new Date(b.submitted_at) - new Date(a.submitted_at));
+    container.innerHTML = sorted.map(s => {
+        const cls = s.status === 'scored' ? 'status-scored' : s.status === 'rejected' ? 'status-rejected' : 'status-pending';
+        const icon = s.status === 'scored' ? 'check' : s.status === 'rejected' ? 'times' : 'clock';
+        const col = s.status === 'scored' ? 'var(--accent-green)' : s.status === 'rejected' ? 'var(--accent-pink)' : 'var(--accent-orange)';
+        return `<div class="submission-item">
+            <div class="submission-status ${cls}"><i class="fas fa-${icon}"></i></div>
+            <div class="submission-info">
+                <h4>${escHtml(s.challenge_title || 'Challenge')}</h4>
+                <p>${formatDate(s.submitted_at)}</p>
+                <p style="margin-top:3px;">${s.word_count} words &nbsp;·&nbsp;
+                    <span style="text-transform:capitalize;color:${col};">${s.status}</span></p>
+            </div>
+            <div class="submission-score">
+                <div class="score-value">${s.final_score || 0}</div>
+                <div class="score-label">POINTS</div>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+// ── Upload modal ──────────────────────────────────────────────────────────────
+function showUploadModal() { document.getElementById('uploadModal').style.display = 'block'; }
+
+function closeUploadModal() {
+    document.getElementById('uploadModal').style.display = 'none';
+    document.getElementById('uploadForm')?.reset();
+    document.getElementById('createChallengeForm')?.reset();
+    // Reset image previews
+    const ph = document.getElementById('ccDropPlaceholder');
+    if (ph) ph.style.display = 'flex';
+    const prev = document.getElementById('challengeImagePreview');
+    if (prev) prev.innerHTML = '';
+    document.getElementById('uploadPreview').innerHTML = '<span><i class="fas fa-image"></i> Preview will appear here</span>';
+    // Reset weight indicator
+    const wt = document.getElementById('weightTotal');
+    if (wt) { wt.textContent = 'Total: 100% ✓'; wt.style.color = 'var(--accent-green)'; }
+    // Reset wizard to step 1
+    ccGoStepReset();
+    // Reset duration
+    _ccDurationDays = 7;
+    ccSetDuration(7);
+}
+
+function ccGoStepReset() {
+    document.querySelectorAll('.cc-page').forEach((p, i) => { p.classList.toggle('active', i === 0); });
+    document.querySelectorAll('.cc-step').forEach((s, i) => {
+        s.classList.remove('active', 'done');
+        if (i === 0) s.classList.add('active');
+    });
+}
+
+function switchUploadTab(tab) {
+    document.getElementById('contentTab').classList.remove('active');
+    document.getElementById('challengeTab').classList.remove('active');
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    if (tab === 'content') {
+        document.getElementById('contentTab').classList.add('active');
+        document.querySelectorAll('.tab-btn')[0].classList.add('active');
+    } else {
+        document.getElementById('challengeTab').classList.add('active');
+        document.querySelectorAll('.tab-btn')[1].classList.add('active');
+    }
+}
+
+function previewUploadImage(event) { previewImageInto(event, 'uploadPreview'); }
+function previewChallengeImage(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+        ccShowError('challengeImage', 'Image must be under 5 MB.');
+        return;
+    }
+    ccClearError('challengeImage');
+    const reader = new FileReader();
+    reader.onload = e => {
+        const src = e.target.result;
+        // Drop zone preview
+        const drop = document.getElementById('ccImageDrop');
+        const ph = document.getElementById('ccDropPlaceholder');
+        const prev = document.getElementById('challengeImagePreview');
+        if (ph) ph.style.display = 'none';
+        if (prev) { prev.innerHTML = `<img src="${src}" alt="Preview" style="max-height:220px;border-radius:8px;object-fit:cover;">`; }
+        // Mini card preview
+        const wrap = document.getElementById('ccPreviewImgWrap');
+        if (wrap) wrap.innerHTML = `<img src="${src}" alt="Preview">`;
+    };
+    reader.readAsDataURL(file);
+}
+function previewImageInto(event, id) {
+    const file = event.target.files[0];
+    const el = document.getElementById(id);
+    if (!file || !el) return;
+    const reader = new FileReader();
+    reader.onload = e => { el.innerHTML = `<img src="${e.target.result}" alt="Preview">`; };
+    reader.readAsDataURL(file);
+}
+
+async function uploadContent(event) {
+    event.preventDefault();
+    const title = document.getElementById('uploadTitle').value.trim();
+    const desc = document.getElementById('uploadDescription').value.trim();
+    const cat = document.getElementById('uploadCategory').value;
+    const img = document.getElementById('uploadImage').files[0];
+    if (!title || !desc || !img) { showToast('Please fill in all fields and select an image.', 'error'); return; }
+    const btn = event.target.querySelector('button[type="submit"]');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading…'; }
+    try {
+        const fd = new FormData();
+        fd.append('title', title); fd.append('description', desc); fd.append('category', cat); fd.append('image', img);
+        await apiService.uploadContent(fd);
+        showToast('Content submitted for review!', 'success');
+        closeUploadModal();
+    } catch (e) {
+        showToast(`Upload failed: ${e.message}`, 'error');
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-paper-plane"></i> Submit for Review'; }
+    }
+}
+
+function validateWeights() {
+    const c = parseInt(document.getElementById('creativityWeight').value) || 0;
+    const r = parseInt(document.getElementById('relevanceWeight').value) || 0;
+    const d = parseInt(document.getElementById('detailWeight').value) || 0;
+    const t = c + r + d;
+    const el = document.getElementById('weightTotal');
+    el.style.color = t === 100 ? 'var(--accent-green)' : 'var(--accent-pink)';
+    el.textContent = t === 100 ? `Total: ${t}% ✓` : `Total: ${t}% (must equal 100%)`;
+    // Update visual bars
+    const setBar = (id, val) => { const b = document.getElementById(id); if (b) b.style.width = val + '%'; };
+    setBar('barCreativity', c);
+    setBar('barRelevance', r);
+    setBar('barDetail', d);
+}
+
+// ── Create Challenge wizard helpers ───────────────────────────────────────────
+let _ccDurationDays = 7;
+
+function ccCharCount(el, countId, max) {
+    const el2 = document.getElementById(countId);
+    if (!el2) return;
+    const n = el.value.length;
+    el2.textContent = `${n} / ${max}`;
+    el2.style.color = n >= max * 0.9 ? 'var(--accent-orange)' : 'var(--text-muted)';
+    // keep live preview in sync
+    ccUpdatePreview();
+}
+
+function ccRuleCount() {
+    const rules = (document.getElementById('challengeRules')?.value || '')
+        .split('\n').map(r => r.trim()).filter(Boolean);
+    const el = document.getElementById('ccRuleCountEl');
+    if (el) el.textContent = `${rules.length} rule${rules.length !== 1 ? 's' : ''}`;
+}
+
+function ccClearError(fieldId) {
+    const errEl = document.getElementById(fieldId + 'Err');
+    if (errEl) { errEl.textContent = ''; }
+    const field = document.getElementById(fieldId);
+    if (field) field.style.borderColor = '';
+    ccUpdatePreview();
+}
+
+function ccShowError(fieldId, msg) {
+    const errEl = document.getElementById(fieldId + 'Err');
+    if (errEl) errEl.textContent = msg;
+    const field = document.getElementById(fieldId);
+    if (field) { field.style.borderColor = 'var(--accent-pink)'; field.focus(); }
+}
+
+function ccSetDuration(days) {
+    _ccDurationDays = days;
+    document.querySelectorAll('.cc-dur-btn').forEach(b => {
+        b.classList.toggle('active', parseInt(b.dataset.days) === days);
+    });
+    const customInput = document.getElementById('challengeEndsAt');
+    const hint = document.getElementById('ccDurationHint');
+    const label = document.getElementById('ccDurationLabel');
+    if (days === 0) {
+        customInput.style.display = 'block';
+        if (hint) hint.style.display = 'none';
+    } else {
+        customInput.style.display = 'none';
+        if (hint) hint.style.display = 'block';
+        if (label) {
+            const end = new Date(Date.now() + days * 86400000);
+            label.textContent = `in ${days} day${days > 1 ? 's' : ''} — ${end.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`;
+        }
+    }
+}
+
+function ccAutoBalance() {
+    const vals = [33, 33, 34]; // creativity, relevance, detail
+    document.getElementById('creativityWeight').value = vals[0];
+    document.getElementById('relevanceWeight').value = vals[1];
+    document.getElementById('detailWeight').value = vals[2];
+    validateWeights();
+}
+
+function ccGoStep(step) {
+    // Validate current step before advancing
+    if (step > 1) {
+        const page1ok = ccValidatePage1();
+        if (!page1ok && step >= 2) { ccShowPageError(1); return; }
+    }
+    if (step > 2) {
+        const page2ok = ccValidatePage2();
+        if (!page2ok) { ccShowPageError(2); return; }
+    }
+
+    // Hide all pages, deactivate all steps
+    document.querySelectorAll('.cc-page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.cc-step').forEach(s => s.classList.remove('active', 'done'));
+    document.getElementById(`ccPage${step}`)?.classList.add('active');
+
+    // Mark steps done/active
+    for (let i = 1; i <= 3; i++) {
+        const s = document.getElementById(`ccStep${i}`);
+        if (!s) continue;
+        if (i < step) s.classList.add('done');
+        if (i === step) s.classList.add('active');
+    }
+
+    if (step === 3) ccUpdatePreview();
+
+    // Scroll modal to top
+    document.querySelector('.modal-content')?.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function ccShowPageError(page) {
+    // Scroll to first visible error on the page
+    const errEl = document.querySelector(`#ccPage${page} .cc-error:not(:empty)`);
+    if (errEl) errEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function ccValidatePage1() {
+    let ok = true;
+    const title = document.getElementById('challengeTitle')?.value.trim() || '';
+    const desc = document.getElementById('challengeDescription')?.value.trim() || '';
+    const time = parseInt(document.getElementById('challengeTimeLimit')?.value || '0');
+    const minPt = parseInt(document.getElementById('challengeMinPoints')?.value || '0');
+    const maxPt = parseInt(document.getElementById('challengeMaxPoints')?.value || '0');
+
+    if (!title) { ccShowError('challengeTitle', 'Title is required.'); ok = false; }
+    else if (title.length < 5) { ccShowError('challengeTitle', 'Title must be at least 5 characters.'); ok = false; }
+
+    if (!desc) { ccShowError('challengeDescription', 'Description is required.'); ok = false; }
+    else if (desc.length < 20) { ccShowError('challengeDescription', 'Description must be at least 20 characters.'); ok = false; }
+
+    if (!time || time < 5 || time > 120) { ccShowError('challengeTimeLimit', 'Enter a time between 5 and 120 minutes.'); ok = false; }
+    if (!minPt || minPt < 1) { ccShowError('challengeMinPoints', 'Minimum points must be at least 1.'); ok = false; }
+    if (!maxPt || maxPt <= minPt) { ccShowError('challengeMaxPoints', 'Max points must be greater than min points.'); ok = false; }
+
+    if (_ccDurationDays === 0) {
+        const custom = document.getElementById('challengeEndsAt')?.value;
+        if (!custom || new Date(custom) <= new Date()) {
+            ccShowError('challengeEndsAt', 'Please set a valid future end date/time.');
+            ok = false;
+        }
+    }
+    return ok;
+}
+
+function ccValidatePage2() {
+    let ok = true;
+    const minW = parseInt(document.getElementById('challengeMinWords')?.value || '0');
+    const maxW = parseInt(document.getElementById('challengeMaxWords')?.value || '0');
+    const rules = (document.getElementById('challengeRules')?.value || '').split('\n').map(r => r.trim()).filter(Boolean);
+    const c = parseInt(document.getElementById('creativityWeight')?.value) || 0;
+    const r = parseInt(document.getElementById('relevanceWeight')?.value) || 0;
+    const d = parseInt(document.getElementById('detailWeight')?.value) || 0;
+
+    if (!minW || minW < 10) { ccShowError('challengeMinWords', 'Min words must be at least 10.'); ok = false; }
+    if (!maxW || maxW <= minW) { ccShowError('challengeMaxWords', 'Max words must be greater than min words.'); ok = false; }
+    if (rules.length === 0) { ccShowError('challengeRules', 'Add at least one submission rule.'); ok = false; }
+    if (c + r + d !== 100) {
+        showToast('Scoring weights must sum to 100%.', 'error');
+        ok = false;
+    }
+    return ok;
+}
+
+function ccUpdatePreview() {
+    const get = id => document.getElementById(id);
+    const setText = (id, val) => { const el = get(id); if (el) el.textContent = val || ''; };
+
+    const title = get('challengeTitle')?.value.trim() || 'Challenge Title';
+    const desc = get('challengeDescription')?.value.trim() || 'Your description will appear here.';
+    const time = get('challengeTimeLimit')?.value || '20';
+    const minW = get('challengeMinWords')?.value || '50';
+    const maxW = get('challengeMaxWords')?.value || '200';
+    const minPt = get('challengeMinPoints')?.value || '10';
+    const maxPt = get('challengeMaxPoints')?.value || '50';
+
+    setText('ccPreviewTitle', title);
+    setText('ccPreviewDesc', desc.length > 120 ? desc.slice(0, 117) + '…' : desc);
+    setText('ccPreviewTime', time);
+    setText('ccPreviewWords', `${minW}–${maxW}`);
+
+    const ptsEl = get('ccPreviewPts');
+    if (ptsEl) ptsEl.innerHTML = `<i class="fas fa-bolt"></i> ${minPt}–${maxPt} pts`;
+}
+
+// Drag & drop for challenge image
+function ccDragOver(e) {
+    e.preventDefault();
+    document.getElementById('ccImageDrop')?.classList.add('cc-drag-over');
+}
+function ccDragLeave() {
+    document.getElementById('ccImageDrop')?.classList.remove('cc-drag-over');
+}
+function ccDrop(e) {
+    e.preventDefault();
+    ccDragLeave();
+    const file = e.dataTransfer?.files?.[0];
+    if (file && file.type.startsWith('image/')) {
+        const dt = new DataTransfer();
+        dt.items.add(file);
+        document.getElementById('challengeImage').files = dt.files;
+        previewChallengeImage({ target: { files: dt.files } });
+    }
+}
+
+async function createChallenge(event) {
+    event.preventDefault();
+    // Full validation before submit
+    if (!ccValidatePage1()) { ccGoStep(1); return; }
+    if (!ccValidatePage2()) { ccGoStep(2); return; }
+
+    const img = document.getElementById('challengeImage').files[0];
+    if (!img) { ccShowError('challengeImage', 'Please select a challenge image.'); return; }
+
+    const btn = document.getElementById('ccSubmitBtn');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating…'; }
+
+    try {
+        const rules = document.getElementById('challengeRules').value.split('\n').map(x => x.trim()).filter(Boolean);
+
+        // Calculate ends_at
+        let endsAt;
+        if (_ccDurationDays === 0) {
+            endsAt = new Date(document.getElementById('challengeEndsAt').value).toISOString();
+        } else {
+            endsAt = new Date(Date.now() + _ccDurationDays * 86400000).toISOString();
+        }
+
+        const c = parseInt(document.getElementById('creativityWeight').value) || 0;
+        const r = parseInt(document.getElementById('relevanceWeight').value) || 0;
+        const d = parseInt(document.getElementById('detailWeight').value) || 0;
+
+        const fd = new FormData();
+        fd.append('title', document.getElementById('challengeTitle').value.trim());
+        fd.append('description', document.getElementById('challengeDescription').value.trim());
+        fd.append('difficulty', 'medium');   // simplified — no longer user-facing
+        fd.append('time_limit', document.getElementById('challengeTimeLimit').value);
+        fd.append('min_word_count', document.getElementById('challengeMinWords').value);
+        fd.append('max_word_count', document.getElementById('challengeMaxWords').value);
+        fd.append('min_points', document.getElementById('challengeMinPoints').value);
+        fd.append('max_points', document.getElementById('challengeMaxPoints').value);
+        fd.append('creativity_weight', c);
+        fd.append('relevance_weight', r);
+        fd.append('detail_weight', d);
+        fd.append('prize_amount', '0.00');     // simplified — no longer user-facing
+        fd.append('submission_rules', JSON.stringify(rules));
+        fd.append('image', img);
+        fd.append('starts_at', new Date().toISOString());
+        fd.append('ends_at', endsAt);
+        fd.append('status', 'draft');
+
+        const createdChallenge = await apiService.createChallenge(fd);
+        showToast('Challenge created! Publishing it now…', 'info');
+
+        // Immediately publish — the creator owns it, no admin needed
+        try {
+            await apiService.publishChallenge(createdChallenge.id);
+            showToast('Challenge is now live! 🎉', 'success');
+        } catch (pubErr) {
+            showToast('Challenge saved. Go to My Challenges to publish it.', 'info');
+        }
+
+        closeUploadModal();
+        await Promise.all([loadChallenges(), loadMyChallenges()]);
+        renderChallenges();
+        renderMyChallenges();
+    } catch (e) {
+        showToast(`Failed to create: ${e.message}`, 'error');
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-bolt"></i> Create Challenge'; }
+    }
+}
+
+// ── My Challenges (creator view) ───────────────────────────────────────────────
+function renderMyChallenges() {
+    const container = document.getElementById('myChallengesList');
+    if (!container) return;
+
+    if (!myChallenges.length) {
+        container.innerHTML = `<div class="empty-state" style="grid-column:unset;">
+            <i class="fas fa-trophy"></i>
+            <p>You haven't created any challenges yet.</p>
+        </div>`;
+        return;
+    }
+
+    const statusMeta = {
+        active: { label: 'Live', cls: 'mc-status-active', icon: 'circle' },
+        draft: { label: 'Draft', cls: 'mc-status-draft', icon: 'pen' },
+        paused: { label: 'Paused', cls: 'mc-status-paused', icon: 'pause-circle' },
+        ended: { label: 'Ended', cls: 'mc-status-ended', icon: 'stop-circle' },
+    };
+
+    container.innerHTML = myChallenges.map(c => {
+        const sm = statusMeta[c.status] || statusMeta.draft;
+        const canPublish = c.status === 'draft' || c.status === 'paused';
+        const canUnpublish = c.status === 'active';
+
+        return `<div class="mc-item" data-id="${c.id}">
+            <div class="mc-img-wrap">
+                <img src="${escHtml(c.image_url)}" alt="${escHtml(c.title)}" loading="lazy">
+                <span class="difficulty-badge difficulty-${c.difficulty}" style="position:absolute;top:8px;left:8px;">${c.difficulty}</span>
+            </div>
+            <div class="mc-body">
+                <div class="mc-top">
+                    <h4 class="mc-title">${escHtml(c.title)}</h4>
+                    <span class="mc-status ${sm.cls}">
+                        <i class="fas fa-${sm.icon}"></i> ${sm.label}
+                    </span>
+                </div>
+                <p class="mc-desc">${escHtml(c.description).slice(0, 100)}${c.description.length > 100 ? '…' : ''}</p>
+                <div class="mc-meta">
+                    <span><i class="fas fa-users"></i> ${c.submission_count} submissions</span>
+                    <span><i class="fas fa-bolt"></i> ${c.min_points}–${c.max_points} pts</span>
+                    <span><i class="fas fa-clock"></i> ${getTimeRemaining(c.ends_at)}</span>
+                </div>
+            </div>
+            <div class="mc-actions">
+                ${canPublish ? `
+                <button class="mc-btn mc-btn-publish" onclick="toggleChallengePublish('${c.id}', 'publish')">
+                    <i class="fas fa-rocket"></i> Publish
+                </button>` : ''}
+                ${canUnpublish ? `
+                <button class="mc-btn mc-btn-pause" onclick="toggleChallengePublish('${c.id}', 'unpublish')">
+                    <i class="fas fa-pause"></i> Pause
+                </button>` : ''}
+                ${c.status === 'ended' ? `
+                <span class="mc-ended-label"><i class="fas fa-check-circle"></i> Ended</span>` : ''}
+                <button class="mc-btn mc-btn-delete" onclick="deleteChallenge('${c.id}', '${escHtml(c.title)}')">
+                    <i class="fas fa-trash"></i> Delete
+                </button>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+async function toggleChallengePublish(challengeId, action) {
+    const btn = document.querySelector(`.mc-item[data-id="${challengeId}"] .mc-btn`);
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; }
+
+    try {
+        if (action === 'publish') {
+            await apiService.publishChallenge(challengeId);
+            showToast('Challenge is now live! 🚀', 'success');
+        } else {
+            await apiService.unpublishChallenge(challengeId);
+            showToast('Challenge paused.', 'info');
+        }
+        await Promise.all([loadChallenges(), loadMyChallenges()]);
+        renderChallenges();
+        renderMyChallenges();
+    } catch (e) {
+        showToast(e.message || 'Action failed. Try again.', 'error');
+        if (btn) { btn.disabled = false; btn.innerHTML = action === 'publish' ? '<i class="fas fa-rocket"></i> Publish' : '<i class="fas fa-pause"></i> Pause'; }
+    }
+}
+
+async function deleteChallenge(challengeId, title) {
+    if (!confirm(`Delete "${title}"? This cannot be undone.`)) return;
+
+    const btn = document.querySelector(`.mc-item[data-id="${challengeId}"] .mc-btn-delete`);
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; }
+
+    try {
+        await apiService.deleteChallenge(challengeId);
+        showToast('Challenge deleted.', 'success');
+        // Remove card from grid immediately without full reload
+        document.querySelector(`.mc-item[data-id="${challengeId}"]`)?.remove();
+        document.querySelector(`[data-id="${challengeId}"]`)?.remove();
+        myChallenges = myChallenges.filter(c => String(c.id) !== String(challengeId));
+        challenges = challenges.filter(c => String(c.id) !== String(challengeId));
+        renderChallenges();
+    } catch (e) {
+        showToast(e.message || 'Delete failed. Try again.', 'error');
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-trash"></i> Delete'; }
+    }
+}
+
+async function deleteSocialChallenge(type, challengeId, title) {
+    if (!confirm(`Delete "${title}"? This cannot be undone.`)) return;
+
+    const btn = document.querySelector(`.challenge-card[data-id="${challengeId}"] .social-card-delete-btn`);
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; }
+
+    try {
+        await apiService.deleteSocialChallenge(type, challengeId);
+        showToast('Deleted.', 'success');
+        document.querySelector(`.challenge-card[data-id="${challengeId}"]`)?.remove();
+        challenges = challenges.filter(c => String(c.id) !== String(challengeId));
+    } catch (e) {
+        showToast(e.message || 'Delete failed. Try again.', 'error');
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-trash"></i>'; }
+    }
+}
+
+// ── Nav helpers ───────────────────────────────────────────────────────────────
+function openMessenger() { showToast('Messenger coming soon!', 'info'); }
+
+document.getElementById('challengeModal')?.addEventListener('click', e => { if (e.target === e.currentTarget) closeChallengeModal(); });
+document.getElementById('uploadModal')?.addEventListener('click', e => { if (e.target === e.currentTarget) closeUploadModal(); });
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+function showToast(message, type = 'info') {
+    const container = document.getElementById('toastContainer');
+    if (!container) return;
+    const icons = { success: 'check-circle', error: 'exclamation-circle', info: 'info-circle' };
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.innerHTML = `<i class="fas fa-${icons[type]}"></i> ${escHtml(message)}`;
+    container.appendChild(toast);
+    setTimeout(() => { toast.style.animation = 'fadeOut 0.35s ease forwards'; toast.addEventListener('animationend', () => toast.remove()); }, 3500);
+}
+
+// ── Utilities ─────────────────────────────────────────────────────────────────
+function escHtml(str) {
+    if (str == null) return '';
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+function setEl(id, v) { const el = document.getElementById(id); if (el) el.textContent = v; }
+function show(id) { const el = document.getElementById(id); if (el) el.style.display = 'flex'; }
+function formatDate(iso) {
+    if (!iso) return '';
+    return new Date(iso).toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+function formatTime(iso) { return iso ? new Date(iso).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }) : ''; }
+
+// ── Global exports ────────────────────────────────────────────────────────────
+window.openChallengeWithFeeCheck = openChallengeWithFeeCheck;
+window.closeFeeGateModal = closeFeeGateModal;
+window.confirmFeeAndEnter = confirmFeeAndEnter;
+window.goTopUpWallet = goTopUpWallet;
+window.openMessenger = openMessenger;
+window.showUploadModal = showUploadModal;
+window.searchChallenges = searchChallenges;
+window.closeUploadModal = closeUploadModal;
+window.switchUploadTab = switchUploadTab;
+window.previewUploadImage = previewUploadImage;
+window.previewChallengeImage = previewChallengeImage;
+window.validateWeights = validateWeights;
+window.createChallenge = createChallenge;
+window.uploadContent = uploadContent;
+window.logout = logout;
+window.filterChallenges = filterChallenges;
+window.openChallenge = openChallenge;
+window.viewChallengeDetails = viewChallengeDetails;
+window.closeChallengeModal = closeChallengeModal;
+window.updateWordCount = updateWordCount;
+window.submitInterpretation = submitInterpretation;
+window.toggleChallengePublish = toggleChallengePublish;
+window.deleteChallenge = deleteChallenge;
+window.deleteSocialChallenge = deleteSocialChallenge;
+window.toggleQAImage = toggleQAImage;
+// Wizard helpers
+window.ccGoStep = ccGoStep;
+window.ccSetDuration = ccSetDuration;
+window.ccAutoBalance = ccAutoBalance;
+window.ccCharCount = ccCharCount;
+window.ccClearError = ccClearError;
+window.ccRuleCount = ccRuleCount;
+window.ccDragOver = ccDragOver;
+window.ccDragLeave = ccDragLeave;
+window.ccDrop = ccDrop;
+
+// ── Social challenge card renderers (debate / poll / Q&A) ─────────────────────
+// These challenge types live in separate DB models (PollChallenge, DebateChallenge,
+// QAChallenge) and are fetched via the /challenges/all_types/ endpoint.
+// They are rendered inline here so challenges.html doesn't need to load the
+// heavier challenges-enhanced.js bundle.
+
+function _fmtDur(days) {
+    if (!days && days !== 0) return '—';
+    const d = parseFloat(days);
+    if (d < 1 / 24) return `${Math.round(d * 24 * 60)}m`;
+    if (d < 1) return `${Math.round(d * 24)}h`;
+    return `${d}d`;
+}
+
+function _currentUsername() {
+    try { return JSON.parse(localStorage.getItem('pageUser') || '{}').username || ''; } catch { return ''; }
+}
+
+function _creatorAvatarHTML(creator, size = 32) {
+    /* Renders a profile photo <img> or an fa-user icon fallback.
+       `creator` shape: { username, avatar_url, display_name, id } — or just a plain string username. */
+    if (!creator) return `<span class="sc-avatar-icon"><i class="fas fa-user"></i></span>`;
+
+    const username    = (typeof creator === 'string') ? creator : (creator.username || '?');
+    const avatarUrl   = (typeof creator === 'object') ? (creator.avatar_url || '') : '';
+    const displayName = (typeof creator === 'object') ? (creator.display_name || username) : username;
+    const userId      = (typeof creator === 'object') ? (creator.id || '') : '';
+    const profileHref = userId ? `user.html?id=${encodeURIComponent(userId)}` : `user.html?username=${encodeURIComponent(username)}`;
+
+    if (avatarUrl) {
+        return `<a href="${profileHref}" class="sc-creator-link" title="${escHtml(displayName)}">
+            <img src="${escHtml(avatarUrl)}" alt="${escHtml(displayName)}"
+                 class="sc-avatar-img" width="${size}" height="${size}"
+                 onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'sc-avatar-icon',innerHTML:'<i class=\\'fas fa-user\\'></i>'}))">
+        </a>`;
+    }
+    return `<a href="${profileHref}" class="sc-creator-link" title="${escHtml(displayName)}">
+        <span class="sc-avatar-icon"><i class="fas fa-user"></i></span>
+    </a>`;
+}
+
+function _renderDebateCard(c) {
+    const dur = _fmtDur(c.duration_days);
+    const sideA = escHtml(c.side_a || 'For');
+    const sideB = escHtml(c.side_b || 'Against');
+    const title = escHtml(c.title);
+    const id = c.id;
+    const isOwner = c.created_by === _currentUsername();
+    const deleteBtn = isOwner
+        ? `<button class="social-card-delete-btn" onclick="deleteSocialChallenge('debates','${id}','${escHtml(c.title)}')" title="Delete challenge"><i class="fas fa-trash"></i></button>`
+        : '';
+    const avatarHTML = _creatorAvatarHTML(c.creator || c.created_by);
+    const detailUrl  = `challenge.html?id=${encodeURIComponent(id)}&type=debate`;
+
+    return `<div class="challenge-card" data-status="active" data-category="debates" data-id="${id}">
+        <div class="debate-card-header">
+            <div style="display:flex;align-items:center;gap:8px;">
+                ${avatarHTML}
+                <span class="sc-creator-name"><a href="${c.creator?.id ? `user.html?id=${encodeURIComponent(c.creator.id)}` : `user.html?username=${encodeURIComponent(c.created_by)}`}" class="sc-creator-name-link">${escHtml(c.creator?.display_name || c.created_by)}</a></span>
+            </div>
+            <span style="font-size:11px;color:#888;">${dur}</span>
+        </div>
+        <!-- Clickable title area opens the live modal -->
+        <div class="debate-card-open-area" onclick="openDebateLiveModal('${id}','${escHtml(c.title).replace(/'/g, "\\'")}','${escHtml(c.side_a || 'For').replace(/'/g, "\\'")}','${escHtml(c.side_b || 'Against').replace(/'/g, "\\'")}')">
+            <p class="debate-card-title">${title.toUpperCase()}</p>
+            <span class="debate-card-live-hint"><i class="fas fa-circle"></i> Watch Live</span>
+        </div>
+        <div class="debate-arena">
+            <div class="debate-team-pane debate-pane-a" id="debatePaneA_${id}">
+                <div class="debate-pane-header pane-header-a">
+                    <span class="debate-pane-team-label">Team A</span>
+                    <span class="debate-pane-team-name">${sideA}</span>
+                </div>
+                <div class="debate-pane-feed" id="debateFeedA_${id}"></div>
+            </div>
+            <div class="debate-team-pane debate-pane-b" id="debatePaneB_${id}">
+                <div class="debate-pane-header pane-header-b">
+                    <span class="debate-pane-team-label">Team B</span>
+                    <span class="debate-pane-team-name">${sideB}</span>
+                </div>
+                <div class="debate-pane-feed" id="debateFeedB_${id}"></div>
+            </div>
+        </div>
+        <div class="debate-side-picker" id="debatePicker_${id}">
+            <p class="debate-pick-label">Pick your side to join:</p>
+            <div class="debate-pick-btns">
+                <button class="debate-pick-btn pick-a" onclick="_chJoinDebate('${id}', 'a', this)">
+                    <span class="pick-side-tag">A</span> ${sideA}
+                </button>
+                <button class="debate-pick-btn pick-b" onclick="_chJoinDebate('${id}', 'b', this)">
+                    <span class="pick-side-tag">B</span> ${sideB}
+                </button>
+            </div>
+        </div>
+        <div class="debate-input-row" id="debateInputRow_${id}" style="display:none;">
+            <input class="debate-text-input" placeholder="Share your take…" id="debateInput_${id}"
+                onkeydown="if(event.key==='Enter') _chSubmitDebate('${id}')">
+            <button class="debate-send-btn" onclick="_chSubmitDebate('${id}')">
+                <i class="fas fa-paper-plane"></i>
+            </button>
+        </div>
+        <div class="debate-teams">
+            <div class="debate-team team-a">
+                <span class="debate-team-label">Team A</span>
+                <span class="debate-team-desc">${sideA}</span>
+                <span class="debate-team-count" id="debateCountA_${id}"><i class="fas fa-user-friends"></i> ${(c.participants?.a || 0)} joined</span>
+            </div>
+            <div class="debate-team team-b">
+                <span class="debate-team-label">Team B</span>
+                <span class="debate-team-desc">${sideB}</span>
+                <span class="debate-team-count" id="debateCountB_${id}"><i class="fas fa-user-friends"></i> ${(c.participants?.b || 0)} joined</span>
+            </div>
+        </div>
+        <div class="debate-card-footer">
+            <a href="${detailUrl}" class="sc-detail-link"><i class="fas fa-expand-alt"></i> Full page</a>
+            <div style="display:flex;align-items:center;gap:8px;margin-left:auto;">
+                <span class="debate-joined-badge" id="debateJoinedBadge_${id}" style="display:none;font-size:11px;color:#1b7f3a;font-weight:700;">
+                    <i class="fas fa-check-circle"></i> Joined
+                </span>
+                ${deleteBtn}
+            </div>
+        </div>
+    </div>`;
+}
+
+function _renderPollCard(c) {
+    const id = c.id;
+    const opts = (c.options || []);
+    const isOwner = c.created_by === _currentUsername();
+    const deleteBtn = isOwner
+        ? `<button class="social-card-delete-btn" onclick="deleteSocialChallenge('polls','${id}','${escHtml(c.title)}')" title="Delete poll"><i class="fas fa-trash"></i></button>`
+        : '';
+    const avatarHTML = _creatorAvatarHTML(c.creator || c.created_by);
+    const detailUrl  = `challenge.html?id=${encodeURIComponent(id)}&type=poll`;
+    const optionsHTML = opts.map((opt, i) => `
+        <button class="poll-vote-btn" onclick="_chCastPollVote('${id}', ${i}, this)">
+            <div class="poll-vote-bar" style="width:${c.vote_counts ? Math.round((c.vote_counts[i] || 0) / (c.total_votes || 1) * 100) : 0}%"></div>
+            <span class="poll-option-label">${escHtml(opt)}</span>
+            <span class="poll-vote-pct">${c.vote_counts && c.total_votes ? Math.round((c.vote_counts[i] || 0) / c.total_votes * 100) + '%' : '0%'}</span>
+        </button>`).join('');
+
+    return `<div class="challenge-card" data-status="active" data-category="polls" data-id="${id}">
+        <div class="poll-header-bar">
+            <div style="display:flex;align-items:center;gap:8px;">
+                ${avatarHTML}
+                <span class="sc-creator-name"><a href="${c.creator?.id ? `user.html?id=${encodeURIComponent(c.creator.id)}` : `user.html?username=${encodeURIComponent(c.created_by)}`}" class="sc-creator-name-link">${escHtml(c.creator?.display_name || c.created_by)}</a></span>
+            </div>
+            <span class="poll-type-label"><i class="fas fa-poll"></i> Poll</span>
+        </div>
+        <h3 class="poll-title">${escHtml(c.title)}</h3>
+        <div class="poll-options-list">${optionsHTML}</div>
+        <div class="poll-card-footer">
+            <div class="poll-meta">
+                <span><i class="fas fa-users"></i> ${c.total_votes || 0} votes</span>
+                <span><i class="fas fa-clock"></i> ${_fmtDur(c.duration_days)} left</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;">
+                <a href="${detailUrl}" class="sc-detail-link"><i class="fas fa-expand-alt"></i> Full page</a>
+                ${deleteBtn}
+            </div>
+        </div>
+    </div>`;
+}
+
+function _renderQACard(c) {
+    const id      = c.id;
+    const answers = (c.answers || []);
+    const isOwner = c.created_by === _currentUsername();
+    const currentUser = _currentUsername();
+
+    const deleteBtn = isOwner
+        ? `<button class="social-card-delete-btn" onclick="deleteSocialChallenge('qa','${id}','${escHtml(c.title)}')" title="Delete Q&A"><i class="fas fa-trash"></i></button>`
+        : '';
+    const avatarHTML = _creatorAvatarHTML(c.creator || c.created_by);
+    const detailUrl  = `challenge.html?id=${encodeURIComponent(id)}&type=qa`;
+
+    // ── Optional image toggle ─────────────────────────────────────────────
+    const imgSection = c.image_url ? `
+        <div class="qa-img-preview-wrap" id="qaImgWrap_${id}">
+            <button class="qa-img-toggle-btn" onclick="toggleQAImage('${id}')" aria-expanded="false">
+                <i class="fas fa-image"></i> View Image
+            </button>
+            <div class="qa-img-panel" id="qaImgPanel_${id}" style="display:none;">
+                <img src="${escHtml(c.image_url)}" alt="Challenge image" class="qa-preview-img"
+                    loading="lazy"
+                    onerror="this.closest('.qa-img-panel').style.display='none'">
+            </div>
+        </div>` : '';
+
+    // ── Last 3 answers rendered as glass bubbles ──────────────────────────
+    const answersHTML = answers.slice(-3).map(a => {
+        const isOwn = a.user === currentUser;
+        const hue   = a.user.split('').reduce((s, ch) => s + ch.charCodeAt(0), 0) % 360;
+        return `<div class="qa-live-msg${isOwn ? ' own' : ''}">
+            <div class="qa-live-avatar" style="background:hsl(${hue},55%,40%);">${a.user[0].toUpperCase()}</div>
+            <div class="qa-live-bubble">
+                <span class="qa-live-user">${escHtml(a.user)}</span>
+                <span class="qa-live-text">${escHtml(a.text)}</span>
+            </div>
+        </div>`;
+    }).join('');
+
+    // ── Participant mini-avatars (last 4 unique answerers) ────────────────
+    const uniqueUsers = [...new Set(answers.map(a => a.user))].slice(-4);
+    const participantAvatars = uniqueUsers.length ? `
+        <div class="qa-participants">
+            <div class="qa-participant-avatars">
+                ${uniqueUsers.map(u => {
+                    const hue = u.split('').reduce((s, ch) => s + ch.charCodeAt(0), 0) % 360;
+                    return `<span class="qa-participant-pip" style="background:hsl(${hue},55%,40%);" title="${escHtml(u)}">${u[0].toUpperCase()}</span>`;
+                }).join('')}
+            </div>
+            <span class="qa-answer-count">${answers.length} answer${answers.length !== 1 ? 's' : ''}</span>
+        </div>` : '';
+
+    return `<div class="challenge-card qa-glass-card" data-status="active" data-category="qa" data-id="${id}">
+
+        <!-- Header: creator + type badge -->
+        <div class="qa-header-bar">
+            <div class="qa-creator-row">
+                ${avatarHTML}
+                <span class="sc-creator-name">
+                    <a href="${c.creator?.id ? `user.html?id=${encodeURIComponent(c.creator.id)}` : `user.html?username=${encodeURIComponent(c.created_by)}`}"
+                       class="sc-creator-name-link">${escHtml(c.creator?.display_name || c.created_by)}</a>
+                </span>
+            </div>
+            <span class="qa-type-label"><i class="fas fa-question-circle"></i> Q&amp;A</span>
+        </div>
+
+        <!-- Question text -->
+        <p class="qa-question">${escHtml(c.title)}</p>
+        ${c.description ? `<p class="qa-description">${escHtml(c.description)}</p>` : ''}
+
+        <!-- Optional image -->
+        ${imgSection}
+
+        <!-- Live answers feed (glassmorphism pane) -->
+        <div class="qa-live-pane" id="qaLive_${id}">
+            ${answersHTML || `<p class="qa-empty-hint"><i class="fas fa-comment-dots"></i> No answers yet — be first!</p>`}
+        </div>
+
+        <!-- Participants strip -->
+        ${participantAvatars}
+
+        <!-- Input row -->
+        <div class="qa-input-row">
+            <input class="qa-type-input" placeholder="Share your answer…" id="qaInput_${id}"
+                   maxlength="280"
+                   onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();_chSubmitQA('${id}')}"
+                   oninput="this.closest('.challenge-card').querySelector('.qa-char-counter').textContent=this.value.length+'/280'">
+            <button class="qa-send-btn" onclick="_chSubmitQA('${id}')" title="Send answer" aria-label="Send answer">
+                <i class="fas fa-paper-plane"></i>
+            </button>
+        </div>
+        <div class="qa-char-counter">0/280</div>
+
+        <!-- Footer -->
+        <div class="qa-card-footer">
+            <div class="qa-meta">
+                <span><i class="fas fa-clock"></i> ${_fmtDur(c.duration_days)} left</span>
+                ${c.prize_amount && parseFloat(c.prize_amount) > 0
+                    ? `<span class="qa-prize-badge"><i class="fas fa-trophy"></i> K${parseFloat(c.prize_amount).toFixed(0)}</span>`
+                    : ''}
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;">
+                <a href="${detailUrl}" class="sc-detail-link"><i class="fas fa-expand-alt"></i> Full page</a>
+                ${deleteBtn}
+            </div>
+        </div>
+    </div>`;
+}
+
+function toggleQAImage(id) {
+    const panel = document.getElementById(`qaImgPanel_${id}`);
+    const btn = document.querySelector(`#qaImgWrap_${id} .qa-img-toggle-btn`);
+    if (!panel) return;
+    const isOpen = panel.style.display !== 'none';
+    panel.style.display = isOpen ? 'none' : 'block';
+    if (btn) {
+        btn.setAttribute('aria-expanded', String(!isOpen));
+        btn.innerHTML = isOpen
+            ? '<i class="fas fa-image"></i> View Image'
+            : '<i class="fas fa-eye-slash"></i> Hide Image';
+    }
+}
+
+// ── Interaction handlers for social cards on challenges.html ──────────────────
+const _CH_API = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+    ? 'http://localhost:8000/api/challenges'
+    : `${window.location.origin}/api/challenges`;
+
+async function _chPost(url, body) {
+    const authHeader = window._pageAuthHeader ? window._pageAuthHeader() : null;
+    const headers = { 'Content-Type': 'application/json' };
+    if (authHeader) headers['Authorization'] = authHeader;
+    const r = await fetch(url, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(body),
+    });
+    return { ok: r.ok, data: await r.json().catch(() => ({})) };
+}
+
+async function _chJoinDebate(id, side, btn) {
+    // Disable both picker buttons immediately
+    const picker = document.getElementById(`debatePicker_${id}`);
+    if (picker) picker.querySelectorAll('.debate-pick-btn').forEach(b => b.disabled = true);
+
+    const { ok, data } = await _chPost(`${_CH_API}/debates/${id}/join/`, { side });
+
+    if (!ok) {
+        showToast(data.error || 'Could not join.', 'error');
+        if (picker) picker.querySelectorAll('.debate-pick-btn').forEach(b => b.disabled = false);
+        return;
+    }
+
+    // Store the user's chosen side on the card for routing comments
+    const card = document.querySelector(`.challenge-card[data-id="${id}"]`);
+    if (card) card.dataset.userSide = side;
+
+    // Hide picker, show input row
+    if (picker) picker.style.display = 'none';
+    const inputRow = document.getElementById(`debateInputRow_${id}`);
+    if (inputRow) inputRow.style.display = 'flex';
+
+    // Show joined badge
+    const badge = document.getElementById(`debateJoinedBadge_${id}`);
+    if (badge) badge.style.display = 'inline-flex';
+
+    // Highlight the chosen side's pane header
+    const paneHeader = document.querySelector(
+        `#debatePaneA_${id} .debate-pane-header, #debatePaneB_${id} .debate-pane-header`
+    );
+    const chosenPane = document.getElementById(`debatePane${side.toUpperCase()}_${id}`);
+    if (chosenPane) chosenPane.classList.add('pane-active');
+
+    // Update participant counts
+    if (data.participants) {
+        const aEl = document.getElementById(`debateCountA_${id}`);
+        const bEl = document.getElementById(`debateCountB_${id}`);
+        if (aEl) aEl.innerHTML = `<i class="fas fa-user-friends"></i> ${data.participants.a || 0} joined`;
+        if (bEl) bEl.innerHTML = `<i class="fas fa-user-friends"></i> ${data.participants.b || 0} joined`;
+    }
+
+    showToast(`Joined Team ${side.toUpperCase()}! +0.5 xP 🔥`, 'success');
+
+    // Immediately add an intro comment to the joined side's feed
+    const username = (() => { try { return JSON.parse(localStorage.getItem('pageUser') || '{}').username || 'You'; } catch { return 'You'; } })();
+    _chAddDebateComment(id, username, `Just joined Team ${side.toUpperCase()}! 🔥`, side);
+}
+
+async function _chSubmitDebate(id) {
+    const input = document.getElementById(`debateInput_${id}`);
+    const text = input?.value.trim();
+    if (!text) return;
+
+    const card = document.querySelector(`.challenge-card[data-id="${id}"]`);
+    // Fall back to 'a' if somehow side isn't set (shouldn't happen after join)
+    const side = card?.dataset.userSide || 'a';
+    const username = (() => { try { return JSON.parse(localStorage.getItem('pageUser') || '{}').username || 'You'; } catch { return 'You'; } })();
+
+    // Optimistic UI — add to the correct side's feed immediately
+    _chAddDebateComment(id, username, text, side);
+    input.value = '';
+
+    await _chPost(`${_CH_API}/debates/${id}/comment/`, { text, side }).catch(() => { });
+}
+
+function _chAddDebateComment(id, username, text, side) {
+    const feedId = side === 'a' ? `debateFeedA_${id}` : `debateFeedB_${id}`;
+    const feed = document.getElementById(feedId);
+    if (!feed) return;
+
+    const shade = side === 'a' ? 'hsl(0,60%,42%)' : 'hsl(140,50%,35%)';
+    const el = document.createElement('div');
+    el.className = 'debate-comment comment-enter';
+    el.innerHTML = `<div class="debate-comment-avatar" style="background:${shade};">${username[0].toUpperCase()}</div>
+        <div class="debate-comment-body">
+            <span class="comment-user">${escHtml(username)}</span>
+            <span class="comment-text">${escHtml(text)}</span>
+        </div>`;
+    feed.appendChild(el);
+    feed.scrollTop = feed.scrollHeight;
+
+    // Trim old comments — max 8 visible per side
+    const all = feed.querySelectorAll('.debate-comment');
+    if (all.length > 8) {
+        const oldest = all[0];
+        oldest.classList.add('comment-exit');
+        oldest.addEventListener('animationend', () => oldest.remove(), { once: true });
+    }
+
+    // Mirror into live modal if it's open for this debate
+    if (typeof dlmReceiveComment === 'function' && _dlm?.id === id) {
+        dlmReceiveComment(username, text, side);
+    }
+}
+
+async function _chCastPollVote(id, optionIndex, btn) {
+    const list = btn.closest('.poll-options-list');
+    list.querySelectorAll('.poll-vote-btn').forEach(b => b.disabled = true);
+    const { ok, data } = await _chPost(`${_CH_API}/polls/${id}/vote/`, { option_index: optionIndex });
+    if (!ok) { showToast(data.error || 'Could not vote.', 'error'); list.querySelectorAll('.poll-vote-btn').forEach(b => b.disabled = false); return; }
+    const total = data.total_votes || 1;
+    list.querySelectorAll('.poll-vote-btn').forEach((b, i) => {
+        const pct = Math.round(((data.vote_counts?.[i] || 0) / total) * 100);
+        const bar = b.querySelector('.poll-vote-bar');
+        const pctEl = b.querySelector('.poll-vote-pct');
+        if (bar) setTimeout(() => { bar.style.width = `${pct}%`; }, 50);
+        if (pctEl) pctEl.textContent = `${pct}%`;
+        if (i === optionIndex) b.classList.add('voted');
+    });
+    showToast('+0.5 xP for voting! 📊', 'success');
+}
+
+async function _chSubmitQA(id) {
+    const input = document.getElementById(`qaInput_${id}`);
+    const text = input?.value.trim();
+    if (!text) return;
+    const username = (() => { try { return JSON.parse(localStorage.getItem('pageUser') || '{}').username || 'You'; } catch { return 'You'; } })();
+    const hue = username.split('').reduce((s, c) => s + c.charCodeAt(0), 0) % 360;
+    const pane = document.getElementById(`qaLive_${id}`);
+    if (pane) {
+        const el = document.createElement('div');
+        el.className = 'qa-live-msg own';
+        el.innerHTML = `<div class="qa-live-avatar" style="background:hsl(${hue},50%,38%);">${username[0]}</div>
+            <div class="qa-live-bubble"><span class="qa-live-user">${escHtml(username)}</span><span class="qa-live-text">${escHtml(text)}</span></div>`;
+        pane.appendChild(el);
+        pane.scrollTop = pane.scrollHeight;
+    }
+    input.value = '';
+    await _chPost(`${_CH_API}/qa/${id}/answer/`, { text }).catch(() => { });
+    showToast('+0.5 xP for answering! 💬', 'success');
+}
+
+// ── Debate Live Modal ─────────────────────────────────────────────────────────
+const _dlm = {
+    id: null, sideA: '', sideB: '',
+    userSide: null,
+    pollInterval: null,
+};
+
+function openDebateLiveModal(id, title, sideA, sideB) {
+    _dlm.id = id;
+    _dlm.sideA = sideA;
+    _dlm.sideB = sideB;
+    _dlm.userSide = null;
+
+    const set = (elId, val) => { const e = document.getElementById(elId); if (e) e.textContent = val; };
+    set('dlmTitle', title);
+    set('dlmLabelA', sideA);
+    set('dlmLabelB', sideB);
+    set('dlmPickLabelA', sideA);
+    set('dlmPickLabelB', sideB);
+    set('dlmScoreA', '0');
+    set('dlmScoreB', '0');
+    set('dlmViewerCount', '—');
+
+    // Clear streams
+    const streamA = document.getElementById('dlmStreamA');
+    const streamB = document.getElementById('dlmStreamB');
+    if (streamA) streamA.innerHTML = '';
+    if (streamB) streamB.innerHTML = '';
+
+    // Reset join state — check if user already joined via the card
+    const card = document.querySelector(`.challenge-card[data-id="${id}"]`);
+    const joined = card?.dataset.userSide;
+    if (joined) {
+        _dlm.userSide = joined;
+        _dlmShowInputBar(joined);
+    } else {
+        const picker = document.getElementById('dlmSidePicker');
+        const bar = document.getElementById('dlmInputBar');
+        if (picker) picker.style.display = 'flex';
+        if (bar) bar.style.display = 'none';
+        // Re-enable pick buttons
+        const btnA = document.getElementById('dlmPickBtnA');
+        const btnB = document.getElementById('dlmPickBtnB');
+        if (btnA) { btnA.disabled = false; btnA.innerHTML = `<span id="dlmPickLabelA">${escHtml(sideA)}</span>`; }
+        if (btnB) { btnB.disabled = false; btnB.innerHTML = `<span id="dlmPickLabelB">${escHtml(sideB)}</span>`; }
+    }
+
+    // Show modal
+    const modal = document.getElementById('debateLiveModal');
+    if (modal) modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+
+    // Load existing comments from card feeds
+    _dlmLoadExistingComments(id);
+    _dlmRefreshCounts(id);
+
+    // Poll for count updates every 8s
+    _dlm.pollInterval = setInterval(() => _dlmRefreshCounts(id), 8000);
+}
+
+function closeDebateLiveModal() {
+    const modal = document.getElementById('debateLiveModal');
+    if (modal) modal.style.display = 'none';
+    document.body.style.overflow = '';
+    if (_dlm.pollInterval) { clearInterval(_dlm.pollInterval); _dlm.pollInterval = null; }
+    _dlm.id = null;
+}
+
+function _dlmLoadExistingComments(id) {
+    ['a', 'b'].forEach(side => {
+        const feedId = side === 'a' ? `debateFeedA_${id}` : `debateFeedB_${id}`;
+        const feed = document.getElementById(feedId);
+        if (!feed) return;
+        feed.querySelectorAll('.debate-comment').forEach(node => {
+            const user = node.querySelector('.comment-user')?.textContent || '?';
+            const text = node.querySelector('.comment-text')?.textContent || '';
+            _dlmAddComment(user, text, side, false);
+        });
+    });
+}
+
+async function _dlmRefreshCounts(id) {
+    try {
+        const authHeader = window._pageAuthHeader ? window._pageAuthHeader() : null;
+        const resp = await fetch(`${_CH_API}/debates/`, {
+            headers: authHeader ? { Authorization: authHeader } : {},
+        });
+        const data = await resp.json();
+        const debate = (data || []).find(d => String(d.id) === String(id));
+        if (!debate) return;
+        const a = debate.participants?.a || 0;
+        const b = debate.participants?.b || 0;
+        const set = (elId, val) => { const e = document.getElementById(elId); if (e) e.textContent = val; };
+        set('dlmScoreA', a);
+        set('dlmScoreB', b);
+        set('dlmViewerCount', a + b);
+    } catch (_) { }
+}
+
+async function dlmJoinSide(side) {
+    const btnA = document.getElementById('dlmPickBtnA');
+    const btnB = document.getElementById('dlmPickBtnB');
+    const btn = side === 'a' ? btnA : btnB;
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; }
+
+    const authHeader = window._pageAuthHeader ? window._pageAuthHeader() : null;
+    try {
+        const r = await fetch(`${_CH_API}/debates/${_dlm.id}/join/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...(authHeader ? { Authorization: authHeader } : {}) },
+            body: JSON.stringify({ side }),
+        });
+        const data = await r.json();
+        if (!r.ok) {
+            // "Already joined" is fine — just switch to input bar
+            if (!data.error?.includes('Already')) {
+                showToast(data.error || 'Could not join.', 'error');
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = `<span>${escHtml(side === 'a' ? _dlm.sideA : _dlm.sideB)}</span>`;
+                }
+                return;
+            }
+        }
+
+        // Sync card
+        const card = document.querySelector(`.challenge-card[data-id="${_dlm.id}"]`);
+        if (card) card.dataset.userSide = side;
+        const picker = document.getElementById(`debatePicker_${_dlm.id}`);
+        const inputRow = document.getElementById(`debateInputRow_${_dlm.id}`);
+        if (picker) picker.style.display = 'none';
+        if (inputRow) inputRow.style.display = 'flex';
+
+        _dlm.userSide = side;
+        _dlmShowInputBar(side);
+
+        if (data.participants) {
+            const set = (elId, val) => { const e = document.getElementById(elId); if (e) e.textContent = val; };
+            set('dlmScoreA', data.participants.a || 0);
+            set('dlmScoreB', data.participants.b || 0);
+            set('dlmViewerCount', (data.participants.a || 0) + (data.participants.b || 0));
+        }
+
+        const username = _currentUsername() || 'You';
+        _dlmAddComment(username, `Joined Team ${side.toUpperCase()}! 🔥`, side, true);
+
+    } catch (e) {
+        showToast('Join failed.', 'error');
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = `<span>${escHtml(side === 'a' ? _dlm.sideA : _dlm.sideB)}</span>`;
+        }
+    }
+}
+
+function _dlmShowInputBar(side) {
+    const picker = document.getElementById('dlmSidePicker');
+    const bar = document.getElementById('dlmInputBar');
+    if (picker) picker.style.display = 'none';
+    if (bar) bar.style.display = 'flex';
+
+    const tag = document.getElementById('dlmJoinedTag');
+    const name = side === 'a' ? _dlm.sideA : _dlm.sideB;
+    if (tag) {
+        tag.textContent = `Team ${side.toUpperCase()}: ${name}`;
+        tag.style.background = side === 'a' ? 'rgba(231,76,60,0.12)' : 'rgba(39,174,96,0.12)';
+        tag.style.color = side === 'a' ? '#e74c3c' : '#27ae60';
+        tag.style.border = `1px solid ${side === 'a' ? 'rgba(231,76,60,0.3)' : 'rgba(39,174,96,0.3)'}`;
+        tag.style.borderRadius = '20px';
+        tag.style.padding = '3px 10px';
+        tag.style.fontSize = '11px';
+        tag.style.fontWeight = '700';
+    }
+
+    const input = document.getElementById('dlmCommentInput');
+    if (input) {
+        input.placeholder = `Argue for ${name}…`;
+        input.focus();
+    }
+}
+
+async function dlmSubmitComment() {
+    if (!_dlm.id || !_dlm.userSide) return;
+    const input = document.getElementById('dlmCommentInput');
+    const text = input?.value.trim();
+    if (!text) return;
+    input.value = '';
+
+    const username = _currentUsername() || 'You';
+    // Optimistic — add to modal and card feed
+    _dlmAddComment(username, text, _dlm.userSide, true);
+    _chAddDebateComment(_dlm.id, username, text, _dlm.userSide);
+
+    const authHeader = window._pageAuthHeader ? window._pageAuthHeader() : null;
+    fetch(`${_CH_API}/debates/${_dlm.id}/comment/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(authHeader ? { Authorization: authHeader } : {}) },
+        body: JSON.stringify({ text, side: _dlm.userSide }),
+    }).catch(() => { });
+}
+
+// Called by the WS handler when a remote comment arrives
+function dlmReceiveComment(user, text, side) {
+    const modal = document.getElementById('debateLiveModal');
+    if (!modal || modal.style.display === 'none') return;
+    _dlmAddComment(user, text, side, false);
+}
+
+function _dlmAddComment(user, text, side, isOwn) {
+    const streamId = side === 'a' ? 'dlmStreamA' : 'dlmStreamB';
+    const stream = document.getElementById(streamId);
+    if (!stream) return;
+
+    const hue = user.split('').reduce((s, c) => s + c.charCodeAt(0), 0) % 360;
+    const el = document.createElement('div');
+    el.className = `dlm-comment dlm-comment-${side}${isOwn ? ' dlm-own' : ''}`;
+    el.innerHTML = `
+        <span class="dlm-comment-avatar" style="background:hsl(${hue},55%,45%);">${user[0].toUpperCase()}</span>
+        <span class="dlm-comment-body">
+            <span class="dlm-comment-user">${escHtml(user)}</span>
+            <span class="dlm-comment-text">${escHtml(text)}</span>
+        </span>`;
+    stream.appendChild(el);
+
+    // Trigger float animation on next frame
+    requestAnimationFrame(() => el.classList.add('dlm-float'));
+
+    // Remove after animation ends
+    setTimeout(() => el.remove(), 6400);
+}
+
+// Close on backdrop click (outside the card)
+document.addEventListener('DOMContentLoaded', () => {
+    const modal = document.getElementById('debateLiveModal');
+    if (modal) {
+        modal.addEventListener('click', e => {
+            if (e.target === modal) closeDebateLiveModal();
+        });
+    }
+});
+
+window.openDebateLiveModal = openDebateLiveModal;
+window.closeDebateLiveModal = closeDebateLiveModal;
+window.dlmJoinSide = dlmJoinSide;
+window.dlmSubmitComment = dlmSubmitComment;
+window.dlmReceiveComment = dlmReceiveComment;

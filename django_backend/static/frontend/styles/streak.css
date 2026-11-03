@@ -1,0 +1,318 @@
+/* Streak Tracking Styles */
+
+/* Streak Active Animation */
+.streak-active {
+    animation: fireGlow 2s ease-in-out infinite;
+}
+
+@keyframes fireGlow {
+    0%, 100% {
+        color: #ff6b35;
+        text-shadow: 0 0 10px rgba(255, 107, 53, 0.5);
+    }
+    50% {
+        color: #ff8c42;
+        text-shadow: 0 0 20px rgba(255, 140, 66, 0.8);
+    }
+}
+
+/* Streak Notification */
+.streak-notification {
+    position: fixed;
+    top: 80px;
+    right: -400px;
+    background: linear-gradient(135deg, #1a1a1a, #2d2d2d);
+    border: 2px solid var(--page-accent);
+    border-radius: 12px;
+    padding: 20px;
+    min-width: 300px;
+    max-width: 400px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    z-index: 10000;
+    transition: right 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+.streak-notification.show {
+    right: 20px;
+}
+
+.streak-notification-content {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.streak-icon {
+    font-size: 40px;
+    animation: bounce 1s ease infinite;
+}
+
+@keyframes bounce {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-10px);
+    }
+}
+
+.streak-message {
+    color: #fff;
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 1.4;
+}
+
+/* Milestone Notification */
+.streak-notification.streak-milestone {
+    border-color: #ffd700;
+    background: linear-gradient(135deg, #2d1810, #4a2c1a);
+    animation: pulse 0.5s ease;
+}
+
+.streak-notification.streak-milestone .streak-icon {
+    animation: rotate 2s linear infinite;
+}
+
+@keyframes rotate {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Broken Streak Notification */
+.streak-notification.streak-broken {
+    border-color: #ff6b6b;
+    background: linear-gradient(135deg, #2d1a1a, #4a1a1a);
+}
+
+.streak-notification.streak-broken .streak-icon {
+    animation: shake 0.5s ease;
+}
+
+@keyframes shake {
+    0%, 100% {
+        transform: translateX(0);
+    }
+    25% {
+        transform: translateX(-10px);
+    }
+    75% {
+        transform: translateX(10px);
+    }
+}
+
+/* Streak Stats Card */
+.streak-stats-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 20px;
+    margin: 20px 0;
+}
+
+.streak-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 15px;
+    margin-top: 15px;
+}
+
+.streak-stat-item {
+    text-align: center;
+    padding: 15px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.streak-stat-item:hover {
+    background: rgba(144, 238, 144, 0.1);
+    transform: translateY(-2px);
+}
+
+.streak-stat-value {
+    font-size: 32px;
+    font-weight: bold;
+    color: var(--page-accent);
+    display: block;
+    margin-bottom: 5px;
+}
+
+.streak-stat-label {
+    font-size: 12px;
+    color: #999;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* Streak Progress Bar */
+.streak-progress {
+    margin-top: 15px;
+}
+
+.streak-progress-bar {
+    width: 100%;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+}
+
+.streak-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #ff6b35, #ffd700);
+    border-radius: 4px;
+    transition: width 0.5s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.streak-progress-fill::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+    0% {
+        transform: translateX(-100%);
+    }
+    100% {
+        transform: translateX(100%);
+    }
+}
+
+.streak-progress-text {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 5px;
+    font-size: 12px;
+    color: #999;
+}
+
+/* Streak Milestones */
+.streak-milestones {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 15px;
+}
+
+.streak-milestone-badge {
+    padding: 8px 12px;
+    background: rgba(255, 215, 0, 0.1);
+    border: 1px solid rgba(255, 215, 0, 0.3);
+    border-radius: 20px;
+    font-size: 12px;
+    color: #ffd700;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.streak-milestone-badge.locked {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.1);
+    color: #666;
+}
+
+.streak-milestone-badge i {
+    font-size: 14px;
+}
+
+/* Streak Calendar View */
+.streak-calendar {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 5px;
+    margin-top: 15px;
+}
+
+.streak-calendar-day {
+    aspect-ratio: 1;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    color: #666;
+    transition: all 0.3s ease;
+}
+
+.streak-calendar-day.active {
+    background: linear-gradient(135deg, #ff6b35, #ffd700);
+    color: #fff;
+    font-weight: bold;
+}
+
+.streak-calendar-day.today {
+    border: 2px solid var(--page-accent);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .streak-notification {
+        right: -100%;
+        left: 10px;
+        right: 10px;
+        min-width: auto;
+    }
+    
+    .streak-notification.show {
+        right: 10px;
+    }
+    
+    .streak-stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+/* Pulse Animation */
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+/* Fire Effect for High Streaks */
+.streak-fire-effect {
+    position: relative;
+}
+
+.streak-fire-effect::before {
+    content: '🔥';
+    position: absolute;
+    top: -20px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 20px;
+    animation: fireFloat 2s ease-in-out infinite;
+}
+
+@keyframes fireFloat {
+    0%, 100% {
+        transform: translateX(-50%) translateY(0);
+        opacity: 1;
+    }
+    50% {
+        transform: translateX(-50%) translateY(-10px);
+        opacity: 0.7;
+    }
+}

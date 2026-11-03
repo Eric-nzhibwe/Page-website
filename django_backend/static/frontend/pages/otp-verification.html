@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verify OTP</title>
+    <link rel="icon" type="image/jpeg" href="../images/Page.jpeg">
+    <link rel="stylesheet" href="../styles/otp.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+</head>
+<body>
+    <div class="otp-container">
+        <!-- Background Animation -->
+        <div class="background-animation">
+            <div class="circle circle-1"></div>
+            <div class="circle circle-2"></div>
+            <div class="circle circle-3"></div>
+        </div>
+
+        <!-- OTP Card -->
+        <div class="otp-card">
+            <!-- Logo -->
+            <div class="otp-logo">
+                <i class="fas fa-shield-alt"></i>
+            </div>
+
+            <!-- Title -->
+            <h1>Verify Your Identity</h1>
+            <p class="otp-subtitle">
+                We've sent a 6-digit code to<br>
+                <strong id="userContact">your email</strong>
+            </p>
+
+            <!-- OTP Input -->
+            <form id="otpForm" onsubmit="verifyOTP(event)">
+                <div class="otp-inputs">
+                    <input type="text" maxlength="1" class="otp-input" id="otp1" autofocus>
+                    <input type="text" maxlength="1" class="otp-input" id="otp2">
+                    <input type="text" maxlength="1" class="otp-input" id="otp3">
+                    <input type="text" maxlength="1" class="otp-input" id="otp4">
+                    <input type="text" maxlength="1" class="otp-input" id="otp5">
+                    <input type="text" maxlength="1" class="otp-input" id="otp6">
+                </div>
+
+                <!-- Error Message -->
+                <div class="error-message" id="errorMessage" style="display: none;">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <span id="errorText">Invalid OTP. Please try again.</span>
+                </div>
+
+                <!-- Submit Button -->
+                <button type="submit" class="btn-verify" id="verifyBtn">
+                    <span class="btn-text">Verify & Continue</span>
+                    <span class="btn-loader" style="display: none;">
+                        <i class="fas fa-spinner fa-spin"></i>
+                    </span>
+                </button>
+            </form>
+
+            <!-- Resend Section -->
+            <div class="resend-section">
+                <p>Didn't receive the code?</p>
+                <button class="btn-resend" id="resendBtn" onclick="resendOTP()">
+                    <i class="fas fa-redo"></i> Resend Code
+                </button>
+                <div class="resend-timer" id="resendTimer" style="display: none;">
+                    Resend available in <span id="timerCount">60</span>s
+                </div>
+            </div>
+
+            <!-- Back to Login -->
+            <div class="back-link">
+                <a href="auth.html">
+                    <i class="fas fa-arrow-left"></i> Back to Login
+                </a>
+            </div>
+        </div>
+
+        <!-- Security Badge -->
+        <div class="security-badge">
+            <i class="fas fa-lock"></i>
+            <span>Secured with 256-bit encryption</span>
+        </div>
+    </div>
+
+    <script src="../scripts/utils.js"></script>
+    <script src="../scripts/otp.js"></script>
+</body>
+</html>

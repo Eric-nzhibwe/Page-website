@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 ? `<img src="${resolved}" alt="avatar"
                     style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;"
                     onerror="this.replaceWith((function(){var s=document.createElement('span');s.style.cssText='display:inline-flex;align-items:center;justify-content:center;width:100%;height:100%;border-radius:50%;background:${colour};color:#fff;font-weight:700;font-size:14px;';s.textContent='${initial}';return s;})())">`
-                : `<span style="display:inline-flex;align-items:center;justify-content:center;width:100%;height:100%;border-radius:50%;background:${colour};color:#fff;font-weight:700;font-size:14px;">${initial}</span>`;
+                : '<i class="fas fa-user" aria-hidden="true"></i>';
 
             // IDs
             ['avatarDisplay', 'modalAvatar', 'umAvatar', 'navAvatar',
