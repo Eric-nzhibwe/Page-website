@@ -2,12 +2,16 @@
 Notification views for PAGE
 """
 from django.conf import settings
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, authentication_classes
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.authentication import TokenAuthentication, SessionAuthentication
 from rest_framework.response import Response
 from rest_framework import status
 from .tasks import send_tier_upgrade_email, send_alliance_join_email
 from .models import InAppNotification
+from users.firebase_token_auth import FirebaseTokenAuthentication
+
+_NOTIF_AUTH = [FirebaseTokenAuthentication, TokenAuthentication, SessionAuthentication]
 
 # Convenience flag — checked once per request, not per import
 def _use_firestore():
@@ -104,6 +108,7 @@ def _serialize_pg_notif(n):
 #  IN-APP NOTIFICATION REST ENDPOINTS
 # ─────────────────────────────────────────────────────────────────────────────
 @api_view(['GET'])
+@authentication_classes(_NOTIF_AUTH)
 @permission_classes([IsAuthenticated])
 def list_notifications(request):
     """Return the 50 most recent in-app notifications for the current user."""
@@ -122,6 +127,7 @@ def list_notifications(request):
 
 
 @api_view(['POST'])
+@authentication_classes(_NOTIF_AUTH)
 @permission_classes([IsAuthenticated])
 def mark_notifications_read(request):
     """Mark all (or specific) notifications as read."""
@@ -140,6 +146,7 @@ def mark_notifications_read(request):
 
 
 @api_view(['POST'])
+@authentication_classes(_NOTIF_AUTH)
 @permission_classes([IsAuthenticated])
 def send_email_notification(request):
     """Send email notification"""
@@ -148,6 +155,7 @@ def send_email_notification(request):
 
 
 @api_view(['POST'])
+@authentication_classes(_NOTIF_AUTH)
 @permission_classes([IsAuthenticated])
 def send_sms_notification(request):
     """Send SMS notification"""
@@ -156,6 +164,7 @@ def send_sms_notification(request):
 
 
 @api_view(['GET', 'PUT'])
+@authentication_classes(_NOTIF_AUTH)
 @permission_classes([IsAuthenticated])
 def notification_preferences(request):
     """Get or update notification preferences"""
@@ -166,6 +175,7 @@ def notification_preferences(request):
 
 
 @api_view(['GET'])
+@authentication_classes(_NOTIF_AUTH)
 @permission_classes([IsAuthenticated])
 def notification_history(request):
     """Get notification history"""
@@ -173,6 +183,7 @@ def notification_history(request):
 
 
 @api_view(['POST'])
+@authentication_classes(_NOTIF_AUTH)
 @permission_classes([IsAuthenticated])
 def tier_upgrade_notification(request):
     """Send tier upgrade email notification"""
@@ -198,6 +209,7 @@ def tier_upgrade_notification(request):
 
 
 @api_view(['POST'])
+@authentication_classes(_NOTIF_AUTH)
 @permission_classes([IsAuthenticated])
 def alliance_join_notification(request):
     """Send alliance join email notification"""

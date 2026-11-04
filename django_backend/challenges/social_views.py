@@ -8,7 +8,7 @@ import logging
 from django.utils import timezone
 from django.db import transaction
 from rest_framework import status
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, authentication_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from channels.layers import get_channel_layer
@@ -20,9 +20,24 @@ from .models import (
     QAChallenge, QAAnswer,
     XPointsLedger, XPOINTS_ENTRY_COST, XPOINTS_EARN,
 )
+from users.firebase_token_auth import FirebaseTokenAuthentication
 
 logger = logging.getLogger(__name__)
 channel_layer = get_channel_layer()
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  Shared auth classes
+# ─────────────────────────────────────────────────────────────────────────────
+# Public (AllowAny) views use only FirebaseTokenAuthentication — it never raises
+# on a bad/expired token, it just returns None. This prevents a stale DRF token
+# in localStorage from triggering AuthenticationFailed (401) before DRF even
+# checks the AllowAny permission class.
+_PUBLIC_AUTH  = [FirebaseTokenAuthentication]
+
+# Write views still need the full stack so both Firebase and DRF token users work.
+from rest_framework.authentication import TokenAuthentication, SessionAuthentication
+_PRIVATE_AUTH = [FirebaseTokenAuthentication, TokenAuthentication, SessionAuthentication]
 
 
 def _creator_obj(user):
@@ -49,6 +64,7 @@ def _creator_obj(user):
 # ─────────────────────────────────────────────────────────────────────────────
 
 @api_view(['GET'])
+@authentication_classes(_PRIVATE_AUTH)
 @permission_classes([IsAuthenticated])
 def xpoints_balance(request):
     """Return the current user's xP balance."""
@@ -61,6 +77,7 @@ def xpoints_balance(request):
 # ─────────────────────────────────────────────────────────────────────────────
 
 @api_view(['GET'])
+@authentication_classes(_PUBLIC_AUTH)
 @permission_classes([AllowAny])
 def poll_list(request):
     """List all active polls with vote counts."""
@@ -94,6 +111,7 @@ def poll_list(request):
 
 
 @api_view(['GET'])
+@authentication_classes(_PUBLIC_AUTH)
 @permission_classes([AllowAny])
 def poll_detail(request, poll_id):
     """Return one active poll and the requesting user's vote state."""
@@ -126,6 +144,7 @@ def poll_detail(request, poll_id):
 
 
 @api_view(['POST'])
+@authentication_classes(_PRIVATE_AUTH)
 @permission_classes([IsAuthenticated])
 def create_poll(request):
     """Create a new poll challenge."""
@@ -151,6 +170,7 @@ def create_poll(request):
 
 
 @api_view(['POST'])
+@authentication_classes(_PRIVATE_AUTH)
 @permission_classes([IsAuthenticated])
 def cast_poll_vote(request, poll_id):
     """
@@ -193,6 +213,7 @@ def cast_poll_vote(request, poll_id):
 
 
 @api_view(['DELETE'])
+@authentication_classes(_PRIVATE_AUTH)
 @permission_classes([IsAuthenticated])
 def delete_poll(request, poll_id):
     """Delete a poll — only the creator can do this."""
@@ -213,6 +234,7 @@ def delete_poll(request, poll_id):
 # ─────────────────────────────────────────────────────────────────────────────
 
 @api_view(['GET'])
+@authentication_classes(_PUBLIC_AUTH)
 @permission_classes([AllowAny])
 def debate_list(request):
     """List all active debates with participant counts and recent comments."""
@@ -260,6 +282,7 @@ def debate_list(request):
 
 
 @api_view(['GET'])
+@authentication_classes(_PUBLIC_AUTH)
 @permission_classes([AllowAny])
 def debate_detail(request, debate_id):
     """Return one active debate, its participants, and recent comments."""
@@ -307,6 +330,7 @@ def debate_detail(request, debate_id):
 
 
 @api_view(['POST'])
+@authentication_classes(_PRIVATE_AUTH)
 @permission_classes([IsAuthenticated])
 def create_debate(request):
     """Create a new debate challenge."""
@@ -333,6 +357,7 @@ def create_debate(request):
 
 
 @api_view(['POST'])
+@authentication_classes(_PRIVATE_AUTH)
 @permission_classes([IsAuthenticated])
 def join_debate(request, debate_id):
     """
@@ -368,6 +393,7 @@ def join_debate(request, debate_id):
 
 
 @api_view(['POST'])
+@authentication_classes(_PRIVATE_AUTH)
 @permission_classes([IsAuthenticated])
 def post_debate_comment(request, debate_id):
     """
@@ -464,6 +490,7 @@ def _broadcast_poll_vote(poll_id: str, vote_counts: dict, total_votes: int):
 
 
 @api_view(['DELETE'])
+@authentication_classes(_PRIVATE_AUTH)
 @permission_classes([IsAuthenticated])
 def delete_debate(request, debate_id):
     """Delete a debate — only the creator can do this."""
@@ -484,6 +511,7 @@ def delete_debate(request, debate_id):
 # ─────────────────────────────────────────────────────────────────────────────
 
 @api_view(['GET'])
+@authentication_classes(_PUBLIC_AUTH)
 @permission_classes([AllowAny])
 def qa_list(request):
     """List all active Q&A challenges with latest answers."""
@@ -515,6 +543,7 @@ def qa_list(request):
 
 
 @api_view(['GET'])
+@authentication_classes(_PUBLIC_AUTH)
 @permission_classes([AllowAny])
 def qa_detail(request, qa_id):
     """Return one active Q&A challenge and its recent answers."""
@@ -552,6 +581,7 @@ def qa_detail(request, qa_id):
 
 
 @api_view(['POST'])
+@authentication_classes(_PRIVATE_AUTH)
 @permission_classes([IsAuthenticated])
 def create_qa(request):
     """
@@ -583,6 +613,7 @@ def create_qa(request):
 
 
 @api_view(['POST'])
+@authentication_classes(_PRIVATE_AUTH)
 @permission_classes([IsAuthenticated])
 def post_qa_answer(request, qa_id):
     """
@@ -638,6 +669,7 @@ def _broadcast_qa(qa_id: str, payload: dict):
 
 
 @api_view(['DELETE'])
+@authentication_classes(_PRIVATE_AUTH)
 @permission_classes([IsAuthenticated])
 def delete_qa(request, qa_id):
     """Delete a Q&A challenge — only the creator can do this."""

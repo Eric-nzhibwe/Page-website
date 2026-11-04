@@ -48,7 +48,7 @@ class PostViewSet(viewsets.ModelViewSet):
 
     serializer_class = PostSerializer
     permission_classes = [IsAuthenticated]
-    authentication_classes = [TokenAuthentication, SessionAuthentication]
+    authentication_classes = [FirebaseTokenAuthentication, TokenAuthentication, SessionAuthentication]
     pagination_class = StandardResultsSetPagination
 
     def get_parsers(self):
@@ -445,7 +445,7 @@ class CommentViewSet(viewsets.ModelViewSet):
 
     serializer_class = CommentSerializer
     permission_classes = [IsAuthenticated]
-    authentication_classes = [TokenAuthentication, SessionAuthentication]
+    authentication_classes = [FirebaseTokenAuthentication, TokenAuthentication, SessionAuthentication]
 
     def get_queryset(self):
         post_id = self.request.query_params.get('post_id')
@@ -696,7 +696,7 @@ class StoryViewSet(viewsets.ModelViewSet):
     """
     serializer_class = StorySerializer
     permission_classes = [IsAuthenticated]
-    authentication_classes = [TokenAuthentication, SessionAuthentication]
+    authentication_classes = [FirebaseTokenAuthentication, TokenAuthentication, SessionAuthentication]
     pagination_class = StandardResultsSetPagination
 
     def get_parsers(self):
