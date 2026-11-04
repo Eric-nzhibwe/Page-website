@@ -635,6 +635,10 @@ def post_qa_answer(request, qa_id):
     if not ledger.spend(XPOINTS_ENTRY_COST):
         return Response({'error': f'Need {XPOINTS_ENTRY_COST} xP to answer.'}, status=402)
 
+    # One answer per user — enforce before spending xP
+    if QAAnswer.objects.filter(qa=qa, user=request.user).exists():
+        return Response({'error': 'You have already answered this question.'}, status=409)
+
     answer = QAAnswer.objects.create(qa=qa, user=request.user, text=text)
     ledger.earn(XPOINTS_EARN)
 

@@ -639,6 +639,8 @@ class QAAnswer(models.Model):
     class Meta:
         db_table = 'qa_answers'
         ordering = ['-created_at']
+        # One answer per user per Q&A — enforced at the DB level
+        unique_together = [('qa', 'user')]
 
     def __str__(self):
         return f'{self.user.username} on {self.qa.title}'

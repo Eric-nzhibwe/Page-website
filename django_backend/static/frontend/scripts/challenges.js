@@ -1444,27 +1444,36 @@ function _currentUsername() {
     try { return JSON.parse(localStorage.getItem('pageUser') || '{}').username || ''; } catch { return ''; }
 }
 
-function _creatorAvatarHTML(creator, size = 32) {
-    /* Renders a profile photo <img> or an fa-user icon fallback.
-       `creator` shape: { username, avatar_url, display_name, id } — or just a plain string username. */
+function _creatorAvatarHTML(creator, size = 36) {
+    /* Renders a profile photo <img> or a coloured initial fallback.
+       `creator` shape: { username, avatar_url, profile_image_url, display_name, id }
+       — or just a plain string username. */
     if (!creator) return `<span class="sc-avatar-icon"><i class="fas fa-user"></i></span>`;
 
     const username    = (typeof creator === 'string') ? creator : (creator.username || '?');
-    const avatarUrl   = (typeof creator === 'object') ? (creator.avatar_url || '') : '';
+    // Accept both field names the API may return
+    const avatarUrl   = (typeof creator === 'object')
+        ? (creator.avatar_url || creator.profile_image_url || creator.profile_image || '')
+        : '';
     const displayName = (typeof creator === 'object') ? (creator.display_name || username) : username;
     const userId      = (typeof creator === 'object') ? (creator.id || '') : '';
     const profileHref = userId ? `user.html?id=${encodeURIComponent(userId)}` : `user.html?username=${encodeURIComponent(username)}`;
+
+    // Colour-keyed initial fallback
+    const colours = ['#7c3aed','#db2777','#0891b2','#d97706','#059669','#dc2626','#0284c7','#9333ea'];
+    const colorBg = colours[username.split('').reduce((s,c)=>s+c.charCodeAt(0),0) % colours.length];
+    const initial  = (displayName[0] || '?').toUpperCase();
+    const fallback = `<span class="sc-avatar-initial" style="background:${colorBg};" aria-hidden="true">${initial}</span>`;
 
     if (avatarUrl) {
         return `<a href="${profileHref}" class="sc-creator-link" title="${escHtml(displayName)}">
             <img src="${escHtml(avatarUrl)}" alt="${escHtml(displayName)}"
                  class="sc-avatar-img" width="${size}" height="${size}"
-                 onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'sc-avatar-icon',innerHTML:'<i class=\\'fas fa-user\\'></i>'}))">
+                 onerror="this.outerHTML='${fallback.replace(/'/g, "\\'")}'"
+                 loading="lazy">
         </a>`;
     }
-    return `<a href="${profileHref}" class="sc-creator-link" title="${escHtml(displayName)}">
-        <span class="sc-avatar-icon"><i class="fas fa-user"></i></span>
-    </a>`;
+    return `<a href="${profileHref}" class="sc-creator-link" title="${escHtml(displayName)}">${fallback}</a>`;
 }
 
 function _renderDebateCard(c) {
@@ -1590,125 +1599,368 @@ function _renderPollCard(c) {
     </div>`;
 }
 
-function _renderQACard(c) {
-    const id      = c.id;
-    const answers = (c.answers || []);
-    const isOwner = c.created_by === _currentUsername();
-    const currentUser = _currentUsername();
+// ── QA avatar colour palette (vivid, distinct hues) ──────────────────────────
+const _QA_PALETTE = [
+    ['#7c3aed','#a78bfa'], // violet
+    ['#db2777','#f472b6'], // pink
+    ['#0891b2','#22d3ee'], // cyan
+    ['#d97706','#fbbf24'], // amber
+    ['#059669','#34d399'], // emerald
+    ['#dc2626','#f87171'], // red
+    ['#7c3aed','#c084fc'], // purple
+    ['#0284c7','#38bdf8'], // sky
+];
+function _qaUserColors(username) {
+    const idx = username.split('').reduce((s, ch) => s + ch.charCodeAt(0), 0) % _QA_PALETTE.length;
+    return _QA_PALETTE[idx];
+}
 
-    const deleteBtn = isOwner
-        ? `<button class="social-card-delete-btn" onclick="deleteSocialChallenge('qa','${id}','${escHtml(c.title)}')" title="Delete Q&A"><i class="fas fa-trash"></i></button>`
+// ── Per-card state: track who has answered (one per user) ─────────────────────
+const _qaAnsweredCards = new Map(); // id → Set of usernames who answered
+const _qaWsSockets     = new Map(); // id → WebSocket instance
+
+function _qaMarkAnswered(cardId, username) {
+    if (!_qaAnsweredCards.has(cardId)) _qaAnsweredCards.set(cardId, new Set());
+    _qaAnsweredCards.get(cardId).add(username);
+}
+
+function _qaHasAnswered(cardId, username) {
+    return _qaAnsweredCards.has(cardId) && _qaAnsweredCards.get(cardId).has(username);
+}
+
+// ── Seed answered state from the initial answers list ─────────────────────────
+function _qaInitAnsweredState(cardId, answers) {
+    for (const a of answers) _qaMarkAnswered(cardId, a.user);
+}
+
+// ── WebSocket connection per QA card ─────────────────────────────────────────
+function _qaConnectWS(cardId) {
+    if (_qaWsSockets.has(cardId)) return;
+    try {
+        const wsProto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsHost  = location.hostname === 'localhost' || location.hostname === '127.0.0.1'
+            ? `${location.hostname}:8000`
+            : location.host;
+        const ws = new WebSocket(`${wsProto}//${wsHost}/ws/qa/${cardId}/`);
+
+        ws.onmessage = (e) => {
+            try {
+                const msg = JSON.parse(e.data);
+                if (msg.type !== 'qa_answer') return;
+                const p = msg.payload || {};
+                // Deduplicate: don't re-render if this user's bubble already exists
+                if (_qaHasAnswered(cardId, p.user)) return;
+                _qaMarkAnswered(cardId, p.user);
+                _appendQAAnswer(cardId, p, { now: false });
+            } catch (_) {}
+        };
+
+        ws.onclose = () => {
+            _qaWsSockets.delete(cardId);
+            // Reconnect after 4s (handles Render sleep / network blips)
+            setTimeout(() => _qaConnectWS(cardId), 4000);
+        };
+
+        _qaWsSockets.set(cardId, ws);
+    } catch (_) { /* WS not available in this env */ }
+}
+
+// ── Build a single chat bubble ────────────────────────────────────────────────
+function _renderQABubble(a, currentUser, creatorUsername) {
+    const isOwn      = a.user === currentUser;
+    const isCreator  = a.user === creatorUsername;
+    const [bg, light] = _qaUserColors(a.user);
+    const initial    = (a.user[0] || '?').toUpperCase();
+    const avatarUrl  = a.avatar_url || a.profile_image_url || '';
+
+    const avatarInner = avatarUrl
+        ? `<img src="${escHtml(avatarUrl)}" alt="${escHtml(a.user)}" class="qa-bubble-avatar-img" onerror="this.outerHTML='<span>${escHtml(initial)}</span>'">`
+        : `<span>${escHtml(initial)}</span>`;
+
+    const creatorTick = isCreator
+        ? `<span class="qa-creator-tick" title="Question creator"><i class="fas fa-crown"></i></span>`
         : '';
-    const avatarHTML = _creatorAvatarHTML(c.creator || c.created_by);
-    const detailUrl  = `challenge.html?id=${encodeURIComponent(id)}&type=qa`;
 
-    // ── Optional image toggle ─────────────────────────────────────────────
-    const imgSection = c.image_url ? `
-        <div class="qa-img-preview-wrap" id="qaImgWrap_${id}">
-            <button class="qa-img-toggle-btn" onclick="toggleQAImage('${id}')" aria-expanded="false">
-                <i class="fas fa-image"></i> View Image
-            </button>
-            <div class="qa-img-panel" id="qaImgPanel_${id}" style="display:none;">
-                <img src="${escHtml(c.image_url)}" alt="Challenge image" class="qa-preview-img"
-                    loading="lazy"
-                    onerror="this.closest('.qa-img-panel').style.display='none'">
+    return `<div class="qa-live-msg${isOwn ? ' own' : ''}" role="listitem" data-user="${escHtml(a.user)}">
+        <div class="qa-bubble-avatar" style="--qa-avatar-bg:${bg};" aria-hidden="true">${avatarInner}</div>
+        <div class="qa-live-bubble">
+            <div class="qa-bubble-meta">
+                <span class="qa-live-user" style="color:${isOwn ? 'rgba(255,255,255,0.9)' : light};">${escHtml(a.user)}</span>
+                ${creatorTick}
+                ${a.created_at ? `<time class="qa-live-time">${escHtml(_qaTimeAgo(a.created_at))}</time>` : ''}
             </div>
-        </div>` : '';
-
-    // ── Last 3 answers rendered as glass bubbles ──────────────────────────
-    const answersHTML = answers.slice(-3).map(a => {
-        const isOwn = a.user === currentUser;
-        const hue   = a.user.split('').reduce((s, ch) => s + ch.charCodeAt(0), 0) % 360;
-        return `<div class="qa-live-msg${isOwn ? ' own' : ''}">
-            <div class="qa-live-avatar" style="background:hsl(${hue},55%,40%);">${a.user[0].toUpperCase()}</div>
-            <div class="qa-live-bubble">
-                <span class="qa-live-user">${escHtml(a.user)}</span>
-                <span class="qa-live-text">${escHtml(a.text)}</span>
-            </div>
-        </div>`;
-    }).join('');
-
-    // ── Participant mini-avatars (last 4 unique answerers) ────────────────
-    const uniqueUsers = [...new Set(answers.map(a => a.user))].slice(-4);
-    const participantAvatars = uniqueUsers.length ? `
-        <div class="qa-participants">
-            <div class="qa-participant-avatars">
-                ${uniqueUsers.map(u => {
-                    const hue = u.split('').reduce((s, ch) => s + ch.charCodeAt(0), 0) % 360;
-                    return `<span class="qa-participant-pip" style="background:hsl(${hue},55%,40%);" title="${escHtml(u)}">${u[0].toUpperCase()}</span>`;
-                }).join('')}
-            </div>
-            <span class="qa-answer-count">${answers.length} answer${answers.length !== 1 ? 's' : ''}</span>
-        </div>` : '';
-
-    return `<div class="challenge-card qa-glass-card" data-status="active" data-category="qa" data-id="${id}">
-
-        <!-- Header: creator + type badge -->
-        <div class="qa-header-bar">
-            <div class="qa-creator-row">
-                ${avatarHTML}
-                <span class="sc-creator-name">
-                    <a href="${c.creator?.id ? `user.html?id=${encodeURIComponent(c.creator.id)}` : `user.html?username=${encodeURIComponent(c.created_by)}`}"
-                       class="sc-creator-name-link">${escHtml(c.creator?.display_name || c.created_by)}</a>
-                </span>
-            </div>
-            <span class="qa-type-label"><i class="fas fa-question-circle"></i> Q&amp;A</span>
-        </div>
-
-        <!-- Question text -->
-        <p class="qa-question">${escHtml(c.title)}</p>
-        ${c.description ? `<p class="qa-description">${escHtml(c.description)}</p>` : ''}
-
-        <!-- Optional image -->
-        ${imgSection}
-
-        <!-- Live answers feed (glassmorphism pane) -->
-        <div class="qa-live-pane" id="qaLive_${id}">
-            ${answersHTML || `<p class="qa-empty-hint"><i class="fas fa-comment-dots"></i> No answers yet — be first!</p>`}
-        </div>
-
-        <!-- Participants strip -->
-        ${participantAvatars}
-
-        <!-- Input row -->
-        <div class="qa-input-row">
-            <input class="qa-type-input" placeholder="Share your answer…" id="qaInput_${id}"
-                   maxlength="280"
-                   onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();_chSubmitQA('${id}')}"
-                   oninput="this.closest('.challenge-card').querySelector('.qa-char-counter').textContent=this.value.length+'/280'">
-            <button class="qa-send-btn" onclick="_chSubmitQA('${id}')" title="Send answer" aria-label="Send answer">
-                <i class="fas fa-paper-plane"></i>
-            </button>
-        </div>
-        <div class="qa-char-counter">0/280</div>
-
-        <!-- Footer -->
-        <div class="qa-card-footer">
-            <div class="qa-meta">
-                <span><i class="fas fa-clock"></i> ${_fmtDur(c.duration_days)} left</span>
-                ${c.prize_amount && parseFloat(c.prize_amount) > 0
-                    ? `<span class="qa-prize-badge"><i class="fas fa-trophy"></i> K${parseFloat(c.prize_amount).toFixed(0)}</span>`
-                    : ''}
-            </div>
-            <div style="display:flex;align-items:center;gap:8px;">
-                <a href="${detailUrl}" class="sc-detail-link"><i class="fas fa-expand-alt"></i> Full page</a>
-                ${deleteBtn}
-            </div>
+            <span class="qa-live-text">${escHtml(a.text)}</span>
         </div>
     </div>`;
 }
 
+function _renderQACard(c) {
+    const id           = c.id;
+    const answers      = (c.answers || []);
+    const isOwner      = c.created_by === _currentUsername();
+    const currentUser  = _currentUsername();
+    const detailUrl    = `challenge.html?id=${encodeURIComponent(id)}&type=qa`;
+
+    // Seed one-answer-per-user state from existing answers
+    _qaInitAnsweredState(id, answers);
+    // Connect WebSocket for live updates
+    _qaConnectWS(id);
+
+    const deleteBtn = isOwner
+        ? `<button class="social-card-delete-btn qa-delete-btn" onclick="deleteSocialChallenge('qa','${id}','${escHtml(c.title)}')" title="Delete Q&A" aria-label="Delete"><i class="fas fa-trash-alt"></i></button>`
+        : '';
+
+    // ── Creator info ─────────────────────────────────────────────────────
+    const creator      = c.creator || {};
+    const creatorName  = escHtml(creator.display_name || c.created_by || 'Unknown');
+    const creatorUser  = creator.username || c.created_by || '';
+    const creatorHref  = creator.id
+        ? `user.html?id=${encodeURIComponent(creator.id)}`
+        : `user.html?username=${encodeURIComponent(creatorUser)}`;
+    const creatorAvUrl = creator.avatar_url || creator.profile_image_url || creator.profile_image || '';
+    const creatorColours= _qaUserColors(creatorUser || creatorName);
+    const creatorInitial= (creatorName[0] || '?').toUpperCase();
+
+    // ── Difficulty / prize ────────────────────────────────────────────────
+    const diff       = (c.difficulty || 'easy').toLowerCase();
+    const diffLabel  = diff.charAt(0).toUpperCase() + diff.slice(1);
+    const diffClass  = `qa-diff-${diff}`;
+    const prizeBadge = c.prize_amount && parseFloat(c.prize_amount) > 0
+        ? `<span class="qa-prize-chip"><i class="fas fa-coins"></i> K${parseFloat(c.prize_amount).toFixed(0)}</span>`
+        : '';
+
+    // ── Image reveal ─────────────────────────────────────────────────────
+    const imgSection = c.image_url ? `
+        <div class="qa-img-preview-wrap" id="qaImgWrap_${id}">
+            <button class="qa-img-toggle-btn" onclick="toggleQAImage('${id}')" aria-expanded="false" aria-controls="qaImgPanel_${id}">
+                <i class="fas fa-image"></i><span>View image</span><i class="fas fa-chevron-down qa-img-caret"></i>
+            </button>
+            <div class="qa-img-panel" id="qaImgPanel_${id}" hidden>
+                <img src="${escHtml(c.image_url)}" alt="Challenge image" class="qa-preview-img"
+                     loading="lazy" onerror="this.closest('.qa-img-panel').hidden=true">
+            </div>
+        </div>` : '';
+
+    // ── Chat bubbles ──────────────────────────────────────────────────────
+    const answersHTML = answers.slice(-12).map(a => _renderQABubble(a, currentUser, creatorUser)).join('');
+
+    // ── Participant strip ─────────────────────────────────────────────────
+    const uniqueUsers  = [...new Set(answers.map(a => a.user))];
+    const visibleUsers = uniqueUsers.slice(0, 5);
+    const overflow     = uniqueUsers.length > 5 ? uniqueUsers.length - 5 : 0;
+
+    const pipsHTML = visibleUsers.map(u => {
+        const [bg] = _qaUserColors(u);
+        return `<span class="qa-participant-pip" style="--qa-pip-bg:${bg};" title="${escHtml(u)}">${u[0].toUpperCase()}</span>`;
+    }).join('') + (overflow ? `<span class="qa-participant-pip qa-pip-overflow">+${overflow}</span>` : '');
+
+    // ── Already-answered state for current user ───────────────────────────
+    const userAlreadyAnswered = _qaHasAnswered(id, currentUser);
+    const inputDisabledAttr   = userAlreadyAnswered ? 'disabled' : '';
+    const inputPlaceholder    = userAlreadyAnswered ? 'You already answered ✓' : 'Share your answer…';
+
+    return `<div class="challenge-card qa-glass-card" data-status="active" data-category="qa" data-id="${id}" role="article" aria-label="Q&A: ${escHtml(c.title)}">
+
+        <!-- ── Chat-app header: blurred creator cover ── -->
+        <div class="qa-chat-header">
+            ${creatorAvUrl
+                ? `<div class="qa-chat-cover" style="background-image:url('${escHtml(creatorAvUrl)}');"></div>`
+                : `<div class="qa-chat-cover qa-chat-cover-gradient" style="--qa-c1:${creatorColours[0]};--qa-c2:${creatorColours[1]};"></div>`
+            }
+            <div class="qa-chat-header-overlay">
+                <div class="qa-chat-header-left">
+                    <a href="${creatorHref}" class="qa-chat-avatar-link">
+                        ${creatorAvUrl
+                            ? `<img src="${escHtml(creatorAvUrl)}" class="qa-chat-avatar" alt="${creatorName}" onerror="this.outerHTML='<div class=\\'qa-chat-avatar qa-chat-avatar-initial\\'>${creatorInitial}</div>'">`
+                            : `<div class="qa-chat-avatar qa-chat-avatar-initial" style="background:${creatorColours[0]};">${creatorInitial}</div>`
+                        }
+                        <span class="qa-online-ring"></span>
+                    </a>
+                    <div class="qa-chat-header-info">
+                        <a href="${creatorHref}" class="qa-chat-room-name">${creatorName}</a>
+                        <span class="qa-chat-room-sub">
+                            <span class="qa-live-dot"></span>
+                            ${answers.length} participant${answers.length !== 1 ? 's' : ''}
+                        </span>
+                    </div>
+                </div>
+                <div class="qa-chat-header-right">
+                    <span class="qa-diff-badge ${diffClass}">${diffLabel}</span>
+                    ${deleteBtn}
+                </div>
+            </div>
+        </div>
+
+        <!-- ── Question bubble (pinned message style) ── -->
+        <div class="qa-question-pin">
+            <i class="fas fa-thumbtack qa-pin-icon" aria-hidden="true"></i>
+            <div class="qa-question-content">
+                <p class="qa-question">${escHtml(c.title)}</p>
+                ${c.description ? `<p class="qa-description">${escHtml(c.description)}</p>` : ''}
+            </div>
+            ${prizeBadge}
+        </div>
+
+        ${imgSection}
+
+        <!-- ── Live answers pane ── -->
+        <div class="qa-live-pane" id="qaLive_${id}" role="log" aria-live="polite" aria-label="Answers">
+            ${answersHTML || `<div class="qa-empty-hint">
+                <div class="qa-empty-icon"><i class="fas fa-comments"></i></div>
+                <span>Start the conversation</span>
+                <small>Be the first to answer!</small>
+            </div>`}
+        </div>
+
+        <!-- ── Participant strip ── -->
+        <div class="qa-participants">
+            <div class="qa-participant-avatars" role="list" aria-label="Participants">
+                ${pipsHTML}
+            </div>
+            <span class="qa-answer-count" id="qaCount_${id}">
+                <i class="fas fa-comment-dots"></i>
+                ${answers.length} answer${answers.length !== 1 ? 's' : ''}
+            </span>
+        </div>
+
+        <!-- ── Chat-style input bar ── -->
+        <div class="qa-input-tray" id="qaInputTray_${id}">
+            <div class="qa-input-pill ${userAlreadyAnswered ? 'qa-input-disabled' : ''}">
+                <input class="qa-type-input"
+                       placeholder="${inputPlaceholder}"
+                       id="qaInput_${id}"
+                       maxlength="280"
+                       aria-label="Your answer"
+                       ${inputDisabledAttr}
+                       onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();_chSubmitQA('${id}')}"
+                       oninput="_qaOnInput(this,'${id}')">
+            </div>
+            <button class="qa-send-btn" id="qaSend_${id}"
+                    onclick="_chSubmitQA('${id}')"
+                    title="${userAlreadyAnswered ? 'Already answered' : 'Send answer'}"
+                    aria-label="Send answer"
+                    ${userAlreadyAnswered ? 'disabled style="opacity:0.35;cursor:not-allowed;"' : 'disabled'}>
+                <i class="fas fa-paper-plane"></i>
+            </button>
+        </div>
+
+        <!-- ── Footer ── -->
+        <div class="qa-card-footer">
+            <span class="qa-meta-time"><i class="fas fa-hourglass-half"></i> ${_fmtDur(c.duration_days)} left</span>
+            <a href="${detailUrl}" class="qa-fullpage-btn" aria-label="Open full page">
+                <i class="fas fa-expand-alt"></i> Full page
+            </a>
+        </div>
+    </div>`;
+}
+
+function _qaOnInput(input, id) {
+    const val     = input.value.trim();
+    const sendBtn = document.getElementById(`qaSend_${id}`);
+    if (sendBtn) sendBtn.disabled = val.length === 0;
+}
+
+function _qaTimeAgo(value) {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    const seconds = Math.max(0, Math.floor((Date.now() - date.getTime()) / 1000));
+    if (seconds < 45) return 'now';
+    if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
+    if (seconds < 86400) return `${Math.floor(seconds / 3600)}h`;
+    return `${Math.floor(seconds / 86400)}d`;
+}
+
+function _appendQAAnswer(id, answer, options = {}) {
+    const pane = document.getElementById(`qaLive_${id}`);
+    if (!pane) return false;
+
+    const user = answer?.user || answer?.username || 'Guest';
+
+    // One-answer-per-user: skip if this user is already shown
+    if (!options.own && _qaHasAnswered(id, user)) return false;
+
+    // Remove empty-state hint
+    pane.querySelector('.qa-empty-hint')?.remove();
+
+    // Register this user as having answered
+    _qaMarkAnswered(id, user);
+
+    const currentUser   = _currentUsername();
+    const creatorUser   = pane.closest('.challenge-card')?.querySelector('.qa-chat-room-name')?.textContent?.trim() || '';
+    const isOwn         = options.own || user === currentUser;
+    const isCreator     = user === creatorUser;
+    const [bg, light]   = _qaUserColors(user);
+    const initial       = (user[0] || '?').toUpperCase();
+    const avatarUrl     = answer.avatar_url || answer.profile_image_url || '';
+
+    const avatarInner = avatarUrl
+        ? `<img src="${escHtml(avatarUrl)}" alt="${escHtml(user)}" class="qa-bubble-avatar-img" onerror="this.outerHTML='<span>${escHtml(initial)}</span>'">`
+        : `<span>${escHtml(initial)}</span>`;
+
+    const creatorTick = isCreator
+        ? `<span class="qa-creator-tick" title="Question creator"><i class="fas fa-crown"></i></span>` : '';
+
+    const el = document.createElement('div');
+    el.className = `qa-live-msg${isOwn ? ' own' : ''}`;
+    el.setAttribute('role', 'listitem');
+    el.dataset.user = user;
+    el.innerHTML = `
+        <div class="qa-bubble-avatar" style="--qa-avatar-bg:${bg};" aria-hidden="true">${avatarInner}</div>
+        <div class="qa-live-bubble">
+            <div class="qa-bubble-meta">
+                <span class="qa-live-user" style="color:${isOwn ? 'rgba(255,255,255,0.9)' : light};">${escHtml(user)}</span>
+                ${creatorTick}
+                <time class="qa-live-time">${escHtml(options.now ? 'now' : _qaTimeAgo(answer?.created_at) || '')}</time>
+            </div>
+            <span class="qa-live-text">${escHtml(answer?.text || '')}</span>
+        </div>`;
+
+    pane.appendChild(el);
+
+    // Cap at 15 messages
+    const messages = pane.querySelectorAll('.qa-live-msg');
+    if (messages.length > 15) messages[0].remove();
+    pane.scrollTo({ top: pane.scrollHeight, behavior: options.now ? 'smooth' : 'auto' });
+
+    // Update answer counter
+    const count = document.getElementById(`qaCount_${id}`)
+               || pane.closest('.challenge-card')?.querySelector('.qa-answer-count');
+    if (count) {
+        const match = count.textContent.match(/\d+/);
+        const next  = match ? Number(match[0]) + 1 : 1;
+        count.innerHTML = `<i class="fas fa-comment-dots"></i> ${next} answer${next === 1 ? '' : 's'}`;
+    }
+
+    // Update participant pip strip
+    const pipWrap = pane.closest('.challenge-card')?.querySelector('.qa-participant-avatars');
+    if (pipWrap && !isOwn) {
+        const alreadyPipped = pipWrap.querySelector(`[title="${CSS.escape(user)}"]`);
+        if (!alreadyPipped) {
+            const [pipBg] = _qaUserColors(user);
+            const pip = document.createElement('span');
+            pip.className = 'qa-participant-pip';
+            pip.style.setProperty('--qa-pip-bg', pipBg);
+            pip.title = user;
+            pip.textContent = initial;
+            pipWrap.appendChild(pip);
+        }
+    }
+
+    return true;
+}
+
 function toggleQAImage(id) {
     const panel = document.getElementById(`qaImgPanel_${id}`);
-    const btn = document.querySelector(`#qaImgWrap_${id} .qa-img-toggle-btn`);
+    const btn   = document.querySelector(`#qaImgWrap_${id} .qa-img-toggle-btn`);
     if (!panel) return;
-    const isOpen = panel.style.display !== 'none';
-    panel.style.display = isOpen ? 'none' : 'block';
+    const isOpen = !panel.hidden;
+    panel.hidden = isOpen;
     if (btn) {
         btn.setAttribute('aria-expanded', String(!isOpen));
-        btn.innerHTML = isOpen
-            ? '<i class="fas fa-image"></i> View Image'
-            : '<i class="fas fa-eye-slash"></i> Hide Image';
+        const caret = btn.querySelector('.qa-img-caret');
+        if (caret) caret.style.transform = isOpen ? '' : 'rotate(180deg)';
+        const label = btn.querySelector('span');
+        if (label) label.textContent = isOpen ? 'View image' : 'Hide image';
     }
 }
 
@@ -1842,23 +2094,65 @@ async function _chCastPollVote(id, optionIndex, btn) {
 }
 
 async function _chSubmitQA(id) {
-    const input = document.getElementById(`qaInput_${id}`);
-    const text = input?.value.trim();
-    if (!text) return;
-    const username = (() => { try { return JSON.parse(localStorage.getItem('pageUser') || '{}').username || 'You'; } catch { return 'You'; } })();
-    const hue = username.split('').reduce((s, c) => s + c.charCodeAt(0), 0) % 360;
-    const pane = document.getElementById(`qaLive_${id}`);
-    if (pane) {
-        const el = document.createElement('div');
-        el.className = 'qa-live-msg own';
-        el.innerHTML = `<div class="qa-live-avatar" style="background:hsl(${hue},50%,38%);">${username[0]}</div>
-            <div class="qa-live-bubble"><span class="qa-live-user">${escHtml(username)}</span><span class="qa-live-text">${escHtml(text)}</span></div>`;
-        pane.appendChild(el);
-        pane.scrollTop = pane.scrollHeight;
+    const input   = document.getElementById(`qaInput_${id}`);
+    const sendBtn = document.getElementById(`qaSend_${id}`);
+    const text    = input?.value.trim();
+    if (!text || input?.disabled) return;
+
+    const username = (() => {
+        try { return JSON.parse(localStorage.getItem('pageUser') || '{}').username || 'You'; }
+        catch { return 'You'; }
+    })();
+
+    // Front-end one-answer guard
+    if (_qaHasAnswered(id, username)) {
+        _qaLockInput(id);
+        return;
     }
+
+    // Optimistic render + lock immediately
+    _qaMarkAnswered(id, username);
+    _appendQAAnswer(id, { user: username, text }, { own: true, now: true });
     input.value = '';
-    await _chPost(`${_CH_API}/qa/${id}/answer/`, { text }).catch(() => { });
-    showToast('+0.5 xP for answering! 💬', 'success');
+    _qaLockInput(id);
+
+    // Sending state on button
+    sendBtn?.classList.add('sending');
+
+    try {
+        await _chPost(`${_CH_API}/qa/${id}/answer/`, { text });
+        showToast('+0.5 xP for answering! 💬', 'success');
+    } catch (err) {
+        const msg = err?.message || '';
+        if (msg.includes('already answered') || msg.includes('409')) {
+            // Server confirms already answered — input stays locked
+        } else {
+            showToast('Could not send your answer. Please try again.', 'error');
+            // Rollback: allow re-submission
+            _qaAnsweredCards.get(id)?.delete(username);
+            _qaUnlockInput(id, input);
+        }
+    } finally {
+        sendBtn?.classList.remove('sending');
+    }
+}
+
+function _qaLockInput(id) {
+    const input   = document.getElementById(`qaInput_${id}`);
+    const sendBtn = document.getElementById(`qaSend_${id}`);
+    const pill    = document.querySelector(`#qaInputTray_${id} .qa-input-pill`);
+    if (input)   { input.disabled = true; input.placeholder = 'You already answered ✓'; }
+    if (sendBtn) { sendBtn.disabled = true; sendBtn.style.opacity = '0.35'; sendBtn.style.cursor = 'not-allowed'; }
+    if (pill)    pill.classList.add('qa-input-disabled');
+}
+
+function _qaUnlockInput(id, inputEl) {
+    const input   = inputEl || document.getElementById(`qaInput_${id}`);
+    const sendBtn = document.getElementById(`qaSend_${id}`);
+    const pill    = document.querySelector(`#qaInputTray_${id} .qa-input-pill`);
+    if (input)   { input.disabled = false; input.placeholder = 'Share your answer…'; }
+    if (sendBtn) { sendBtn.disabled = true; sendBtn.style.opacity = ''; sendBtn.style.cursor = ''; }
+    if (pill)    pill.classList.remove('qa-input-disabled');
 }
 
 // ── Debate Live Modal ─────────────────────────────────────────────────────────
