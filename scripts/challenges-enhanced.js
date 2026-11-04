@@ -1356,12 +1356,13 @@ async function loadAndRenderChallenges() {
                 pane.innerHTML = '';
                 (q.answers || []).slice(-8).forEach(a => {
                     const el = document.createElement('div');
-                    el.className = 'qa-live-msg';
+                    const currentUser = (typeof _currentUsername === 'function') ? _currentUsername() : '';
+                    el.className = `qa-live-msg${a.user === currentUser ? ' own' : ''}`;
                     el.innerHTML = `
-                        <div class="qa-live-avatar">${a.user[0].toUpperCase()}</div>
+                        <div class="qa-live-avatar">${escHtml(a.user[0].toUpperCase())}</div>
                         <div class="qa-live-bubble">
-                            <span class="qa-live-user">${a.user}</span>
-                            <span class="qa-live-text">${a.text}</span>
+                            <span class="qa-live-user">${escHtml(a.user)}</span>
+                            <span class="qa-live-text">${escHtml(a.text)}</span>
                         </div>`;
                     pane.appendChild(el);
                 });
@@ -1629,20 +1630,9 @@ function openQAWS(qaId) {
             try {
                 const msg = JSON.parse(e.data);
                 if (msg.type === 'qa_answer' && msg.payload) {
-                    const pane = document.getElementById(`qaLive_${qaId}`);
-                    if (!pane) return;
-                    const el = document.createElement('div');
-                    el.className = 'qa-live-msg';
-                    el.innerHTML = `
-                        <div class="qa-live-avatar">${msg.payload.user[0].toUpperCase()}</div>
-                        <div class="qa-live-bubble">
-                            <span class="qa-live-user">${msg.payload.user}</span>
-                            <span class="qa-live-text">${msg.payload.text}</span>
-                        </div>`;
-                    pane.appendChild(el);
-                    pane.scrollTop = pane.scrollHeight;
-                    const msgs = pane.querySelectorAll('.qa-live-msg');
-                    if (msgs.length > 12) msgs[0].remove();
+                    if (typeof _appendQAAnswer === 'function') {
+                        _appendQAAnswer(qaId, msg.payload, { now: true });
+                    }
                 }
             } catch (_) { }
         };
@@ -1717,18 +1707,9 @@ function _pollQAAnswers(qaId) {
         const answers = qa.answers || [];
         if (answers.length > lastCount) {
             answers.slice(lastCount).forEach(a => {
-                const el = document.createElement('div');
-                el.className = 'qa-live-msg';
-                el.innerHTML = `
-                    <div class="qa-live-avatar">${a.user[0].toUpperCase()}</div>
-                    <div class="qa-live-bubble">
-                        <span class="qa-live-user">${a.user}</span>
-                        <span class="qa-live-text">${a.text}</span>
-                    </div>`;
-                pane.appendChild(el);
-                pane.scrollTop = pane.scrollHeight;
-                const msgs = pane.querySelectorAll('.qa-live-msg');
-                if (msgs.length > 12) msgs[0].remove();
+                if (typeof _appendQAAnswer === 'function') {
+                    _appendQAAnswer(qaId, a, { now: true });
+                }
             });
             lastCount = answers.length;
         }

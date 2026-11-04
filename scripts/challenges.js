@@ -1615,8 +1615,8 @@ function _renderQACard(c) {
             </div>
         </div>` : '';
 
-    // ── Last 3 answers rendered as glass bubbles ──────────────────────────
-    const answersHTML = answers.slice(-3).map(a => {
+    // ── Chat-style answer stream ──────────────────────────────────────────
+    const answersHTML = answers.slice(-8).map(a => {
         const isOwn = a.user === currentUser;
         const hue   = a.user.split('').reduce((s, ch) => s + ch.charCodeAt(0), 0) % 360;
         return `<div class="qa-live-msg${isOwn ? ' own' : ''}">
@@ -1624,6 +1624,7 @@ function _renderQACard(c) {
             <div class="qa-live-bubble">
                 <span class="qa-live-user">${escHtml(a.user)}</span>
                 <span class="qa-live-text">${escHtml(a.text)}</span>
+                ${a.created_at ? `<time class="qa-live-time">${escHtml(_qaTimeAgo(a.created_at))}</time>` : ''}
             </div>
         </div>`;
     }).join('');
@@ -1652,7 +1653,7 @@ function _renderQACard(c) {
                        class="sc-creator-name-link">${escHtml(c.creator?.display_name || c.created_by)}</a>
                 </span>
             </div>
-            <span class="qa-type-label"><i class="fas fa-question-circle"></i> Q&amp;A</span>
+            <div class="qa-room-status"><span class="qa-live-dot"></span><span>Live room</span></div>
         </div>
 
         <!-- Question text -->
@@ -1672,16 +1673,16 @@ function _renderQACard(c) {
 
         <!-- Input row -->
         <div class="qa-input-row">
-            <input class="qa-type-input" placeholder="Share your answer…" id="qaInput_${id}"
-                   maxlength="280"
-                   onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();_chSubmitQA('${id}')}"
-                   oninput="this.closest('.challenge-card').querySelector('.qa-char-counter').textContent=this.value.length+'/280'">
+            <div class="qa-input-wrap">
+                <input class="qa-type-input" placeholder="Reply to the room…" id="qaInput_${id}"
+                       maxlength="280"
+                       onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();_chSubmitQA('${id}')}"
+                       oninput="this.closest('.qa-input-row').querySelector('.qa-char-counter').textContent=this.value.length+'/280'; this.closest('.qa-input-row').querySelector('.qa-send-btn').classList.toggle('ready', this.value.trim().length > 0)">
+                <span class="qa-char-counter">0/280</span>
+            </div>
             <button class="qa-send-btn" onclick="_chSubmitQA('${id}')" title="Send answer" aria-label="Send answer">
                 <i class="fas fa-paper-plane"></i>
             </button>
-        </div>
-        <div class="qa-char-counter">0/280</div>
-
         <!-- Footer -->
         <div class="qa-card-footer">
             <div class="qa-meta">
@@ -1696,6 +1697,49 @@ function _renderQACard(c) {
             </div>
         </div>
     </div>`;
+}
+
+function _qaTimeAgo(value) {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    const seconds = Math.max(0, Math.floor((Date.now() - date.getTime()) / 1000));
+    if (seconds < 45) return 'now';
+    if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
+    if (seconds < 86400) return `${Math.floor(seconds / 3600)}h`;
+    return `${Math.floor(seconds / 86400)}d`;
+}
+
+function _appendQAAnswer(id, answer, options = {}) {
+    const pane = document.getElementById(`qaLive_${id}`);
+    if (!pane) return false;
+
+    pane.querySelector('.qa-empty-hint')?.remove();
+    const currentUser = _currentUsername();
+    const user = answer?.user || answer?.username || 'Guest';
+    const isOwn = options.own || user === currentUser;
+    const hue = user.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0) % 360;
+    const el = document.createElement('div');
+    el.className = `qa-live-msg${isOwn ? ' own' : ''}`;
+    el.innerHTML = `
+        <div class="qa-live-avatar" style="background:hsl(${hue},55%,40%);">${escHtml(user[0]?.toUpperCase() || '?')}</div>
+        <div class="qa-live-bubble">
+            <span class="qa-live-user">${escHtml(user)}</span>
+            <span class="qa-live-text">${escHtml(answer?.text || '')}</span>
+            <time class="qa-live-time">${escHtml(options.now ? 'now' : _qaTimeAgo(answer?.created_at) || '')}</time>
+        </div>`;
+    pane.appendChild(el);
+
+    const messages = pane.querySelectorAll('.qa-live-msg');
+    if (messages.length > 12) messages[0].remove();
+    pane.scrollTo({ top: pane.scrollHeight, behavior: options.now ? 'smooth' : 'auto' });
+
+    const count = pane.closest('.challenge-card')?.querySelector('.qa-answer-count');
+    if (count) {
+        const match = count.textContent.match(/\d+/);
+        const next = match ? Number(match[0]) + 1 : 1;
+        count.textContent = `${next} answer${next === 1 ? '' : 's'}`;
+    }
+    return true;
 }
 
 function toggleQAImage(id) {
@@ -1843,22 +1887,28 @@ async function _chCastPollVote(id, optionIndex, btn) {
 
 async function _chSubmitQA(id) {
     const input = document.getElementById(`qaInput_${id}`);
+    const button = input?.closest('.qa-input-row')?.querySelector('.qa-send-btn');
     const text = input?.value.trim();
     if (!text) return;
     const username = (() => { try { return JSON.parse(localStorage.getItem('pageUser') || '{}').username || 'You'; } catch { return 'You'; } })();
-    const hue = username.split('').reduce((s, c) => s + c.charCodeAt(0), 0) % 360;
-    const pane = document.getElementById(`qaLive_${id}`);
-    if (pane) {
-        const el = document.createElement('div');
-        el.className = 'qa-live-msg own';
-        el.innerHTML = `<div class="qa-live-avatar" style="background:hsl(${hue},50%,38%);">${username[0]}</div>
-            <div class="qa-live-bubble"><span class="qa-live-user">${escHtml(username)}</span><span class="qa-live-text">${escHtml(text)}</span></div>`;
-        pane.appendChild(el);
-        pane.scrollTop = pane.scrollHeight;
-    }
+    _appendQAAnswer(id, { user: username, text }, { own: true, now: true });
     input.value = '';
-    await _chPost(`${_CH_API}/qa/${id}/answer/`, { text }).catch(() => { });
-    showToast('+0.5 xP for answering! 💬', 'success');
+    input.closest('.qa-input-row')?.querySelector('.qa-char-counter').replaceChildren(document.createTextNode('0/280'));
+    button?.classList.remove('ready');
+    button?.classList.add('sending');
+    button?.setAttribute('disabled', '');
+
+    try {
+        await _chPost(`${_CH_API}/qa/${id}/answer/`, { text });
+        showToast('+0.5 xP for answering! 💬', 'success');
+    } catch (_) {
+        showToast('Your answer could not be sent. Please try again.', 'error');
+        input.value = text;
+        input.closest('.qa-input-row')?.querySelector('.qa-char-counter').replaceChildren(document.createTextNode(`${text.length}/280`));
+    } finally {
+        button?.classList.remove('sending');
+        button?.removeAttribute('disabled');
+    }
 }
 
 // ── Debate Live Modal ─────────────────────────────────────────────────────────

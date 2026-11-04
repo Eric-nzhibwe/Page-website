@@ -236,6 +236,7 @@ body {
   font-size: 18px !important;
   transition: transform .18s, box-shadow .18s !important;
   border: 2px solid rgba(255,255,255,.6) !important;
+  cursor: pointer !important;
 }
 
 @media (min-width: 768px) {
