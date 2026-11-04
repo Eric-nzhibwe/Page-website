@@ -1590,113 +1590,177 @@ function _renderPollCard(c) {
     </div>`;
 }
 
+// ── QA avatar colour palette (vivid, distinct hues) ──────────────────────────
+const _QA_PALETTE = [
+    ['#7c3aed','#a78bfa'], // violet
+    ['#db2777','#f472b6'], // pink
+    ['#0891b2','#22d3ee'], // cyan
+    ['#d97706','#fbbf24'], // amber
+    ['#059669','#34d399'], // emerald
+    ['#dc2626','#f87171'], // red
+    ['#7c3aed','#c084fc'], // purple
+    ['#0284c7','#38bdf8'], // sky
+];
+function _qaUserColors(username) {
+    const idx = username.split('').reduce((s, ch) => s + ch.charCodeAt(0), 0) % _QA_PALETTE.length;
+    return _QA_PALETTE[idx];
+}
+
+function _renderQABubble(a, currentUser) {
+    const isOwn  = a.user === currentUser;
+    const [bg, light] = _qaUserColors(a.user);
+    const initial = (a.user[0] || '?').toUpperCase();
+    return `<div class="qa-live-msg${isOwn ? ' own' : ''}" role="listitem">
+        <div class="qa-live-avatar" style="--qa-avatar-bg:${bg};--qa-avatar-light:${light};" aria-hidden="true">${initial}</div>
+        <div class="qa-live-bubble">
+            <span class="qa-live-user" style="--qa-user-color:${isOwn ? 'rgba(255,255,255,0.85)' : light};">${escHtml(a.user)}</span>
+            <span class="qa-live-text">${escHtml(a.text)}</span>
+            ${a.created_at ? `<time class="qa-live-time">${escHtml(_qaTimeAgo(a.created_at))}</time>` : ''}
+        </div>
+    </div>`;
+}
+
 function _renderQACard(c) {
-    const id      = c.id;
-    const answers = (c.answers || []);
-    const isOwner = c.created_by === _currentUsername();
+    const id          = c.id;
+    const answers     = (c.answers || []);
+    const isOwner     = c.created_by === _currentUsername();
     const currentUser = _currentUsername();
+    const detailUrl   = `challenge.html?id=${encodeURIComponent(id)}&type=qa`;
 
     const deleteBtn = isOwner
-        ? `<button class="social-card-delete-btn" onclick="deleteSocialChallenge('qa','${id}','${escHtml(c.title)}')" title="Delete Q&A"><i class="fas fa-trash"></i></button>`
+        ? `<button class="social-card-delete-btn qa-delete-btn" onclick="deleteSocialChallenge('qa','${id}','${escHtml(c.title)}')" title="Delete Q&A" aria-label="Delete"><i class="fas fa-trash-alt"></i></button>`
         : '';
-    const avatarHTML = _creatorAvatarHTML(c.creator || c.created_by);
-    const detailUrl  = `challenge.html?id=${encodeURIComponent(id)}&type=qa`;
 
-    // ── Optional image toggle ─────────────────────────────────────────────
+    const creatorAv = _creatorAvatarHTML(c.creator || c.created_by);
+    const creatorHref = c.creator?.id
+        ? `user.html?id=${encodeURIComponent(c.creator.id)}`
+        : `user.html?username=${encodeURIComponent(c.created_by)}`;
+    const creatorName = escHtml(c.creator?.display_name || c.created_by);
+
+    // ── Difficulty badge ──────────────────────────────────────────────────
+    const diff = (c.difficulty || 'easy').toLowerCase();
+    const diffLabel = diff.charAt(0).toUpperCase() + diff.slice(1);
+    const diffClass = `qa-diff-${diff}`;
+
+    // ── Prize badge ───────────────────────────────────────────────────────
+    const prizeBadge = c.prize_amount && parseFloat(c.prize_amount) > 0
+        ? `<span class="qa-prize-chip"><i class="fas fa-coins"></i> K${parseFloat(c.prize_amount).toFixed(0)}</span>`
+        : '';
+
+    // ── Optional image reveal ─────────────────────────────────────────────
     const imgSection = c.image_url ? `
         <div class="qa-img-preview-wrap" id="qaImgWrap_${id}">
-            <button class="qa-img-toggle-btn" onclick="toggleQAImage('${id}')" aria-expanded="false">
-                <i class="fas fa-image"></i> View Image
+            <button class="qa-img-toggle-btn" onclick="toggleQAImage('${id}')" aria-expanded="false" aria-controls="qaImgPanel_${id}">
+                <i class="fas fa-image"></i><span>View image</span><i class="fas fa-chevron-down qa-img-caret"></i>
             </button>
-            <div class="qa-img-panel" id="qaImgPanel_${id}" style="display:none;">
+            <div class="qa-img-panel" id="qaImgPanel_${id}" hidden>
                 <img src="${escHtml(c.image_url)}" alt="Challenge image" class="qa-preview-img"
-                    loading="lazy"
-                    onerror="this.closest('.qa-img-panel').style.display='none'">
+                     loading="lazy" onerror="this.closest('.qa-img-panel').hidden=true">
             </div>
         </div>` : '';
 
-    // ── Chat-style answer stream ──────────────────────────────────────────
-    const answersHTML = answers.slice(-8).map(a => {
-        const isOwn = a.user === currentUser;
-        const hue   = a.user.split('').reduce((s, ch) => s + ch.charCodeAt(0), 0) % 360;
-        return `<div class="qa-live-msg${isOwn ? ' own' : ''}">
-            <div class="qa-live-avatar" style="background:hsl(${hue},55%,40%);">${a.user[0].toUpperCase()}</div>
-            <div class="qa-live-bubble">
-                <span class="qa-live-user">${escHtml(a.user)}</span>
-                <span class="qa-live-text">${escHtml(a.text)}</span>
-                ${a.created_at ? `<time class="qa-live-time">${escHtml(_qaTimeAgo(a.created_at))}</time>` : ''}
-            </div>
-        </div>`;
-    }).join('');
+    // ── Chat bubbles ──────────────────────────────────────────────────────
+    const recentAnswers = answers.slice(-10);
+    const answersHTML   = recentAnswers.map(a => _renderQABubble(a, currentUser)).join('');
 
-    // ── Participant mini-avatars (last 4 unique answerers) ────────────────
-    const uniqueUsers = [...new Set(answers.map(a => a.user))].slice(-4);
-    const participantAvatars = uniqueUsers.length ? `
-        <div class="qa-participants">
-            <div class="qa-participant-avatars">
-                ${uniqueUsers.map(u => {
-                    const hue = u.split('').reduce((s, ch) => s + ch.charCodeAt(0), 0) % 360;
-                    return `<span class="qa-participant-pip" style="background:hsl(${hue},55%,40%);" title="${escHtml(u)}">${u[0].toUpperCase()}</span>`;
+    // ── Participant stack (up to 5 unique answerers + overflow count) ─────
+    const uniqueUsers = [...new Set(answers.map(a => a.user))];
+    const visibleUsers = uniqueUsers.slice(0, 5);
+    const overflow     = uniqueUsers.length > 5 ? uniqueUsers.length - 5 : 0;
+    const participantsHTML = uniqueUsers.length ? `
+        <div class="qa-participants" aria-label="${uniqueUsers.length} participants">
+            <div class="qa-participant-avatars" role="list">
+                ${visibleUsers.map(u => {
+                    const [bg] = _qaUserColors(u);
+                    return `<span class="qa-participant-pip" style="--qa-pip-bg:${bg};" title="${escHtml(u)}" role="listitem" aria-label="${escHtml(u)}">${u[0].toUpperCase()}</span>`;
                 }).join('')}
+                ${overflow ? `<span class="qa-participant-pip qa-pip-overflow" role="listitem">+${overflow}</span>` : ''}
             </div>
-            <span class="qa-answer-count">${answers.length} answer${answers.length !== 1 ? 's' : ''}</span>
-        </div>` : '';
+            <span class="qa-answer-count" id="qaCount_${id}">
+                <i class="fas fa-message"></i>
+                ${answers.length} answer${answers.length !== 1 ? 's' : ''}
+            </span>
+        </div>` : `<div class="qa-participants qa-no-participants">
+            <span class="qa-answer-count" id="qaCount_${id}"><i class="fas fa-message"></i> 0 answers</span>
+        </div>`;
 
-    return `<div class="challenge-card qa-glass-card" data-status="active" data-category="qa" data-id="${id}">
+    return `<div class="challenge-card qa-glass-card" data-status="active" data-category="qa" data-id="${id}" role="article" aria-label="Q&A: ${escHtml(c.title)}">
 
-        <!-- Header: creator + type badge -->
+        <!-- ── Gradient accent header ── -->
+        <div class="qa-accent-header" aria-hidden="true">
+            <div class="qa-accent-icon"><i class="fas fa-comments"></i></div>
+            <div class="qa-accent-rings"></div>
+        </div>
+
+        <!-- ── Top bar: creator + live pill ── -->
         <div class="qa-header-bar">
             <div class="qa-creator-row">
-                ${avatarHTML}
-                <span class="sc-creator-name">
-                    <a href="${c.creator?.id ? `user.html?id=${encodeURIComponent(c.creator.id)}` : `user.html?username=${encodeURIComponent(c.created_by)}`}"
-                       class="sc-creator-name-link">${escHtml(c.creator?.display_name || c.created_by)}</a>
-                </span>
+                ${creatorAv}
+                <div class="qa-creator-info">
+                    <a href="${creatorHref}" class="qa-creator-name">${creatorName}</a>
+                    <time class="qa-post-time">${c.created_at ? _qaTimeAgo(c.created_at) + ' ago' : ''}</time>
+                </div>
             </div>
-            <div class="qa-room-status"><span class="qa-live-dot"></span><span>Live room</span></div>
+            <div class="qa-header-pills">
+                <span class="qa-diff-badge ${diffClass}">${diffLabel}</span>
+                <span class="qa-live-pill"><span class="qa-live-dot"></span>LIVE</span>
+            </div>
         </div>
 
-        <!-- Question text -->
-        <p class="qa-question">${escHtml(c.title)}</p>
-        ${c.description ? `<p class="qa-description">${escHtml(c.description)}</p>` : ''}
+        <!-- ── Question body ── -->
+        <div class="qa-question-body">
+            <p class="qa-question">${escHtml(c.title)}</p>
+            ${c.description ? `<p class="qa-description">${escHtml(c.description)}</p>` : ''}
+        </div>
 
-        <!-- Optional image -->
         ${imgSection}
 
-        <!-- Live answers feed (glassmorphism pane) -->
-        <div class="qa-live-pane" id="qaLive_${id}">
-            ${answersHTML || `<p class="qa-empty-hint"><i class="fas fa-comment-dots"></i> No answers yet — be first!</p>`}
+        <!-- ── Live chat pane ── -->
+        <div class="qa-live-pane" id="qaLive_${id}" role="log" aria-live="polite" aria-label="Answers">
+            ${answersHTML || `<div class="qa-empty-hint">
+                <div class="qa-empty-icon"><i class="fas fa-comment-question"></i></div>
+                <span>No answers yet</span>
+                <small>Be the first to reply!</small>
+            </div>`}
         </div>
 
-        <!-- Participants strip -->
-        ${participantAvatars}
+        <!-- ── Participant strip + count ── -->
+        ${participantsHTML}
 
-        <!-- Input row -->
-        <div class="qa-input-row">
-            <div class="qa-input-wrap">
-                <input class="qa-type-input" placeholder="Reply to the room…" id="qaInput_${id}"
+        <!-- ── Input tray ── -->
+        <div class="qa-input-tray">
+            <div class="qa-input-pill">
+                <input class="qa-type-input"
+                       placeholder="Share your answer…"
+                       id="qaInput_${id}"
                        maxlength="280"
+                       aria-label="Your answer"
                        onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();_chSubmitQA('${id}')}"
-                       oninput="this.closest('.qa-input-row').querySelector('.qa-char-counter').textContent=this.value.length+'/280'; this.closest('.qa-input-row').querySelector('.qa-send-btn').classList.toggle('ready', this.value.trim().length > 0)">
-                <span class="qa-char-counter">0/280</span>
+                       oninput="_qaOnInput(this,'${id}')">
             </div>
-            <button class="qa-send-btn" onclick="_chSubmitQA('${id}')" title="Send answer" aria-label="Send answer">
+            <button class="qa-send-btn" id="qaSend_${id}" onclick="_chSubmitQA('${id}')" title="Send answer" aria-label="Send answer" disabled>
                 <i class="fas fa-paper-plane"></i>
             </button>
-        <!-- Footer -->
+        </div>
+
+        <!-- ── Footer ── -->
         <div class="qa-card-footer">
-            <div class="qa-meta">
-                <span><i class="fas fa-clock"></i> ${_fmtDur(c.duration_days)} left</span>
-                ${c.prize_amount && parseFloat(c.prize_amount) > 0
-                    ? `<span class="qa-prize-badge"><i class="fas fa-trophy"></i> K${parseFloat(c.prize_amount).toFixed(0)}</span>`
-                    : ''}
+            <div class="qa-footer-left">
+                ${prizeBadge}
+                <span class="qa-meta-time"><i class="fas fa-hourglass-half"></i> ${_fmtDur(c.duration_days)} left</span>
             </div>
-            <div style="display:flex;align-items:center;gap:8px;">
-                <a href="${detailUrl}" class="sc-detail-link"><i class="fas fa-expand-alt"></i> Full page</a>
+            <div class="qa-footer-right">
+                <a href="${detailUrl}" class="qa-fullpage-btn" aria-label="Open full page"><i class="fas fa-expand-alt"></i></a>
                 ${deleteBtn}
             </div>
         </div>
     </div>`;
+}
+
+function _qaOnInput(input, id) {
+    const val    = input.value.trim();
+    const sendBtn = document.getElementById(`qaSend_${id}`);
+    if (sendBtn) sendBtn.disabled = val.length === 0;
 }
 
 function _qaTimeAgo(value) {
@@ -1713,46 +1777,56 @@ function _appendQAAnswer(id, answer, options = {}) {
     const pane = document.getElementById(`qaLive_${id}`);
     if (!pane) return false;
 
+    // Remove empty-state hint
     pane.querySelector('.qa-empty-hint')?.remove();
+
     const currentUser = _currentUsername();
-    const user = answer?.user || answer?.username || 'Guest';
+    const user  = answer?.user || answer?.username || 'Guest';
     const isOwn = options.own || user === currentUser;
-    const hue = user.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0) % 360;
+    const [bg, light] = _qaUserColors(user);
+    const initial = (user[0] || '?').toUpperCase();
+
     const el = document.createElement('div');
     el.className = `qa-live-msg${isOwn ? ' own' : ''}`;
+    el.setAttribute('role', 'listitem');
     el.innerHTML = `
-        <div class="qa-live-avatar" style="background:hsl(${hue},55%,40%);">${escHtml(user[0]?.toUpperCase() || '?')}</div>
+        <div class="qa-live-avatar" style="--qa-avatar-bg:${bg};--qa-avatar-light:${light};" aria-hidden="true">${escHtml(initial)}</div>
         <div class="qa-live-bubble">
-            <span class="qa-live-user">${escHtml(user)}</span>
+            <span class="qa-live-user" style="--qa-user-color:${isOwn ? 'rgba(255,255,255,0.85)' : light};">${escHtml(user)}</span>
             <span class="qa-live-text">${escHtml(answer?.text || '')}</span>
             <time class="qa-live-time">${escHtml(options.now ? 'now' : _qaTimeAgo(answer?.created_at) || '')}</time>
         </div>`;
+
     pane.appendChild(el);
 
+    // Cap at 14 messages to keep performance tight
     const messages = pane.querySelectorAll('.qa-live-msg');
-    if (messages.length > 12) messages[0].remove();
+    if (messages.length > 14) messages[0].remove();
     pane.scrollTo({ top: pane.scrollHeight, behavior: options.now ? 'smooth' : 'auto' });
 
-    const count = pane.closest('.challenge-card')?.querySelector('.qa-answer-count');
+    // Update answer counter
+    const count = document.getElementById(`qaCount_${id}`)
+               || pane.closest('.challenge-card')?.querySelector('.qa-answer-count');
     if (count) {
         const match = count.textContent.match(/\d+/);
-        const next = match ? Number(match[0]) + 1 : 1;
-        count.textContent = `${next} answer${next === 1 ? '' : 's'}`;
+        const next  = match ? Number(match[0]) + 1 : 1;
+        count.innerHTML = `<i class="fas fa-message"></i> ${next} answer${next === 1 ? '' : 's'}`;
     }
     return true;
 }
 
 function toggleQAImage(id) {
     const panel = document.getElementById(`qaImgPanel_${id}`);
-    const btn = document.querySelector(`#qaImgWrap_${id} .qa-img-toggle-btn`);
+    const btn   = document.querySelector(`#qaImgWrap_${id} .qa-img-toggle-btn`);
     if (!panel) return;
-    const isOpen = panel.style.display !== 'none';
-    panel.style.display = isOpen ? 'none' : 'block';
+    const isOpen = !panel.hidden;
+    panel.hidden = isOpen;
     if (btn) {
         btn.setAttribute('aria-expanded', String(!isOpen));
-        btn.innerHTML = isOpen
-            ? '<i class="fas fa-image"></i> View Image'
-            : '<i class="fas fa-eye-slash"></i> Hide Image';
+        const caret = btn.querySelector('.qa-img-caret');
+        if (caret) caret.style.transform = isOpen ? '' : 'rotate(180deg)';
+        const label = btn.querySelector('span');
+        if (label) label.textContent = isOpen ? 'View image' : 'Hide image';
     }
 }
 
