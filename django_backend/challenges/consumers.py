@@ -33,21 +33,24 @@ class ChallengeConsumer(AsyncWebsocketConsumer):
     """
 
     async def connect(self):
+        # Set group_name early so disconnect() is always safe
+        challenge_id = self.scope["url_route"]["kwargs"].get("challenge_id", "unknown")
+        self.group_name = f"challenge_{challenge_id}"
+
         token_key = _token_from_scope(self.scope)
         self.user, err = await _get_user_from_token(token_key)
         if err:
             await self.close(code=4001)
             return
 
-        self.challenge_id = self.scope["url_route"]["kwargs"]["challenge_id"]
-        self.group_name = f"challenge_{self.challenge_id}"
-
+        self.challenge_id = challenge_id
         await self.channel_layer.group_add(self.group_name, self.channel_name)
         await self.accept()
         logger.debug("WS connected: %s → group %s", self.channel_name, self.group_name)
 
     async def disconnect(self, close_code):
-        await self.channel_layer.group_discard(self.group_name, self.channel_name)
+        if hasattr(self, 'group_name'):
+            await self.channel_layer.group_discard(self.group_name, self.channel_name)
         logger.debug("WS disconnected: %s (code %s)", self.channel_name, close_code)
     async def receive(self, text_data):
         try:
@@ -92,19 +95,23 @@ class DebateConsumer(AsyncWebsocketConsumer):
     """
 
     async def connect(self):
+        # Set group_name early so disconnect() is always safe
+        debate_id = self.scope['url_route']['kwargs'].get('debate_id', 'unknown')
+        self.group_name = f'debate_{debate_id}'
+
         token_key = _token_from_scope(self.scope)
         self.user, err = await _get_user_from_token(token_key)
         if err:
             await self.close(code=4001)
             return
 
-        self.debate_id  = self.scope['url_route']['kwargs']['debate_id']
-        self.group_name = f'debate_{self.debate_id}'
+        self.debate_id = debate_id
         await self.channel_layer.group_add(self.group_name, self.channel_name)
         await self.accept()
 
     async def disconnect(self, close_code):
-        await self.channel_layer.group_discard(self.group_name, self.channel_name)
+        if hasattr(self, 'group_name'):
+            await self.channel_layer.group_discard(self.group_name, self.channel_name)
 
     async def receive(self, text_data):
         try:
@@ -128,19 +135,23 @@ class QAConsumer(AsyncWebsocketConsumer):
     """
 
     async def connect(self):
+        # Set group_name early so disconnect() is always safe even on auth failure
+        qa_id = self.scope['url_route']['kwargs'].get('qa_id', 'unknown')
+        self.group_name = f'qa_{qa_id}'
+
         token_key = _token_from_scope(self.scope)
         self.user, err = await _get_user_from_token(token_key)
         if err:
             await self.close(code=4001)
             return
 
-        self.qa_id      = self.scope['url_route']['kwargs']['qa_id']
-        self.group_name = f'qa_{self.qa_id}'
+        self.qa_id = qa_id
         await self.channel_layer.group_add(self.group_name, self.channel_name)
         await self.accept()
 
     async def disconnect(self, close_code):
-        await self.channel_layer.group_discard(self.group_name, self.channel_name)
+        if hasattr(self, 'group_name'):
+            await self.channel_layer.group_discard(self.group_name, self.channel_name)
 
     async def receive(self, text_data):
         try:
@@ -167,19 +178,23 @@ class PollConsumer(AsyncWebsocketConsumer):
     """
 
     async def connect(self):
+        # Set group_name early so disconnect() is always safe even on auth failure
+        poll_id = self.scope['url_route']['kwargs'].get('poll_id', 'unknown')
+        self.group_name = f'poll_{poll_id}'
+
         token_key = _token_from_scope(self.scope)
         self.user, err = await _get_user_from_token(token_key)
         if err:
             await self.close(code=4001)
             return
 
-        self.poll_id    = self.scope['url_route']['kwargs']['poll_id']
-        self.group_name = f'poll_{self.poll_id}'
+        self.poll_id = poll_id
         await self.channel_layer.group_add(self.group_name, self.channel_name)
         await self.accept()
 
     async def disconnect(self, close_code):
-        await self.channel_layer.group_discard(self.group_name, self.channel_name)
+        if hasattr(self, 'group_name'):
+            await self.channel_layer.group_discard(self.group_name, self.channel_name)
 
     async def receive(self, text_data):
         try:

@@ -1970,7 +1970,10 @@ const _CH_API = (window.location.hostname === 'localhost' || window.location.hos
     : `${window.location.origin}/api/challenges`;
 
 async function _chPost(url, body) {
-    const authHeader = window._pageAuthHeader ? window._pageAuthHeader() : null;
+    // Use async token refresh so an expired Firebase token is renewed before the call
+    const authHeader = window._pageAuthHeaderAsync
+        ? await window._pageAuthHeaderAsync()
+        : (window._pageAuthHeader ? window._pageAuthHeader() : null);
     const headers = { 'Content-Type': 'application/json' };
     if (authHeader) headers['Authorization'] = authHeader;
     const r = await fetch(url, {
@@ -1978,7 +1981,16 @@ async function _chPost(url, body) {
         headers,
         body: JSON.stringify(body),
     });
-    return { ok: r.ok, data: await r.json().catch(() => ({})) };
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) {
+        // Surface a readable error message for callers that throw on failure
+        const msg = data.detail || data.error || data.message || `HTTP ${r.status}`;
+        const err = new Error(msg);
+        err.status = r.status;
+        err.data   = data;
+        throw err;
+    }
+    return { ok: true, data };
 }
 
 async function _chJoinDebate(id, side, btn) {
@@ -1986,10 +1998,12 @@ async function _chJoinDebate(id, side, btn) {
     const picker = document.getElementById(`debatePicker_${id}`);
     if (picker) picker.querySelectorAll('.debate-pick-btn').forEach(b => b.disabled = true);
 
-    const { ok, data } = await _chPost(`${_CH_API}/debates/${id}/join/`, { side });
-
-    if (!ok) {
-        showToast(data.error || 'Could not join.', 'error');
+    let ok = false, data = {};
+    try {
+        ({ ok, data } = await _chPost(`${_CH_API}/debates/${id}/join/`, { side }));
+    } catch (err) {
+        data = err.data || {};
+        showToast(data.error || err.message || 'Could not join.', 'error');
         if (picker) picker.querySelectorAll('.debate-pick-btn').forEach(b => b.disabled = false);
         return;
     }
@@ -2043,7 +2057,9 @@ async function _chSubmitDebate(id) {
     _chAddDebateComment(id, username, text, side);
     input.value = '';
 
-    await _chPost(`${_CH_API}/debates/${id}/comment/`, { text, side }).catch(() => { });
+    await _chPost(`${_CH_API}/debates/${id}/comment/`, { text, side }).catch(err => {
+        if (err?.status === 401) showToast('Session expired — please refresh.', 'error');
+    });
 }
 
 function _chAddDebateComment(id, username, text, side) {
@@ -2079,8 +2095,14 @@ function _chAddDebateComment(id, username, text, side) {
 async function _chCastPollVote(id, optionIndex, btn) {
     const list = btn.closest('.poll-options-list');
     list.querySelectorAll('.poll-vote-btn').forEach(b => b.disabled = true);
-    const { ok, data } = await _chPost(`${_CH_API}/polls/${id}/vote/`, { option_index: optionIndex });
-    if (!ok) { showToast(data.error || 'Could not vote.', 'error'); list.querySelectorAll('.poll-vote-btn').forEach(b => b.disabled = false); return; }
+    let data;
+    try {
+        ({ data } = await _chPost(`${_CH_API}/polls/${id}/vote/`, { option_index: optionIndex }));
+    } catch (err) {
+        showToast(err.data?.error || err.message || 'Could not vote.', 'error');
+        list.querySelectorAll('.poll-vote-btn').forEach(b => b.disabled = false);
+        return;
+    }
     const total = data.total_votes || 1;
     list.querySelectorAll('.poll-vote-btn').forEach((b, i) => {
         const pct = Math.round(((data.vote_counts?.[i] || 0) / total) * 100);
