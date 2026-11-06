@@ -1074,21 +1074,21 @@ function shareProfile() {
 
 /* ── Cover ambient pulse ───────────────────────── */
 const TIER_PALETTE = {
-    Bronze:    ['#8B5E3C','#C8853A'],
-    Silver:    ['#6B7280','#9CA3AF'],
-    Gold:      ['#92660A','#D4A017'],
-    Platinum:  ['#334155','#64748B'],
-    Diamond:   ['#0C4A6E','#0EA5E9'],
-    Elite:     ['#5B21B6','#8B5CF6'],
-    Legendary: ['#7C2D12','#EA580C'],
+    Bronze:    ['#92400e','#d97706'],
+    Silver:    ['#475569','#94a3b8'],
+    Gold:      ['#92400e','#f59e0b'],
+    Platinum:  ['#1e3a5f','#60a5fa'],
+    Diamond:   ['#0c4a6e','#22d3ee'],
+    Elite:     ['#4c1d95','#a78bfa'],
+    Legendary: ['#4c1d95','#7c3aed'],
 };
 
 window.applyTierPalette = function(tier) {
     const c = TIER_PALETTE[tier] || TIER_PALETTE.Bronze;
     document.getElementById('coverArt').style.background =
-        `linear-gradient(135deg, ${c[0]} 0%, #1a2e1a 50%, ${c[1]}22 100%)`;
+        `linear-gradient(135deg, ${c[0]} 0%, #1e1b4b 50%, ${c[1]}44 100%)`;
     const ring = document.getElementById('avRing');
-    if (ring) ring.style.background = `conic-gradient(${c[1]}, transparent 70%, ${c[0]})`;
+    if (ring) ring.style.background = `conic-gradient(${c[0]}, ${c[1]}, #22d3ee, ${c[0]})`;
 };
 </script>
 
