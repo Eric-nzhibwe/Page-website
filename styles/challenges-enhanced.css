@@ -1945,31 +1945,37 @@
 .poll-footer-meta { display: none; }
 
 /* ============================================================
-   Q&A CARD — Clean White / Gray Redesign v3
-   Aesthetic: crisp white card, cool gray surfaces, violet+cyan
-   accent touches only — premium minimal feel.
-   • Clean white card with soft shadow
-   • Colorful gradient header band (slim), not a full dark cover
-   • Light gray chat pane — messages feel like paper
-   • "Own" bubbles in a soft violet pill
-   • Frosted white input bar
+   Q&A CARD — Theme-aware redesign v4
+   Uses the system's --page-primary / --theme-* tokens so the card
+   follows whatever accent color the user has selected, and
+   automatically adapts between light and dark mode.
+   Simple, professional, no hardcoded palette.
    ============================================================ */
 
-/* ── Design tokens (scoped to QA cards) ─────────────────── */
+/* ── Design tokens — all derived from the theme system ──── */
 .qa-glass-card {
-    --qa-accent:      #7c3aed;
-    --qa-accent-lt:   #a78bfa;
-    --qa-accent-bg:   rgba(124,58,237,0.07);
-    --qa-surface:     #ffffff;
-    --qa-surface-2:   #f4f5f7;
-    --qa-surface-3:   #eef0f4;
-    --qa-border:      #e2e5eb;
-    --qa-border-soft: rgba(0,0,0,0.06);
-    --qa-text-hi:     #111827;
-    --qa-text-md:     #374151;
-    --qa-text-lo:     #9ca3af;
-    --qa-green:       #16a34a;
-    --qa-gold:        #d97706;
+    /* Accent = page primary color chosen by the user */
+    --qa-accent:      var(--page-primary,     #374151);
+    --qa-accent-lt:   var(--page-primary-lt,  #4b5563);
+    --qa-accent-dk:   var(--page-primary-dk,  #1f2937);
+    --qa-accent-bg:   var(--page-glow,        rgba(55,65,81,0.10));
+
+    /* Surfaces + borders — follow light/dark theme */
+    --qa-surface:     var(--theme-surface,    #ffffff);
+    --qa-surface-2:   var(--theme-surface2,   #f0f2f5);
+    --qa-surface-3:   var(--theme-input-bg,   #e8eaed);
+    --qa-border:      var(--theme-border,     #e4e6ea);
+    --qa-border-soft: rgba(0,0,0,0.05);
+
+    /* Text */
+    --qa-text-hi:     var(--theme-text,       #1c1e21);
+    --qa-text-md:     var(--theme-text,       #1c1e21);
+    --qa-text-lo:     var(--theme-text-muted, #65676b);
+
+    /* Semantic */
+    --qa-green: #16a34a;
+    --qa-gold:  #d97706;
+    --qa-red:   #ef4444;
 }
 
 /* ── Card shell ──────────────────────────────────────────── */
@@ -1992,7 +1998,7 @@
     transform: translateY(-3px) scale(1.003);
     box-shadow:
         0 2px 6px rgba(0,0,0,0.07),
-        0 16px 48px rgba(109,40,217,0.13);
+        0 16px 48px var(--page-glow, rgba(55,65,81,0.15));
 }
 
 /* ── Header: slim gradient band ──────────────────────────── */
@@ -2014,13 +2020,13 @@
 }
 .qa-chat-cover-gradient {
     background: linear-gradient(135deg,
-        var(--qa-c1, #7c3aed) 0%,
-        var(--qa-c2, #06b6d4) 100%);
+        var(--qa-c1, var(--page-primary-dk, #1f2937)) 0%,
+        var(--qa-c2, var(--page-primary,    #374151)) 100%);
     filter: none;
     opacity: 0.92;
 }
 
-/* Soft white fade at the bottom so the card body reads white */
+/* Soft fade at the bottom so the card body reads as the surface color */
 .qa-chat-header::after {
     content: '';
     position: absolute;
@@ -2028,8 +2034,8 @@
     background: linear-gradient(
         to bottom,
         rgba(0,0,0,0.18) 0%,
-        rgba(255,255,255,0.0) 60%,
-        rgba(255,255,255,0.72) 100%
+        transparent      60%,
+        var(--qa-surface) 100%
     );
     pointer-events: none;
 }
@@ -2399,25 +2405,26 @@
     display: block;
 }
 
-/* ── Own messages: right-aligned, soft violet bubble ─────── */
+/* ── Own messages: right-aligned, accent-tinted bubble ─────── */
 .qa-live-msg.own { flex-direction: row-reverse; }
 .qa-live-msg.own .qa-live-bubble {
-    background: #ede9fe;
-    border-color: rgba(124,58,237,0.2);
+    background: var(--qa-accent-bg);
+    border-color: var(--qa-accent);
+    border-width: 1px;
     border-radius: 14px 3px 14px 14px;
-    box-shadow: 0 2px 8px rgba(124,58,237,0.12);
+    box-shadow: 0 2px 8px var(--qa-accent-bg);
 }
 .qa-live-msg.own .qa-live-bubble::before {
     left: auto;
     right: -5px;
     border-right-color: transparent;
-    border-left: 5px solid #ede9fe;
+    border-left: 5px solid var(--qa-surface);
     border-right: none;
-    filter: drop-shadow(1px 0 0 rgba(124,58,237,0.2));
+    filter: none;
 }
-.qa-live-msg.own .qa-live-text { color: #3b0764; }
-.qa-live-msg.own .qa-live-user { color: #7c3aed !important; }
-.qa-live-msg.own .qa-live-time { color: rgba(109,40,217,0.5); }
+.qa-live-msg.own .qa-live-text { color: var(--qa-text-hi); }
+.qa-live-msg.own .qa-live-user { color: var(--qa-accent) !important; }
+.qa-live-msg.own .qa-live-time { color: var(--qa-text-lo); }
 
 /* ── Participant strip ───────────────────────────────────── */
 .qa-participants {
@@ -2576,12 +2583,13 @@
     padding: 4px 10px;
     border-radius: 20px;
     background: var(--qa-accent-bg);
-    border: 1px solid rgba(124,58,237,0.18);
-    transition: background 0.18s, border-color 0.18s;
+    border: 1px solid var(--qa-accent);
+    opacity: 0.9;
+    transition: opacity 0.18s, background 0.18s;
 }
 .qa-fullpage-btn:hover {
-    background: rgba(124,58,237,0.13);
-    border-color: rgba(124,58,237,0.32);
+    opacity: 1;
+    background: var(--qa-surface-3);
 }
 
 /* Delete button */
@@ -2613,57 +2621,27 @@
     flex-shrink: 0;
 }
 
-/* ── Dark-theme overrides (invert back to rich darks) ────── */
+/* ── Dark-theme overrides — only things that can't cascade from --theme-* ── */
 [data-theme="dark"] .qa-glass-card {
-    --qa-surface:     #16192a;
-    --qa-surface-2:   #1a1d2e;
-    --qa-surface-3:   #1e2235;
-    --qa-border:      rgba(255,255,255,0.07);
-    --qa-border-soft: rgba(255,255,255,0.03);
-    --qa-text-hi:     #f1f5f9;
-    --qa-text-md:     #cbd5e1;
-    --qa-text-lo:     #475569;
-    background: var(--qa-surface);
-    border-color: var(--qa-border);
     box-shadow:
-        0 8px 32px rgba(0,0,0,0.5),
+        0 8px 32px rgba(0,0,0,0.45),
         0 2px 8px rgba(0,0,0,0.3);
 }
 [data-theme="dark"] .qa-glass-card:hover {
     box-shadow:
-        0 20px 60px rgba(109,40,217,0.22),
+        0 20px 60px var(--page-glow, rgba(55,65,81,0.3)),
         0 8px 32px rgba(0,0,0,0.45);
 }
+/* In dark mode own-message bubble uses the primary color fully opaque */
 [data-theme="dark"] .qa-live-msg.own .qa-live-bubble {
-    background: linear-gradient(135deg, #5b21b6, #0e7490);
-    border-color: transparent;
+    background: var(--page-primary-dk, #1f2937);
+    border-color: var(--page-primary, #374151);
 }
-[data-theme="dark"] .qa-live-msg.own .qa-live-bubble::before {
-    border-left-color: #0e7490;
-    filter: none;
-}
-[data-theme="dark"] .qa-live-msg.own .qa-live-text { color: #fff; }
-[data-theme="dark"] .qa-live-msg.own .qa-live-user { color: rgba(255,255,255,0.9) !important; }
-[data-theme="dark"] .qa-live-msg.own .qa-live-time { color: rgba(255,255,255,0.45); }
-[data-theme="dark"] .qa-live-bubble::before { border-right-color: var(--qa-surface-3); }
-[data-theme="dark"] .qa-chat-header::after {
-    background: linear-gradient(
-        to bottom,
-        rgba(0,0,0,0.3) 0%,
-        rgba(22,25,42,0.85) 100%
-    );
-}
-[data-theme="dark"] .qa-participant-pip { border-color: var(--qa-surface); }
+[data-theme="dark"] .qa-live-msg.own .qa-live-text { color: var(--theme-text-inverse, #fff); }
+[data-theme="dark"] .qa-participant-pip { border-color: var(--theme-surface, #242526); }
 [data-theme="dark"] .qa-diff-easy   { background: rgba(16,185,129,0.2); border-color: rgba(16,185,129,0.5); color: #10b981; }
 [data-theme="dark"] .qa-diff-medium { background: rgba(245,158,11,0.2); border-color: rgba(245,158,11,0.5); color: #f59e0b; }
 [data-theme="dark"] .qa-diff-hard   { background: rgba(239,68,68,0.2);  border-color: rgba(239,68,68,0.5);  color: #ef4444; }
-
-/* ── Light-theme explicit (redundant but ensures specificity) */
-[data-theme="light"] .qa-glass-card {
-    background: #fff;
-    border-color: #e2e5eb;
-}
-[data-theme="light"] .qa-participant-pip { border-color: #fff; }
 
 /* ── Legacy class shims — keep old references working ─────── */
 .qa-card-body { padding: 0; }
