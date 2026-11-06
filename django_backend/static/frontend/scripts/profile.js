@@ -159,7 +159,7 @@ function pfBootAvatar() {
 ═══════════════════════════════════════════════════════════════ */
 async function pfLoadOwnProfile() {
     try {
-        const res = await fetch(`${PF_API}/auth/stats/`, { headers: pfHeaders() });
+        const res = await fetch(`${PF_API}/auth/stats/`, { headers: await pfHeadersAsync() });
         if (!res.ok) throw new Error('Failed');
         const data = await res.json();
         _pfData = data.user;
@@ -189,7 +189,7 @@ async function pfLoadOtherProfile(userId) {
 
     try {
         // Fetch the user's public profile via discover endpoint
-        const res = await fetch(`${PF_API}/auth/discover/?limit=200`, { headers: pfHeaders() });
+        const res = await fetch(`${PF_API}/auth/discover/?limit=200`, { headers: await pfHeadersAsync() });
         if (res.ok) {
             const list = await res.json();
             const users = Array.isArray(list) ? list : (list.results || []);
@@ -317,7 +317,7 @@ function pfRenderOther(u) {
 ═══════════════════════════════════════════════════════════════ */
 async function pfLoadFollowCounts(userId, checkFollowing = false) {
     try {
-        const res = await fetch(`${PF_API}/social/follows/counts/?user_id=${userId}`, { headers: pfHeaders() });
+        const res = await fetch(`${PF_API}/social/follows/counts/?user_id=${userId}`, { headers: await pfHeadersAsync() });
         if (!res.ok) return;
         const data = await res.json();
         pfSet('pfFollowers', data.followers_count ?? 0);
@@ -654,7 +654,7 @@ async function pfDeleteAccount() {
 ═══════════════════════════════════════════════════════════════ */
 async function pfLoadActivities() {
     try {
-        const res = await fetch(`${PF_API}/auth/activities/?limit=100`, { headers: pfHeaders() });
+        const res = await fetch(`${PF_API}/auth/activities/?limit=100`, { headers: await pfHeadersAsync() });
         if (!res.ok) throw new Error('Failed');
         const data = await res.json();
         _pfAllActs = (data.results || data);
@@ -735,7 +735,7 @@ async function pfLoadFollowList(tab) {
 
     try {
         let users = [];
-        const res = await fetch(endpoint, { headers: pfHeaders() });
+        const res = await fetch(endpoint, { headers: await pfHeadersAsync() });
         if (res.ok) {
             const data = await res.json();
             const rows = Array.isArray(data) ? data : (data.results || data.followers || data.following || []);
