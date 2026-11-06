@@ -78,7 +78,7 @@ let currentUser = null;
 // ── Avatar boot — runs on every page that loads app.js ───────────────────────
 // Reads the saved profile photo from localStorage and stamps it into every
 // fa-circle-user / fa-user placeholder on the page.
-// Also listens for page:avatarChanged so a photo uploaded on user.html
+// Also listens for page:avatarChanged so a photo uploaded on profile.html
 // propagates to the nav bar on index.html without a page reload.
 (function _avatarBoot() {
     function _stamp(imgUrl, username) {
@@ -965,7 +965,7 @@ window.showView = showView;
 
 // Navigate to profile page
 function viewProfile() {
-    window.location.href = '/pages/user.html';
+    window.location.href = '/pages/profile.html';
 }
 window.viewProfile = viewProfile;
 

@@ -909,7 +909,7 @@ async function deleteAccount() {
 })();
 
 // ── Avatar sync: react to uploads triggered from user.js or any other page ───
-// When a user uploads a photo on user.html, the page:avatarChanged event fires
+// When a user uploads a photo on profile.html, the page:avatarChanged event fires
 // and settings.js (loaded on index.html) updates every avatar slot including
 // the settings modal preview.
 window.addEventListener('page:avatarChanged', e => {

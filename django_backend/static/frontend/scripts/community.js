@@ -453,7 +453,7 @@ async function loadTopMembers(sortBy, btn) {
             const statLbl  = sortBy === 'wins' ? 'Wins' : sortBy === 'streak' ? 'Day streak' : 'Prestige';
 
             return `
-            <div class="top-row" onclick="window.location.href='user.html'">
+            <div class="top-row" onclick="window.location.href='profile.html'">
                 <div class="top-rank rank-${rankCls}">${rank <= 3 ? '<i class="fas fa-trophy"></i>' : rank}</div>
                 <div class="top-av">
                     ${m.profile_image

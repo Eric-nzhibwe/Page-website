@@ -1457,7 +1457,7 @@ function _creatorAvatarHTML(creator, size = 36) {
         : '';
     const displayName = (typeof creator === 'object') ? (creator.display_name || username) : username;
     const userId      = (typeof creator === 'object') ? (creator.id || '') : '';
-    const profileHref = userId ? `user.html?id=${encodeURIComponent(userId)}` : `user.html?username=${encodeURIComponent(username)}`;
+    const profileHref = userId ? `profile.html?id=${encodeURIComponent(userId)}` : `profile.html?username=${encodeURIComponent(username)}`;
 
     // Colour-keyed initial fallback
     const colours = ['#7c3aed','#db2777','#0891b2','#d97706','#059669','#dc2626','#0284c7','#9333ea'];
@@ -1493,7 +1493,7 @@ function _renderDebateCard(c) {
         <div class="debate-card-header">
             <div style="display:flex;align-items:center;gap:8px;">
                 ${avatarHTML}
-                <span class="sc-creator-name"><a href="${c.creator?.id ? `user.html?id=${encodeURIComponent(c.creator.id)}` : `user.html?username=${encodeURIComponent(c.created_by)}`}" class="sc-creator-name-link">${escHtml(c.creator?.display_name || c.created_by)}</a></span>
+                <span class="sc-creator-name"><a href="${c.creator?.id ? `profile.html?id=${encodeURIComponent(c.creator.id)}` : `profile.html?username=${encodeURIComponent(c.created_by)}`}" class="sc-creator-name-link">${escHtml(c.creator?.display_name || c.created_by)}</a></span>
             </div>
             <span style="font-size:11px;color:#888;">${dur}</span>
         </div>
@@ -1580,7 +1580,7 @@ function _renderPollCard(c) {
         <div class="poll-header-bar">
             <div style="display:flex;align-items:center;gap:8px;">
                 ${avatarHTML}
-                <span class="sc-creator-name"><a href="${c.creator?.id ? `user.html?id=${encodeURIComponent(c.creator.id)}` : `user.html?username=${encodeURIComponent(c.created_by)}`}" class="sc-creator-name-link">${escHtml(c.creator?.display_name || c.created_by)}</a></span>
+                <span class="sc-creator-name"><a href="${c.creator?.id ? `profile.html?id=${encodeURIComponent(c.creator.id)}` : `profile.html?username=${encodeURIComponent(c.created_by)}`}" class="sc-creator-name-link">${escHtml(c.creator?.display_name || c.created_by)}</a></span>
             </div>
             <span class="poll-type-label"><i class="fas fa-poll"></i> Poll</span>
         </div>
@@ -1715,8 +1715,8 @@ function _renderQACard(c) {
     const creatorName  = escHtml(creator.display_name || c.created_by || 'Unknown');
     const creatorUser  = creator.username || c.created_by || '';
     const creatorHref  = creator.id
-        ? `user.html?id=${encodeURIComponent(creator.id)}`
-        : `user.html?username=${encodeURIComponent(creatorUser)}`;
+        ? `profile.html?id=${encodeURIComponent(creator.id)}`
+        : `profile.html?username=${encodeURIComponent(creatorUser)}`;
     const creatorAvUrl = creator.avatar_url || creator.profile_image_url || creator.profile_image || '';
     const creatorColours= _qaUserColors(creatorUser || creatorName);
     const creatorInitial= (creatorName[0] || '?').toUpperCase();

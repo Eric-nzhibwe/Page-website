@@ -295,8 +295,8 @@ function renderCreator(creator, fallbackUsername) {
     // Profile URL: prefer /pages/profile/[id] if ID is available,
     // otherwise fall back to username query param
     const profileHref = userId
-        ? `user.html?id=${encodeURIComponent(userId)}`
-        : `user.html?username=${encodeURIComponent(username)}`;
+        ? `profile.html?id=${encodeURIComponent(userId)}`
+        : `profile.html?username=${encodeURIComponent(username)}`;
 
     // Wire up both the avatar link and the name link
     document.getElementById('cdCreatorLink').href     = profileHref;

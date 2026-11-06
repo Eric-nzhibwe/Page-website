@@ -304,7 +304,7 @@ function applyAvatarEverywhere(imgUrl) {
 
     // ── Named IDs ─────────────────────────────────────────────
     [
-        'avatarDisplay',          // user.html main profile avatar
+        'avatarDisplay',          // profile.html main profile avatar
         'modalAvatar',            // edit profile modal
         'umAvatar',               // user menu avatar
         'navAvatar',              // nav avatar
@@ -467,7 +467,7 @@ async function saveProfile() {
 //
 // Why: multipart uploads require a fresh auth token at the moment of the
 // fetch(). Firebase tokens expire hourly and the Firebase SDK is only
-// initialized on auth.html — so token refresh is unreliable on user.html.
+// initialized on auth.html — so token refresh is unreliable on profile.html.
 // Sending JSON lets the DRF TokenAuthentication path handle auth, which
 // never expires (the DRF token is always stored alongside the Firebase one).
 //

@@ -448,7 +448,7 @@ function _renderOnlineUsers(users) {
                 <span class="chip-badge"></span>
               </div>
               <span class="chip-name">${_rtEsc((u.display_name || u.username).split(' ')[0])}</span>`;
-            chip.onclick = () => window.location.href = `pages/user.html?id=${u.id}`;
+            chip.onclick = () => window.location.href = `pages/profile.html?id=${u.id}`;
             mobileContainer.appendChild(chip);
         });
     }
@@ -1281,7 +1281,7 @@ async function _pollUserStats() {
         patch('userMenuBalance',   balance);
         patch('userMenuTier',      `${tier} Tier`);
 
-        // Profile page stats (user.html via user.js set())
+        // Profile page stats (profile.html via user.js set())
         patch('statPrestige',      pts);
         patch('statLevel',         level);
         patch('statStreak',        streak);

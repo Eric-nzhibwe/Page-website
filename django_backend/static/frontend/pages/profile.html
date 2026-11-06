@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile</title>
+    <link rel="icon" type="image/jpeg" href="../images/Page.jpeg">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../styles/styles.css">
+    <link rel="stylesheet" href="../styles/icon-nav.css">
+    <link rel="stylesheet" href="../styles/profile.css">
+    <!-- Theme engine must be first -->
+    <script src="../scripts/theme.js"></script>
+</head>
+<body>
+
+<!-- ═══════════ NAVBAR ═══════════ -->
+<header class="pf-header">
+    <div class="pf-header-left">
+        <div class="pf-logo" onclick="window.location.href='../index.html'">
+            <i class="fas fa-fire-flame-curved"></i>PAGE
+        </div>
+    </div>
+    <nav class="pf-nav">
+        <button class="pf-nav-btn" onclick="window.location.href='../index.html'" title="Home">
+            <i class="fas fa-house"></i>
+        </button>
+        <button class="pf-nav-btn" onclick="window.location.href='challenges.html'" title="Challenges">
+            <i class="fas fa-trophy"></i>
+        </button>
+        <button class="pf-nav-btn" onclick="window.location.href='messenger.html'" title="Messages">
+            <i class="fas fa-comment-dots"></i>
+        </button>
+        <button class="pf-nav-btn active" title="Profile">
+            <i class="fas fa-circle-user"></i>
+        </button>
+    </nav>
+    <div class="pf-header-right">
+        <div class="pf-nav-avatar" id="navAvatar" data-current-user-avatar
+             onclick="window.location.href='profile.html'" title="Profile"></div>
+    </div>
+</header>
+
+<!-- ═══════════ MAIN PAGE ═══════════ -->
+<div class="pf-page">
+
+    <!-- ── HERO COVER ── -->
+    <div class="pf-cover" id="pfCover">
+        <div class="pf-cover-overlay"></div>
+        <!-- Own profile: show change cover button -->
+        <label class="pf-cover-btn" id="pfCoverBtn" for="pfCoverInput" title="Change cover">
+            <i class="fas fa-camera"></i> Change Cover
+        </label>
+        <input type="file" id="pfCoverInput" accept="image/*" style="display:none" onchange="pfUploadCover(this)">
+    </div>
+
+    <!-- ── PROFILE IDENTITY STRIP ── -->
+    <div class="pf-identity">
+        <!-- Avatar -->
+        <div class="pf-av-wrap" id="pfAvWrap">
+            <div class="pf-av-ring" id="pfAvRing"></div>
+            <div class="pf-av" id="pfAv" data-current-user-avatar></div>
+            <label class="pf-av-cam" id="pfAvCam" for="pfAvatarInput" title="Change photo">
+                <i class="fas fa-camera"></i>
+            </label>
+            <input type="file" id="pfAvatarInput" accept="image/*" style="display:none" onchange="pfUploadAvatar(this)">
+            <div class="pf-level" id="pfLevel"><span>Lv</span><b>1</b></div>
+        </div>
+
+        <!-- Info -->
+        <div class="pf-info">
+            <div class="pf-name-row">
+                <h1 class="pf-name pf-sk" id="pfName">Loading…</h1>
+                <span class="pf-verified" id="pfVerified" style="display:none">
+                    <i class="fas fa-circle-check"></i>
+                </span>
+            </div>
+            <div class="pf-handle pf-sk" id="pfHandle">@username</div>
+            <div class="pf-chips">
+                <span class="pf-chip pf-chip--tier pf-sk" id="pfTier">Bronze</span>
+                <span class="pf-chip pf-chip--rank pf-sk" id="pfRank">Novice</span>
+            </div>
+            <p class="pf-bio pf-sk" id="pfBio"></p>
+        </div>
+
+        <!-- Actions -->
+        <div class="pf-actions" id="pfActions">
+            <!-- Own profile -->
+            <button class="pf-btn pf-btn--primary" id="pfEditBtn" onclick="pfOpenEdit()">
+                <i class="fas fa-pen"></i> Edit Profile
+            </button>
+            <!-- Other user profile -->
+            <button class="pf-btn pf-btn--primary" id="pfFollowBtn" style="display:none" onclick="pfToggleFollow()">
+                <i class="fas fa-user-plus"></i> Follow
+            </button>
+        </div>
+    </div>
+
+    <!-- ── STATS BAR ── -->
+    <div class="pf-stats" id="pfStats">
+        <div class="pf-stat pf-sk">
+            <span class="pf-stat-val" id="pfPrestige">0</span>
+            <span class="pf-stat-key">Prestige</span>
+        </div>
+        <div class="pf-stat pf-sk">
+            <span class="pf-stat-val" id="pfLevel2">1</span>
+            <span class="pf-stat-key">Level</span>
+        </div>
+        <div class="pf-stat pf-sk">
+            <span class="pf-stat-val" id="pfStreak">0 <i class="fas fa-fire"></i></span>
+            <span class="pf-stat-key">Streak</span>
+        </div>
+        <div class="pf-stat pf-sk">
+            <span class="pf-stat-val" id="pfWins">0</span>
+            <span class="pf-stat-key">Wins</span>
+        </div>
+        <div class="pf-stat pf-sk">
+            <span class="pf-stat-val" id="pfAccuracy">0%</span>
+            <span class="pf-stat-key">Accuracy</span>
+        </div>
+        <div class="pf-stat pf-sk">
+            <span class="pf-stat-val" id="pfEarnings">K0</span>
+            <span class="pf-stat-key">Earned</span>
+        </div>
+        <div class="pf-stat pf-stat--link pf-sk" onclick="pfOpenFollowers('followers')" title="Followers">
+            <span class="pf-stat-val" id="pfFollowers">0</span>
+            <span class="pf-stat-key">Followers</span>
+        </div>
+        <div class="pf-stat pf-stat--link pf-sk" onclick="pfOpenFollowers('following')" title="Following">
+            <span class="pf-stat-val" id="pfFollowing">0</span>
+            <span class="pf-stat-key">Following</span>
+        </div>
+    </div>
+
+    <!-- ── MAIN CONTENT ── -->
+    <div class="pf-grid">
+
+        <!-- LEFT COLUMN -->
+        <aside class="pf-sidebar">
+
+            <!-- About card -->
+            <div class="pf-card">
+                <h3 class="pf-card-title"><i class="fas fa-id-card-clip"></i> About</h3>
+                <p class="pf-about-bio pf-sk" id="pfAboutBio">No bio yet.</p>
+                <ul class="pf-detail-list">
+                    <li><i class="fas fa-calendar-days"></i>
+                        <span>Joined <b class="pf-sk" id="pfJoined">—</b></span></li>
+                    <li><i class="fas fa-envelope"></i>
+                        <span class="pf-sk" id="pfEmail">—</span></li>
+                    <li id="pfLocationRow" style="display:none">
+                        <i class="fas fa-map-marker-alt"></i>
+                        <span id="pfLocation">—</span></li>
+                    <li id="pfWebsiteRow" style="display:none">
+                        <i class="fas fa-globe"></i>
+                        <a id="pfWebsite" href="#" target="_blank" rel="noopener">—</a></li>
+                </ul>
+            </div>
+
+            <!-- Prestige card -->
+            <div class="pf-card">
+                <h3 class="pf-card-title"><i class="fas fa-crown"></i> Prestige Path</h3>
+                <div class="pf-xp-nums">
+                    <span class="pf-xp-cur pf-sk" id="pfXpCur">0</span>
+                    <span class="pf-xp-sep">/ <span id="pfXpNext">200</span> pts</span>
+                </div>
+                <div class="pf-xp-track">
+                    <div class="pf-xp-fill" id="pfXpFill">
+                        <div class="pf-xp-shine"></div>
+                    </div>
+                </div>
+                <!-- Tier progression dots -->
+                <div class="pf-tier-nodes" id="pfTierNodes">
+                    <div class="pf-tnode" data-tier="Bronze"><div class="pf-tdot"></div><small>Bronze</small></div>
+                    <div class="pf-tline"></div>
+                    <div class="pf-tnode" data-tier="Silver"><div class="pf-tdot"></div><small>Silver</small></div>
+                    <div class="pf-tline"></div>
+                    <div class="pf-tnode" data-tier="Gold"><div class="pf-tdot"></div><small>Gold</small></div>
+                    <div class="pf-tline"></div>
+                    <div class="pf-tnode" data-tier="Platinum"><div class="pf-tdot"></div><small>Plat</small></div>
+                    <div class="pf-tline"></div>
+                    <div class="pf-tnode" data-tier="Diamond"><div class="pf-tdot"></div><small>Diam</small></div>
+                    <div class="pf-tline"></div>
+                    <div class="pf-tnode" data-tier="Elite"><div class="pf-tdot"></div><small>Elite</small></div>
+                    <div class="pf-tline"></div>
+                    <div class="pf-tnode" data-tier="Legendary"><div class="pf-tdot pf-tdot--legend"></div><small>Legend</small></div>
+                </div>
+            </div>
+
+            <!-- Danger zone — own profile only -->
+            <div class="pf-card pf-card--danger" id="pfDangerZone">
+                <h3 class="pf-card-title"><i class="fas fa-triangle-exclamation"></i> Danger Zone</h3>
+                <p class="pf-danger-desc">These actions are permanent and cannot be undone.</p>
+                <div class="pf-danger-actions">
+                    <button class="pf-btn pf-btn--danger-outline" onclick="pfConfirmDeleteAccount()">
+                        <i class="fas fa-trash-alt"></i> Delete Account
+                    </button>
+                </div>
+            </div>
+
+        </aside>
+
+        <!-- RIGHT COLUMN -->
+        <main class="pf-main">
+
+            <!-- Performance card -->
+            <div class="pf-card">
+                <div class="pf-card-header">
+                    <h3 class="pf-card-title"><i class="fas fa-chart-mixed"></i> Performance</h3>
+                    <div class="pf-tabs" id="pfPerfTabs">
+                        <button class="pf-tab active" data-tab="pf-tab-overview">Overview</button>
+                        <button class="pf-tab" data-tab="pf-tab-donut">Chart</button>
+                    </div>
+                </div>
+
+                <div class="pf-tab-panel active" id="pf-tab-overview">
+                    <div class="pf-kpi-grid">
+                        <div class="pf-kpi" style="--kc:var(--page-primary)">
+                            <div class="pf-kpi-val pf-sk" id="pfKpiTotal">0</div>
+                            <div class="pf-kpi-lbl">Submitted</div>
+                        </div>
+                        <div class="pf-kpi" style="--kc:#16a34a">
+                            <div class="pf-kpi-val correct pf-sk" id="pfKpiCorrect">0</div>
+                            <div class="pf-kpi-lbl">Correct</div>
+                        </div>
+                        <div class="pf-kpi" style="--kc:#dc2626">
+                            <div class="pf-kpi-val wrong pf-sk" id="pfKpiWrong">0</div>
+                            <div class="pf-kpi-lbl">Incorrect</div>
+                        </div>
+                        <div class="pf-kpi" style="--kc:#d97706">
+                            <div class="pf-kpi-val gold pf-sk" id="pfKpiWins">0</div>
+                            <div class="pf-kpi-lbl">Wins</div>
+                        </div>
+                    </div>
+                    <div class="pf-acc-row">
+                        <span><i class="fas fa-bullseye"></i> Success rate</span>
+                        <span class="pf-acc-pct pf-sk" id="pfAccPct">0%</span>
+                    </div>
+                    <div class="pf-acc-track">
+                        <div class="pf-acc-fill" id="pfAccFill"><div class="pf-xp-shine"></div></div>
+                    </div>
+                </div>
+
+                <div class="pf-tab-panel" id="pf-tab-donut">
+                    <div class="pf-donut-layout">
+                        <div class="pf-donut-box">
+                            <svg class="pf-donut" viewBox="0 0 140 140">
+                                <circle class="pf-dring bg" cx="70" cy="70" r="52"/>
+                                <circle class="pf-dring correct" id="pfDCorrect" cx="70" cy="70" r="52"/>
+                                <circle class="pf-dring wrong"   id="pfDWrong"   cx="70" cy="70" r="52"/>
+                            </svg>
+                            <div class="pf-donut-label">
+                                <div class="pf-donut-pct pf-sk" id="pfDonutPct">0%</div>
+                                <div class="pf-donut-sub">accuracy</div>
+                            </div>
+                        </div>
+                        <div class="pf-donut-legend">
+                            <div class="pf-dl-row correct"><i class="fas fa-circle"></i><span>Correct</span><b id="pfDlCorrect">0</b></div>
+                            <div class="pf-dl-row wrong">  <i class="fas fa-circle"></i><span>Incorrect</span><b id="pfDlWrong">0</b></div>
+                            <div class="pf-dl-row total">  <i class="fas fa-circle"></i><span>Total</span><b id="pfDlTotal">0</b></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Activity card -->
+            <div class="pf-card">
+                <div class="pf-card-header">
+                    <h3 class="pf-card-title"><i class="fas fa-bolt-lightning"></i> Recent Activity</h3>
+                    <span class="pf-count-badge" id="pfActCount"></span>
+                </div>
+                <div class="pf-act-filters">
+                    <button class="pf-act-filter active" data-filter="all">All</button>
+                    <button class="pf-act-filter" data-filter="challenge">Challenges</button>
+                    <button class="pf-act-filter" data-filter="win">Wins</button>
+                    <button class="pf-act-filter" data-filter="social">Social</button>
+                </div>
+                <div class="pf-act-list" id="pfActList">
+                    <div class="pf-skeleton-row"></div>
+                    <div class="pf-skeleton-row short"></div>
+                    <div class="pf-skeleton-row"></div>
+                </div>
+                <button class="pf-load-more" id="pfLoadMore" onclick="pfLoadMoreActivity()" style="display:none">
+                    <i class="fas fa-chevron-down"></i> Load more
+                </button>
+            </div>
+
+        </main>
+    </div>
+</div>
+
+<!-- ═══════════ EDIT PROFILE MODAL ═══════════ -->
+<div class="pf-modal-veil" id="pfEditModal" onclick="pfBgClose(event,'pfEditModal')">
+    <div class="pf-modal" role="dialog" aria-modal="true" aria-label="Edit Profile">
+        <button class="pf-modal-close" onclick="pfCloseEdit()"><i class="fas fa-xmark"></i></button>
+
+        <div class="pf-modal-head">
+            <div class="pf-modal-av" id="pfModalAv" data-current-user-avatar></div>
+            <div>
+                <h2>Edit Profile</h2>
+                <p>Update how PAGE sees you</p>
+            </div>
+        </div>
+
+        <div class="pf-modal-body">
+            <div class="pf-field">
+                <label for="pfEditName">Display Name</label>
+                <input id="pfEditName" type="text" placeholder="Your name or alias" maxlength="100" autocomplete="off">
+            </div>
+            <div class="pf-field">
+                <label for="pfEditUsername">Username</label>
+                <div class="pf-field-prefix">
+                    <span class="pf-prefix">@</span>
+                    <input id="pfEditUsername" type="text" placeholder="handle" maxlength="50" autocomplete="off">
+                </div>
+            </div>
+            <div class="pf-field">
+                <label for="pfEditBio">
+                    Bio
+                    <span class="pf-char-count"><span id="pfBioCount">0</span>/500</span>
+                </label>
+                <textarea id="pfEditBio" placeholder="Tell the community about yourself…"
+                          rows="3" maxlength="500"
+                          oninput="document.getElementById('pfBioCount').textContent=this.value.length"></textarea>
+            </div>
+            <div class="pf-field-row">
+                <div class="pf-field">
+                    <label for="pfEditLocation">Location</label>
+                    <input id="pfEditLocation" type="text" placeholder="City, Country" maxlength="100" autocomplete="off">
+                </div>
+                <div class="pf-field">
+                    <label for="pfEditWebsite">Website</label>
+                    <input id="pfEditWebsite" type="url" placeholder="https://…" maxlength="255" autocomplete="off">
+                </div>
+            </div>
+            <div class="pf-error" id="pfEditError" style="display:none"></div>
+        </div>
+
+        <div class="pf-modal-foot">
+            <button class="pf-btn pf-btn--primary" id="pfSaveBtn" onclick="pfSaveProfile()">
+                <i class="fas fa-floppy-disk"></i> Save Changes
+            </button>
+            <button class="pf-btn pf-btn--ghost" onclick="pfCloseEdit()">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════ DELETE ACCOUNT CONFIRM MODAL ═══════════ -->
+<div class="pf-modal-veil" id="pfDeleteModal" onclick="pfBgClose(event,'pfDeleteModal')">
+    <div class="pf-modal pf-modal--danger" role="dialog" aria-modal="true" aria-label="Delete Account">
+        <button class="pf-modal-close" onclick="pfCloseDelete()"><i class="fas fa-xmark"></i></button>
+        <div class="pf-modal-head">
+            <div class="pf-danger-icon"><i class="fas fa-skull-crossbones"></i></div>
+            <div>
+                <h2>Delete Account</h2>
+                <p>This is permanent — your data cannot be recovered.</p>
+            </div>
+        </div>
+        <div class="pf-modal-body">
+            <div class="pf-delete-warning">
+                <i class="fas fa-triangle-exclamation"></i>
+                Deleting your account will permanently remove all your profile data,
+                challenge submissions, earnings history, and messages. This action
+                <strong>cannot be undone</strong>.
+            </div>
+            <div class="pf-field">
+                <label for="pfDeleteConfirm">
+                    Type <strong id="pfDeletePrompt">your username</strong> to confirm
+                </label>
+                <input id="pfDeleteConfirm" type="text" placeholder="Type your username here"
+                       oninput="pfCheckDeleteConfirm(this.value)" autocomplete="off">
+            </div>
+            <div class="pf-error" id="pfDeleteError" style="display:none"></div>
+        </div>
+        <div class="pf-modal-foot">
+            <button class="pf-btn pf-btn--danger" id="pfDeleteConfirmBtn" onclick="pfDeleteAccount()" disabled>
+                <i class="fas fa-trash-alt"></i> Delete My Account
+            </button>
+            <button class="pf-btn pf-btn--ghost" onclick="pfCloseDelete()">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════ FOLLOWERS / FOLLOWING MODAL ═══════════ -->
+<div class="pf-modal-veil" id="pfFollowModal" onclick="pfBgClose(event,'pfFollowModal')">
+    <div class="pf-modal pf-modal--narrow" role="dialog" aria-modal="true" aria-label="Followers">
+        <button class="pf-modal-close" onclick="pfCloseFollowers()"><i class="fas fa-xmark"></i></button>
+        <div class="pf-follow-tabs">
+            <button class="pf-follow-tab active" id="pfFolTabFollowers" onclick="pfSwitchFollowTab('followers')">Followers</button>
+            <button class="pf-follow-tab"        id="pfFolTabFollowing" onclick="pfSwitchFollowTab('following')">Following</button>
+        </div>
+        <div class="pf-follow-list" id="pfFollowList">
+            <div class="pf-skeleton-row"></div>
+            <div class="pf-skeleton-row short"></div>
+            <div class="pf-skeleton-row"></div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════ TOAST ═══════════ -->
+<div class="pf-toast" id="pfToast"></div>
+
+<!-- ═══════════ SCRIPTS ═══════════ -->
+<script src="../scripts/api-service.js"></script>
+<script src="../scripts/utils.js"></script>
+<script src="../scripts/profile.js"></script>
+
+</body>
+</html>

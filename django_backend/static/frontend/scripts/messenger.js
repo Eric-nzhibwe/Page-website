@@ -1395,9 +1395,9 @@ function dmViewProfile() {
     const avatarEl = document.getElementById('dmChatAvatar');
     const userId   = avatarEl?.getAttribute('data-user-id');
     if (!userId) return;
-    // messenger.html lives in pages/ — user.html is a sibling
+    // messenger.html lives in pages/ — profile.html is a sibling
     const base = window.location.pathname.includes('/pages/') ? '' : 'pages/';
-    window.location.href = `${base}user.html?id=${userId}`;
+    window.location.href = `${base}profile.html?id=${userId}`;
 }
 
 // Expose for use by other scripts (e.g. social-feed "Message" buttons)

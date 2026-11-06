@@ -591,7 +591,7 @@ async function _ehLoadFollowList(tab) {
                     ? window.pageLetterAvatarHTML(avInit)
                     : `<span style="display:inline-flex;align-items:center;justify-content:center;width:100%;height:100%;border-radius:50%;background:#6c63ff;color:#fff;font-weight:700;font-size:14px;">${avInit}</span>`);
             return `
-            <div class="follow-user-row" onclick="window.location.href='user.html?id=${u.id}'">
+            <div class="follow-user-row" onclick="window.location.href='profile.html?id=${u.id}'">
                 <div class="follow-user-av">${avHTML}</div>
                 <div class="follow-user-info">
                     <span class="follow-user-name">${name}</span>
