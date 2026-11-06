@@ -28,6 +28,21 @@
     <link rel="stylesheet" href="styles/responsive-pro.css">
     <!-- Theme engine — must load before any other JS so color applies before first paint -->
     <script src="scripts/theme.js"></script>
+    <!-- ── Auth guard: redirect to auth page if not logged in ──────────────
+         Runs synchronously before the DOM renders so there is zero flash of
+         protected content for unauthenticated visitors.
+         Uses the same token keys as api-service.js _pageIsAuthed().          -->
+    <script>
+        (function () {
+            var hasToken =
+                localStorage.getItem('djangoAuthToken') ||
+                localStorage.getItem('firebaseIdToken') ||
+                localStorage.getItem('authToken');
+            if (!hasToken) {
+                window.location.replace('pages/auth.html');
+            }
+        })();
+    </script>
     <script>
         // Sync the active swatch to the saved color as soon as DOM is ready
         document.addEventListener('DOMContentLoaded', function () {
@@ -86,7 +101,7 @@
                 role="button" tabindex="0" aria-haspopup="menu" aria-expanded="false"
                 onclick="toggleUserMenu(event)"
                 onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleUserMenu(event); }">
-                <i class="fas fa-user"></i>
+                <!-- Replaced at runtime by realtime-updates.js: photo or letter-circle initial -->
             </div>
         </div>
 
