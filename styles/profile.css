@@ -15,9 +15,13 @@ body {
 }
 
 /* ══════════════════════════════════════════
-   HEADER / NAVBAR
+   HEADER / NAVBAR — force white background
 ══════════════════════════════════════════ */
-.pf-header {
+.header {
+    background: #ffffff !important;
+    border-bottom: 1px solid var(--theme-border);
+    margin-bottom: 0;
+}
     position: sticky; top: 0; z-index: 100;
     display: flex; align-items: center;
     justify-content: space-between;
