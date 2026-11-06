@@ -325,6 +325,31 @@
     background: rgba(0, 0, 0, 0.7);
 }
 
+/* ── Mute toggle (video stories only) ── */
+.story-mute-btn {
+    position: absolute;
+    bottom: 88px;
+    right: 14px;
+    width: 36px;
+    height: 36px;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 50%;
+    color: white;
+    font-size: 15px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 30;
+    transition: background 0.2s, transform 0.15s;
+}
+.story-mute-btn:hover {
+    background: rgba(0, 0, 0, 0.75);
+    transform: scale(1.1);
+}
+
 /* ── Media ── */
 .story-viewer-content {
     flex: 1;

@@ -99,7 +99,31 @@ class StoryViewer {
         const mediaSrc  = story.resolved_media_url || story.media_url || '';
         const mediaWrap = modal.querySelector('.story-media-container');
         if (story.media_type === 'video' && mediaSrc) {
-            mediaWrap.innerHTML = `<video class="story-media" autoplay muted playsinline loop src="${this._esc(mediaSrc)}"></video>`;
+            mediaWrap.innerHTML = `
+                <video class="story-media" autoplay muted playsinline loop
+                       src="${this._esc(mediaSrc)}"
+                       id="storyVideoEl"></video>
+                <button class="story-mute-btn" id="storyMuteBtn"
+                        onclick="storyViewer._toggleMute()"
+                        title="Unmute" aria-label="Unmute video">
+                    <i class="fas fa-volume-xmark"></i>
+                </button>`;
+            // Unmute as soon as the browser allows it (after first user gesture)
+            requestAnimationFrame(() => {
+                const vid = document.getElementById('storyVideoEl');
+                if (vid) {
+                    vid.muted = false;
+                    vid.volume = 1;
+                    // If unmuting fails (no prior gesture), stay muted silently
+                    vid.play().then(() => {
+                        vid.muted = false;
+                        const btn = document.getElementById('storyMuteBtn');
+                        if (btn) btn.innerHTML = '<i class="fas fa-volume-high"></i>';
+                    }).catch(() => {
+                        // autoplay policy blocked — keep muted, show unmute hint
+                    });
+                }
+            });
         } else if (mediaSrc) {
             mediaWrap.innerHTML = `<img class="story-media" src="${this._esc(mediaSrc)}" alt="Story">`;
         } else {
@@ -379,6 +403,20 @@ class StoryViewer {
             navigator.clipboard?.writeText(url)
                 .then(() => { if (typeof socialToast === 'function') socialToast('Story link copied! 🔗', 'success'); })
                 .catch(() => {});
+        }
+    }
+
+    // ── Mute toggle for video stories ───────────────────────────────
+    _toggleMute() {
+        const vid = document.getElementById('storyVideoEl');
+        const btn = document.getElementById('storyMuteBtn');
+        if (!vid) return;
+        vid.muted = !vid.muted;
+        if (btn) {
+            btn.innerHTML = vid.muted
+                ? '<i class="fas fa-volume-xmark"></i>'
+                : '<i class="fas fa-volume-high"></i>';
+            btn.title = vid.muted ? 'Unmute' : 'Mute';
         }
     }
 
