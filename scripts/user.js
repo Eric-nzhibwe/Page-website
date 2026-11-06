@@ -29,7 +29,28 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
         const stored = JSON.parse(localStorage.getItem('pageUser') || '{}');
         const savedUrl = stored.profile_image_url || stored.profile_image;
-        if (savedUrl) applyAvatarEverywhere(savedUrl);
+        if (savedUrl) {
+            applyAvatarEverywhere(savedUrl);
+        } else {
+            // New user with no photo — stamp a letter-circle fallback straight away
+            const name    = stored.display_name || stored.username || '';
+            const initial = name ? name.charAt(0).toUpperCase() : null;
+            if (initial && window.pageLetterAvatarHTML) {
+                const letterHTML = window.pageLetterAvatarHTML(initial);
+                [
+                    'avatarDisplay','modalAvatar','umAvatar','navAvatar','smAvatarImg',
+                    'heroAvatar','profileAvatar','settingsAvatarPreview',
+                ].forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) el.innerHTML = letterHTML;
+                });
+                document.querySelectorAll([
+                    '.user-avatar-btn','.user-menu-avatar','.nav-avatar','.header-avatar',
+                    '.profile-avatar','.current-user-avatar','.post-creator-avatar',
+                    '.page-composer-avatar','[data-avatar="current-user"]','[data-current-user-avatar]',
+                ].join(', ')).forEach(el => { el.innerHTML = letterHTML; });
+            }
+        }
     } catch (_) { /* non-critical */ }
 
     // Also react to avatar changes triggered from the settings modal on this page
@@ -300,7 +321,7 @@ function applyAvatarEverywhere(imgUrl) {
 
     const imgTag = `<img src="${resolved}" alt="avatar"
         style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;"
-        onerror="this.replaceWith(window.pageLetterAvatar ? window.pageLetterAvatar('?') : (()=>{var s=document.createElement('span');s.style='display:inline-flex;align-items:center;justify-content:center;width:100%;height:100%;border-radius:50%;background:#6c63ff;color:#fff;font-weight:700;font-size:inherit;';s.textContent='?';return s;})())">`;
+        onerror="this.replaceWith(window.pageLetterAvatar ? window.pageLetterAvatar((function(){try{return (JSON.parse(localStorage.getItem('pageUser')||'{}').display_name||JSON.parse(localStorage.getItem('pageUser')||'{}').username||'?').charAt(0).toUpperCase()}catch(e){return '?'}})()) : (()=>{var s=document.createElement('span');s.style='display:inline-flex;align-items:center;justify-content:center;width:100%;height:100%;border-radius:50%;background:#6c63ff;color:#fff;font-weight:700;font-size:inherit;';s.textContent=(function(){try{return (JSON.parse(localStorage.getItem('pageUser')||'{}').display_name||JSON.parse(localStorage.getItem('pageUser')||'{}').username||'?').charAt(0).toUpperCase()}catch(e){return '?'}})();return s;})())">`;
 
     // ── Named IDs ─────────────────────────────────────────────
     [

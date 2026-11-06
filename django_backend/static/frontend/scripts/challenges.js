@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 ? `<img src="${resolved}" alt="avatar"
                     style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;"
                     onerror="this.replaceWith((function(){var s=document.createElement('span');s.style.cssText='display:inline-flex;align-items:center;justify-content:center;width:100%;height:100%;border-radius:50%;background:${colour};color:#fff;font-weight:700;font-size:14px;';s.textContent='${initial}';return s;})())">`
-                : '<i class="fas fa-user" aria-hidden="true"></i>';
+                : `<span style="display:inline-flex;align-items:center;justify-content:center;width:100%;height:100%;border-radius:50%;background:${colour};color:#fff;font-weight:700;font-size:14px;">${initial}</span>`;
 
             // IDs
             ['avatarDisplay', 'modalAvatar', 'umAvatar', 'navAvatar',
@@ -1448,7 +1448,7 @@ function _creatorAvatarHTML(creator, size = 36) {
     /* Renders a profile photo <img> or a coloured initial fallback.
        `creator` shape: { username, avatar_url, profile_image_url, display_name, id }
        — or just a plain string username. */
-    if (!creator) return `<span class="sc-avatar-icon"><i class="fas fa-user"></i></span>`;
+    if (!creator) return `<span class="sc-avatar-initial" style="background:#7c3aed;" aria-hidden="true">?</span>`;
 
     const username    = (typeof creator === 'string') ? creator : (creator.username || '?');
     // Accept both field names the API may return

@@ -1217,7 +1217,30 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
         const user = JSON.parse(localStorage.getItem('pageUser') || '{}');
         const url  = user.profile_image_url || user.profile_image || null;
-        if (url) _stampCurrentUserAvatar(url);
+        if (url) {
+            _stampCurrentUserAvatar(url);
+        } else {
+            // New user with no photo yet — stamp a letter-circle so slots are never empty
+            const name    = user.display_name || user.username || '';
+            const initial = name ? name.charAt(0).toUpperCase() : null;
+            if (initial && window.pageLetterAvatarHTML) {
+                const letterHTML = window.pageLetterAvatarHTML(initial);
+                const selectors = [
+                    '.user-avatar-btn', '.user-menu-avatar', '.nav-avatar',
+                    '.header-avatar', '.profile-avatar', '.current-user-avatar',
+                    '.post-creator-avatar', '.page-composer-avatar',
+                    '[data-avatar="current-user"]', '[data-current-user-avatar]',
+                ];
+                document.querySelectorAll(selectors.join(', ')).forEach(el => {
+                    el.innerHTML = letterHTML;
+                });
+                ['avatarDisplay','modalAvatar','umAvatar','navAvatar','smAvatarImg',
+                 'heroAvatar','profileAvatar','settingsAvatarPreview'].forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) el.innerHTML = letterHTML;
+                });
+            }
+        }
     } catch (_) { /* non-critical */ }
 });
 
