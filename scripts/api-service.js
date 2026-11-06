@@ -52,17 +52,8 @@ class APIService {
         };
 
         if (includeAuth) {
-            // Always read the freshest tokens from storage
-            this.firebaseToken = localStorage.getItem('firebaseIdToken') || this.firebaseToken;
-            this.token = localStorage.getItem('djangoAuthToken')
-                      || localStorage.getItem('authToken')
-                      || this.token;
-
-            if (this.firebaseToken) {
-                headers['Authorization'] = `FirebaseToken ${this.firebaseToken}`;
-            } else if (this.token) {
-                headers['Authorization'] = `Token ${this.token}`;
-            }
+            const authHeader = this._authHeader();
+            if (authHeader) headers['Authorization'] = authHeader;
         }
 
         return headers;
@@ -70,14 +61,38 @@ class APIService {
 
     /**
      * Get the best available auth header string.
+     * Expiry-checks the Firebase token before using it — if it has expired,
+     * falls through to the DRF token so stale tokens never cause silent 401s.
      */
     _authHeader() {
-        this.firebaseToken = localStorage.getItem('firebaseIdToken') || this.firebaseToken;
-        this.token = localStorage.getItem('djangoAuthToken')
-                  || localStorage.getItem('authToken')
-                  || this.token;
-        if (this.firebaseToken) return `FirebaseToken ${this.firebaseToken}`;
-        if (this.token) return `Token ${this.token}`;
+        // Always read freshest tokens from storage
+        const fbRaw  = localStorage.getItem('firebaseIdToken');
+        const drfRaw = localStorage.getItem('djangoAuthToken')
+                    || localStorage.getItem('authToken');
+
+        if (fbRaw) {
+            // Cheap JWT expiry check — no network needed
+            try {
+                const payload = JSON.parse(
+                    atob(fbRaw.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))
+                );
+                if (Date.now() < payload.exp * 1000) {
+                    this.firebaseToken = fbRaw;
+                    return `FirebaseToken ${fbRaw}`;
+                }
+                // Expired — clear it so we don't keep sending it
+                localStorage.removeItem('firebaseIdToken');
+                this.firebaseToken = null;
+            } catch (_) {
+                // Malformed token — ignore and fall through
+            }
+        }
+
+        if (drfRaw) {
+            this.token = drfRaw;
+            return `Token ${drfRaw}`;
+        }
+
         return null;
     }
 
