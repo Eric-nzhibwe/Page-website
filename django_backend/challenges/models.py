@@ -643,4 +643,20 @@ class QAAnswer(models.Model):
         unique_together = [('qa', 'user')]
 
     def __str__(self):
+
+
+class QAParticipant(models.Model):
+    """Tracks users who have explicitly joined a Q&A challenge (before answering)."""
+    id         = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    qa         = models.ForeignKey(QAChallenge, on_delete=models.CASCADE, related_name='participants')
+    user       = models.ForeignKey(User, on_delete=models.CASCADE, related_name='qa_participations')
+    joined_at  = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'qa_participants'
+        ordering = ['-joined_at']
+        unique_together = [('qa', 'user')]
+
+    def __str__(self):
+        return f'{self.user.username} joined {self.qa.title}'
         return f'{self.user.username} on {self.qa.title}'

@@ -167,6 +167,12 @@ class QAConsumer(AsyncWebsocketConsumer):
             'payload': event.get('payload', {}),
         }))
 
+    async def qa_participant_joined(self, event):
+        await self.send(text_data=json.dumps({
+            'type':    'qa_participant_joined',
+            'payload': event.get('payload', {}),
+        }))
+
 
 class PollConsumer(AsyncWebsocketConsumer):
     """

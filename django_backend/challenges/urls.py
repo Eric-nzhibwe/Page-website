@@ -12,7 +12,7 @@ from .social_views import (
     xpoints_balance,
     poll_list, create_poll, cast_poll_vote, delete_poll,
     debate_list, create_debate, join_debate, post_debate_comment, delete_debate,
-    qa_list, create_qa, post_qa_answer, delete_qa,
+    qa_list, create_qa, post_qa_answer, join_qa, delete_qa,
     poll_detail, debate_detail, qa_detail,
 )
 
@@ -43,6 +43,7 @@ urlpatterns = [
     path('qa/',                               qa_list,               name='qa-list'),
     path('qa/<uuid:qa_id>/detail/',           qa_detail,             name='qa-detail'),
     path('qa/create/',                        create_qa,             name='qa-create'),
+    path('qa/<uuid:qa_id>/join/',             join_qa,               name='qa-join'),
     path('qa/<uuid:qa_id>/answer/',           post_qa_answer,        name='qa-answer'),
     path('qa/<uuid:qa_id>/delete/',           delete_qa,             name='qa-delete'),
     # ── Standard DRF router ───────────────────────────────────────────────

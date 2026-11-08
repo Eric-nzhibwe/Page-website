@@ -1417,6 +1417,7 @@ window.deleteSocialChallenge = deleteSocialChallenge;
 window.toggleQAImage = toggleQAImage;
 window._qaToggleAnswers = _qaToggleAnswers;
 window._qaRetryAnswer   = _qaRetryAnswer;
+window._chJoinQA        = _chJoinQA;
 // Wizard helpers
 window.ccGoStep = ccGoStep;
 window.ccSetDuration = ccSetDuration;
@@ -1648,12 +1649,20 @@ function _qaConnectWS(cardId) {
         ws.onmessage = (e) => {
             try {
                 const msg = JSON.parse(e.data);
-                if (msg.type !== 'qa_answer') return;
-                const p = msg.payload || {};
-                // Deduplicate: don't re-render if this user's bubble already exists
-                if (_qaHasAnswered(cardId, p.user)) return;
-                _qaMarkAnswered(cardId, p.user);
-                _appendQAAnswer(cardId, p, { now: false });
+                if (msg.type === 'qa_answer') {
+                    const p = msg.payload || {};
+                    // Deduplicate: don't re-render if this user's bubble already exists
+                    if (_qaHasAnswered(cardId, p.user)) return;
+                    _qaMarkAnswered(cardId, p.user);
+                    _appendQAAnswer(cardId, p, { now: false });
+                } else if (msg.type === 'qa_participant_joined') {
+                    // Update the participant count displayed on the card
+                    const p = msg.payload || {};
+                    const countEl = document.getElementById(`qaCount_${cardId}`);
+                    if (countEl && p.participant_count != null) {
+                        countEl.textContent = p.participant_count;
+                    }
+                }
             } catch (_) {}
         };
 
@@ -1774,6 +1783,7 @@ function _renderQACard(c) {
 
     // ── Input state ───────────────────────────────────────────────────────
     const userAlreadyAnswered = _qaHasAnswered(id, currentUser);
+    const userJoined          = !!c.user_joined || userAlreadyAnswered; // answering implies joining
     const inputDisabledAttr   = userAlreadyAnswered ? 'disabled' : '';
     const inputPlaceholder    = userAlreadyAnswered ? 'You already answered ✓' : 'Share your answer…';
 
@@ -1901,8 +1911,27 @@ function _renderQACard(c) {
                 <div class="qa-participants">
                     <div class="qa-participant-avatars" role="list" aria-label="Participants">${pipsHTML}</div>
                 </div>
-                <!-- Input bar — messenger-style compose form -->
+
+                <!-- ── JOIN GATE — shown until user joins, then swapped for input ── -->
+                <div class="qa-join-gate" id="qaJoinGate_${id}"
+                     style="${userJoined ? 'display:none;' : ''}">
+                    <div class="qa-join-gate-inner">
+                        <i class="fas fa-users qa-join-icon"></i>
+                        <div>
+                            <div class="qa-join-headline">Join to answer</div>
+                            <div class="qa-join-sub">Be counted as a participant before sharing your answer</div>
+                        </div>
+                        <button class="qa-join-btn" id="qaJoinBtn_${id}"
+                                onclick="_chJoinQA('${id}')"
+                                aria-label="Join challenge">
+                            <i class="fas fa-arrow-right-to-bracket"></i> Join
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Input bar — shown after joining (messenger-style compose form) -->
                 <form class="qa-input-tray" id="qaInputTray_${id}"
+                      style="${userJoined ? '' : 'display:none;'}"
                       onsubmit="_chSubmitQA(event,'${id}')">
                     <div class="qa-input-pill ${userAlreadyAnswered ? 'qa-input-disabled' : ''}">
                         <input type="text"
@@ -1976,6 +2005,60 @@ function _qaToggleAnswers(id) {
     if (open) {
         const pane = document.getElementById(`qaLive_${id}`);
         if (pane) pane.scrollTop = pane.scrollHeight;
+    }
+}
+
+/**
+ * Join a Q&A challenge before answering.
+ * POST /api/challenges/qa/<id>/join/
+ * On success: hide the join gate, show the input tray, update participant count.
+ */
+async function _chJoinQA(id) {
+    const joinBtn  = document.getElementById(`qaJoinBtn_${id}`);
+    const joinGate = document.getElementById(`qaJoinGate_${id}`);
+    const inputTray= document.getElementById(`qaInputTray_${id}`);
+    const countEl  = document.getElementById(`qaCount_${id}`);
+
+    if (joinBtn) {
+        joinBtn.disabled = true;
+        joinBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Joining…';
+    }
+
+    try {
+        const res = await _chPost(`${_CH_API}/qa/${id}/join/`, {});
+        const data = res || {};
+
+        // Swap gate → input tray
+        if (joinGate)  joinGate.style.display  = 'none';
+        if (inputTray) inputTray.style.display  = '';
+
+        // Update participant count in the meta row
+        if (countEl && data.participant_count != null) {
+            countEl.textContent = data.participant_count;
+        }
+
+        // Auto-open the answers panel and focus the input
+        const panel = document.getElementById(`qaAnswersPanel_${id}`);
+        if (panel?.hidden) _qaToggleAnswers(id);
+
+        const input = document.getElementById(`qaInput_${id}`);
+        if (input) input.focus();
+
+        showToast('You joined the challenge! 🎉', 'success');
+
+    } catch (err) {
+        const msg = err?.message || '';
+        if (msg.includes('already joined') || msg.includes('400')) {
+            // Already joined — just reveal the input
+            if (joinGate)  joinGate.style.display  = 'none';
+            if (inputTray) inputTray.style.display  = '';
+        } else {
+            showToast('Could not join. Please try again.', 'error');
+            if (joinBtn) {
+                joinBtn.disabled = false;
+                joinBtn.innerHTML = '<i class="fas fa-arrow-right-to-bracket"></i> Join';
+            }
+        }
     }
 }
 

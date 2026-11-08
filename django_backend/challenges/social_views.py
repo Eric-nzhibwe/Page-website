@@ -17,7 +17,7 @@ from asgiref.sync import async_to_sync
 from .models import (
     PollChallenge, PollVote,
     DebateChallenge, DebateParticipant, DebateComment,
-    QAChallenge, QAAnswer,
+    QAChallenge, QAAnswer, QAParticipant,
     XPointsLedger, XPOINTS_ENTRY_COST, XPOINTS_EARN,
 )
 from users.firebase_token_auth import FirebaseTokenAuthentication
@@ -516,20 +516,32 @@ def delete_debate(request, debate_id):
 def qa_list(request):
     """List all active Q&A challenges with latest answers."""
     qas = QAChallenge.objects.filter(is_active=True).select_related('created_by')
+
+    # Pre-fetch joined set for the current user in one query
+    user_joined = set()
+    if request.user.is_authenticated:
+        user_joined = set(
+            QAParticipant.objects.filter(user=request.user)
+            .values_list('qa_id', flat=True)
+        )
+
     data = []
     for q in qas:
         answers = list(q.answers.select_related('user').order_by('-created_at')[:20])
+        participant_count = QAParticipant.objects.filter(qa=q).count()
         data.append({
-            'id':           str(q.id),
-            'title':        q.title,
-            'description':  q.description,
-            'image_url':    q.image_url,
-            'prize_amount': str(q.prize_amount),
-            'difficulty':   q.difficulty,
-            'duration_days': q.duration_days,
-            'created_by':   q.created_by.username,
-            'creator':      _creator_obj(q.created_by),
-            'created_at':   q.created_at.isoformat(),
+            'id':                str(q.id),
+            'title':             q.title,
+            'description':       q.description,
+            'image_url':         q.image_url,
+            'prize_amount':      str(q.prize_amount),
+            'difficulty':        q.difficulty,
+            'duration_days':     q.duration_days,
+            'created_by':        q.created_by.username,
+            'creator':           _creator_obj(q.created_by),
+            'created_at':        q.created_at.isoformat(),
+            'participant_count': participant_count,
+            'user_joined':       q.id in user_joined,
             'answers': [
                 {
                     'user':       a.user.username,
@@ -670,6 +682,52 @@ def _broadcast_qa(qa_id: str, payload: dict):
         )
     except Exception as exc:
         logger.warning(f'QA WS broadcast failed: {exc}')
+
+
+@api_view(['POST'])
+@authentication_classes(_PRIVATE_AUTH)
+@permission_classes([IsAuthenticated])
+def join_qa(request, qa_id):
+    """
+    Join a Q&A challenge so the user is recorded as a participant
+    before they submit an answer. Idempotent — joining twice is fine.
+    Broadcasts a realtime participant-count update via WebSocket.
+    """
+    try:
+        qa = QAChallenge.objects.get(id=qa_id, is_active=True)
+    except QAChallenge.DoesNotExist:
+        return Response({'error': 'Q&A not found.'}, status=404)
+
+    participant, created = QAParticipant.objects.get_or_create(
+        qa=qa, user=request.user
+    )
+    participant_count = QAParticipant.objects.filter(qa=qa).count()
+
+    # Broadcast updated count to all WS clients watching this Q&A
+    if created:
+        _broadcast_qa_join(str(qa_id), {
+            'user':              request.user.username,
+            'participant_count': participant_count,
+        })
+
+    return Response({
+        'joined':            True,
+        'already_joined':    not created,
+        'participant_count': participant_count,
+    }, status=200)
+
+
+def _broadcast_qa_join(qa_id: str, payload: dict):
+    """Broadcast a participant-joined event to all WS listeners on this Q&A."""
+    if channel_layer is None:
+        return
+    try:
+        async_to_sync(channel_layer.group_send)(
+            f'qa_{qa_id}',
+            {'type': 'qa_participant_joined', 'payload': payload},
+        )
+    except Exception as exc:
+        logger.warning(f'QA join WS broadcast failed: {exc}')
 
 
 @api_view(['DELETE'])
