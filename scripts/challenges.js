@@ -1416,6 +1416,7 @@ window.deleteChallenge = deleteChallenge;
 window.deleteSocialChallenge = deleteSocialChallenge;
 window.toggleQAImage = toggleQAImage;
 window._qaToggleAnswers = _qaToggleAnswers;
+window._qaRetryAnswer   = _qaRetryAnswer;
 // Wizard helpers
 window.ccGoStep = ccGoStep;
 window.ccSetDuration = ccSetDuration;
@@ -1900,26 +1901,33 @@ function _renderQACard(c) {
                 <div class="qa-participants">
                     <div class="qa-participant-avatars" role="list" aria-label="Participants">${pipsHTML}</div>
                 </div>
-                <!-- Input bar -->
-                <div class="qa-input-tray" id="qaInputTray_${id}">
+                <!-- Input bar — messenger-style compose form -->
+                <form class="qa-input-tray" id="qaInputTray_${id}"
+                      onsubmit="_chSubmitQA(event,'${id}')">
                     <div class="qa-input-pill ${userAlreadyAnswered ? 'qa-input-disabled' : ''}">
-                        <input class="qa-type-input"
+                        <input type="text"
+                               class="qa-type-input"
                                placeholder="${inputPlaceholder}"
                                id="qaInput_${id}"
                                maxlength="280"
                                aria-label="Your answer"
+                               autocomplete="off"
+                               autocorrect="on"
+                               autocapitalize="sentences"
+                               spellcheck="true"
+                               inputmode="text"
+                               enterkeyhint="send"
                                ${inputDisabledAttr}
-                               onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();_chSubmitQA('${id}')}"
                                oninput="_qaOnInput(this,'${id}')">
                     </div>
-                    <button class="qa-send-btn" id="qaSend_${id}"
-                            onclick="_chSubmitQA('${id}')"
+                    <button type="submit"
+                            class="qa-send-btn" id="qaSend_${id}"
                             title="${userAlreadyAnswered ? 'Already answered' : 'Send answer'}"
                             aria-label="Send answer"
                             ${userAlreadyAnswered ? 'disabled style="opacity:0.35;cursor:not-allowed;"' : 'disabled'}>
                         <i class="fas fa-paper-plane"></i>
                     </button>
-                </div>
+                </form>
             </div>
         </div>
 
@@ -2226,7 +2234,16 @@ async function _chCastPollVote(id, optionIndex, btn) {
     showToast('+0.5 xP for voting! 📊', 'success');
 }
 
-async function _chSubmitQA(id) {
+async function _chSubmitQA(event, id) {
+    // Accept both the new form-submit signature _chSubmitQA(event, id)
+    // and the legacy direct-call signature _chSubmitQA(id) so nothing else breaks.
+    if (typeof event === 'string') {
+        // Called as _chSubmitQA(id) — shift args
+        id    = event;
+        event = null;
+    }
+    if (event) event.preventDefault();
+
     const input   = document.getElementById(`qaInput_${id}`);
     const sendBtn = document.getElementById(`qaSend_${id}`);
     const text    = input?.value.trim();
@@ -2238,35 +2255,114 @@ async function _chSubmitQA(id) {
     })();
 
     // Front-end one-answer guard
-    if (_qaHasAnswered(id, username)) {
-        _qaLockInput(id);
-        return;
+    if (_qaHasAnswered(id, username)) { _qaLockInput(id); return; }
+
+    // ── Auto-open the answers panel (messenger-style: message → conversation opens) ──
+    const panel = document.getElementById(`qaAnswersPanel_${id}`);
+    if (panel?.hidden) _qaToggleAnswers(id);
+
+    // ── Optimistic render ────────────────────────────────────────────────────
+    // Append the bubble immediately with a "Sending…" timestamp, tagged with
+    // a unique ID so we can find and update it on success or failure.
+    const optimisticId = `qa_opt_${Date.now()}`;
+    _qaMarkAnswered(id, username);
+
+    const pane = document.getElementById(`qaLive_${id}`);
+    pane?.querySelector('.qa-empty-hint')?.remove();
+
+    const creatorUser = pane?.closest('.challenge-card')
+                             ?.querySelector('.qa-new-creator-name')
+                             ?.textContent?.trim() || '';
+
+    // Render the bubble via the existing helper, then tag it
+    _appendQAAnswer(id,
+        { user: username, text, created_at: new Date().toISOString() },
+        { own: true, now: true }
+    );
+    // Tag the last bubble so we can find it for status updates
+    const lastBubble = pane?.lastElementChild;
+    if (lastBubble) {
+        lastBubble.dataset.optimisticId = optimisticId;
+        // Add a small "Sending…" status line inside the bubble
+        const statusEl = document.createElement('span');
+        statusEl.className = 'qa-bubble-status';
+        statusEl.textContent = 'Sending…';
+        lastBubble.querySelector('.qa-live-bubble')?.appendChild(statusEl);
     }
 
-    // Optimistic render + lock immediately
-    _qaMarkAnswered(id, username);
-    _appendQAAnswer(id, { user: username, text }, { own: true, now: true });
+    // Clear input and lock
     input.value = '';
     _qaLockInput(id);
-
-    // Sending state on button
     sendBtn?.classList.add('sending');
 
+    // ── Send to API ──────────────────────────────────────────────────────────
     try {
         await _chPost(`${_CH_API}/qa/${id}/answer/`, { text });
+
+        // Update status to delivered tick (like messenger)
+        const bubble = pane?.querySelector(`[data-optimistic-id="${optimisticId}"]`);
+        const statusSpan = bubble?.querySelector('.qa-bubble-status');
+        if (statusSpan) {
+            statusSpan.innerHTML = '<i class="fas fa-check-double"></i>';
+            statusSpan.classList.add('qa-bubble-status--sent');
+        }
+
+        // Update the answers badge count
+        const badge = document.querySelector(
+            `.challenge-card[data-id="${id}"] .qa-new-ans-badge`
+        );
+        if (badge) badge.textContent = parseInt(badge.textContent || 0, 10) + 1;
+
         showToast('+0.5 xP for answering! 💬', 'success');
+
     } catch (err) {
         const msg = err?.message || '';
+
         if (msg.includes('already answered') || msg.includes('409')) {
-            // Server confirms already answered — input stays locked
+            // Server confirms already answered — bubble stays, input stays locked
+            const bubble = pane?.querySelector(`[data-optimistic-id="${optimisticId}"]`);
+            const statusSpan = bubble?.querySelector('.qa-bubble-status');
+            if (statusSpan) {
+                statusSpan.textContent = 'Already answered ✓';
+                statusSpan.classList.add('qa-bubble-status--sent');
+            }
         } else {
-            showToast('Could not send your answer. Please try again.', 'error');
-            // Rollback: allow re-submission
+            // ── Failed-send: mark bubble with retry affordance (messenger pattern) ──
+            const bubble = pane?.querySelector(`[data-optimistic-id="${optimisticId}"]`);
+            if (bubble) {
+                const statusSpan = bubble.querySelector('.qa-bubble-status');
+                if (statusSpan) {
+                    statusSpan.innerHTML = 'Failed — <button class="qa-retry-btn" onclick="_qaRetryAnswer(this,\'${id}\',\''+escHtml(text)+'\')">tap to retry</button>';
+                    statusSpan.classList.add('qa-bubble-status--error');
+                }
+                bubble.classList.add('qa-bubble--failed');
+            }
+
+            // Rollback answered-set so retry is allowed
             _qaAnsweredCards.get(id)?.delete(username);
             _qaUnlockInput(id, input);
         }
     } finally {
         sendBtn?.classList.remove('sending');
+    }
+}
+
+/**
+ * Retry handler wired to the "tap to retry" button inside a failed bubble.
+ * Removes the failed bubble and re-populates the input so the user can re-send.
+ */
+function _qaRetryAnswer(btn, id, text) {
+    const bubble = btn.closest('[data-optimistic-id]');
+    if (bubble) bubble.remove();
+
+    const input = document.getElementById(`qaInput_${id}`);
+    if (input) {
+        input.value = text;
+        input.focus();
+        _qaUnlockInput(id, input);
+        // Re-enable the send button since there's now text
+        const sendBtn = document.getElementById(`qaSend_${id}`);
+        if (sendBtn) sendBtn.disabled = false;
     }
 }
 

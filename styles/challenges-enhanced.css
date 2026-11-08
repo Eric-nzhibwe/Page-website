@@ -2002,7 +2002,7 @@
 /* ══ HERO ════════════════════════════════════════════════════ */
 .qa-new-hero {
     position: relative;
-    height: 168px;
+    height: 200px;
     overflow: hidden;
     background: #f9fafb;
 }
@@ -2028,22 +2028,24 @@
 /* Badge row top-left */
 .qa-new-badge-row {
     position: absolute;
-    top: 12px;
-    left: 12px;
+    top: 14px;
+    left: 14px;
     display: flex;
     gap: 6px;
     z-index: 3;
     flex-wrap: wrap;
+    max-width: calc(100% - 70px); /* never overlap the progress ring */
 }
 .qa-new-badge {
-    padding: 4px 10px;
+    padding: 5px 11px;
     border-radius: 20px;
-    font-size: 10.5px;
+    font-size: 11px;
     font-weight: 700;
     letter-spacing: 0.15px;
     display: inline-flex;
     align-items: center;
     gap: 4px;
+    white-space: nowrap;
 }
 /* Difficulty — amber/gold */
 .qa-new-badge-diff {
@@ -2157,39 +2159,39 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 44px 20px 14px;
-    gap: 10px;
+    padding: 56px 24px 20px; /* top clears the badge row */
+    gap: 12px;
 }
 .qa-new-hero-icon {
-    width: 48px; height: 48px;
-    border-radius: 15px;
-    background: rgba(255,255,255,0.88);
-    box-shadow: 0 3px 16px rgba(0,0,0,0.09);
+    width: 52px; height: 52px;
+    border-radius: 16px;
+    background: rgba(255,255,255,0.92);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.10);
     display: flex; align-items: center; justify-content: center;
     flex-shrink: 0;
 }
-.qa-new-hero-icon i { font-size: 22px; color: #1c1e21; }
+.qa-new-hero-icon i { font-size: 24px; color: #1c1e21; }
 
 .qa-new-title {
-    font-size: 15px;
+    font-size: 16px;
     font-weight: 800;
     color: #111827;
     text-align: center;
-    line-height: 1.3;
+    line-height: 1.35;
     letter-spacing: -0.25px;
     margin: 0;
-    max-width: 280px;
+    max-width: 300px;
 }
 
 /* ══ BODY ════════════════════════════════════════════════════ */
 .qa-new-body {
-    padding: 14px 16px 0;
+    padding: 18px 20px 4px;
 }
 .qa-new-desc {
-    font-size: 12.5px;
+    font-size: 13px;
     color: #6b7280;
-    line-height: 1.55;
-    margin: 0 0 12px;
+    line-height: 1.6;
+    margin: 0 0 16px;
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
@@ -2200,34 +2202,34 @@
 .qa-new-meta-row {
     display: flex;
     align-items: center;
-    gap: 16px;
-    padding: 10px 0;
+    gap: 20px;
+    padding: 12px 0;
     border-top: 1px solid #f3f4f6;
     border-bottom: 1px solid #f3f4f6;
-    margin-bottom: 12px;
+    margin-bottom: 16px;
     flex-wrap: wrap;
 }
 .qa-new-meta-item {
     display: flex;
     align-items: center;
-    gap: 5px;
-    font-size: 11.5px;
+    gap: 6px;
+    font-size: 12px;
     color: #6b7280;
     font-weight: 500;
 }
-.qa-new-meta-item i     { font-size: 12px; color: #9ca3af; }
+.qa-new-meta-item i     { font-size: 13px; color: #9ca3af; }
 .qa-new-meta-item strong{ color: #374151; font-weight: 700; }
 
 /* Creator row */
 .qa-new-creator-row {
     display: flex;
     align-items: center;
-    gap: 9px;
-    margin-bottom: 14px;
+    gap: 10px;
+    margin-bottom: 18px;
     text-decoration: none;
 }
 .qa-new-creator-av {
-    width: 32px; height: 32px;
+    width: 36px; height: 36px;
     border-radius: 50%;
     overflow: hidden;
     flex-shrink: 0;
@@ -2240,10 +2242,10 @@
     width:100%; height:100%;
     display:flex; align-items:center; justify-content:center;
     border-radius:50%;
-    font-size:12px; font-weight:800; color:#fff;
+    font-size:13px; font-weight:800; color:#fff;
 }
-.qa-new-creator-label { font-size:10px; color:#9ca3af; font-weight:500; line-height:1.2; }
-.qa-new-creator-name  { font-size:12.5px; font-weight:700; color:#111827; line-height:1.2; }
+.qa-new-creator-label { font-size:11px; color:#9ca3af; font-weight:500; line-height:1.3; }
+.qa-new-creator-name  { font-size:13px; font-weight:700; color:#111827; line-height:1.3; }
 
 /* ══ ANSWERS COLLAPSIBLE ═════════════════════════════════════ */
 .qa-new-answers-wrap {
@@ -2254,10 +2256,10 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 9px 16px;
+    padding: 11px 20px;
     background: var(--qa-surface-2);
     border: none;
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 600;
     color: var(--qa-text-lo);
     cursor: pointer;
@@ -2270,13 +2272,13 @@
     background: var(--qa-accent-bg);
     border: 1px solid var(--qa-border);
     border-radius: 9999px;
-    min-width: 18px; height: 18px;
-    padding: 0 5px;
-    font-size: 10px; font-weight: 700;
+    min-width: 20px; height: 20px;
+    padding: 0 6px;
+    font-size: 11px; font-weight: 700;
     color: var(--qa-accent);
-    margin-left: 5px;
+    margin-left: 6px;
 }
-.qa-new-toggle-caret { font-size: 10px; transition: transform .2s ease; }
+.qa-new-toggle-caret { font-size: 11px; transition: transform .2s ease; }
 
 .qa-new-answers-panel { /* revealed by JS toggle */ }
 
@@ -2284,8 +2286,8 @@
 .qa-new-footer {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 12px 16px 14px;
+    gap: 10px;
+    padding: 14px 20px 16px;
     background: var(--qa-surface);
     border-top: 1px solid var(--qa-border);
 }
@@ -2295,30 +2297,30 @@
     flex: 1;
     background: #f9fafb;
     border: 1.5px solid #e5e7eb;
-    border-radius: 12px;
-    padding: 11px 14px;
-    font-size: 13.5px;
+    border-radius: 14px;
+    padding: 13px 16px;
+    font-size: 14px;
     font-weight: 700;
     color: #111827;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 8px;
+    gap: 10px;
     transition: background .14s, box-shadow .14s, transform .1s;
     box-shadow: 0 1px 6px rgba(0,0,0,0.06);
     letter-spacing: -0.15px;
 }
 .qa-new-btn-start:hover  { background: #f3f4f6; box-shadow: 0 3px 12px rgba(0,0,0,0.09); transform: translateY(-1px); }
 .qa-new-btn-start:active { transform: none; box-shadow: none; }
-.qa-new-btn-start-text   { display: flex; align-items: center; gap: 7px; }
-.qa-new-btn-start-text i { font-size: 12px; }
+.qa-new-btn-start-text   { display: flex; align-items: center; gap: 8px; }
+.qa-new-btn-start-text i { font-size: 13px; }
 .qa-new-btn-start-arrow  {
-    width: 28px; height: 28px;
+    width: 30px; height: 30px;
     border-radius: 50%;
     background: #111827;
     display: flex; align-items: center; justify-content: center;
-    color: #fff; font-size: 11px; flex-shrink: 0;
+    color: #fff; font-size: 12px; flex-shrink: 0;
 }
 
 /* Continue state — amber accent to echo the progress ring */
@@ -2341,7 +2343,7 @@
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 5px;
+    gap: 6px;
     min-width: 0;
 }
 
@@ -2380,14 +2382,13 @@
 
 /* Rank text below the button */
 .qa-rank-text {
-    display: block;
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 600;
     color: #16a34a;
     padding-left: 4px;
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 5px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -2396,20 +2397,20 @@
     content: '\f091'; /* fa-trophy */
     font-family: 'Font Awesome 6 Free';
     font-weight: 900;
-    font-size: 10px;
+    font-size: 11px;
     color: #f59e0b;
     flex-shrink: 0;
 }
 
 /* Small icon action buttons */
 .qa-new-icon-btn {
-    width: 42px; height: 42px;
-    border-radius: 12px;
+    width: 46px; height: 46px;
+    border-radius: 14px;
     background: #f9fafb;
     border: 1.5px solid #e5e7eb;
     cursor: pointer;
     display: flex; align-items: center; justify-content: center;
-    color: #6b7280; font-size: 14px;
+    color: #6b7280; font-size: 15px;
     flex-shrink: 0;
     transition: background .14s, color .14s, transform .1s;
     box-shadow: 0 1px 4px rgba(0,0,0,0.05);
@@ -2548,7 +2549,7 @@
 }
 .qa-answer-count i { font-size: 10px; color: var(--qa-accent-lt); }
 
-/* ── Input bar ── */
+/* ── Input bar — messenger-style compose form ── */
 .qa-input-tray {
     display: flex; align-items: center; gap: 8px;
     padding: 8px 10px 10px 12px;
@@ -2568,6 +2569,45 @@
 }
 .qa-type-input::placeholder { color: var(--qa-text-lo); }
 .qa-type-input:disabled     { color: var(--qa-text-lo); cursor: not-allowed; }
+
+/* ── Bubble delivery status (messenger-style) ── */
+.qa-bubble-status {
+    display: block;
+    font-size: 9px;
+    color: var(--qa-text-lo);
+    margin-top: 3px;
+    line-height: 1;
+    text-align: right;
+}
+.qa-bubble-status--sent {
+    color: #22c55e;
+}
+.qa-bubble-status--sent i {
+    font-size: 9px;
+}
+.qa-bubble-status--error {
+    color: var(--qa-red);
+}
+
+/* Failed bubble — subtle red left-border */
+.qa-bubble--failed .qa-live-bubble {
+    border-color: rgba(239,68,68,0.35) !important;
+    background:   rgba(239,68,68,0.04) !important;
+}
+
+/* Inline retry button inside failed bubble */
+.qa-retry-btn {
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: 9px;
+    font-weight: 700;
+    color: var(--qa-red);
+    cursor: pointer;
+    text-decoration: underline;
+    line-height: 1;
+}
+.qa-retry-btn:hover { opacity: 0.75; }
 .qa-send-btn {
     width: 38px; height: 38px; border-radius: 50%; border: none;
     background: var(--qa-surface-3); color: var(--qa-text-lo);
