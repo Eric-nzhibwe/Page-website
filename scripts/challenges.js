@@ -1656,11 +1656,24 @@ function _qaConnectWS(cardId) {
                     _qaMarkAnswered(cardId, p.user);
                     _appendQAAnswer(cardId, p, { now: false });
                 } else if (msg.type === 'qa_participant_joined') {
-                    // Update the participant count displayed on the card
+                    // Update the participant count + label in realtime for all viewers
                     const p = msg.payload || {};
                     const countEl = document.getElementById(`qaCount_${cardId}`);
                     if (countEl && p.participant_count != null) {
                         countEl.textContent = p.participant_count;
+                        // Briefly flash the count to signal the live update
+                        countEl.closest('.qa-new-meta-participants')
+                                ?.classList.add('qa-count-flash');
+                        setTimeout(() => {
+                            countEl.closest('.qa-new-meta-participants')
+                                    ?.classList.remove('qa-count-flash');
+                        }, 800);
+                        // Update plural label
+                        const labelEl = countEl.parentElement
+                                               ?.querySelector('.qa-participant-label');
+                        if (labelEl) {
+                            labelEl.textContent = `participant${p.participant_count !== 1 ? 's' : ''}`;
+                        }
                     }
                 }
             } catch (_) {}
@@ -1835,22 +1848,9 @@ function _renderQACard(c) {
                     <i class="fas fa-microchip"></i>${topic}
                 </span>
                 ${hasPrize ? `<span class="qa-new-badge qa-new-badge-prize"><i class="fas fa-coins"></i>${prizeText}</span>` : ''}
-                <span class="qa-new-badge qa-new-badge-inprogress">
-                    <i class="fas fa-circle"></i>In Progress
-                </span>
             </div>
 
-            <!-- Progress ring — top right -->
-            <div class="qa-new-progress-ring" title="60% complete" aria-label="60% complete">
-                <svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
-                    <circle class="qa-ring-track" cx="20" cy="20" r="16"/>
-                    <circle class="qa-ring-fill"  cx="20" cy="20" r="16"
-                            style="stroke-dashoffset: calc(100.53 - (100.53 * 60 / 100));"/>
-                </svg>
-                <span class="qa-ring-label">60%</span>
-            </div>
-
-            <!-- Delete (owner) -->
+            <!-- Delete (owner only) -->
             ${deleteBtn}
 
             <!-- Title block -->
@@ -1869,9 +1869,11 @@ function _renderQACard(c) {
 
             <!-- Meta row -->
             <div class="qa-new-meta-row">
-                <span class="qa-new-meta-item">
+                <span class="qa-new-meta-item qa-new-meta-participants">
                     <i class="fas fa-users"></i>
-                    <strong id="qaCount_${id}">${participantCount}</strong> participant${participantCount !== 1 ? 's' : ''}
+                    <span class="qa-participant-live-dot"></span>
+                    <strong id="qaCount_${id}">${participantCount}</strong>
+                    <span class="qa-participant-label">participant${participantCount !== 1 ? 's' : ''}</span>
                 </span>
                 <span class="qa-new-meta-item">
                     <i class="fas fa-list-check"></i>
@@ -1912,7 +1914,8 @@ function _renderQACard(c) {
                     <div class="qa-participant-avatars" role="list" aria-label="Participants">${pipsHTML}</div>
                 </div>
 
-                <!-- ── JOIN GATE — shown until user joins, then swapped for input ── -->
+                <!-- ── JOIN GATE — shown to non-creators who haven't joined yet ── -->
+                ${!isOwner ? `
                 <div class="qa-join-gate" id="qaJoinGate_${id}"
                      style="${userJoined ? 'display:none;' : ''}">
                     <div class="qa-join-gate-inner">
@@ -1927,11 +1930,11 @@ function _renderQACard(c) {
                             <i class="fas fa-arrow-right-to-bracket"></i> Join
                         </button>
                     </div>
-                </div>
+                </div>` : ''}
 
-                <!-- Input bar — shown after joining (messenger-style compose form) -->
+                <!-- Input bar — creators see it immediately; others see it after joining -->
                 <form class="qa-input-tray" id="qaInputTray_${id}"
-                      style="${userJoined ? '' : 'display:none;'}"
+                      style="${isOwner || userJoined ? '' : 'display:none;'}"
                       onsubmit="_chSubmitQA(event,'${id}')">
                     <div class="qa-input-pill ${userAlreadyAnswered ? 'qa-input-disabled' : ''}">
                         <input type="text"
@@ -1962,16 +1965,13 @@ function _renderQACard(c) {
 
         <!-- ══ FOOTER ACTIONS ══════════════════════════════════════════ -->
         <div class="qa-new-footer">
-            <div class="qa-new-footer-primary">
-                <button class="qa-new-btn-start qa-new-btn-results" onclick="window.location.href='${detailUrl}'">
-                    <span class="qa-new-btn-start-text">
-                        <i class="fas fa-circle-check"></i> View Results &bull;
-                        <span class="qa-btn-score"></span>
-                    </span>
-                    <span class="qa-new-btn-start-arrow"><i class="fas fa-arrow-right"></i></span>
-                </button>
-                <span class="qa-rank-text"></span>
-            </div>
+            <button class="qa-new-btn-start" onclick="window.location.href='${detailUrl}'"
+                    style="flex:1;">
+                <span class="qa-new-btn-start-text">
+                    <i class="fas fa-play"></i> Start Challenge
+                </span>
+                <span class="qa-new-btn-start-arrow"><i class="fas fa-arrow-right"></i></span>
+            </button>
             <button class="qa-new-icon-btn" title="Share"
                     onclick="(navigator.share?navigator.share({title:${JSON.stringify(c.title)},url:location.origin+'/pages/${detailUrl}'}):navigator.clipboard.writeText(location.origin+'/pages/${detailUrl}').then(()=>showToast('Link copied!','success')))">
                 <i class="fas fa-share-nodes"></i>
@@ -2035,6 +2035,8 @@ async function _chJoinQA(id) {
         // Update participant count in the meta row
         if (countEl && data.participant_count != null) {
             countEl.textContent = data.participant_count;
+            const labelEl = countEl.parentElement?.querySelector('.qa-participant-label');
+            if (labelEl) labelEl.textContent = `participant${data.participant_count !== 1 ? 's' : ''}`;
         }
 
         // Auto-open the answers panel and focus the input

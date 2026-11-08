@@ -2084,55 +2084,6 @@
     50%       { opacity: 0.35; }
 }
 
-/* ── Progress ring — top right of hero ── */
-.qa-new-progress-ring {
-    position: absolute;
-    top: 12px;
-    right: 12px;
-    z-index: 4;
-    width: 48px;
-    height: 48px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-.qa-new-progress-ring svg {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    transform: rotate(-90deg);          /* start arc at top */
-}
-.qa-ring-track {
-    fill: none;
-    stroke: rgba(255,255,255,0.55);
-    stroke-width: 3.5;
-}
-.qa-ring-fill {
-    fill: none;
-    stroke: #f59e0b;                    /* amber/yellow */
-    stroke-width: 3.5;
-    stroke-linecap: round;
-    stroke-dasharray: 100.53;           /* 2π × r16 ≈ 100.53 */
-    /* dashoffset set inline: 100.53 - (100.53 * pct / 100) */
-    filter: drop-shadow(0 0 4px rgba(245,158,11,0.65));
-    transition: stroke-dashoffset 0.8s ease;
-}
-.qa-ring-label {
-    position: relative;
-    z-index: 1;
-    font-size: 10px;
-    font-weight: 800;
-    color: #ffffff;
-    text-shadow: 0 1px 4px rgba(0,0,0,0.45);
-    line-height: 1;
-    letter-spacing: -0.3px;
-    /* subtle glass backing */
-    background: rgba(0,0,0,0.28);
-    border-radius: 9999px;
-    padding: 3px 4px;
-}
-
 /* Delete btn (owner) */
 .qa-new-delete-btn {
     position: absolute;
@@ -2219,6 +2170,40 @@
 }
 .qa-new-meta-item i     { font-size: 13px; color: #9ca3af; }
 .qa-new-meta-item strong{ color: #374151; font-weight: 700; }
+
+/* Participants item — slightly emphasised */
+.qa-new-meta-participants {
+    font-weight: 600;
+    color: #374151;
+}
+.qa-new-meta-participants i {
+    color: #374151 !important;
+}
+.qa-new-meta-participants strong {
+    font-size: 14px;
+    color: #111827;
+    font-weight: 800;
+}
+
+/* Live pulse dot beside participant count */
+.qa-participant-live-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: #22c55e;
+    flex-shrink: 0;
+    animation: qaLivePulse 1.8s ease-in-out infinite;
+}
+
+/* Flash animation when count updates via WS */
+@keyframes qaCountFlash {
+    0%   { background: rgba(34,197,94,0.15); border-radius: 6px; }
+    100% { background: transparent; }
+}
+.qa-count-flash {
+    animation: qaCountFlash 0.8s ease-out forwards;
+    padding: 2px 6px;
+    margin: -2px -6px;
+}
 
 /* Creator row */
 .qa-new-creator-row {
@@ -2323,7 +2308,7 @@
     color: #fff; font-size: 12px; flex-shrink: 0;
 }
 
-/* Continue state — amber accent to echo the progress ring */
+/* Continue state — amber accent */
 .qa-new-btn-continue {
     background: #fffbeb;
     border-color: #fde68a;
@@ -2336,70 +2321,6 @@
 }
 .qa-new-btn-continue .qa-new-btn-start-arrow {
     background: #f59e0b;
-}
-
-/* Results / completed state — green success */
-.qa-new-footer-primary {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    min-width: 0;
-}
-
-.qa-new-btn-results {
-    background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
-    border-color: #86efac;
-    color: #14532d;
-    box-shadow:
-        0 1px 6px rgba(0,0,0,0.06),
-        0 0 0 0 rgba(34,197,94,0);
-    animation: qaResultsGlow 2.8s ease-in-out infinite;
-}
-.qa-new-btn-results:hover {
-    background: linear-gradient(135deg, #bbf7d0 0%, #86efac 100%);
-    box-shadow:
-        0 3px 12px rgba(34,197,94,0.22),
-        0 0 16px rgba(34,197,94,0.15);
-    transform: translateY(-1px);
-}
-.qa-new-btn-results .qa-new-btn-start-arrow {
-    background: #16a34a;
-}
-.qa-new-btn-results .qa-new-btn-start-text i {
-    color: #16a34a;
-    font-size: 14px;
-}
-.qa-btn-score {
-    font-weight: 800;
-    color: #15803d;
-}
-
-@keyframes qaResultsGlow {
-    0%, 100% { box-shadow: 0 1px 6px rgba(0,0,0,0.06), 0 0 0   0   rgba(34,197,94,0);    }
-    50%       { box-shadow: 0 2px 8px rgba(0,0,0,0.07), 0 0 14px 2px rgba(34,197,94,0.18); }
-}
-
-/* Rank text below the button */
-.qa-rank-text {
-    font-size: 12px;
-    font-weight: 600;
-    color: #16a34a;
-    padding-left: 4px;
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-.qa-rank-text::before {
-    content: '\f091'; /* fa-trophy */
-    font-family: 'Font Awesome 6 Free';
-    font-weight: 900;
-    font-size: 11px;
-    color: #f59e0b;
-    flex-shrink: 0;
 }
 
 /* Small icon action buttons */
