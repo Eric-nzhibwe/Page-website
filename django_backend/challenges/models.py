@@ -643,6 +643,7 @@ class QAAnswer(models.Model):
         unique_together = [('qa', 'user')]
 
     def __str__(self):
+        return f'{self.user.username} — {self.qa.title}'
 
 
 class QAParticipant(models.Model):
@@ -659,4 +660,3 @@ class QAParticipant(models.Model):
 
     def __str__(self):
         return f'{self.user.username} joined {self.qa.title}'
-        return f'{self.user.username} on {self.qa.title}'
