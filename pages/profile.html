@@ -1,588 +1,1307 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Profile</title>
-    <link rel="icon" type="image/jpeg" href="../images/Page.jpeg">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="../styles/styles.css">
-    <link rel="stylesheet" href="../styles/icon-nav.css">
-    <link rel="stylesheet" href="../styles/profile.css">
-    <!-- Theme engine must be first -->
-    <script src="../scripts/theme.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PAGE Profile</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background: #f0f2f5;
+    }
+
+    /* ── wrapper / card ── */
+    .profile-wrapper { display: flex; justify-content: center; padding: 20px; }
+
+    .profile-card {
+      width: 100%; max-width: 390px;
+      background: #ffffff;
+      border-radius: 40px; overflow: hidden;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.15);
+      border: 8px solid #1a1a1a;
+    }
+
+    /* ── cover ── */
+    .profile-cover {
+      height: 160px;
+      background: linear-gradient(135deg, #e5e7eb 0%, #d1d5db 50%, #f3f4f6 100%);
+      position: relative; overflow: hidden; cursor: default;
+    }
+    .profile-cover img { width:100%; height:100%; object-fit:cover; display:block; }
+
+    /* cover camera btn — own profile only, hidden by default */
+    .cover-cam-btn {
+      display: none;          /* shown via JS for own profile */
+      position: absolute; bottom: 10px; right: 12px;
+      background: rgba(0,0,0,0.55); color: #fff;
+      border: none; border-radius: 9999px;
+      padding: 6px 12px; font-size: 12px; font-weight: 600;
+      cursor: pointer; gap: 5px; align-items: center;
+      transition: background .15s;
+    }
+    .cover-cam-btn:hover { background: rgba(0,0,0,0.75); }
+
+    /* ── avatar wrap ── */
+    .profile-av-outer {
+      position: relative;
+      width: 110px; margin: -55px auto 12px;
+    }
+    .profile-av-wrap {
+      width: 110px; height: 110px;
+      border-radius: 50%;
+      border: 5px solid #ffffff;
+      overflow: hidden;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.10);
+      background: #e5e7eb;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .profile-av-wrap img  { width:100%; height:100%; object-fit:cover; }
+    .profile-av-wrap .av-letter {
+      width:100%; height:100%;
+      display:flex; align-items:center; justify-content:center;
+      font-size:42px; font-weight:700; color:#fff;
+      border-radius:50%; background: #374151;
+    }
+
+    /* avatar camera btn — own profile only */
+    .av-cam-btn {
+      display: none;          /* shown via JS for own profile */
+      position: absolute; bottom: 4px; right: 0;
+      width: 32px; height: 32px;
+      background: #111827; color: #fff;
+      border: 2.5px solid #fff; border-radius: 50%;
+      font-size: 13px; cursor: pointer;
+      align-items: center; justify-content: center;
+      transition: background .15s;
+    }
+    .av-cam-btn:hover { background: #374151; }
+
+    /* ── identity text ── */
+    .profile-name     { font-size:24px; font-weight:700; color:#111827; text-align:center; min-height:30px; }
+    .profile-username { margin:4px 0 8px; font-size:15px; color:#6b7280; text-align:center; }
+    .profile-bio      { margin:0 0 8px; font-size:14px; color:#374151; text-align:center; line-height:1.4; min-height:20px; }
+    .profile-meta     { display:flex; justify-content:center; gap:16px; font-size:13px; color:#6b7280; margin-bottom:18px; flex-wrap:wrap; }
+
+    /* ── buttons ── */
+    .profile-btns { display:flex; gap:12px; margin-bottom:20px; }
+    .pf-btn-primary, .pf-btn-secondary {
+      flex:1; padding:12px; border-radius:9999px;
+      font-size:15px; font-weight:600; cursor:pointer;
+      display:flex; align-items:center; justify-content:center; gap:8px;
+      transition: opacity .15s; border:none;
+    }
+    .pf-btn-primary:hover, .pf-btn-secondary:hover { opacity:.85; }
+    .pf-btn-primary   { background:#111827; color:#ffffff; }
+    .pf-btn-secondary { background:#ffffff; color:#111827; border:1.5px solid #d1d5db; }
+    .pf-btn-primary.following { background:#f3f4f6; color:#374151; border:1.5px solid #d1d5db; }
+    .pf-btn-primary:disabled  { opacity:.5; cursor:default; }
+
+    /* ── stats ── */
+    .profile-stats { display:flex; background:#f9fafb; border-radius:16px; padding:14px 0; margin-bottom:20px; }
+    .profile-stat  { flex:1; text-align:center; border-right:1px solid #e5e7eb; cursor:pointer; }
+    .profile-stat:last-child { border-right:none; }
+    .stat-val { font-size:17px; font-weight:700; color:#111827; }
+    .stat-lbl { font-size:13px; color:#6b7280; }
+    .profile-stat:hover .stat-val { color:#374151; }
+
+    /* ── tabs ── */
+    .profile-tabs { display:flex; border-bottom:1px solid #e5e7eb; margin-bottom:16px; }
+    .pf-tab {
+      flex:1; padding:12px 0;
+      font-size:15px; font-weight:500; color:#6b7280;
+      border-bottom:2.5px solid transparent;
+      display:flex; align-items:center; justify-content:center; gap:6px;
+      cursor:pointer; background:none; border-left:none; border-right:none; border-top:none;
+      transition: color .15s;
+    }
+    .pf-tab.active { font-weight:600; color:#111827; border-bottom-color:#111827; }
+
+    /* ── post cards ── */
+    .profile-posts { display:flex; flex-direction:column; gap:14px; }
+    .post-card { background:#fff; border:1px solid #e5e7eb; border-radius:16px; padding:14px; }
+    .post-header { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+    .post-av {
+      width:36px; height:36px; border-radius:50%;
+      overflow:hidden; flex-shrink:0;
+      background:#e5e7eb; display:flex; align-items:center; justify-content:center;
+    }
+    .post-av img          { width:100%; height:100%; object-fit:cover; }
+    .post-av .av-letter-sm{
+      font-size:14px; font-weight:700; color:#fff;
+      width:100%; height:100%; display:flex; align-items:center; justify-content:center;
+      border-radius:50%; background:#374151;
+    }
+    .post-author-name { font-size:14px; font-weight:600; color:#111827; }
+    .post-time        { font-weight:400; color:#6b7280; }
+    .post-text        { font-size:14px; color:#1f2937; line-height:1.45; margin-bottom:10px; }
+    .post-actions     { display:flex; gap:18px; }
+    .post-action-btn  {
+      background:none; border:none; cursor:pointer;
+      font-size:13px; color:#6b7280;
+      display:flex; align-items:center; gap:4px; padding:0; transition:color .15s;
+    }
+    .post-action-btn:hover      { color:#111827; }
+    .post-action-btn.liked i    { color:#ef4444; }
+
+    /* ── empty / loading ── */
+    .posts-empty, .posts-loading { text-align:center; padding:32px 0; font-size:14px; color:#9ca3af; }
+    .posts-loading i { animation: spin .8s linear infinite; }
+    @keyframes spin  { to { transform:rotate(360deg); } }
+
+    /* ── upload progress ring (avatar) ── */
+    .av-progress-ring {
+      display: none;
+      position: absolute; inset: 0;
+      border-radius: 50%;
+      background: rgba(0,0,0,0.45);
+      align-items: center; justify-content: center;
+      color: #fff; font-size: 13px; font-weight: 700;
+    }
+
+    /* ── modals ── */
+    .modal-veil {
+      display:none; position:fixed; inset:0;
+      background:rgba(0,0,0,0.5); z-index:999;
+      align-items:center; justify-content:center;
+    }
+    .modal-veil.open { display:flex; }
+    .modal-box {
+      background:#fff; border-radius:20px;
+      padding:24px; width:90%; max-width:420px;
+      box-shadow:0 20px 60px rgba(0,0,0,0.2);
+    }
+    .modal-box h2      { font-size:18px; font-weight:700; margin-bottom:16px; color:#111827; }
+    .modal-field       { margin-bottom:14px; }
+    .modal-field label { display:block; font-size:13px; font-weight:600; color:#374151; margin-bottom:5px; }
+    .modal-field input,
+    .modal-field textarea {
+      width:100%; padding:10px 14px; border:1.5px solid #d1d5db;
+      border-radius:10px; font-size:14px; color:#111827;
+      outline:none; transition:border-color .15s; font-family:inherit;
+    }
+    .modal-field input:focus,
+    .modal-field textarea:focus { border-color:#374151; }
+    .modal-field textarea       { resize:vertical; min-height:80px; }
+    .modal-btns   { display:flex; gap:10px; margin-top:18px; }
+    .modal-save   { flex:1; padding:11px; border:none; border-radius:9999px; background:#111827; color:#fff; font-size:15px; font-weight:600; cursor:pointer; }
+    .modal-cancel { flex:1; padding:11px; border:1.5px solid #d1d5db; border-radius:9999px; background:#fff; color:#111827; font-size:15px; font-weight:600; cursor:pointer; }
+    .modal-error  { font-size:13px; color:#ef4444; margin-top:10px; display:none; }
+
+    /* ── toast ── */
+    #pfToast {
+      position:fixed; bottom:24px; left:50%; transform:translateX(-50%);
+      background:#111827; color:#fff; padding:10px 22px;
+      border-radius:9999px; font-size:14px; font-weight:500;
+      z-index:9999; opacity:0; pointer-events:none; transition:opacity .25s;
+      white-space:nowrap;
+    }
+    #pfToast.show { opacity:1; }
+
+    /* ── about tab ── */
+    .about-list { list-style:none; display:flex; flex-direction:column; gap:12px; font-size:14px; color:#374151; line-height:1.6; }
+
+    /* ── desktop ≥ 768px ── */
+    @media (min-width:768px) {
+      .profile-wrapper { padding:40px 24px; align-items:flex-start; }
+      .profile-card    { max-width:720px; border-radius:20px; border:none; box-shadow:0 4px 24px rgba(0,0,0,0.10); }
+      .profile-cover   { height:220px !important; }
+      .profile-av-outer{ width:130px; margin-top:-65px !important; }
+      .profile-av-wrap { width:130px !important; height:130px !important; }
+      .profile-av-wrap .av-letter { font-size:52px; }
+      .profile-name    { font-size:28px !important; }
+      .profile-btns    { max-width:380px; margin-left:auto; margin-right:auto; }
+      .profile-stats   { padding:18px 0 !important; }
+      .profile-posts   { gap:18px !important; }
+    }
+  </style>
 </head>
 <body>
 
-<!-- ═══════════ NAVBAR — matches index.html exactly ═══════════ -->
-<header class="header w-100" style="background-color: whitesmoke;">
-    <div class="header-left d-flex align-items-center">
-        <div class="logo" onclick="window.location.href='../index.html'" style="cursor:pointer">
-            <i class="fas fa-fire-flame-curved"></i>PAGE
-        </div>
-        <div class="search-bar d-none d-md-flex align-items-center">
-            <i class="fas fa-magnifying-glass"></i>
-            <input type="text" placeholder="Search PAGE..." id="headerSearch">
-        </div>
+<div class="profile-wrapper">
+  <div class="profile-card">
+
+    <!-- ── Cover ── -->
+    <div class="profile-cover" id="pfCover">
+      <!-- cover image injected by JS -->
+      <button class="cover-cam-btn" id="pfCoverBtn" onclick="document.getElementById('pfCoverInput').click()">
+        <i class="fas fa-camera"></i> Change Cover
+      </button>
+      <input type="file" id="pfCoverInput" accept="image/*" style="display:none" onchange="pfUploadCover(this)">
     </div>
 
-    <nav class="icon-nav d-flex justify-content-center flex-grow-1">
-        <button class="icon-nav-btn" title="Home" onclick="window.location.href='../index.html'">
-            <i class="fas fa-house"></i>
-        </button>
-        <button class="icon-nav-btn" title="Challenges" onclick="window.location.href='challenges.html'">
-            <i class="fas fa-trophy"></i>
-            <span class="notification-badge" id="challengesBadge" style="display:none;">0</span>
-        </button>
-        <button class="icon-nav-btn" title="Messages" onclick="window.location.href='messenger.html'">
-            <i class="fas fa-comment-dots"></i>
-        </button>
-        <button class="icon-nav-btn active" title="Profile">
-            <i class="fas fa-circle-user"></i>
-        </button>
-    </nav>
+    <!-- ── Profile Content ── -->
+    <div style="padding:0 20px 24px; position:relative;">
 
-    <!-- Right Side Icons -->
-    <div class="header-right d-flex align-items-center">
-        <button class="header-icon-btn" id="notifBtn" title="Notifications">
-            <i class="fas fa-bell"></i>
-            <span class="notification-badge" id="notificationBadge" style="display:none;">0</span>
-        </button>
-        <button class="header-icon-btn" id="quickMenuBtn" title="Menu">
-            <i class="fas fa-grid-2"></i>
-        </button>
-        <div class="user-avatar-btn" id="userAvatarBtn" data-current-user-avatar
-             role="button" tabindex="0" aria-haspopup="menu" aria-expanded="false"
-             onclick="toggleUserMenu(event)"
-             onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleUserMenu(event);}">
+      <!-- Avatar -->
+      <div class="profile-av-outer" id="pfAvOuter">
+        <div class="profile-av-wrap" id="pfAv">
+          <div class="av-letter" id="pfAvLetter">?</div>
         </div>
-    </div>
-</header>
+        <!-- upload progress overlay (hidden until uploading) -->
+        <div class="av-progress-ring" id="pfAvProgress">
+          <i class="fas fa-spinner" style="animation:spin .8s linear infinite;"></i>
+        </div>
+        <!-- camera button — own profile only, shown by JS -->
+        <button class="av-cam-btn" id="pfAvCamBtn" title="Change photo"
+                onclick="document.getElementById('pfAvatarInput').click()">
+          <i class="fas fa-camera"></i>
+        </button>
+        <input type="file" id="pfAvatarInput" accept="image/*" style="display:none"
+               onchange="pfUploadAvatar(this)">
+      </div>
 
-<!-- Quick Menu Dropdown -->
-<div class="quick-menu-dropdown" id="quickMenuDropdown">
-    <div class="quick-menu-header"><h3>Quick Access</h3></div>
-    <div class="quick-menu-grid">
-        <a href="../index.html" class="quick-menu-item">
-            <i class="fas fa-chart-line"></i><span>Dashboard</span>
-        </a>
-        <a href="community.html" class="quick-menu-item">
-            <i class="fas fa-people-group"></i><span>Community</span>
-        </a>
-        <a href="challenges.html" class="quick-menu-item">
-            <i class="fas fa-trophy"></i><span>Challenges</span>
-        </a>
-        <a href="payment.html" class="quick-menu-item">
-            <i class="fas fa-wallet"></i><span>Wallet</span>
-        </a>
-        <a href="chatbot.html" class="quick-menu-item">
-            <i class="fas fa-robot"></i><span>PAGE AI</span>
-        </a>
-        <a href="messenger.html" class="quick-menu-item">
-            <i class="fas fa-comment-dots"></i><span>Messages</span>
-        </a>
-        <a href="influencers.html" class="quick-menu-item">
-            <i class="fas fa-star"></i><span>Influencers</span>
-        </a>
+      <!-- Name & Username -->
+      <h1 class="profile-name"     id="pfName"></h1>
+      <p  class="profile-username" id="pfHandle"></p>
+      <p  class="profile-bio"      id="pfBio"></p>
+      <div class="profile-meta"    id="pfMeta"></div>
+
+      <!-- Action Buttons -->
+      <div class="profile-btns" id="pfBtns"></div>
+
+      <!-- Stats -->
+      <div class="profile-stats">
+        <div class="profile-stat">
+          <div class="stat-val" id="statPosts">—</div>
+          <div class="stat-lbl"><i class="fas fa-pen-nib" style="font-size:11px;margin-right:2px;"></i>Posts</div>
+        </div>
+        <div class="profile-stat" onclick="pfOpenFollowers('followers')">
+          <div class="stat-val" id="statFollowers">—</div>
+          <div class="stat-lbl"><i class="fas fa-users" style="font-size:11px;margin-right:2px;"></i>Followers</div>
+        </div>
+        <div class="profile-stat" onclick="pfOpenFollowers('following')">
+          <div class="stat-val" id="statFollowing">—</div>
+          <div class="stat-lbl"><i class="fas fa-user-check" style="font-size:11px;margin-right:2px;"></i>Following</div>
+        </div>
+      </div>
+
+      <!-- Tabs -->
+      <div class="profile-tabs">
+        <button class="pf-tab active" data-tab="posts" onclick="pfSwitchTab(this)">
+          <i class="fas fa-grid-2"></i> Posts
+        </button>
+        <button class="pf-tab" data-tab="about" onclick="pfSwitchTab(this)">
+          <i class="fas fa-id-card-clip"></i> About
+        </button>
+        <button class="pf-tab" data-tab="media" onclick="pfSwitchTab(this)">
+          <i class="fas fa-image"></i> Media
+        </button>
+      </div>
+
+      <!-- Posts tab -->
+      <div id="tab-posts">
+        <div class="profile-posts" id="pfPostsList">
+          <div class="posts-loading"><i class="fas fa-spinner"></i> Loading posts…</div>
+        </div>
+      </div>
+
+      <!-- About tab -->
+      <div id="tab-about" style="display:none;">
+        <ul class="about-list">
+          <li id="aboutBio"   style="display:none;"><i class="fas fa-align-left"     style="margin-right:8px;color:#6b7280;width:16px;"></i><span id="aboutBioTxt"></span></li>
+          <li id="aboutLoc"   style="display:none;"><i class="fas fa-location-dot"   style="margin-right:8px;color:#6b7280;width:16px;"></i><span id="aboutLocTxt"></span></li>
+          <li id="aboutWeb"   style="display:none;"><i class="fas fa-globe"           style="margin-right:8px;color:#6b7280;width:16px;"></i><a id="aboutWebLink" href="#" target="_blank" rel="noopener" style="color:#374151;text-decoration:underline;"></a></li>
+          <li id="aboutEmail" style="display:none;"><i class="fas fa-envelope"        style="margin-right:8px;color:#6b7280;width:16px;"></i><span id="aboutEmailTxt"></span></li>
+          <li id="aboutJoin"  style="display:none;"><i class="fas fa-calendar-days"  style="margin-right:8px;color:#6b7280;width:16px;"></i><span id="aboutJoinTxt"></span></li>
+          <li id="aboutEmpty" style="color:#9ca3af;"><i class="fas fa-circle-info"   style="margin-right:6px;"></i>No details added yet.</li>
+        </ul>
+      </div>
+
+      <!-- Media tab -->
+      <div id="tab-media" style="display:none;">
+        <div id="pfMediaGrid"  style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;"></div>
+        <div id="pfMediaEmpty" style="display:none;text-align:center;padding:32px 0;font-size:14px;color:#9ca3af;">
+          <i class="fas fa-image" style="font-size:24px;margin-bottom:8px;display:block;"></i>No media yet.
+        </div>
+      </div>
+
+    </div><!-- /content -->
+  </div><!-- /card -->
+</div><!-- /wrapper -->
+
+<!-- Edit Profile Modal -->
+<div class="modal-veil" id="pfEditModal" onclick="pfModalBgClose(event,'pfEditModal')">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <h2><i class="fas fa-pen" style="margin-right:8px;"></i>Edit Profile</h2>
+    <div class="modal-field">
+      <label for="editName">Display Name</label>
+      <input id="editName" type="text" maxlength="100" placeholder="Your name or alias">
     </div>
+    <div class="modal-field">
+      <label for="editBio">Bio</label>
+      <textarea id="editBio" maxlength="500" placeholder="Tell people about yourself…"></textarea>
+    </div>
+    <div class="modal-field">
+      <label for="editLocation">Location</label>
+      <input id="editLocation" type="text" maxlength="100" placeholder="City, Country">
+    </div>
+    <div class="modal-field">
+      <label for="editWebsite">Website</label>
+      <input id="editWebsite" type="url" maxlength="255" placeholder="https://…">
+    </div>
+    <div class="modal-error" id="editError"></div>
+    <div class="modal-btns">
+      <button class="modal-save"   id="editSaveBtn" onclick="pfSaveProfile()"><i class="fas fa-floppy-disk"></i> Save</button>
+      <button class="modal-cancel" onclick="pfCloseModal('pfEditModal')">Cancel</button>
+    </div>
+  </div>
 </div>
 
-<!-- User Menu Dropdown -->
-<div class="user-menu-dropdown" id="userMenuDropdown">
-    <div class="user-menu-header">
-        <div class="user-menu-avatar" data-current-user-avatar></div>
-        <div class="user-menu-info">
-            <h4 id="userMenuName">Player</h4>
-            <p id="userMenuTier">Bronze Tier</p>
-        </div>
-    </div>
-    <div class="user-menu-stats">
-        <div class="user-menu-stat">
-            <i class="fas fa-bolt-lightning"></i>
-            <span id="userMenuStreak">0</span>
-        </div>
-        <div class="user-menu-stat">
-            <i class="fas fa-star"></i>
-            <span id="userMenuPrestige">0</span>
-        </div>
-        <div class="user-menu-stat">
-            <i class="fas fa-wallet"></i>
-            <span id="userMenuBalance">K0.00</span>
-        </div>
-    </div>
-    <div class="user-menu-links">
-        <a href="profile.html"><i class="fas fa-id-card"></i> View Profile</a>
-        <a href="challenges.html"><i class="fas fa-trophy"></i> Challenges</a>
-        <a href="chatbot.html"><i class="fas fa-robot"></i> PAGE AI</a>
-        <a href="payment.html"><i class="fas fa-wallet"></i> My Wallet</a>
-        <a href="followers.html"><i class="fas fa-user-plus"></i> Followers</a>
-        <a href="#" id="settingsLink"><i class="fas fa-gear"></i> Settings</a>
-        <a href="#" id="logoutLink" class="logout-link"><i class="fas fa-right-from-bracket"></i> Logout</a>
-    </div>
+<!-- Followers / Following Modal -->
+<div class="modal-veil" id="pfFollowModal" onclick="pfModalBgClose(event,'pfFollowModal')">
+  <div class="modal-box" onclick="event.stopPropagation()" style="max-height:80vh;overflow:hidden;display:flex;flex-direction:column;">
+    <h2 style="margin-bottom:12px;">
+      <span id="pfFollowTitle">Followers</span>
+      <button onclick="pfCloseModal('pfFollowModal')" style="float:right;background:none;border:none;cursor:pointer;font-size:18px;color:#6b7280;"><i class="fas fa-xmark"></i></button>
+    </h2>
+    <div id="pfFollowList" style="overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:12px;padding-right:4px;"></div>
+  </div>
 </div>
 
-<!-- Dropdown controller — self-contained, zero external dependencies -->
+<!-- Toast -->
+<div id="pfToast"></div>
+
 <script>
-(function () {
-    'use strict';
-    function openMenu(id) {
-        var el = document.getElementById(id);
-        if (el) el.classList.add('show');
-        if (id === 'userMenuDropdown') {
-            var btn = document.getElementById('userAvatarBtn');
-            if (btn) btn.setAttribute('aria-expanded', 'true');
-        }
+'use strict';
+
+/* ══════════════════════════════════════════════════════════
+   CONFIG
+══════════════════════════════════════════════════════════ */
+const PF_API = (
+  window.location.hostname === 'localhost' ||
+  window.location.hostname === '127.0.0.1'
+) ? 'http://localhost:8000/api' : `${window.location.origin}/api`;
+
+const PF_POLL_INTERVAL_MS = 60_000;  // realtime poll every 60 s
+
+/* ══════════════════════════════════════════════════════════
+   STATE
+══════════════════════════════════════════════════════════ */
+let _pfUser       = null;
+let _pfIsOwn      = true;
+let _pfViewId     = null;
+let _pfFollowing  = false;
+let _pfPollTimer  = null;
+
+/* ══════════════════════════════════════════════════════════
+   AUTH HELPERS
+══════════════════════════════════════════════════════════ */
+function pfAuth() {
+  if (window._pageAuthHeader) return window._pageAuthHeader();
+  const fb  = localStorage.getItem('firebaseIdToken');
+  if (fb) {
+    try {
+      const p = JSON.parse(atob(fb.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')));
+      if (Date.now() < p.exp * 1000) return `FirebaseToken ${fb}`;
+    } catch (_) {}
+  }
+  const drf = localStorage.getItem('djangoAuthToken') || localStorage.getItem('authToken');
+  if (drf) return `Token ${drf}`;
+  return null;
+}
+async function pfAuthAsync() {
+  if (window._pageAuthHeaderAsync) return await window._pageAuthHeaderAsync();
+  return pfAuth();
+}
+async function pfHeadersAsync() {
+  const h = { 'Content-Type': 'application/json' };
+  const a = await pfAuthAsync();
+  if (a) h['Authorization'] = a;
+  return h;
+}
+// Prefer DRF token for uploads (never expires mid-session)
+function pfUploadAuthHeader() {
+  const drf = localStorage.getItem('djangoAuthToken') || localStorage.getItem('authToken');
+  if (drf) return `Token ${drf}`;
+  const fb = localStorage.getItem('firebaseIdToken');
+  if (fb)  return `FirebaseToken ${fb}`;
+  return null;
+}
+
+/* ══════════════════════════════════════════════════════════
+   TOAST
+══════════════════════════════════════════════════════════ */
+let _toastTimer = null;
+function pfToast(msg, type) {
+  const el = document.getElementById('pfToast');
+  if (!el) return;
+  el.textContent = msg;
+  el.style.background = type === 'error' ? '#ef4444' : type === 'success' ? '#16a34a' : '#111827';
+  el.classList.add('show');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => el.classList.remove('show'), 3200);
+}
+
+/* ══════════════════════════════════════════════════════════
+   ESCAPE
+══════════════════════════════════════════════════════════ */
+function pfEsc(s) {
+  const d = document.createElement('div');
+  d.textContent = String(s ?? '');
+  return d.innerHTML;
+}
+
+/* ══════════════════════════════════════════════════════════
+   TIME AGO
+══════════════════════════════════════════════════════════ */
+function pfTimeAgo(iso) {
+  const s = Math.floor((Date.now() - new Date(iso)) / 1000);
+  if (s < 60)  return 'just now';
+  const m = Math.floor(s / 60);  if (m < 60)  return `${m}m`;
+  const h = Math.floor(m / 60);  if (h < 24)  return `${h}h`;
+  const d = Math.floor(h / 24);  if (d < 7)   return `${d}d`;
+  return new Date(iso).toLocaleDateString();
+}
+
+/* ══════════════════════════════════════════════════════════
+   NUMBER FORMATTER
+══════════════════════════════════════════════════════════ */
+function _pfFmt(n) {
+  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1).replace(/\.0$/,'') + 'M';
+  if (n >= 1_000)     return (n / 1_000).toFixed(1).replace(/\.0$/,'')     + 'K';
+  return String(n);
+}
+
+/* ══════════════════════════════════════════════════════════
+   AVATAR COLOUR
+══════════════════════════════════════════════════════════ */
+const _AV_COLOURS = ['#374151','#6c63ff','#e74c3c','#2ecc71','#f39c12','#1abc9c','#9b59b6','#3498db'];
+function pfAvColour(ch) {
+  return _AV_COLOURS[(ch || '?').charCodeAt(0) % _AV_COLOURS.length];
+}
+
+/* ══════════════════════════════════════════════════════════
+   APPLY AVATAR  (large profile circle)
+══════════════════════════════════════════════════════════ */
+function pfApplyAvatar(url, name) {
+  const wrap = document.getElementById('pfAv');
+  if (!wrap) return;
+  const init  = (name || '?').charAt(0).toUpperCase();
+  const color = pfAvColour(init);
+  if (url) {
+    wrap.innerHTML = `<img src="${pfEsc(url)}" alt="${pfEsc(name || 'avatar')}"
+      onerror="pfAvatarFallback(this,'${pfEsc(init)}','${pfEsc(color)}')">`;
+  } else {
+    wrap.innerHTML = `<div class="av-letter" style="background:${color};">${init}</div>`;
+  }
+}
+window.pfAvatarFallback = function(img, init, color) {
+  const wrap = img.closest('.profile-av-wrap');
+  if (wrap) wrap.innerHTML = `<div class="av-letter" style="background:${color||'#374151'};">${init}</div>`;
+};
+
+/* ══════════════════════════════════════════════════════════
+   SMALL AVATAR HTML  (post cards)
+══════════════════════════════════════════════════════════ */
+function pfSmallAvHTML(user) {
+  const url   = user.profile_image_url || user.avatar_url || user.profile_image || null;
+  const name  = user.display_name || user.username || '?';
+  const init  = name.charAt(0).toUpperCase();
+  const color = pfAvColour(init);
+  if (url) {
+    return `<img src="${pfEsc(url)}" alt="${pfEsc(name)}"
+              onerror="this.style.display='none';this.nextSibling.style.display='flex';">
+            <div class="av-letter-sm" style="display:none;background:${color};">${init}</div>`;
+  }
+  return `<div class="av-letter-sm" style="background:${color};">${init}</div>`;
+}
+
+/* ══════════════════════════════════════════════════════════
+   CANVAS RESIZE → BASE64
+   Returns a Promise<string> that resolves to a data:image/jpeg;base64,…
+   Resizes to fit within maxW×maxH, keeps aspect ratio.
+══════════════════════════════════════════════════════════ */
+function pfResizeBase64(file, maxW, maxH, quality) {
+  return new Promise((resolve, reject) => {
+    if (!file || !file.type.startsWith('image/')) {
+      return reject(new Error('Not an image file.'));
     }
-    function closeMenu(id) {
-        var el = document.getElementById(id);
-        if (el) {
-            el.classList.remove('show');
-            el.style.removeProperty('top');
-            el.style.removeProperty('bottom');
-            el.style.removeProperty('right');
-            el.style.removeProperty('position');
-        }
-        if (id === 'userMenuDropdown') {
-            var btn = document.getElementById('userAvatarBtn');
-            if (btn) btn.setAttribute('aria-expanded', 'false');
-        }
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('Could not read file.'));
+    reader.onload = e => {
+      const img = new Image();
+      img.onerror = () => reject(new Error('Could not decode image.'));
+      img.onload  = () => {
+        let w = img.naturalWidth;
+        let h = img.naturalHeight;
+        const ratio = Math.min(maxW / w, maxH / h, 1); // never upscale
+        w = Math.round(w * ratio);
+        h = Math.round(h * ratio);
+        const canvas = document.createElement('canvas');
+        canvas.width  = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', quality || 0.85));
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+/* ══════════════════════════════════════════════════════════
+   INIT
+══════════════════════════════════════════════════════════ */
+document.addEventListener('DOMContentLoaded', async () => {
+  if (!pfAuth()) { window.location.replace('/pages/auth.html'); return; }
+
+  const params = new URLSearchParams(window.location.search);
+  const viewId = params.get('id');
+  const stored = JSON.parse(localStorage.getItem('pageUser') || '{}');
+  const myId   = stored.id || localStorage.getItem('userId') || null;
+
+  _pfIsOwn  = !viewId || String(viewId) === String(myId);
+  _pfViewId = viewId || myId;
+
+  // Instant render from cache while network request goes out
+  if (_pfIsOwn && stored.id) {
+    _pfUser = stored;
+    pfRenderProfile(stored, true);
+  }
+
+  if (_pfIsOwn) {
+    await pfLoadOwnProfile();
+    pfStartPolling();          // realtime refresh loop
+  } else {
+    await pfLoadOtherProfile(viewId);
+  }
+
+  await pfLoadFollowCounts(_pfViewId);
+  pfLoadPosts();
+
+  // Listen for avatar changes from other scripts (e.g. settings page)
+  window.addEventListener('page:avatarChanged', e => {
+    if (e.detail?.url) pfApplyAvatar(e.detail.url, _pfUser?.display_name || _pfUser?.username);
+  });
+
+  // Escape key closes modals
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { pfCloseModal('pfEditModal'); pfCloseModal('pfFollowModal'); }
+  });
+});
+
+/* ══════════════════════════════════════════════════════════
+   REALTIME POLLING  (own profile only, every 60 s)
+══════════════════════════════════════════════════════════ */
+function pfStartPolling() {
+  if (_pfPollTimer) clearInterval(_pfPollTimer);
+  _pfPollTimer = setInterval(pfPollProfile, PF_POLL_INTERVAL_MS);
+}
+
+async function pfPollProfile() {
+  try {
+    const res = await fetch(`${PF_API}/auth/stats/`, { headers: await pfHeadersAsync() });
+    if (!res.ok) return;
+    const data = await res.json();
+    const u    = data.user || data;
+    if (!u || !u.id) return;
+
+    // Patch only fields that changed — avoids full re-render flicker
+    const nameEl = document.getElementById('pfName');
+    const newName = u.display_name || u.username || '';
+    if (nameEl && nameEl.textContent !== newName) nameEl.textContent = newName;
+
+    const bioEl = document.getElementById('pfBio');
+    const newBio = u.bio || '';
+    if (bioEl && bioEl.textContent !== newBio) bioEl.textContent = newBio;
+
+    // Avatar — only apply if it has changed
+    const newAv = u.profile_image_url || u.avatar_url || u.profile_image || null;
+    const oldAv = _pfUser?.profile_image_url || _pfUser?.avatar_url || _pfUser?.profile_image || null;
+    if (newAv !== oldAv) pfApplyAvatar(newAv, newName);
+
+    // Follow counts (silently)
+    const fcEl = document.getElementById('statFollowers');
+    const fgEl = document.getElementById('statFollowing');
+    if (fcEl && u.followers_count != null) fcEl.textContent = _pfFmt(u.followers_count);
+    if (fgEl && u.following_count != null) fgEl.textContent = _pfFmt(u.following_count);
+
+    // Meta row (location / join date)
+    const metaEl = document.getElementById('pfMeta');
+    if (metaEl) {
+      const parts = [];
+      if (u.location)   parts.push(`<span><i class="fas fa-location-dot"></i> ${pfEsc(u.location)}</span>`);
+      if (u.created_at) parts.push(`<span><i class="fas fa-calendar-days"></i> Joined ${new Date(u.created_at).toLocaleDateString('en-US',{month:'long',year:'numeric'})}</span>`);
+      metaEl.innerHTML = parts.join('');
     }
-    function toggleMenu(id, closeOther) {
-        var el = document.getElementById(id);
-        if (!el) return;
-        var isOpen = el.classList.contains('show');
-        closeMenu(closeOther);
-        if (isOpen) { closeMenu(id); } else { openMenu(id); }
-    }
 
-    window.toggleUserMenu  = function () { toggleMenu('userMenuDropdown',  'quickMenuDropdown'); };
-    window.toggleQuickMenu = function () { toggleMenu('quickMenuDropdown', 'userMenuDropdown'); };
-    window.closeUserMenu   = function () { closeMenu('userMenuDropdown'); };
+    // Update about tab quietly
+    pfPopulateAbout(u);
 
-    document.addEventListener('DOMContentLoaded', function () {
-        var quickBtn    = document.getElementById('quickMenuBtn');
-        var notifBtn    = document.getElementById('notifBtn');
-        var settingsLnk = document.getElementById('settingsLink');
-        var logoutLnk   = document.getElementById('logoutLink');
+    // Update cache
+    _pfUser = { ..._pfUser, ...u };
+    try {
+      const stored = JSON.parse(localStorage.getItem('pageUser') || '{}');
+      localStorage.setItem('pageUser', JSON.stringify({ ...stored, ...u }));
+    } catch (_) {}
 
-        if (quickBtn) {
-            quickBtn.addEventListener('click', function (e) {
-                e.stopPropagation();
-                toggleMenu('quickMenuDropdown', 'userMenuDropdown');
-            });
-        }
-        if (notifBtn) {
-            notifBtn.addEventListener('click', function () {
-                window.location.href = 'notifications.html';
-            });
-        }
-        if (settingsLnk) {
-            settingsLnk.addEventListener('click', function (e) {
-                e.preventDefault();
-                closeMenu('userMenuDropdown');
-                if (typeof showSettings === 'function') showSettings();
-            });
-        }
-        if (logoutLnk) {
-            logoutLnk.addEventListener('click', function (e) {
-                e.preventDefault();
-                closeMenu('userMenuDropdown');
-                if (typeof _pageLogout === 'function') {
-                    _pageLogout();
-                } else {
-                    ['djangoAuthToken','authToken','token','firebaseIdToken',
-                     'pageUser','user','userId','authSource']
-                        .forEach(function (k) { localStorage.removeItem(k); });
-                    window.location.href = '/pages/auth.html';
-                }
-            });
-        }
+  } catch { /* silent — offline is fine */ }
+}
 
-        // Close both menus on outside click
-        document.addEventListener('click', function (e) {
-            var um = document.getElementById('userMenuDropdown');
-            var qm = document.getElementById('quickMenuDropdown');
-            var avatarBtn = document.getElementById('userAvatarBtn');
-            var quickBtn2 = document.getElementById('quickMenuBtn');
-            if (um && um.classList.contains('show') &&
-                !um.contains(e.target) && (!avatarBtn || !avatarBtn.contains(e.target))) {
-                closeMenu('userMenuDropdown');
-            }
-            if (qm && qm.classList.contains('show') &&
-                !qm.contains(e.target) && (!quickBtn2 || !quickBtn2.contains(e.target))) {
-                closeMenu('quickMenuDropdown');
-            }
-        });
+/* ══════════════════════════════════════════════════════════
+   LOAD OWN PROFILE
+══════════════════════════════════════════════════════════ */
+async function pfLoadOwnProfile() {
+  try {
+    const res  = await fetch(`${PF_API}/auth/stats/`, { headers: await pfHeadersAsync() });
+    if (!res.ok) throw new Error('stats failed');
+    const data = await res.json();
+    _pfUser = data.user || data;
+    pfRenderProfile(_pfUser, true);
+    // Update localStorage cache
+    try {
+      const stored = JSON.parse(localStorage.getItem('pageUser') || '{}');
+      localStorage.setItem('pageUser', JSON.stringify({ ...stored, ..._pfUser }));
+    } catch (_) {}
+  } catch (err) {
+    console.error('[PF] own profile load error', err);
+    const stored = JSON.parse(localStorage.getItem('pageUser') || '{}');
+    if (stored.id && !_pfUser) { _pfUser = stored; pfRenderProfile(stored, true); }
+    else if (!_pfUser) pfToast('Could not load profile. Try refreshing.', 'error');
+  }
+}
+
+/* ══════════════════════════════════════════════════════════
+   LOAD OTHER PROFILE
+══════════════════════════════════════════════════════════ */
+async function pfLoadOtherProfile(userId) {
+  try {
+    const res   = await fetch(`${PF_API}/auth/discover/?limit=200`, { headers: await pfHeadersAsync() });
+    if (!res.ok) throw new Error('discover failed');
+    const list  = await res.json();
+    const users = Array.isArray(list) ? list : (list.results || []);
+    const u     = users.find(x => String(x.id) === String(userId));
+    if (u) { _pfUser = u; pfRenderProfile(u, false); }
+    else pfToast('User not found.', 'error');
+  } catch (err) {
+    console.error('[PF] other profile load error', err);
+    pfToast('Could not load user profile.', 'error');
+  }
+}
+
+/* ══════════════════════════════════════════════════════════
+   RENDER PROFILE
+══════════════════════════════════════════════════════════ */
+function pfRenderProfile(u, isOwn) {
+  document.getElementById('pfName').textContent   = u.display_name || u.username || '';
+  document.getElementById('pfHandle').textContent = u.username ? `@${u.username}` : '';
+  document.getElementById('pfBio').textContent    = u.bio || '';
+
+  const avUrl = u.profile_image_url || u.avatar_url || u.profile_image || null;
+  pfApplyAvatar(avUrl, u.display_name || u.username);
+
+  // Show / hide upload controls
+  const camBtn   = document.getElementById('pfAvCamBtn');
+  const coverBtn = document.getElementById('pfCoverBtn');
+  if (camBtn)   camBtn.style.display   = isOwn ? 'flex' : 'none';
+  if (coverBtn) coverBtn.style.display = isOwn ? 'flex' : 'none';
+
+  // Cover image
+  const cover = document.getElementById('pfCover');
+  if (cover && u.cover_image_url) {
+    const img = cover.querySelector('img') || document.createElement('img');
+    img.src = u.cover_image_url;
+    if (!img.parentNode) cover.insertBefore(img, cover.firstChild);
+  }
+
+  // Meta row
+  const metaEl = document.getElementById('pfMeta');
+  const parts  = [];
+  if (u.location)   parts.push(`<span><i class="fas fa-location-dot"></i> ${pfEsc(u.location)}</span>`);
+  if (u.created_at) parts.push(`<span><i class="fas fa-calendar-days"></i> Joined ${new Date(u.created_at).toLocaleDateString('en-US',{month:'long',year:'numeric'})}</span>`);
+  metaEl.innerHTML = parts.join('');
+
+  pfPopulateAbout(u);
+  pfRenderButtons(u, isOwn);
+
+  document.title = `PAGE — ${u.display_name || u.username || 'Profile'}`;
+}
+
+/* ══════════════════════════════════════════════════════════
+   ABOUT TAB
+══════════════════════════════════════════════════════════ */
+function pfPopulateAbout(u) {
+  let any = false;
+  function _field(liId, elId, val, isLink) {
+    const li = document.getElementById(liId);
+    if (!li) return;
+    if (val) {
+      if (isLink) { const a = document.getElementById(elId); if (a) { a.textContent = val; a.href = val; } }
+      else { const el = document.getElementById(elId); if (el) el.textContent = val; }
+      li.style.display = 'list-item'; any = true;
+    } else { li.style.display = 'none'; }
+  }
+  _field('aboutBio',   'aboutBioTxt',  u.bio,      false);
+  _field('aboutLoc',   'aboutLocTxt',  u.location, false);
+  _field('aboutWeb',   'aboutWebLink', u.website,  true);
+  _field('aboutEmail', 'aboutEmailTxt',u.email,    false);
+  if (u.created_at) {
+    const el = document.getElementById('aboutJoinTxt');
+    if (el) el.textContent = `Joined ${new Date(u.created_at).toLocaleDateString('en-US',{month:'long',year:'numeric'})}`;
+    const li = document.getElementById('aboutJoin');
+    if (li) { li.style.display = 'list-item'; any = true; }
+  } else {
+    const li = document.getElementById('aboutJoin'); if (li) li.style.display = 'none';
+  }
+  const emptyEl = document.getElementById('aboutEmpty');
+  if (emptyEl) emptyEl.style.display = any ? 'none' : 'list-item';
+}
+
+/* ══════════════════════════════════════════════════════════
+   BUTTONS
+══════════════════════════════════════════════════════════ */
+function pfRenderButtons(u, isOwn) {
+  const wrap = document.getElementById('pfBtns');
+  if (!wrap) return;
+  if (isOwn) {
+    wrap.innerHTML = `
+      <button class="pf-btn-primary" onclick="pfOpenEdit()">
+        <i class="fas fa-pen"></i> Edit Profile
+      </button>
+      <button class="pf-btn-secondary" onclick="window.location.href='../index.html'">
+        <i class="fas fa-house"></i> Feed
+      </button>`;
+  } else {
+    wrap.innerHTML = `
+      <button class="pf-btn-primary" id="pfFollowBtn" onclick="pfToggleFollow()">
+        <i class="fas fa-user-plus"></i> Follow
+      </button>
+      <button class="pf-btn-secondary" onclick="pfOpenMessage()">
+        <i class="fas fa-comment-dots"></i> Message
+      </button>`;
+    pfCheckFollowing(u.id);
+  }
+}
+
+/* ══════════════════════════════════════════════════════════
+   FOLLOW COUNTS
+══════════════════════════════════════════════════════════ */
+async function pfLoadFollowCounts(userId) {
+  try {
+    const res  = await fetch(`${PF_API}/social/follows/counts/?user_id=${userId}`, { headers: await pfHeadersAsync() });
+    if (!res.ok) return;
+    const data = await res.json();
+    const fcEl = document.getElementById('statFollowers');
+    const fgEl = document.getElementById('statFollowing');
+    if (fcEl) fcEl.textContent = _pfFmt(data.followers_count ?? 0);
+    if (fgEl) fgEl.textContent = _pfFmt(data.following_count ?? 0);
+    _pfFollowing = !!data.is_following;
+    _pfUpdateFollowBtn();
+  } catch { /* silent */ }
+}
+
+async function pfCheckFollowing(userId) {
+  try {
+    const res  = await fetch(`${PF_API}/social/follows/is_following/?user_id=${userId}`, { headers: await pfHeadersAsync() });
+    if (!res.ok) return;
+    const data = await res.json();
+    _pfFollowing = !!data.is_following;
+    _pfUpdateFollowBtn();
+  } catch { /* silent */ }
+}
+
+function _pfUpdateFollowBtn() {
+  const btn = document.getElementById('pfFollowBtn');
+  if (!btn) return;
+  if (_pfFollowing) {
+    btn.className = 'pf-btn-primary following';
+    btn.innerHTML = '<i class="fas fa-user-check"></i> Following';
+  } else {
+    btn.className = 'pf-btn-primary';
+    btn.innerHTML = '<i class="fas fa-user-plus"></i> Follow';
+  }
+}
+
+/* ══════════════════════════════════════════════════════════
+   TOGGLE FOLLOW
+══════════════════════════════════════════════════════════ */
+async function pfToggleFollow() {
+  if (!_pfUser) return;
+  const btn = document.getElementById('pfFollowBtn');
+  if (btn) btn.disabled = true;
+
+  const endpoint = _pfFollowing
+    ? `${PF_API}/social/follows/unfollow/`
+    : `${PF_API}/social/follows/follow/`;
+
+  _pfFollowing = !_pfFollowing;
+  _pfUpdateFollowBtn();
+
+  try {
+    const res = await fetch(endpoint, {
+      method: 'POST', headers: await pfHeadersAsync(),
+      body: JSON.stringify({ user_id: _pfUser.id }),
     });
-})();
+    if (!res.ok) {
+      _pfFollowing = !_pfFollowing;
+      _pfUpdateFollowBtn();
+      const err = await res.json().catch(() => ({}));
+      pfToast(err.error || 'Could not update follow.', 'error');
+      return;
+    }
+    pfToast(_pfFollowing ? 'Following! 🎉' : 'Unfollowed.', 'success');
+    await pfLoadFollowCounts(_pfUser.id);
+  } catch {
+    _pfFollowing = !_pfFollowing;
+    _pfUpdateFollowBtn();
+    pfToast('Network error. Try again.', 'error');
+  } finally {
+    const b = document.getElementById('pfFollowBtn');
+    if (b) b.disabled = false;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════
+   MESSAGE
+══════════════════════════════════════════════════════════ */
+function pfOpenMessage() {
+  if (!_pfUser) return;
+  window.location.href = `messenger.html?user=${_pfUser.id}`;
+}
+
+/* ══════════════════════════════════════════════════════════
+   AVATAR UPLOAD  —  base64 via canvas
+══════════════════════════════════════════════════════════ */
+async function pfUploadAvatar(input) {
+  const file = input.files[0];
+  if (!file) return;
+
+  const ALLOWED = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+  if (!ALLOWED.includes(file.type)) { pfToast('Use JPEG, PNG, GIF or WebP.', 'error'); input.value = ''; return; }
+  if (file.size > 5 * 1024 * 1024) { pfToast('Max file size is 5 MB.', 'error');       input.value = ''; return; }
+
+  // Show progress overlay
+  const prog = document.getElementById('pfAvProgress');
+  if (prog) prog.style.display = 'flex';
+
+  pfToast('Processing image…');
+
+  let dataUri;
+  try {
+    // Square crop: resize to 256×256
+    dataUri = await pfResizeBase64(file, 256, 256, 0.88);
+  } catch (err) {
+    pfToast('Could not process image. Try another file.', 'error');
+    if (prog) prog.style.display = 'none';
+    input.value = ''; return;
+  }
+
+  // Instant local preview (no waiting for server)
+  pfApplyAvatar(dataUri, _pfUser?.display_name || _pfUser?.username);
+  pfToast('Uploading…');
+
+  const auth = pfUploadAuthHeader();
+  if (!auth) { pfToast('Not logged in. Please sign in again.', 'error'); if (prog) prog.style.display = 'none'; return; }
+
+  try {
+    const res  = await fetch(`${PF_API}/auth/avatar/`, {
+      method: 'POST',
+      headers: { 'Authorization': auth, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ avatar_base64: dataUri }),
+    });
+    const data = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      pfToast(data.error || 'Upload failed.', 'error');
+      // Revert to previous avatar
+      const prev = _pfUser?.profile_image_url || _pfUser?.avatar_url || null;
+      pfApplyAvatar(prev, _pfUser?.display_name || _pfUser?.username);
+      return;
+    }
+
+    const imgUrl = data.profile_image_url || data.avatar_url || data.profile_image || dataUri;
+
+    // Persist in state + localStorage
+    if (_pfUser) {
+      _pfUser.profile_image_url = imgUrl;
+      _pfUser.avatar_url        = imgUrl;
+      _pfUser.profile_image     = imgUrl;
+    }
+    try {
+      const stored = JSON.parse(localStorage.getItem('pageUser') || '{}');
+      stored.profile_image_url = imgUrl;
+      stored.avatar_url        = imgUrl;
+      stored.profile_image     = imgUrl;
+      localStorage.setItem('pageUser', JSON.stringify(stored));
+    } catch (_) {}
+
+    pfApplyAvatar(imgUrl, _pfUser?.display_name || _pfUser?.username);
+    // Notify other scripts / pages
+    window.dispatchEvent(new CustomEvent('page:avatarChanged', { detail: { url: imgUrl } }));
+    pfToast('Profile photo updated ✓', 'success');
+
+  } catch (err) {
+    console.error('[PF] avatar upload error', err);
+    pfToast('Upload failed. Check your connection.', 'error');
+    const prev = _pfUser?.profile_image_url || _pfUser?.avatar_url || null;
+    pfApplyAvatar(prev, _pfUser?.display_name || _pfUser?.username);
+  } finally {
+    if (prog) prog.style.display = 'none';
+    input.value = '';
+  }
+}
+
+/* ══════════════════════════════════════════════════════════
+   COVER UPLOAD  —  base64 via canvas
+══════════════════════════════════════════════════════════ */
+async function pfUploadCover(input) {
+  const file = input.files[0];
+  if (!file) return;
+
+  const ALLOWED = ['image/jpeg', 'image/png', 'image/webp'];
+  if (!ALLOWED.includes(file.type)) { pfToast('Use JPEG, PNG or WebP for cover.', 'error'); input.value = ''; return; }
+  if (file.size > 8 * 1024 * 1024) { pfToast('Cover max size is 8 MB.', 'error');          input.value = ''; return; }
+
+  pfToast('Processing cover…');
+
+  let dataUri;
+  try {
+    // Cover dimensions: 1200×400 (3:1 banner)
+    dataUri = await pfResizeBase64(file, 1200, 400, 0.85);
+  } catch {
+    pfToast('Could not process image.', 'error');
+    input.value = ''; return;
+  }
+
+  // Instant preview
+  const coverEl = document.getElementById('pfCover');
+  if (coverEl) {
+    let img = coverEl.querySelector('img');
+    if (!img) { img = document.createElement('img'); coverEl.insertBefore(img, coverEl.firstChild); }
+    img.src = dataUri;
+  }
+  pfToast('Uploading cover…');
+
+  const auth = pfUploadAuthHeader();
+  if (!auth) { pfToast('Not logged in.', 'error'); input.value = ''; return; }
+
+  try {
+    const res  = await fetch(`${PF_API}/auth/profile/`, {
+      method: 'PATCH',
+      headers: { 'Authorization': auth, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cover_image_url: dataUri }),
+    });
+    if (!res.ok) { pfToast('Cover upload failed.', 'error'); return; }
+
+    if (_pfUser) _pfUser.cover_image_url = dataUri;
+    try {
+      const stored = JSON.parse(localStorage.getItem('pageUser') || '{}');
+      stored.cover_image_url = dataUri;
+      localStorage.setItem('pageUser', JSON.stringify(stored));
+    } catch (_) {}
+
+    pfToast('Cover photo updated ✓', 'success');
+  } catch (err) {
+    console.error('[PF] cover upload error', err);
+    pfToast('Cover upload failed. Check your connection.', 'error');
+  } finally {
+    input.value = '';
+  }
+}
+
+/* ══════════════════════════════════════════════════════════
+   POSTS
+══════════════════════════════════════════════════════════ */
+async function pfLoadPosts() {
+  const container = document.getElementById('pfPostsList');
+  if (!container) return;
+  container.innerHTML = '<div class="posts-loading"><i class="fas fa-spinner"></i> Loading posts…</div>';
+
+  try {
+    const res  = await fetch(`${PF_API}/social/posts/`, { headers: await pfHeadersAsync() });
+    if (!res.ok) throw new Error('posts failed');
+    const data  = await res.json();
+    const all   = Array.isArray(data) ? data : (data.results || []);
+
+    const posts = all.filter(p => {
+      const aid = p.author?.id ?? p.author_id;
+      return String(aid) === String(_pfViewId);
+    });
+
+    pfRenderPosts(posts);
+    pfRenderMediaGrid(posts);
+    const statEl = document.getElementById('statPosts');
+    if (statEl) statEl.textContent = _pfFmt(posts.length);
+
+  } catch (err) {
+    console.error('[PF] posts error', err);
+    container.innerHTML = '<div class="posts-empty"><i class="fas fa-circle-exclamation"></i> Could not load posts.</div>';
+  }
+}
+
+function pfRenderPosts(posts) {
+  const container = document.getElementById('pfPostsList');
+  if (!container) return;
+  if (!posts.length) {
+    container.innerHTML = '<div class="posts-empty"><i class="fas fa-pen" style="margin-right:6px;"></i>No posts yet.</div>';
+    return;
+  }
+  container.innerHTML = '';
+  posts.forEach(p => container.appendChild(pfBuildPostCard(p)));
+}
+
+function pfBuildPostCard(p) {
+  const author  = p.author || {};
+  const name    = author.display_name || author.username || 'User';
+  const when    = p.created_at ? pfTimeAgo(p.created_at) : '';
+  const content = p.content || '';
+  const reactions = p.reaction_count  ?? p.reactions?.length  ?? 0;
+  const comments  = p.comment_count   ?? p.comments?.length   ?? 0;
+  const shares    = p.share_count     ?? 0;
+  const liked     = !!p.user_reaction;
+
+  // Media
+  let mediaHTML = '';
+  const mediaSrc = p.resolved_media_url || p.media_url || null;
+  if (mediaSrc && p.media_type === 'image') {
+    mediaHTML = `<img src="${pfEsc(mediaSrc)}" alt="post media" loading="lazy"
+      style="width:100%;border-radius:10px;margin-bottom:10px;max-height:320px;object-fit:cover;">`;
+  } else if (mediaSrc && p.media_type === 'video') {
+    mediaHTML = `<video src="${pfEsc(mediaSrc)}" controls preload="metadata" playsinline
+      style="width:100%;border-radius:10px;margin-bottom:10px;max-height:320px;"></video>`;
+  } else if (p.post_type === 'voice' && mediaSrc) {
+    mediaHTML = `<audio controls src="${pfEsc(mediaSrc)}"
+      style="width:100%;border-radius:8px;margin-bottom:10px;"></audio>`;
+  }
+
+  const div = document.createElement('div');
+  div.className = 'post-card';
+  div.setAttribute('data-post-id', p.id);
+  div.innerHTML = `
+    <div class="post-header">
+      <div class="post-av">${pfSmallAvHTML(author)}</div>
+      <div>
+        <div class="post-author-name">${pfEsc(name)}
+          <span class="post-time">· ${pfEsc(when)}</span>
+        </div>
+      </div>
+    </div>
+    ${content ? `<p class="post-text">${pfEsc(content)}</p>` : ''}
+    ${mediaHTML}
+    <div class="post-actions">
+      <button class="post-action-btn ${liked ? 'liked' : ''}"
+              data-post-id="${p.id}" onclick="pfToggleLike(this,'${p.id}')">
+        <i class="${liked ? 'fas' : 'far'} fa-heart"></i>
+        <span class="like-count">${reactions}</span>
+      </button>
+      <button class="post-action-btn" onclick="pfOpenComments('${p.id}')">
+        <i class="far fa-comment"></i> <span>${comments}</span>
+      </button>
+      <button class="post-action-btn" onclick="pfSharePost('${p.id}')">
+        <i class="fas fa-share-nodes"></i> <span>${shares}</span>
+      </button>
+    </div>`;
+  return div;
+}
+
+/* ── Media grid ── */
+function pfRenderMediaGrid(posts) {
+  const grid  = document.getElementById('pfMediaGrid');
+  const empty = document.getElementById('pfMediaEmpty');
+  if (!grid) return;
+
+  const imgPosts = posts.filter(p => {
+    const src = p.resolved_media_url || p.media_url;
+    return src && (p.media_type === 'image' || (!p.media_type && String(src).startsWith('data:image')));
+  });
+
+  if (!imgPosts.length) {
+    grid.style.display  = 'none';
+    if (empty) empty.style.display = 'block';
+    return;
+  }
+  grid.style.display  = 'grid';
+  if (empty) empty.style.display = 'none';
+  grid.innerHTML = '';
+  imgPosts.forEach(p => {
+    const src = p.resolved_media_url || p.media_url;
+    const img = document.createElement('img');
+    img.src     = src; img.alt = 'media'; img.loading = 'lazy';
+    img.style.cssText = 'width:100%;aspect-ratio:1;object-fit:cover;border-radius:6px;cursor:pointer;';
+    img.onclick = () => window.open(src, '_blank');
+    grid.appendChild(img);
+  });
+}
+
+/* ══════════════════════════════════════════════════════════
+   LIKE / REACT
+══════════════════════════════════════════════════════════ */
+async function pfToggleLike(btn, postId) {
+  const liked   = btn.classList.contains('liked');
+  const countEl = btn.querySelector('.like-count');
+  const icon    = btn.querySelector('i');
+  const current = parseInt(countEl.textContent, 10) || 0;
+
+  btn.classList.toggle('liked', !liked);
+  icon.className      = liked ? 'far fa-heart' : 'fas fa-heart';
+  countEl.textContent = liked ? Math.max(0, current - 1) : current + 1;
+
+  try {
+    const res = await fetch(`${PF_API}/social/posts/${postId}/react/`, {
+      method: 'POST', headers: await pfHeadersAsync(),
+      body: JSON.stringify({ reaction_type: liked ? null : 'fire' }),
+    });
+    if (!res.ok) throw new Error('react failed');
+    const data = await res.json();
+    if (data.reaction_count != null) countEl.textContent = data.reaction_count;
+  } catch {
+    btn.classList.toggle('liked', liked);
+    icon.className      = liked ? 'fas fa-heart' : 'far fa-heart';
+    countEl.textContent = current;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════
+   COMMENTS
+══════════════════════════════════════════════════════════ */
+function pfOpenComments(postId) {
+  if (typeof openCommentModal === 'function') openCommentModal(postId);
+  else pfToast('Comments coming soon!', 'info');
+}
+
+/* ══════════════════════════════════════════════════════════
+   SHARE
+══════════════════════════════════════════════════════════ */
+function pfSharePost(postId) {
+  const url = `${window.location.origin}/pages/post.html?id=${postId}`;
+  if (navigator.share) { navigator.share({ url }).catch(() => {}); }
+  else { navigator.clipboard.writeText(url).then(() => pfToast('Link copied!', 'success')); }
+}
+
+/* ══════════════════════════════════════════════════════════
+   TABS
+══════════════════════════════════════════════════════════ */
+function pfSwitchTab(btn) {
+  document.querySelectorAll('.pf-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  const tab = btn.dataset.tab;
+  document.getElementById('tab-posts').style.display = tab === 'posts' ? 'block' : 'none';
+  document.getElementById('tab-about').style.display = tab === 'about' ? 'block' : 'none';
+  document.getElementById('tab-media').style.display = tab === 'media' ? 'block' : 'none';
+}
+
+/* ══════════════════════════════════════════════════════════
+   FOLLOWERS / FOLLOWING MODAL
+══════════════════════════════════════════════════════════ */
+async function pfOpenFollowers(tab) {
+  if (!_pfViewId) return;
+  document.getElementById('pfFollowTitle').textContent = tab === 'followers' ? 'Followers' : 'Following';
+  pfOpenModal('pfFollowModal');
+
+  const list = document.getElementById('pfFollowList');
+  list.innerHTML = '<div style="text-align:center;padding:20px;color:#9ca3af;"><i class="fas fa-spinner" style="animation:spin .8s linear infinite;"></i></div>';
+
+  try {
+    const ep  = tab === 'followers'
+      ? `${PF_API}/social/follows/followers/?user_id=${_pfViewId}`
+      : `${PF_API}/social/follows/following/?user_id=${_pfViewId}`;
+    const res  = await fetch(ep, { headers: await pfHeadersAsync() });
+    if (!res.ok) throw new Error('follow list failed');
+    const data  = await res.json();
+    const items = Array.isArray(data) ? data : (data.results || []);
+
+    if (!items.length) { list.innerHTML = '<p style="text-align:center;color:#9ca3af;padding:20px;">No users found.</p>'; return; }
+
+    list.innerHTML = '';
+    items.forEach(item => {
+      const u     = item.follower || item.following || item.user || item;
+      const name  = u.display_name || u.username || 'User';
+      const avUrl = u.profile_image_url || u.avatar_url || u.profile_image || null;
+      const init  = name.charAt(0).toUpperCase();
+      const color = pfAvColour(init);
+      const avHTML = avUrl
+        ? `<img src="${pfEsc(avUrl)}" style="width:42px;height:42px;border-radius:50%;object-fit:cover;" alt="${pfEsc(name)}">`
+        : `<div style="width:42px;height:42px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;font-size:16px;">${init}</div>`;
+
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;align-items:center;gap:12px;';
+      row.innerHTML = `
+        ${avHTML}
+        <div style="flex:1;">
+          <div style="font-size:14px;font-weight:600;color:#111827;">${pfEsc(name)}</div>
+          <div style="font-size:13px;color:#6b7280;">${u.username ? '@'+pfEsc(u.username) : ''}</div>
+        </div>
+        <button onclick="window.location.href='profile.html?id=${u.id}'"
+          style="padding:6px 14px;border-radius:9999px;border:1.5px solid #d1d5db;background:#fff;font-size:13px;font-weight:600;cursor:pointer;color:#111827;">
+          View
+        </button>`;
+      list.appendChild(row);
+    });
+
+  } catch (err) {
+    console.error('[PF] follow list error', err);
+    list.innerHTML = '<p style="text-align:center;color:#ef4444;padding:20px;">Could not load users.</p>';
+  }
+}
+
+/* ══════════════════════════════════════════════════════════
+   EDIT PROFILE
+══════════════════════════════════════════════════════════ */
+function pfOpenEdit() {
+  if (!_pfUser) return;
+  document.getElementById('editName').value     = _pfUser.display_name || '';
+  document.getElementById('editBio').value      = _pfUser.bio          || '';
+  document.getElementById('editLocation').value = _pfUser.location     || '';
+  document.getElementById('editWebsite').value  = _pfUser.website      || '';
+  document.getElementById('editError').style.display = 'none';
+  pfOpenModal('pfEditModal');
+}
+
+async function pfSaveProfile() {
+  const btn   = document.getElementById('editSaveBtn');
+  const errEl = document.getElementById('editError');
+  errEl.style.display = 'none';
+
+  const payload = {
+    display_name: document.getElementById('editName').value.trim(),
+    bio:          document.getElementById('editBio').value.trim(),
+    location:     document.getElementById('editLocation').value.trim(),
+    website:      document.getElementById('editWebsite').value.trim(),
+  };
+  if (!payload.display_name) { errEl.textContent = 'Display name is required.'; errEl.style.display = 'block'; return; }
+
+  btn.disabled  = true;
+  btn.innerHTML = '<i class="fas fa-spinner" style="animation:spin .8s linear infinite;"></i> Saving…';
+
+  try {
+    const res = await fetch(`${PF_API}/auth/profile/`, {
+      method: 'PATCH', headers: await pfHeadersAsync(),
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || err.message || 'Save failed.');
+    }
+    const updated = await res.json();
+    _pfUser = { ..._pfUser, ...updated };
+    try {
+      const stored = JSON.parse(localStorage.getItem('pageUser') || '{}');
+      localStorage.setItem('pageUser', JSON.stringify({ ...stored, ...updated }));
+    } catch (_) {}
+    pfRenderProfile(_pfUser, true);
+    pfCloseModal('pfEditModal');
+    pfToast('Profile updated ✓', 'success');
+  } catch (err) {
+    errEl.textContent   = err.message || 'Something went wrong.';
+    errEl.style.display = 'block';
+  } finally {
+    btn.disabled  = false;
+    btn.innerHTML = '<i class="fas fa-floppy-disk"></i> Save';
+  }
+}
+
+/* ══════════════════════════════════════════════════════════
+   MODAL HELPERS
+══════════════════════════════════════════════════════════ */
+function pfOpenModal(id)              { const el = document.getElementById(id); if (el) el.classList.add('open'); }
+function pfCloseModal(id)             { const el = document.getElementById(id); if (el) el.classList.remove('open'); }
+function pfModalBgClose(e, id)        { if (e.target === document.getElementById(id)) pfCloseModal(id); }
 </script>
-
-<!-- ═══════════ MAIN PAGE ═══════════ -->
-<div class="pf-page">
-
-    <!-- ── HERO COVER ── -->
-    <div class="pf-cover" id="pfCover">
-        <div class="pf-cover-overlay"></div>
-        <!-- Own profile: show change cover button -->
-        <label class="pf-cover-btn" id="pfCoverBtn" for="pfCoverInput" title="Change cover">
-            <i class="fas fa-camera"></i> Change Cover
-        </label>
-        <input type="file" id="pfCoverInput" accept="image/*" style="display:none" onchange="pfUploadCover(this)">
-    </div>
-
-    <!-- ── PROFILE IDENTITY STRIP ── -->
-    <div class="pf-identity">
-        <!-- Avatar -->
-        <div class="pf-av-wrap" id="pfAvWrap">
-            <div class="pf-av-ring" id="pfAvRing"></div>
-            <div class="pf-av" id="pfAv" data-current-user-avatar></div>
-            <label class="pf-av-cam" id="pfAvCam" for="pfAvatarInput" title="Change photo">
-                <i class="fas fa-camera"></i>
-            </label>
-            <input type="file" id="pfAvatarInput" accept="image/*" style="display:none" onchange="pfUploadAvatar(this)">
-            <div class="pf-level" id="pfLevel"><span>Lv</span><b>1</b></div>
-        </div>
-
-        <!-- Info -->
-        <div class="pf-info">
-            <div class="pf-name-row">
-                <h1 class="pf-name pf-sk" id="pfName">Loading…</h1>
-                <span class="pf-verified" id="pfVerified" style="display:none">
-                    <i class="fas fa-circle-check"></i>
-                </span>
-            </div>
-            <div class="pf-handle pf-sk" id="pfHandle">@username</div>
-            <div class="pf-chips">
-                <span class="pf-chip pf-chip--tier pf-sk" id="pfTier">Bronze</span>
-                <span class="pf-chip pf-chip--rank pf-sk" id="pfRank">Novice</span>
-            </div>
-            <p class="pf-bio pf-sk" id="pfBio"></p>
-        </div>
-
-        <!-- Actions -->
-        <div class="pf-actions" id="pfActions">
-            <!-- Own profile -->
-            <button class="pf-btn pf-btn--primary" id="pfEditBtn" onclick="pfOpenEdit()">
-                <i class="fas fa-pen"></i> Edit Profile
-            </button>
-            <!-- Other user profile -->
-            <button class="pf-btn pf-btn--primary" id="pfFollowBtn" style="display:none" onclick="pfToggleFollow()">
-                <i class="fas fa-user-plus"></i> Follow
-            </button>
-        </div>
-    </div>
-
-    <!-- ── STATS BAR ── -->
-    <div class="pf-stats" id="pfStats">
-        <div class="pf-stat pf-sk">
-            <span class="pf-stat-val" id="pfPrestige">0</span>
-            <span class="pf-stat-key">Prestige</span>
-        </div>
-        <div class="pf-stat pf-sk">
-            <span class="pf-stat-val" id="pfLevel2">1</span>
-            <span class="pf-stat-key">Level</span>
-        </div>
-        <div class="pf-stat pf-sk">
-            <span class="pf-stat-val" id="pfStreak">0 <i class="fas fa-fire"></i></span>
-            <span class="pf-stat-key">Streak</span>
-        </div>
-        <div class="pf-stat pf-sk">
-            <span class="pf-stat-val" id="pfWins">0</span>
-            <span class="pf-stat-key">Wins</span>
-        </div>
-        <div class="pf-stat pf-sk">
-            <span class="pf-stat-val" id="pfAccuracy">0%</span>
-            <span class="pf-stat-key">Accuracy</span>
-        </div>
-        <div class="pf-stat pf-sk">
-            <span class="pf-stat-val" id="pfEarnings">K0</span>
-            <span class="pf-stat-key">Earned</span>
-        </div>
-        <div class="pf-stat pf-stat--link pf-sk" onclick="pfOpenFollowers('followers')" title="Followers">
-            <span class="pf-stat-val" id="pfFollowers">0</span>
-            <span class="pf-stat-key">Followers</span>
-        </div>
-        <div class="pf-stat pf-stat--link pf-sk" onclick="pfOpenFollowers('following')" title="Following">
-            <span class="pf-stat-val" id="pfFollowing">0</span>
-            <span class="pf-stat-key">Following</span>
-        </div>
-    </div>
-
-    <!-- ── MAIN CONTENT ── -->
-    <div class="pf-grid">
-
-        <!-- LEFT COLUMN -->
-        <aside class="pf-sidebar">
-
-            <!-- About card -->
-            <div class="pf-card">
-                <h3 class="pf-card-title"><i class="fas fa-id-card-clip"></i> About</h3>
-                <p class="pf-about-bio pf-sk" id="pfAboutBio">No bio yet.</p>
-                <ul class="pf-detail-list">
-                    <li><i class="fas fa-calendar-days"></i>
-                        <span>Joined <b class="pf-sk" id="pfJoined">—</b></span></li>
-                    <li><i class="fas fa-envelope"></i>
-                        <span class="pf-sk" id="pfEmail">—</span></li>
-                    <li id="pfLocationRow" style="display:none">
-                        <i class="fas fa-map-marker-alt"></i>
-                        <span id="pfLocation">—</span></li>
-                    <li id="pfWebsiteRow" style="display:none">
-                        <i class="fas fa-globe"></i>
-                        <a id="pfWebsite" href="#" target="_blank" rel="noopener">—</a></li>
-                </ul>
-            </div>
-
-            <!-- Prestige card -->
-            <div class="pf-card">
-                <h3 class="pf-card-title"><i class="fas fa-crown"></i> Prestige Path</h3>
-                <div class="pf-xp-nums">
-                    <span class="pf-xp-cur pf-sk" id="pfXpCur">0</span>
-                    <span class="pf-xp-sep">/ <span id="pfXpNext">200</span> pts</span>
-                </div>
-                <div class="pf-xp-track">
-                    <div class="pf-xp-fill" id="pfXpFill">
-                        <div class="pf-xp-shine"></div>
-                    </div>
-                </div>
-                <!-- Tier progression dots -->
-                <div class="pf-tier-nodes" id="pfTierNodes">
-                    <div class="pf-tnode" data-tier="Bronze"><div class="pf-tdot"></div><small>Bronze</small></div>
-                    <div class="pf-tline"></div>
-                    <div class="pf-tnode" data-tier="Silver"><div class="pf-tdot"></div><small>Silver</small></div>
-                    <div class="pf-tline"></div>
-                    <div class="pf-tnode" data-tier="Gold"><div class="pf-tdot"></div><small>Gold</small></div>
-                    <div class="pf-tline"></div>
-                    <div class="pf-tnode" data-tier="Platinum"><div class="pf-tdot"></div><small>Plat</small></div>
-                    <div class="pf-tline"></div>
-                    <div class="pf-tnode" data-tier="Diamond"><div class="pf-tdot"></div><small>Diam</small></div>
-                    <div class="pf-tline"></div>
-                    <div class="pf-tnode" data-tier="Elite"><div class="pf-tdot"></div><small>Elite</small></div>
-                    <div class="pf-tline"></div>
-                    <div class="pf-tnode" data-tier="Legendary"><div class="pf-tdot pf-tdot--legend"></div><small>Legend</small></div>
-                </div>
-            </div>
-
-            <!-- Danger zone — own profile only -->
-            <div class="pf-card pf-card--danger" id="pfDangerZone">
-                <h3 class="pf-card-title"><i class="fas fa-triangle-exclamation"></i> Danger Zone</h3>
-                <p class="pf-danger-desc">These actions are permanent and cannot be undone.</p>
-                <div class="pf-danger-actions">
-                    <button class="pf-btn pf-btn--danger-outline" onclick="pfConfirmDeleteAccount()">
-                        <i class="fas fa-trash-alt"></i> Delete Account
-                    </button>
-                </div>
-            </div>
-
-        </aside>
-
-        <!-- RIGHT COLUMN -->
-        <main class="pf-main">
-
-            <!-- Performance card -->
-            <div class="pf-card">
-                <div class="pf-card-header">
-                    <h3 class="pf-card-title"><i class="fas fa-chart-mixed"></i> Performance</h3>
-                    <div class="pf-tabs" id="pfPerfTabs">
-                        <button class="pf-tab active" data-tab="pf-tab-overview">Overview</button>
-                        <button class="pf-tab" data-tab="pf-tab-donut">Chart</button>
-                    </div>
-                </div>
-
-                <div class="pf-tab-panel active" id="pf-tab-overview">
-                    <div class="pf-kpi-grid">
-                        <div class="pf-kpi" style="--kc:var(--page-primary)">
-                            <div class="pf-kpi-val pf-sk" id="pfKpiTotal">0</div>
-                            <div class="pf-kpi-lbl">Submitted</div>
-                        </div>
-                        <div class="pf-kpi" style="--kc:#16a34a">
-                            <div class="pf-kpi-val correct pf-sk" id="pfKpiCorrect">0</div>
-                            <div class="pf-kpi-lbl">Correct</div>
-                        </div>
-                        <div class="pf-kpi" style="--kc:#dc2626">
-                            <div class="pf-kpi-val wrong pf-sk" id="pfKpiWrong">0</div>
-                            <div class="pf-kpi-lbl">Incorrect</div>
-                        </div>
-                        <div class="pf-kpi" style="--kc:#d97706">
-                            <div class="pf-kpi-val gold pf-sk" id="pfKpiWins">0</div>
-                            <div class="pf-kpi-lbl">Wins</div>
-                        </div>
-                    </div>
-                    <div class="pf-acc-row">
-                        <span><i class="fas fa-bullseye"></i> Success rate</span>
-                        <span class="pf-acc-pct pf-sk" id="pfAccPct">0%</span>
-                    </div>
-                    <div class="pf-acc-track">
-                        <div class="pf-acc-fill" id="pfAccFill"><div class="pf-xp-shine"></div></div>
-                    </div>
-                </div>
-
-                <div class="pf-tab-panel" id="pf-tab-donut">
-                    <div class="pf-donut-layout">
-                        <div class="pf-donut-box">
-                            <svg class="pf-donut" viewBox="0 0 140 140">
-                                <circle class="pf-dring bg" cx="70" cy="70" r="52"/>
-                                <circle class="pf-dring correct" id="pfDCorrect" cx="70" cy="70" r="52"/>
-                                <circle class="pf-dring wrong"   id="pfDWrong"   cx="70" cy="70" r="52"/>
-                            </svg>
-                            <div class="pf-donut-label">
-                                <div class="pf-donut-pct pf-sk" id="pfDonutPct">0%</div>
-                                <div class="pf-donut-sub">accuracy</div>
-                            </div>
-                        </div>
-                        <div class="pf-donut-legend">
-                            <div class="pf-dl-row correct"><i class="fas fa-circle"></i><span>Correct</span><b id="pfDlCorrect">0</b></div>
-                            <div class="pf-dl-row wrong">  <i class="fas fa-circle"></i><span>Incorrect</span><b id="pfDlWrong">0</b></div>
-                            <div class="pf-dl-row total">  <i class="fas fa-circle"></i><span>Total</span><b id="pfDlTotal">0</b></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Recent Activity card -->
-            <div class="pf-card">
-                <div class="pf-card-header">
-                    <h3 class="pf-card-title"><i class="fas fa-bolt-lightning"></i> Recent Activity</h3>
-                    <span class="pf-count-badge" id="pfActCount"></span>
-                </div>
-                <div class="pf-act-filters">
-                    <button class="pf-act-filter active" data-filter="all">All</button>
-                    <button class="pf-act-filter" data-filter="challenge">Challenges</button>
-                    <button class="pf-act-filter" data-filter="win">Wins</button>
-                    <button class="pf-act-filter" data-filter="social">Social</button>
-                </div>
-                <div class="pf-act-list" id="pfActList">
-                    <div class="pf-skeleton-row"></div>
-                    <div class="pf-skeleton-row short"></div>
-                    <div class="pf-skeleton-row"></div>
-                </div>
-                <button class="pf-load-more" id="pfLoadMore" onclick="pfLoadMoreActivity()" style="display:none">
-                    <i class="fas fa-chevron-down"></i> Load more
-                </button>
-            </div>
-
-        </main>
-    </div>
-</div>
-
-<!-- ═══════════ EDIT PROFILE MODAL ═══════════ -->
-<div class="pf-modal-veil" id="pfEditModal" onclick="pfBgClose(event,'pfEditModal')">
-    <div class="pf-modal" role="dialog" aria-modal="true" aria-label="Edit Profile">
-        <button class="pf-modal-close" onclick="pfCloseEdit()"><i class="fas fa-xmark"></i></button>
-
-        <div class="pf-modal-head">
-            <div class="pf-modal-av" id="pfModalAv" data-current-user-avatar></div>
-            <div>
-                <h2>Edit Profile</h2>
-                <p>Update how PAGE sees you</p>
-            </div>
-        </div>
-
-        <div class="pf-modal-body">
-            <div class="pf-field">
-                <label for="pfEditName">Display Name</label>
-                <input id="pfEditName" type="text" placeholder="Your name or alias" maxlength="100" autocomplete="off">
-            </div>
-            <div class="pf-field">
-                <label for="pfEditUsername">Username</label>
-                <div class="pf-field-prefix">
-                    <span class="pf-prefix">@</span>
-                    <input id="pfEditUsername" type="text" placeholder="handle" maxlength="50" autocomplete="off">
-                </div>
-            </div>
-            <div class="pf-field">
-                <label for="pfEditBio">
-                    Bio
-                    <span class="pf-char-count"><span id="pfBioCount">0</span>/500</span>
-                </label>
-                <textarea id="pfEditBio" placeholder="Tell the community about yourself…"
-                          rows="3" maxlength="500"
-                          oninput="document.getElementById('pfBioCount').textContent=this.value.length"></textarea>
-            </div>
-            <div class="pf-field-row">
-                <div class="pf-field">
-                    <label for="pfEditLocation">Location</label>
-                    <input id="pfEditLocation" type="text" placeholder="City, Country" maxlength="100" autocomplete="off">
-                </div>
-                <div class="pf-field">
-                    <label for="pfEditWebsite">Website</label>
-                    <input id="pfEditWebsite" type="url" placeholder="https://…" maxlength="255" autocomplete="off">
-                </div>
-            </div>
-            <div class="pf-error" id="pfEditError" style="display:none"></div>
-        </div>
-
-        <div class="pf-modal-foot">
-            <button class="pf-btn pf-btn--primary" id="pfSaveBtn" onclick="pfSaveProfile()">
-                <i class="fas fa-floppy-disk"></i> Save Changes
-            </button>
-            <button class="pf-btn pf-btn--ghost" onclick="pfCloseEdit()">Cancel</button>
-        </div>
-    </div>
-</div>
-
-<!-- ═══════════ DELETE ACCOUNT CONFIRM MODAL ═══════════ -->
-<div class="pf-modal-veil" id="pfDeleteModal" onclick="pfBgClose(event,'pfDeleteModal')">
-    <div class="pf-modal pf-modal--danger" role="dialog" aria-modal="true" aria-label="Delete Account">
-        <button class="pf-modal-close" onclick="pfCloseDelete()"><i class="fas fa-xmark"></i></button>
-        <div class="pf-modal-head">
-            <div class="pf-danger-icon"><i class="fas fa-skull-crossbones"></i></div>
-            <div>
-                <h2>Delete Account</h2>
-                <p>This is permanent — your data cannot be recovered.</p>
-            </div>
-        </div>
-        <div class="pf-modal-body">
-            <div class="pf-delete-warning">
-                <i class="fas fa-triangle-exclamation"></i>
-                Deleting your account will permanently remove all your profile data,
-                challenge submissions, earnings history, and messages. This action
-                <strong>cannot be undone</strong>.
-            </div>
-            <div class="pf-field">
-                <label for="pfDeleteConfirm">
-                    Type <strong id="pfDeletePrompt">your username</strong> to confirm
-                </label>
-                <input id="pfDeleteConfirm" type="text" placeholder="Type your username here"
-                       oninput="pfCheckDeleteConfirm(this.value)" autocomplete="off">
-            </div>
-            <div class="pf-error" id="pfDeleteError" style="display:none"></div>
-        </div>
-        <div class="pf-modal-foot">
-            <button class="pf-btn pf-btn--danger" id="pfDeleteConfirmBtn" onclick="pfDeleteAccount()" disabled>
-                <i class="fas fa-trash-alt"></i> Delete My Account
-            </button>
-            <button class="pf-btn pf-btn--ghost" onclick="pfCloseDelete()">Cancel</button>
-        </div>
-    </div>
-</div>
-
-<!-- ═══════════ FOLLOWERS / FOLLOWING MODAL ═══════════ -->
-<div class="pf-modal-veil" id="pfFollowModal" onclick="pfBgClose(event,'pfFollowModal')">
-    <div class="pf-modal pf-modal--narrow" role="dialog" aria-modal="true" aria-label="Followers">
-        <button class="pf-modal-close" onclick="pfCloseFollowers()"><i class="fas fa-xmark"></i></button>
-        <div class="pf-follow-tabs">
-            <button class="pf-follow-tab active" id="pfFolTabFollowers" onclick="pfSwitchFollowTab('followers')">Followers</button>
-            <button class="pf-follow-tab"        id="pfFolTabFollowing" onclick="pfSwitchFollowTab('following')">Following</button>
-        </div>
-        <div class="pf-follow-list" id="pfFollowList">
-            <div class="pf-skeleton-row"></div>
-            <div class="pf-skeleton-row short"></div>
-            <div class="pf-skeleton-row"></div>
-        </div>
-    </div>
-</div>
-
-<!-- ═══════════ TOAST ═══════════ -->
-<div class="pf-toast" id="pfToast"></div>
-
-<!-- ═══════════ SCRIPTS ═══════════ -->
-<script src="../scripts/api-service.js"></script>
-<script src="../scripts/utils.js"></script>
-<script src="../scripts/settings.js"></script>
-<script src="../scripts/realtime-updates.js"></script>
-<script src="../scripts/profile.js"></script>
 
 </body>
 </html>

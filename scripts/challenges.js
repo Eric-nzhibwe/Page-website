@@ -1415,6 +1415,7 @@ window.toggleChallengePublish = toggleChallengePublish;
 window.deleteChallenge = deleteChallenge;
 window.deleteSocialChallenge = deleteSocialChallenge;
 window.toggleQAImage = toggleQAImage;
+window._qaToggleAnswers = _qaToggleAnswers;
 // Wizard helpers
 window.ccGoStep = ccGoStep;
 window.ccSetDuration = ccSetDuration;
@@ -1695,41 +1696,59 @@ function _renderQABubble(a, currentUser, creatorUsername) {
 }
 
 function _renderQACard(c) {
-    const id           = c.id;
-    const answers      = (c.answers || []);
-    const isOwner      = c.created_by === _currentUsername();
-    const currentUser  = _currentUsername();
-    const detailUrl    = `challenge.html?id=${encodeURIComponent(id)}&type=qa`;
+    const id          = c.id;
+    const answers     = (c.answers || []);
+    const isOwner     = c.created_by === _currentUsername();
+    const currentUser = _currentUsername();
+    const detailUrl   = `challenge.html?id=${encodeURIComponent(id)}&type=qa`;
 
-    // Seed one-answer-per-user state from existing answers
+    // Seed answered state + open WS (unchanged behaviour)
     _qaInitAnsweredState(id, answers);
-    // Connect WebSocket for live updates
     _qaConnectWS(id);
 
-    const deleteBtn = isOwner
-        ? `<button class="social-card-delete-btn qa-delete-btn" onclick="deleteSocialChallenge('qa','${id}','${escHtml(c.title)}')" title="Delete Q&A" aria-label="Delete"><i class="fas fa-trash-alt"></i></button>`
-        : '';
-
-    // ── Creator info ─────────────────────────────────────────────────────
-    const creator      = c.creator || {};
-    const creatorName  = escHtml(creator.display_name || c.created_by || 'Unknown');
-    const creatorUser  = creator.username || c.created_by || '';
-    const creatorHref  = creator.id
+    // ── Creator info ──────────────────────────────────────────────────────
+    const creator       = c.creator || {};
+    const creatorName   = escHtml(creator.display_name || c.created_by || 'Unknown');
+    const creatorUser   = creator.username || c.created_by || '';
+    const creatorHref   = creator.id
         ? `profile.html?id=${encodeURIComponent(creator.id)}`
         : `profile.html?username=${encodeURIComponent(creatorUser)}`;
-    const creatorAvUrl = creator.avatar_url || creator.profile_image_url || creator.profile_image || '';
+    const creatorAvUrl  = creator.avatar_url || creator.profile_image_url || creator.profile_image || '';
     const creatorColours= _qaUserColors(creatorUser || creatorName);
     const creatorInitial= (creatorName[0] || '?').toUpperCase();
 
-    // ── Difficulty / prize ────────────────────────────────────────────────
-    const diff       = (c.difficulty || 'easy').toLowerCase();
-    const diffLabel  = diff.charAt(0).toUpperCase() + diff.slice(1);
-    const diffClass  = `qa-diff-${diff}`;
-    const prizeBadge = c.prize_amount && parseFloat(c.prize_amount) > 0
-        ? `<span class="qa-prize-chip"><i class="fas fa-coins"></i> K${parseFloat(c.prize_amount).toFixed(0)}</span>`
+    // ── Difficulty badge (Medium badge / amber) ───────────────────────────
+    const diff      = (c.difficulty || 'easy').toLowerCase();
+    const diffLabel = diff.charAt(0).toUpperCase() + diff.slice(1);
+    const diffIconMap = { easy: 'fa-leaf', medium: 'fa-bolt', hard: 'fa-fire' };
+    const diffIcon  = diffIconMap[diff] || 'fa-bolt';
+
+    // ── Category badge (topic) ────────────────────────────────────────────
+    const topic = escHtml(c.category || c.topic || 'General');
+
+    // ── Prize ─────────────────────────────────────────────────────────────
+    const hasPrize  = c.prize_amount && parseFloat(c.prize_amount) > 0;
+    const prizeText = hasPrize ? `K${parseFloat(c.prize_amount).toFixed(0)}` : '';
+
+    // ── Participant count ─────────────────────────────────────────────────
+    const uniqueUsers     = [...new Set(answers.map(a => a.user))];
+    const participantCount= c.participant_count ?? uniqueUsers.length;
+
+    // ── Question count ────────────────────────────────────────────────────
+    const questionCount = c.question_count ?? c.num_questions ?? 10;
+
+    // ── Delete button (owner only) ────────────────────────────────────────
+    const deleteBtn = isOwner
+        ? `<button class="qa-new-delete-btn" onclick="deleteSocialChallenge('qa','${id}','${escHtml(c.title)}')" title="Delete" aria-label="Delete Q&A"><i class="fas fa-trash-alt"></i></button>`
         : '';
 
-    // ── Image reveal ─────────────────────────────────────────────────────
+    // ── Creator avatar HTML ───────────────────────────────────────────────
+    const creatorAvHTML = creatorAvUrl
+        ? `<img src="${escHtml(creatorAvUrl)}" alt="${creatorName}"
+               onerror="this.outerHTML='<div class=\\'qa-new-creator-initial\\'style=\\'background:${creatorColours[0]};\\'>${creatorInitial}</div>'">`
+        : `<div class="qa-new-creator-initial" style="background:${creatorColours[0]};">${creatorInitial}</div>`;
+
+    // ── Image section (optional) ──────────────────────────────────────────
     const imgSection = c.image_url ? `
         <div class="qa-img-preview-wrap" id="qaImgWrap_${id}">
             <button class="qa-img-toggle-btn" onclick="toggleQAImage('${id}')" aria-expanded="false" aria-controls="qaImgPanel_${id}">
@@ -1741,116 +1760,190 @@ function _renderQACard(c) {
             </div>
         </div>` : '';
 
-    // ── Chat bubbles ──────────────────────────────────────────────────────
+    // ── Live answers pane (kept intact for realtime) ──────────────────────
     const answersHTML = answers.slice(-12).map(a => _renderQABubble(a, currentUser, creatorUser)).join('');
 
-    // ── Participant strip ─────────────────────────────────────────────────
-    const uniqueUsers  = [...new Set(answers.map(a => a.user))];
+    // ── Participant pip strip ─────────────────────────────────────────────
     const visibleUsers = uniqueUsers.slice(0, 5);
     const overflow     = uniqueUsers.length > 5 ? uniqueUsers.length - 5 : 0;
-
     const pipsHTML = visibleUsers.map(u => {
         const [bg] = _qaUserColors(u);
         return `<span class="qa-participant-pip" style="--qa-pip-bg:${bg};" title="${escHtml(u)}">${u[0].toUpperCase()}</span>`;
     }).join('') + (overflow ? `<span class="qa-participant-pip qa-pip-overflow">+${overflow}</span>` : '');
 
-    // ── Already-answered state for current user ───────────────────────────
+    // ── Input state ───────────────────────────────────────────────────────
     const userAlreadyAnswered = _qaHasAnswered(id, currentUser);
     const inputDisabledAttr   = userAlreadyAnswered ? 'disabled' : '';
     const inputPlaceholder    = userAlreadyAnswered ? 'You already answered ✓' : 'Share your answer…';
 
-    return `<div class="challenge-card qa-glass-card" data-status="active" data-category="qa" data-id="${id}" role="article" aria-label="Q&A: ${escHtml(c.title)}">
+    return `<div class="challenge-card qa-new-card" data-status="active" data-category="qa" data-id="${id}" role="article" aria-label="Q&A: ${escHtml(c.title)}">
 
-        <!-- ── Chat-app header: blurred creator cover ── -->
-        <div class="qa-chat-header">
-            ${creatorAvUrl
-                ? `<div class="qa-chat-cover" style="background-image:url('${escHtml(creatorAvUrl)}');"></div>`
-                : `<div class="qa-chat-cover qa-chat-cover-gradient" style="--qa-c1:${creatorColours[0]};--qa-c2:${creatorColours[1]};"></div>`
-            }
-            <div class="qa-chat-header-overlay">
-                <div class="qa-chat-header-left">
-                    <a href="${creatorHref}" class="qa-chat-avatar-link">
-                        ${creatorAvUrl
-                            ? `<img src="${escHtml(creatorAvUrl)}" class="qa-chat-avatar" alt="${creatorName}" onerror="this.outerHTML='<div class=\\'qa-chat-avatar qa-chat-avatar-initial\\'>${creatorInitial}</div>'">`
-                            : `<div class="qa-chat-avatar qa-chat-avatar-initial" style="background:${creatorColours[0]};">${creatorInitial}</div>`
-                        }
-                        <span class="qa-online-ring"></span>
-                    </a>
-                    <div class="qa-chat-header-info">
-                        <a href="${creatorHref}" class="qa-chat-room-name">${creatorName}</a>
-                        <span class="qa-chat-room-sub">
-                            <span class="qa-live-dot"></span>
-                            ${answers.length} participant${answers.length !== 1 ? 's' : ''}
-                        </span>
+        <!-- ══ HERO ══════════════════════════════════════════════════ -->
+        <div class="qa-new-hero">
+
+            <!-- SVG abstract light-wave background -->
+            <svg class="qa-new-hero-bg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 160" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+                <defs>
+                    <linearGradient id="qwg1_${id}" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%"   stop-color="#f9fafb"/>
+                        <stop offset="100%" stop-color="#f1f3f5"/>
+                    </linearGradient>
+                    <linearGradient id="qwg2_${id}" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%"   stop-color="rgba(209,213,219,0.6)"/>
+                        <stop offset="100%" stop-color="rgba(243,244,246,0)"/>
+                    </linearGradient>
+                    <linearGradient id="qwg3_${id}" x1="0%" y1="100%" x2="100%" y2="0%">
+                        <stop offset="0%"   stop-color="rgba(229,231,235,0.7)"/>
+                        <stop offset="100%" stop-color="rgba(249,250,251,0)"/>
+                    </linearGradient>
+                </defs>
+                <rect width="360" height="160" fill="url(#qwg1_${id})"/>
+                <path d="M0 90 Q70 35 145 80 Q220 125 295 58 Q335 22 360 42 L360 0 L0 0 Z" fill="url(#qwg2_${id})" opacity="0.65"/>
+                <path d="M0 160 Q90 110 180 138 Q270 165 360 120 L360 160 Z" fill="url(#qwg3_${id})" opacity="0.55"/>
+                <path d="M0 120 Q55 95 110 112 Q185 135 258 96 Q312 72 360 92 L360 160 L0 160 Z" fill="rgba(229,231,235,0.22)"/>
+                <ellipse cx="295" cy="26" rx="80" ry="48" fill="rgba(255,255,255,0.42)"/>
+                <ellipse cx="52"  cy="136" rx="62" ry="34" fill="rgba(255,255,255,0.28)"/>
+                <path d="M-8 64 Q82 38 166 60 Q250 82 352 44" stroke="rgba(209,213,219,0.55)" stroke-width="1.4" fill="none"/>
+                <path d="M-8 104 Q74 78 174 100 Q274 122 368 82" stroke="rgba(209,213,219,0.4)" stroke-width="1" fill="none"/>
+            </svg>
+
+            <!-- Floating ? pattern -->
+            <span class="qa-new-qmark" style="top:10px;left:44px;font-size:32px;opacity:.055;transform:rotate(-14deg)" aria-hidden="true">?</span>
+            <span class="qa-new-qmark" style="top:18px;right:58px;font-size:20px;opacity:.065;transform:rotate(10deg)"  aria-hidden="true">?</span>
+            <span class="qa-new-qmark" style="top:54px;left:18px;font-size:16px;opacity:.045;transform:rotate(-7deg)"   aria-hidden="true">?</span>
+            <span class="qa-new-qmark" style="top:48px;right:22px;font-size:36px;opacity:.048;transform:rotate(18deg)"  aria-hidden="true">?</span>
+            <span class="qa-new-qmark" style="bottom:22px;left:36px;font-size:26px;opacity:.055;transform:rotate(-19deg)" aria-hidden="true">?</span>
+            <span class="qa-new-qmark" style="bottom:14px;right:44px;font-size:16px;opacity:.06;transform:rotate(6deg)" aria-hidden="true">?</span>
+
+            <!-- Floating badges -->
+            <div class="qa-new-badge-row">
+                <span class="qa-new-badge qa-new-badge-diff">
+                    <i class="fas ${diffIcon}"></i>${diffLabel}
+                </span>
+                <span class="qa-new-badge qa-new-badge-topic">
+                    <i class="fas fa-microchip"></i>${topic}
+                </span>
+                ${hasPrize ? `<span class="qa-new-badge qa-new-badge-prize"><i class="fas fa-coins"></i>${prizeText}</span>` : ''}
+                <span class="qa-new-badge qa-new-badge-inprogress">
+                    <i class="fas fa-circle"></i>In Progress
+                </span>
+            </div>
+
+            <!-- Progress ring — top right -->
+            <div class="qa-new-progress-ring" title="60% complete" aria-label="60% complete">
+                <svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+                    <circle class="qa-ring-track" cx="20" cy="20" r="16"/>
+                    <circle class="qa-ring-fill"  cx="20" cy="20" r="16"
+                            style="stroke-dashoffset: calc(100.53 - (100.53 * 60 / 100));"/>
+                </svg>
+                <span class="qa-ring-label">60%</span>
+            </div>
+
+            <!-- Delete (owner) -->
+            ${deleteBtn}
+
+            <!-- Title block -->
+            <div class="qa-new-hero-content">
+                <div class="qa-new-hero-icon">
+                    <i class="fas fa-circle-question"></i>
+                </div>
+                <h3 class="qa-new-title">${escHtml(c.title)}</h3>
+            </div>
+        </div><!-- /hero -->
+
+        <!-- ══ BODY ═══════════════════════════════════════════════════ -->
+        <div class="qa-new-body">
+
+            ${c.description ? `<p class="qa-new-desc">${escHtml(c.description)}</p>` : ''}
+
+            <!-- Meta row -->
+            <div class="qa-new-meta-row">
+                <span class="qa-new-meta-item">
+                    <i class="fas fa-users"></i>
+                    <strong id="qaCount_${id}">${participantCount}</strong> participant${participantCount !== 1 ? 's' : ''}
+                </span>
+                <span class="qa-new-meta-item">
+                    <i class="fas fa-list-check"></i>
+                    <strong>${questionCount}</strong> question${questionCount !== 1 ? 's' : ''}
+                </span>
+                ${c.duration_days ? `<span class="qa-new-meta-item"><i class="fas fa-hourglass-half"></i>${_fmtDur(c.duration_days)} left</span>` : ''}
+            </div>
+
+            ${imgSection}
+
+            <!-- Creator row -->
+            <a href="${creatorHref}" class="qa-new-creator-row">
+                <div class="qa-new-creator-av">${creatorAvHTML}</div>
+                <div>
+                    <div class="qa-new-creator-label">Created by</div>
+                    <div class="qa-new-creator-name">${creatorName}</div>
+                </div>
+            </a>
+
+        </div><!-- /body -->
+
+        <!-- ══ LIVE ANSWERS PANE (collapsible) ════════════════════════ -->
+        <div class="qa-new-answers-wrap">
+            <button class="qa-new-answers-toggle" onclick="_qaToggleAnswers('${id}')" aria-expanded="false" aria-controls="qaLive_${id}">
+                <span><i class="fas fa-comments"></i> Answers <span class="qa-new-ans-badge">${answers.length}</span></span>
+                <i class="fas fa-chevron-down qa-new-toggle-caret"></i>
+            </button>
+            <div class="qa-new-answers-panel" id="qaAnswersPanel_${id}" hidden>
+                <div class="qa-live-pane" id="qaLive_${id}" role="log" aria-live="polite" aria-label="Answers">
+                    ${answersHTML || `<div class="qa-empty-hint">
+                        <div class="qa-empty-icon"><i class="fas fa-comments"></i></div>
+                        <span>Start the conversation</span>
+                        <small>Be the first to answer!</small>
+                    </div>`}
+                </div>
+                <!-- Participant pip strip -->
+                <div class="qa-participants">
+                    <div class="qa-participant-avatars" role="list" aria-label="Participants">${pipsHTML}</div>
+                </div>
+                <!-- Input bar -->
+                <div class="qa-input-tray" id="qaInputTray_${id}">
+                    <div class="qa-input-pill ${userAlreadyAnswered ? 'qa-input-disabled' : ''}">
+                        <input class="qa-type-input"
+                               placeholder="${inputPlaceholder}"
+                               id="qaInput_${id}"
+                               maxlength="280"
+                               aria-label="Your answer"
+                               ${inputDisabledAttr}
+                               onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();_chSubmitQA('${id}')}"
+                               oninput="_qaOnInput(this,'${id}')">
                     </div>
+                    <button class="qa-send-btn" id="qaSend_${id}"
+                            onclick="_chSubmitQA('${id}')"
+                            title="${userAlreadyAnswered ? 'Already answered' : 'Send answer'}"
+                            aria-label="Send answer"
+                            ${userAlreadyAnswered ? 'disabled style="opacity:0.35;cursor:not-allowed;"' : 'disabled'}>
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
                 </div>
-                <div class="qa-chat-header-right">
-                    <span class="qa-diff-badge ${diffClass}">${diffLabel}</span>
-                    ${deleteBtn}
-                </div>
             </div>
         </div>
 
-        <!-- ── Question bubble (pinned message style) ── -->
-        <div class="qa-question-pin">
-            <i class="fas fa-thumbtack qa-pin-icon" aria-hidden="true"></i>
-            <div class="qa-question-content">
-                <p class="qa-question">${escHtml(c.title)}</p>
-                ${c.description ? `<p class="qa-description">${escHtml(c.description)}</p>` : ''}
+        <!-- ══ FOOTER ACTIONS ══════════════════════════════════════════ -->
+        <div class="qa-new-footer">
+            <div class="qa-new-footer-primary">
+                <button class="qa-new-btn-start qa-new-btn-results" onclick="window.location.href='${detailUrl}'">
+                    <span class="qa-new-btn-start-text">
+                        <i class="fas fa-circle-check"></i> View Results &bull;
+                        <span class="qa-btn-score"></span>
+                    </span>
+                    <span class="qa-new-btn-start-arrow"><i class="fas fa-arrow-right"></i></span>
+                </button>
+                <span class="qa-rank-text"></span>
             </div>
-            ${prizeBadge}
-        </div>
-
-        ${imgSection}
-
-        <!-- ── Live answers pane ── -->
-        <div class="qa-live-pane" id="qaLive_${id}" role="log" aria-live="polite" aria-label="Answers">
-            ${answersHTML || `<div class="qa-empty-hint">
-                <div class="qa-empty-icon"><i class="fas fa-comments"></i></div>
-                <span>Start the conversation</span>
-                <small>Be the first to answer!</small>
-            </div>`}
-        </div>
-
-        <!-- ── Participant strip ── -->
-        <div class="qa-participants">
-            <div class="qa-participant-avatars" role="list" aria-label="Participants">
-                ${pipsHTML}
-            </div>
-            <span class="qa-answer-count" id="qaCount_${id}">
-                <i class="fas fa-comment-dots"></i>
-                ${answers.length} answer${answers.length !== 1 ? 's' : ''}
-            </span>
-        </div>
-
-        <!-- ── Chat-style input bar ── -->
-        <div class="qa-input-tray" id="qaInputTray_${id}">
-            <div class="qa-input-pill ${userAlreadyAnswered ? 'qa-input-disabled' : ''}">
-                <input class="qa-type-input"
-                       placeholder="${inputPlaceholder}"
-                       id="qaInput_${id}"
-                       maxlength="280"
-                       aria-label="Your answer"
-                       ${inputDisabledAttr}
-                       onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();_chSubmitQA('${id}')}"
-                       oninput="_qaOnInput(this,'${id}')">
-            </div>
-            <button class="qa-send-btn" id="qaSend_${id}"
-                    onclick="_chSubmitQA('${id}')"
-                    title="${userAlreadyAnswered ? 'Already answered' : 'Send answer'}"
-                    aria-label="Send answer"
-                    ${userAlreadyAnswered ? 'disabled style="opacity:0.35;cursor:not-allowed;"' : 'disabled'}>
-                <i class="fas fa-paper-plane"></i>
+            <button class="qa-new-icon-btn" title="Share"
+                    onclick="(navigator.share?navigator.share({title:${JSON.stringify(c.title)},url:location.origin+'/pages/${detailUrl}'}):navigator.clipboard.writeText(location.origin+'/pages/${detailUrl}').then(()=>showToast('Link copied!','success')))">
+                <i class="fas fa-share-nodes"></i>
+            </button>
+            <button class="qa-new-icon-btn" title="View answers" onclick="_qaToggleAnswers('${id}')">
+                <i class="far fa-comment"></i>
             </button>
         </div>
 
-        <!-- ── Footer ── -->
-        <div class="qa-card-footer">
-            <span class="qa-meta-time"><i class="fas fa-hourglass-half"></i> ${_fmtDur(c.duration_days)} left</span>
-            <a href="${detailUrl}" class="qa-fullpage-btn" aria-label="Open full page">
-                <i class="fas fa-expand-alt"></i> Full page
-            </a>
-        </div>
     </div>`;
 }
 
@@ -1858,6 +1951,24 @@ function _qaOnInput(input, id) {
     const val     = input.value.trim();
     const sendBtn = document.getElementById(`qaSend_${id}`);
     if (sendBtn) sendBtn.disabled = val.length === 0;
+}
+
+function _qaToggleAnswers(id) {
+    const panel  = document.getElementById(`qaAnswersPanel_${id}`);
+    const toggle = panel?.previousElementSibling; // the toggle button
+    if (!panel) return;
+    const open = panel.hidden;
+    panel.hidden = !open;
+    if (toggle) {
+        toggle.setAttribute('aria-expanded', String(open));
+        const caret = toggle.querySelector('.qa-new-toggle-caret');
+        if (caret) caret.style.transform = open ? 'rotate(180deg)' : '';
+    }
+    // Scroll live pane to bottom when opened
+    if (open) {
+        const pane = document.getElementById(`qaLive_${id}`);
+        if (pane) pane.scrollTop = pane.scrollHeight;
+    }
 }
 
 function _qaTimeAgo(value) {
