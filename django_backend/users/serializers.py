@@ -142,20 +142,25 @@ class UserProfileSerializer(serializers.ModelSerializer):
     def get_profile_image_url(self, obj):
         """
         Return the best available avatar URL.
-        Priority: avatar_url (base64/CDN, always works) → profile_image file → None.
+        Priority: avatar_url (base64/CDN, always portable, no request context needed)
+                  → profile_image ImageField absolute URL (needs request context)
+                  → profile_image relative URL (fallback)
+                  → None
         """
-        # New field — base64 data URI or any persistent URL
-        if getattr(obj, 'avatar_url', ''):
-            return obj.avatar_url
+        # 1. New field — base64 data URI or any CDN URL. Always works, no request needed.
+        av = getattr(obj, 'avatar_url', '') or ''
+        if av:
+            return av
 
-        # Legacy ImageField — only return if the file actually exists
-        if not obj.profile_image:
+        # 2. Legacy ImageField
+        if not getattr(obj, 'profile_image', None):
             return None
         try:
             if obj.profile_image.storage.exists(obj.profile_image.name):
                 request = self.context.get('request')
                 if request:
                     return request.build_absolute_uri(obj.profile_image.url)
+                # Fallback: return the raw URL (may be relative) so it's never None
                 return obj.profile_image.url
         except Exception:
             pass

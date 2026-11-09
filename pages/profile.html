@@ -4,13 +4,20 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>PAGE Profile</title>
+  <link rel="icon" type="image/jpeg" href="../images/Page.jpeg">
+  <!-- shared styles that power the navbar (same as index.html) -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+  <link rel="stylesheet" href="../styles/styles.css">
+  <link rel="stylesheet" href="../styles/icon-nav.css">
+  <!-- Theme engine — must be first JS so colour applies before first paint -->
+  <script src="../scripts/theme.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
       background: #f0f2f5;
+      padding-top: 56px; /* clear the sticky header */
     }
 
     /* ── wrapper / card ── */
@@ -219,6 +226,203 @@
   </style>
 </head>
 <body>
+
+<!-- ═══════════════════════════════════════════════════════
+     NAVBAR  — mirrors index.html exactly
+     paths prefixed ../ because this page lives in pages/
+════════════════════════════════════════════════════════ -->
+<header class="header w-100" style="background-color: whitesmoke;">
+  <div class="header-left d-flex align-items-center">
+    <div class="logo" onclick="window.location.href='../index.html'" style="cursor:pointer">
+      <i class="fas fa-fire-flame-curved"></i>PAGE
+    </div>
+    <div class="search-bar d-none d-md-flex align-items-center">
+      <i class="fas fa-magnifying-glass"></i>
+      <input type="text" placeholder="Search PAGE..." id="headerSearch">
+    </div>
+  </div>
+
+  <nav class="icon-nav d-flex justify-content-center flex-grow-1">
+    <button class="icon-nav-btn" title="Home" onclick="window.location.href='../index.html'">
+      <i class="fas fa-house"></i>
+    </button>
+    <button class="icon-nav-btn" title="Challenges" onclick="window.location.href='challenges.html'">
+      <i class="fas fa-trophy"></i>
+      <span class="notification-badge" id="challengesBadge" style="display:none;">0</span>
+    </button>
+    <button class="icon-nav-btn" title="Messages" onclick="window.location.href='messenger.html'">
+      <i class="fas fa-comment-dots"></i>
+    </button>
+    <button class="icon-nav-btn active" title="Profile">
+      <i class="fas fa-circle-user"></i>
+    </button>
+  </nav>
+
+  <div class="header-right d-flex align-items-center">
+    <button class="header-icon-btn" id="notifBtn" title="Notifications">
+      <i class="fas fa-bell"></i>
+      <span class="notification-badge" id="notificationBadge" style="display:none;">0</span>
+    </button>
+    <button class="header-icon-btn" id="quickMenuBtn" title="Menu">
+      <i class="fas fa-grid-2"></i>
+    </button>
+    <div class="user-avatar-btn" id="userAvatarBtn" data-current-user-avatar
+         role="button" tabindex="0" aria-haspopup="menu" aria-expanded="false"
+         onclick="toggleUserMenu(event)"
+         onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleUserMenu(event);}">
+    </div>
+  </div>
+</header>
+
+<!-- Quick Menu Dropdown -->
+<div class="quick-menu-dropdown" id="quickMenuDropdown">
+  <div class="quick-menu-header"><h3>Quick Access</h3></div>
+  <div class="quick-menu-grid">
+    <a href="../index.html" class="quick-menu-item">
+      <i class="fas fa-chart-line"></i><span>Dashboard</span>
+    </a>
+    <a href="community.html" class="quick-menu-item">
+      <i class="fas fa-people-group"></i><span>Community</span>
+    </a>
+    <a href="challenges.html" class="quick-menu-item">
+      <i class="fas fa-trophy"></i><span>Challenges</span>
+    </a>
+    <a href="payment.html" class="quick-menu-item">
+      <i class="fas fa-wallet"></i><span>Wallet</span>
+    </a>
+    <a href="chatbot.html" class="quick-menu-item">
+      <i class="fas fa-robot"></i><span>PAGE AI</span>
+    </a>
+    <a href="messenger.html" class="quick-menu-item">
+      <i class="fas fa-comment-dots"></i><span>Messages</span>
+    </a>
+    <a href="influencers.html" class="quick-menu-item">
+      <i class="fas fa-star"></i><span>Influencers</span>
+    </a>
+  </div>
+</div>
+
+<!-- User Menu Dropdown -->
+<div class="user-menu-dropdown" id="userMenuDropdown">
+  <div class="user-menu-header">
+    <div class="user-menu-avatar" data-current-user-avatar></div>
+    <div class="user-menu-info">
+      <h4 id="userMenuName">Player</h4>
+      <p id="userMenuTier">Bronze Tier</p>
+    </div>
+  </div>
+  <div class="user-menu-links">
+    <a href="profile.html"><i class="fas fa-id-card"></i> View Profile</a>
+    <a href="challenges.html"><i class="fas fa-trophy"></i> Challenges</a>
+    <a href="chatbot.html"><i class="fas fa-robot"></i> PAGE AI</a>
+    <a href="payment.html"><i class="fas fa-wallet"></i> My Wallet</a>
+    <a href="followers.html"><i class="fas fa-user-plus"></i> Followers</a>
+    <a href="#" id="settingsLink"><i class="fas fa-gear"></i> Settings</a>
+    <a href="#" id="logoutLink" class="logout-link"><i class="fas fa-right-from-bracket"></i> Logout</a>
+  </div>
+</div>
+
+<!-- Dropdown controller — same IIFE as index.html -->
+<script>
+(function () {
+  'use strict';
+  function openMenu(id) {
+    var el = document.getElementById(id);
+    if (el) el.classList.add('show');
+    if (id === 'userMenuDropdown') {
+      var btn = document.getElementById('userAvatarBtn');
+      if (btn) btn.setAttribute('aria-expanded', 'true');
+    }
+  }
+  function closeMenu(id) {
+    var el = document.getElementById(id);
+    if (el) {
+      el.classList.remove('show');
+      el.style.removeProperty('top');
+      el.style.removeProperty('bottom');
+      el.style.removeProperty('right');
+      el.style.removeProperty('position');
+    }
+    if (id === 'userMenuDropdown') {
+      var btn = document.getElementById('userAvatarBtn');
+      if (btn) btn.setAttribute('aria-expanded', 'false');
+    }
+  }
+  function toggleMenu(id, closeOther) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    var isOpen = el.classList.contains('show');
+    closeMenu(closeOther);
+    if (isOpen) { closeMenu(id); } else { openMenu(id); }
+  }
+  window.toggleUserMenu  = function () { toggleMenu('userMenuDropdown',  'quickMenuDropdown'); };
+  window.toggleQuickMenu = function () { toggleMenu('quickMenuDropdown', 'userMenuDropdown'); };
+  window.closeUserMenu   = function () { closeMenu('userMenuDropdown'); };
+
+  document.addEventListener('DOMContentLoaded', function () {
+    var quickBtn    = document.getElementById('quickMenuBtn');
+    var notifBtn    = document.getElementById('notifBtn');
+    var settingsLnk = document.getElementById('settingsLink');
+    var logoutLnk   = document.getElementById('logoutLink');
+
+    if (quickBtn) {
+      quickBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        toggleMenu('quickMenuDropdown', 'userMenuDropdown');
+      });
+    }
+    if (notifBtn) {
+      notifBtn.addEventListener('click', function () {
+        window.location.href = 'notifications.html';
+      });
+    }
+    if (settingsLnk) {
+      settingsLnk.addEventListener('click', function (e) {
+        e.preventDefault();
+        closeMenu('userMenuDropdown');
+        if (typeof showSettings === 'function') showSettings();
+      });
+    }
+    if (logoutLnk) {
+      logoutLnk.addEventListener('click', function (e) {
+        e.preventDefault();
+        closeMenu('userMenuDropdown');
+        if (typeof _pageLogout === 'function') {
+          _pageLogout();
+        } else {
+          ['djangoAuthToken','authToken','token','firebaseIdToken',
+           'pageUser','user','userId','authSource']
+            .forEach(function (k) { localStorage.removeItem(k); });
+          window.location.href = '/pages/auth.html';
+        }
+      });
+    }
+
+    document.addEventListener('click', function (e) {
+      var um = document.getElementById('userMenuDropdown');
+      var qm = document.getElementById('quickMenuDropdown');
+      var avatarBtn = document.getElementById('userAvatarBtn');
+      var quickBtn2 = document.getElementById('quickMenuBtn');
+      if (um && um.classList.contains('show') &&
+          !um.contains(e.target) && (!avatarBtn || !avatarBtn.contains(e.target))) {
+        closeMenu('userMenuDropdown');
+      }
+      if (qm && qm.classList.contains('show') &&
+          !qm.contains(e.target) && (!quickBtn2 || !quickBtn2.contains(e.target))) {
+        closeMenu('quickMenuDropdown');
+      }
+    });
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') {
+        closeMenu('userMenuDropdown');
+        closeMenu('quickMenuDropdown');
+      }
+    });
+  });
+})();
+</script>
+<!-- /NAVBAR -->
 
 <div class="profile-wrapper">
   <div class="profile-card">

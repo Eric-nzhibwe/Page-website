@@ -58,7 +58,7 @@ class UserRegistrationView(generics.CreateAPIView):
             pass
 
         return Response({
-            'user': UserProfileSerializer(user).data,
+            'user': UserProfileSerializer(user, context={'request': request}).data,
             'token': token.key,
             'message': 'Account creation successful! Welcome to PAGE!'
         }, status=status.HTTP_201_CREATED)
@@ -180,7 +180,7 @@ def login_view(request):
 
     return Response({
         'token': token.key,
-        'user': UserProfileSerializer(user).data,
+        'user': UserProfileSerializer(user, context={'request': request}).data,
         'message': f'Welcome back, {user.username}! 🔥'
     }, status=status.HTTP_200_OK)
 
@@ -316,7 +316,7 @@ class SubmitAnswerView(generics.CreateAPIView):
         submission = serializer.save()
         
         # Return updated user profile
-        user_data = UserProfileSerializer(request.user).data
+        user_data = UserProfileSerializer(request.user, context={'request': request}).data
         
         return Response({
             'submission': UserSubmissionSerializer(submission).data,
@@ -464,7 +464,7 @@ def user_stats_view(request):
     total_users = User.objects.count()
     
     return Response({
-        'user': UserProfileSerializer(user).data,
+        'user': UserProfileSerializer(user, context={'request': request}).data,
         'rank': user_rank,
         'total_users': total_users,
         'recent_activities': UserActivitySerializer(recent_activities, many=True).data,
@@ -554,7 +554,7 @@ def verify_otp_view(request):
     print(f"✅ OTP verified and user logged in: {user.username}")
     
     return Response({
-        'user': UserProfileSerializer(user).data,
+        'user': UserProfileSerializer(user, context={'request': request}).data,
         'token': token.key,
         'message': 'Login successful!'
     })
@@ -946,7 +946,7 @@ def firebase_token_login_view(request):
         return Response({
             'token':          drf_token.key,
             'firebase_token': firebase_token,
-            'user':           UserProfileSerializer(db_user).data,
+            'user':           UserProfileSerializer(db_user, context={'request': request}).data,
             'message':        f'Welcome, {db_user.username}! 🔥',
         })
 
@@ -1531,7 +1531,7 @@ def google_login_view(request):
 
     return Response({
         'token':   drf_token.key,
-        'user':    UserProfileSerializer(user).data,
+        'user':    UserProfileSerializer(user, context={'request': request}).data,
         'message': f"Welcome{'! 🎉' if created else ' back! 🔥'} {user.display_name or user.username}",
         'created': created,
     }, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
