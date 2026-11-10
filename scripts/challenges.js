@@ -1639,12 +1639,38 @@ function _qaInitAnsweredState(cardId, answers) {
 // ── WebSocket connection per QA card ─────────────────────────────────────────
 function _qaConnectWS(cardId) {
     if (_qaWsSockets.has(cardId)) return;
+
+    // Skip if WS is known to be unsupported on this server
+    if (sessionStorage.getItem('ws_supported') === 'false') return;
+
     try {
+        // ── Build the token string (same pattern as notification WS) ──
+        const fbToken  = localStorage.getItem('firebaseIdToken');
+        const drfToken = localStorage.getItem('djangoAuthToken') || localStorage.getItem('authToken');
+
+        // Expiry-check the Firebase token — don't send an expired one
+        let wsToken = '';
+        if (fbToken) {
+            try {
+                const payload = JSON.parse(atob(fbToken.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')));
+                if (Date.now() < payload.exp * 1000) {
+                    wsToken = `fb:${fbToken}`;
+                } else {
+                    // Expired — clear it and fall through to DRF token
+                    localStorage.removeItem('firebaseIdToken');
+                }
+            } catch (_) {
+                // Malformed — treat as DRF token fallback
+            }
+        }
+        if (!wsToken && drfToken) wsToken = drfToken;
+        if (!wsToken) return;  // not logged in — can't connect
+
         const wsProto = location.protocol === 'https:' ? 'wss:' : 'ws:';
         const wsHost  = location.hostname === 'localhost' || location.hostname === '127.0.0.1'
             ? `${location.hostname}:8000`
             : location.host;
-        const ws = new WebSocket(`${wsProto}//${wsHost}/ws/qa/${cardId}/`);
+        const ws = new WebSocket(`${wsProto}//${wsHost}/ws/qa/${cardId}/?token=${encodeURIComponent(wsToken)}`);
 
         ws.onmessage = (e) => {
             try {
@@ -1679,8 +1705,10 @@ function _qaConnectWS(cardId) {
             } catch (_) {}
         };
 
-        ws.onclose = () => {
+        ws.onclose = (ev) => {
             _qaWsSockets.delete(cardId);
+            // 4001 = auth rejected — stop reconnecting to avoid a flood of 403s
+            if (ev.code === 4001) return;
             // Reconnect after 4s (handles Render sleep / network blips)
             setTimeout(() => _qaConnectWS(cardId), 4000);
         };
