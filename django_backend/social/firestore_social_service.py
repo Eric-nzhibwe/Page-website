@@ -494,7 +494,11 @@ def _ts(val) -> str | None:
 
 
 def _avatar(user) -> str | None:
+    """Return the best avatar URL for a user — avatar_url (base64/CDN) first."""
     try:
+        av = getattr(user, 'avatar_url', '') or ''
+        if av:
+            return av
         return user.profile_image.url if user.profile_image else None
     except Exception:
         return None

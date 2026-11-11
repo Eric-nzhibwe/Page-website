@@ -311,6 +311,7 @@ def _user_to_doc(user, request=None) -> dict:
         'display_name':          user.display_name or user.username,
         'bio':                   user.bio or '',
         'profile_image_url':     profile_image_url,
+        'avatar_url':            getattr(user, 'avatar_url', '') or '',  # preserve base64 data URI across syncs
         'access_tier':           user.access_tier,
         'prestige_points':       user.prestige_points,
         'level':                 user.level,

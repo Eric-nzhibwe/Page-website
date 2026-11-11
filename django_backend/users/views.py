@@ -972,13 +972,14 @@ def _build_firebase_only_profile(decoded, firebase_token):
     name         = decoded.get('name') or ''
     picture      = decoded.get('picture') or ''
 
-    # Try Firestore first
+    # Try Firestore first — by firebase_uid, then by email as fallback
     profile = None
     try:
         from page_platform.firebase_client import get_firestore
         from google.cloud.firestore_v1 import FieldFilter
         db = get_firestore()
         if db is not None:
+            # 1. Try by firebase_uid (primary)
             docs = (
                 db.collection('user_profiles')
                 .where(filter=FieldFilter('firebase_uid', '==', firebase_uid))
@@ -989,12 +990,30 @@ def _build_firebase_only_profile(decoded, firebase_token):
                 profile = doc.to_dict()
                 profile['id'] = doc.id
                 break
+
+            # 2. If not found, try by email (handles cases where firebase_uid
+            #    is empty in the doc or the UserFirebaseProfile relation is missing)
+            if not profile and email:
+                docs = (
+                    db.collection('user_profiles')
+                    .where(filter=FieldFilter('email', '==', email))
+                    .limit(1)
+                    .stream()
+                )
+                for doc in docs:
+                    profile = doc.to_dict()
+                    profile['id'] = doc.id
+                    break
     except Exception:
         pass
 
     if profile:
         # Enrich with email (not stored in Firestore for privacy)
         profile['email'] = email
+        # Ensure avatar_url key exists — sync_user may have wiped it,
+        # but profile_image_url should still be there
+        if not profile.get('avatar_url') and profile.get('profile_image_url'):
+            profile['avatar_url'] = profile['profile_image_url']
         if picture and not profile.get('profile_image_url'):
             profile['profile_image_url'] = picture
             profile['profile_image'] = picture
