@@ -73,8 +73,8 @@
                 <a href="community.html" class="quick-menu-item">
                     <i class="fas fa-people-group"></i><span>Community</span>
                 </a>
-                <a href="payment.html" class="quick-menu-item">
-                    <i class="fas fa-wallet"></i><span>Wallet</span>
+                <a href="#" class="quick-menu-item">
+                    <i class="fas fa-wallet"></i><span>Wallet - COMING SOON</span>
                 </a>
                 <a href="chatbot.html" class="quick-menu-item">
                     <i class="fas fa-robot"></i><span>PAGE AI</span>
@@ -115,8 +115,7 @@
                 <a href="payment.html"><i class="fas fa-wallet"></i> My Wallet</a>
                 <a href="chatbot.html"><i class="fas fa-robot"></i> PAGE AI</a>
                 <a href="followers.html"><i class="fas fa-user-plus"></i> Followers</a>
-                <a href="#" onclick="logout(); return false;" class="logout-link"><i
-                        class="fas fa-right-from-bracket"></i> Logout</a>
+                <a href="#" id="logoutLink" class="logout-link"><i class="fas fa-right-from-bracket"></i> Logout</a>
             </div>
         </div>
     </header>
@@ -1021,32 +1020,111 @@
     <script src="../scripts/challenges.js"></script>
     <script src="../scripts/image-interpretation.js"></script>
     <script>
-        /* Navbar dropdown toggles — matches other pages */
-        function toggleQuickMenu() {
-            const qm = document.getElementById('quickMenuDropdown');
-            const um = document.getElementById('userMenuDropdown');
-            if (um) um.classList.remove('show');
-            if (qm) qm.classList.toggle('show');
-        }
+        /* Navbar dropdown toggles — matches index.html */
+        (function () {
+            'use strict';
 
-        function toggleUserMenu() {
-            const um = document.getElementById('userMenuDropdown');
-            const qm = document.getElementById('quickMenuDropdown');
-            if (qm) qm.classList.remove('show');
-            if (um) um.classList.toggle('show');
-            document.getElementById('userAvatarBtn')?.setAttribute('aria-expanded',
-                um?.classList.contains('show') ? 'true' : 'false');
-        }
+            function openMenu(id) {
+                var el = document.getElementById(id);
+                if (el) el.classList.add('show');
+                if (id === 'userMenuDropdown') {
+                    var btn = document.getElementById('userAvatarBtn');
+                    if (btn) btn.setAttribute('aria-expanded', 'true');
+                }
+            }
+            function closeMenu(id) {
+                var el = document.getElementById(id);
+                if (el) {
+                    el.classList.remove('show');
+                    el.style.removeProperty('top');
+                    el.style.removeProperty('bottom');
+                    el.style.removeProperty('right');
+                    el.style.removeProperty('position');
+                }
+                if (id === 'userMenuDropdown') {
+                    var btn = document.getElementById('userAvatarBtn');
+                    if (btn) btn.setAttribute('aria-expanded', 'false');
+                }
+            }
+            function toggleMenu(id, closeOther) {
+                var el = document.getElementById(id);
+                if (!el) return;
+                var isOpen = el.classList.contains('show');
+                closeMenu(closeOther);
+                if (isOpen) { closeMenu(id); } else { openMenu(id); }
+            }
 
-        /* Close dropdowns on outside click */
-        document.addEventListener('click', e => {
-            if (!e.target.closest('.quick-menu-dropdown') && !e.target.closest('.header-icon-btn[title="Menu"]')) {
-                document.getElementById('quickMenuDropdown')?.classList.remove('show');
-            }
-            if (!e.target.closest('.user-menu-dropdown') && !e.target.closest('.user-avatar-btn')) {
-                document.getElementById('userMenuDropdown')?.classList.remove('show');
-            }
-        });
+            window.toggleUserMenu  = function () { toggleMenu('userMenuDropdown',  'quickMenuDropdown'); };
+            window.toggleQuickMenu = function () { toggleMenu('quickMenuDropdown', 'userMenuDropdown'); };
+            window.closeUserMenu   = function () { closeMenu('userMenuDropdown'); };
+
+            document.addEventListener('DOMContentLoaded', function () {
+                var quickBtn    = document.getElementById('quickMenuBtn');
+                var notifBtn    = document.getElementById('notifBtn');
+                var settingsLnk = document.getElementById('settingsLink');
+                var logoutLnk   = document.getElementById('logoutLink');
+
+                if (quickBtn) {
+                    quickBtn.addEventListener('click', function (e) {
+                        e.stopPropagation();
+                        toggleMenu('quickMenuDropdown', 'userMenuDropdown');
+                    });
+                }
+                if (notifBtn) {
+                    notifBtn.addEventListener('click', function () {
+                        window.location.href = 'notifications.html';
+                    });
+                }
+                if (settingsLnk) {
+                    settingsLnk.addEventListener('click', function (e) {
+                        e.preventDefault();
+                        closeMenu('userMenuDropdown');
+                        if (typeof showSettings === 'function') showSettings();
+                    });
+                }
+                if (logoutLnk) {
+                    logoutLnk.addEventListener('click', function (e) {
+                        e.preventDefault();
+                        closeMenu('userMenuDropdown');
+                        if (typeof _pageLogout === 'function') {
+                            _pageLogout();
+                        } else if (typeof logout === 'function') {
+                            logout();
+                        } else {
+                            ['djangoAuthToken','authToken','token','firebaseIdToken',
+                             'pageUser','user','userId','authSource']
+                                .forEach(function (k) { localStorage.removeItem(k); });
+                            window.location.href = '/pages/auth.html';
+                        }
+                    });
+                }
+
+                // Close both menus on outside click
+                document.addEventListener('click', function (e) {
+                    var um = document.getElementById('userMenuDropdown');
+                    var qm = document.getElementById('quickMenuDropdown');
+                    var avatarBtn = document.getElementById('userAvatarBtn');
+                    var quickBtn2 = document.getElementById('quickMenuBtn');
+                    if (um && um.classList.contains('show') &&
+                        !um.contains(e.target) && (!avatarBtn || !avatarBtn.contains(e.target))) {
+                        closeMenu('userMenuDropdown');
+                    }
+                    if (qm && qm.classList.contains('show') &&
+                        !qm.contains(e.target) && (!quickBtn2 || !quickBtn2.contains(e.target))) {
+                        closeMenu('quickMenuDropdown');
+                    }
+                });
+
+                // Escape key closes any open dropdown
+                document.addEventListener('keydown', function (e) {
+                    if (e.key === 'Escape') {
+                        closeMenu('userMenuDropdown');
+                        closeMenu('quickMenuDropdown');
+                    }
+                });
+            });
+        })();
+    </script>
 
         function syncChallengeUserMenu(user) {
             const raw = user || (() => {
@@ -1073,23 +1151,37 @@
 
             document.querySelectorAll('.user-avatar-btn, .user-menu-avatar, [data-current-user-avatar]').forEach(container => {
                 container.querySelectorAll('img').forEach(img => img.remove());
+                // Clear any previous fallback (icon or letter-span)
+                container.querySelectorAll('.fas.fa-user, .av-letter-fallback').forEach(el => el.remove());
+
                 if (!avatarUrl) {
-                    if (!container.querySelector('.fas.fa-user')) {
-                        container.insertAdjacentHTML('beforeend', '<i class="fas fa-user"></i>');
-                    }
+                    // Coloured letter-initial fallback — matches _avatarBoot._stamp pattern
+                    const initial = (username || '?').charAt(0).toUpperCase();
+                    const colours = ['#6c63ff','#e74c3c','#2ecc71','#f39c12','#1abc9c','#9b59b6','#3498db','#e67322'];
+                    const colour  = colours[initial.charCodeAt(0) % colours.length];
+                    const span = document.createElement('span');
+                    span.className = 'av-letter-fallback';
+                    span.style.cssText = `display:inline-flex;align-items:center;justify-content:center;width:100%;height:100%;border-radius:50%;background:${colour};color:#fff;font-weight:700;font-size:14px;`;
+                    span.textContent = initial;
+                    container.appendChild(span);
                     return;
                 }
 
-                container.querySelectorAll('.fas.fa-user').forEach(icon => icon.remove());
                 const img = document.createElement('img');
                 img.src = avatarUrl;
                 img.alt = username;
                 img.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;';
                 img.addEventListener('error', () => {
                     img.remove();
-                    if (!container.querySelector('.fas.fa-user')) {
-                        container.insertAdjacentHTML('beforeend', '<i class="fas fa-user"></i>');
-                    }
+                    // Same coloured-letter fallback on image load failure
+                    const initial = (username || '?').charAt(0).toUpperCase();
+                    const colours = ['#6c63ff','#e74c3c','#2ecc71','#f39c12','#1abc9c','#9b59b6','#3498db','#e67322'];
+                    const colour  = colours[initial.charCodeAt(0) % colours.length];
+                    const span = document.createElement('span');
+                    span.className = 'av-letter-fallback';
+                    span.style.cssText = `display:inline-flex;align-items:center;justify-content:center;width:100%;height:100%;border-radius:50%;background:${colour};color:#fff;font-weight:700;font-size:14px;`;
+                    span.textContent = initial;
+                    container.appendChild(span);
                 }, { once: true });
                 container.appendChild(img);
             });

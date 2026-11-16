@@ -1382,6 +1382,20 @@ function escHtml(str) {
     return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 function setEl(id, v) { const el = document.getElementById(id); if (el) el.textContent = v; }
+
+// ── Delegated delete-button handler (XSS-safe replacement for inline onclick) ──
+// Cards use data-delete-type / data-delete-id / data-delete-title attributes;
+// this listener reads them safely instead of interpolating user content into JS strings.
+document.addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-delete-type]');
+    if (!btn) return;
+    e.preventDefault();
+    e.stopPropagation();
+    var type  = btn.dataset.deleteType;
+    var id    = btn.dataset.deleteId;
+    var title = btn.dataset.deleteTitle || '';
+    if (type && id) deleteSocialChallenge(type, id, title);
+});
 function show(id) { const el = document.getElementById(id); if (el) el.style.display = 'flex'; }
 function formatDate(iso) {
     if (!iso) return '';
@@ -1469,10 +1483,12 @@ function _creatorAvatarHTML(creator, size = 36) {
     const fallback = `<span class="sc-avatar-initial" style="background:${colorBg};" aria-hidden="true">${initial}</span>`;
 
     if (avatarUrl) {
+        // Use a simple onerror that swaps to a letter span — no complex
+        // HTML attributes inside the onerror string (avoids quote-breakage).
         return `<a href="${profileHref}" class="sc-creator-link" title="${escHtml(displayName)}">
             <img src="${escHtml(avatarUrl)}" alt="${escHtml(displayName)}"
                  class="sc-avatar-img" width="${size}" height="${size}"
-                 onerror="this.outerHTML='${fallback.replace(/'/g, "\\'")}'"
+                 onerror="this.onerror=null;this.outerHTML='<span class=&quot;sc-avatar-initial&quot; style=&quot;background:${colorBg};&quot;>${escHtml(initial)}</span>'"
                  loading="lazy">
         </a>`;
     }
@@ -1487,7 +1503,7 @@ function _renderDebateCard(c) {
     const id = c.id;
     const isOwner = c.created_by === _currentUsername();
     const deleteBtn = isOwner
-        ? `<button class="social-card-delete-btn" onclick="deleteSocialChallenge('debates','${id}','${escHtml(c.title)}')" title="Delete challenge"><i class="fas fa-trash"></i></button>`
+        ? `<button class="social-card-delete-btn" data-delete-type="debates" data-delete-id="${id}" data-delete-title="${escHtml(c.title)}" title="Delete challenge"><i class="fas fa-trash"></i></button>`
         : '';
     const avatarHTML = _creatorAvatarHTML(c.creator || c.created_by);
     const detailUrl  = `challenge.html?id=${encodeURIComponent(id)}&type=debate`;
@@ -1568,7 +1584,7 @@ function _renderPollCard(c) {
     const opts = (c.options || []);
     const isOwner = c.created_by === _currentUsername();
     const deleteBtn = isOwner
-        ? `<button class="social-card-delete-btn" onclick="deleteSocialChallenge('polls','${id}','${escHtml(c.title)}')" title="Delete poll"><i class="fas fa-trash"></i></button>`
+        ? `<button class="social-card-delete-btn" data-delete-type="polls" data-delete-id="${id}" data-delete-title="${escHtml(c.title)}" title="Delete poll"><i class="fas fa-trash"></i></button>`
         : '';
     const avatarHTML = _creatorAvatarHTML(c.creator || c.created_by);
     const detailUrl  = `challenge.html?id=${encodeURIComponent(id)}&type=poll`;
@@ -1614,7 +1630,8 @@ const _QA_PALETTE = [
     ['#0284c7','#38bdf8'], // sky
 ];
 function _qaUserColors(username) {
-    const idx = username.split('').reduce((s, ch) => s + ch.charCodeAt(0), 0) % _QA_PALETTE.length;
+    const name = username || '?';
+    const idx = name.split('').reduce((s, ch) => s + ch.charCodeAt(0), 0) % _QA_PALETTE.length;
     return _QA_PALETTE[idx];
 }
 
@@ -1633,7 +1650,10 @@ function _qaHasAnswered(cardId, username) {
 
 // ── Seed answered state from the initial answers list ─────────────────────────
 function _qaInitAnsweredState(cardId, answers) {
-    for (const a of answers) _qaMarkAnswered(cardId, a.user);
+    for (const a of answers) {
+        const u = a.user || a.username;
+        if (u) _qaMarkAnswered(cardId, u);
+    }
 }
 
 // ── WebSocket connection per QA card ─────────────────────────────────────────
@@ -1719,25 +1739,26 @@ function _qaConnectWS(cardId) {
 
 // ── Build a single chat bubble ────────────────────────────────────────────────
 function _renderQABubble(a, currentUser, creatorUsername) {
-    const isOwn      = a.user === currentUser;
-    const isCreator  = a.user === creatorUsername;
-    const [bg, light] = _qaUserColors(a.user);
-    const initial    = (a.user[0] || '?').toUpperCase();
+    const user        = a.user || a.username || 'Guest';
+    const isOwn      = user === currentUser;
+    const isCreator  = user === creatorUsername;
+    const [bg, light] = _qaUserColors(user);
+    const initial    = (user[0] || '?').toUpperCase();
     const avatarUrl  = a.avatar_url || a.profile_image_url || '';
 
     const avatarInner = avatarUrl
-        ? `<img src="${escHtml(avatarUrl)}" alt="${escHtml(a.user)}" class="qa-bubble-avatar-img" onerror="this.outerHTML='<span>${escHtml(initial)}</span>'">`
+        ? `<img src="${escHtml(avatarUrl)}" alt="${escHtml(user)}" class="qa-bubble-avatar-img" onerror="this.outerHTML='<span>${escHtml(initial)}</span>'">`
         : `<span>${escHtml(initial)}</span>`;
 
     const creatorTick = isCreator
         ? `<span class="qa-creator-tick" title="Question creator"><i class="fas fa-crown"></i></span>`
         : '';
 
-    return `<div class="qa-live-msg${isOwn ? ' own' : ''}" role="listitem" data-user="${escHtml(a.user)}">
+    return `<div class="qa-live-msg${isOwn ? ' own' : ''}" role="listitem" data-user="${escHtml(user)}">
         <div class="qa-bubble-avatar" style="--qa-avatar-bg:${bg};" aria-hidden="true">${avatarInner}</div>
         <div class="qa-live-bubble">
             <div class="qa-bubble-meta">
-                <span class="qa-live-user" style="color:${isOwn ? 'rgba(255,255,255,0.9)' : light};">${escHtml(a.user)}</span>
+                <span class="qa-live-user" style="color:${isOwn ? 'rgba(255,255,255,0.9)' : light};">${escHtml(user)}</span>
                 ${creatorTick}
                 ${a.created_at ? `<time class="qa-live-time">${escHtml(_qaTimeAgo(a.created_at))}</time>` : ''}
             </div>
@@ -1790,7 +1811,7 @@ function _renderQACard(c) {
 
     // ── Delete button (owner only) ────────────────────────────────────────
     const deleteBtn = isOwner
-        ? `<button class="qa-new-delete-btn" onclick="deleteSocialChallenge('qa','${id}','${escHtml(c.title)}')" title="Delete" aria-label="Delete Q&A"><i class="fas fa-trash-alt"></i></button>`
+        ? `<button class="qa-new-delete-btn" data-delete-type="qa" data-delete-id="${id}" data-delete-title="${escHtml(c.title)}" title="Delete" aria-label="Delete Q&A"><i class="fas fa-trash-alt"></i></button>`
         : '';
 
     // ── Creator avatar HTML ───────────────────────────────────────────────
