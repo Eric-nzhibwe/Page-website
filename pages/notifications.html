@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notifications</title>
+    <link rel="icon" type="image/jpeg" href="../images/Page.jpeg">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+    <link rel="stylesheet" href="../styles/styles.css">
+    <link rel="stylesheet" href="../styles/icon-nav.css">
+    <link rel="stylesheet" href="../styles/responsive-pro.css">
+    <script src="../scripts/theme.js"></script>
+    <script>
+        (function () {
+            var hasToken =
+                localStorage.getItem('djangoAuthToken') ||
+                localStorage.getItem('firebaseIdToken') ||
+                localStorage.getItem('authToken');
+            if (!hasToken) window.location.replace('auth.html');
+        })();
+    </script>
+    <style>
+        .notif-page { max-width: 680px; margin: 80px auto 40px; padding: 0 16px; }
+        .notif-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+        .notif-header h1 { font-size: 22px; font-weight: 800; }
+        .notif-mark-all { background: none; border: 1px solid var(--border-color, #ddd);
+            border-radius: 8px; padding: 6px 14px; font-size: 13px; cursor: pointer;
+            color: var(--text-secondary, #666); }
+        .notif-mark-all:hover { background: var(--surface, #f5f5f5); }
+        .notif-list { display: flex; flex-direction: column; gap: 8px; }
+        .notif-item { display: flex; align-items: flex-start; gap: 14px;
+            background: var(--card-bg, #fff); border: 1px solid var(--border-color, #eee);
+            border-radius: 12px; padding: 14px 16px; cursor: pointer; transition: background 0.15s; }
+        .notif-item:hover { background: var(--surface, #f9f9f9); }
+        .notif-item.unread { border-left: 3px solid var(--page-primary, #556b2f); }
+        .notif-icon { width: 40px; height: 40px; border-radius: 50%;
+            background: var(--page-primary, #556b2f); color: #fff;
+            display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 16px; }
+        .notif-body { flex: 1; min-width: 0; }
+        .notif-title { font-weight: 700; font-size: 14px; margin-bottom: 2px; }
+        .notif-msg { font-size: 13px; color: var(--text-secondary, #666); }
+        .notif-time { font-size: 11px; color: var(--text-muted, #999); margin-top: 4px; }
+        .notif-empty { text-align: center; padding: 60px 20px;
+            color: var(--text-muted, #999); font-size: 15px; }
+        .notif-empty i { font-size: 48px; display: block; margin-bottom: 12px; opacity: 0.3; }
+        .notif-loading { text-align: center; padding: 40px; color: var(--text-muted, #999); }
+    </style>
+</head>
+<body>
+
+    <!-- Navbar -->
+    <header class="header w-100">
+        <div class="header-left d-flex align-items-center">
+            <div class="logo" onclick="window.location.href='../index.html'" style="cursor:pointer">
+                <i class="fas fa-fire-flame-curved"></i>PAGE
+            </div>
+        </div>
+        <nav class="icon-nav d-flex justify-content-center flex-grow-1">
+            <button class="icon-nav-btn" title="Home" onclick="window.location.href='../index.html'">
+                <i class="fas fa-house"></i>
+            </button>
+            <button class="icon-nav-btn" title="Challenges" onclick="window.location.href='challenges.html'">
+                <i class="fas fa-trophy"></i>
+            </button>
+            <button class="icon-nav-btn" title="Messages" onclick="window.location.href='messenger.html'">
+                <i class="fas fa-comment-dots"></i>
+            </button>
+            <button class="icon-nav-btn active" title="Notifications">
+                <i class="fas fa-bell"></i>
+            </button>
+        </nav>
+        <div class="header-right d-flex align-items-center">
+            <div class="user-avatar-btn" id="userAvatarBtn"
+                onclick="toggleUserMenu()" data-current-user-avatar
+                role="button" tabindex="0" aria-haspopup="menu" aria-expanded="false">
+                <i class="fas fa-user"></i>
+            </div>
+        </div>
+    </header>
+
+    <!-- User Menu Dropdown -->
+    <div class="user-menu-dropdown" id="userMenuDropdown">
+        <div class="user-menu-header">
+            <div class="user-menu-avatar" data-current-user-avatar></div>
+            <div class="user-menu-info">
+                <h4 id="userMenuName">Player</h4>
+                <p id="userMenuTier">Bronze Tier</p>
+            </div>
+        </div>
+        <div class="user-menu-links">
+            <a href="profile.html"><i class="fas fa-id-card"></i> View Profile</a>
+            <a href="challenges.html"><i class="fas fa-trophy"></i> Challenges</a>
+            <a href="messenger.html"><i class="fas fa-comment-dots"></i> Messages</a>
+            <a href="#" id="logoutLink" class="logout-link">
+                <i class="fas fa-right-from-bracket"></i> Logout
+            </a>
+        </div>
+    </div>
+
+    <!-- Main content -->
+    <div class="notif-page">
+        <div class="notif-header">
+            <h1><i class="fas fa-bell"></i> Notifications</h1>
+            <button class="notif-mark-all" onclick="markAllRead()">
+                <i class="fas fa-check-double"></i> Mark all read
+            </button>
+        </div>
+        <div class="notif-list" id="notifList">
+            <div class="notif-loading"><i class="fas fa-spinner fa-spin"></i> Loading…</div>
+        </div>
+    </div>
+
+    <!-- Mobile bottom nav -->
+    <nav class="mobile-bottom-nav">
+        <button class="icon-nav-btn" onclick="window.location.href='../index.html'"><i class="fas fa-home"></i></button>
+        <button class="icon-nav-btn" onclick="window.location.href='challenges.html'"><i class="fas fa-trophy"></i></button>
+        <button class="icon-nav-btn" onclick="window.location.href='community.html'"><i class="fas fa-users"></i></button>
+        <button class="icon-nav-btn active"><i class="fas fa-bell"></i></button>
+        <button class="icon-nav-btn" onclick="window.location.href='profile.html'"><i class="fas fa-user"></i></button>
+    </nav>
+
+    <script src="../scripts/utils.js"></script>
+    <script src="../scripts/api-service.js"></script>
+    <script src="../scripts/app.js"></script>
+    <script>
+    'use strict';
+
+    const NOTIF_API = (function () {
+        const h = window.location.hostname;
+        return (h === 'localhost' || h === '127.0.0.1')
+            ? 'http://localhost:8000/api'
+            : `${window.location.origin}/api`;
+    })();
+
+    function _authHeader() {
+        if (window._pageAuthHeader) return window._pageAuthHeader();
+        const fb  = localStorage.getItem('firebaseIdToken');
+        const drf = localStorage.getItem('djangoAuthToken') || localStorage.getItem('authToken');
+        if (fb)  return `FirebaseToken ${fb}`;
+        if (drf) return `Token ${drf}`;
+        return null;
+    }
+
+    const TYPE_ICONS = {
+        follow:        'fa-user-plus',
+        like:          'fa-heart',
+        comment:       'fa-comment',
+        challenge:     'fa-trophy',
+        submission:    'fa-paper-plane',
+        leaderboard:   'fa-chart-bar',
+        alliance:      'fa-shield',
+        payment:       'fa-wallet',
+        default:       'fa-bell',
+    };
+
+    function _timeAgo(iso) {
+        const s = Math.floor((Date.now() - new Date(iso)) / 1000);
+        if (s < 60)  return 'just now';
+        const m = Math.floor(s / 60);  if (m < 60)  return `${m}m ago`;
+        const h = Math.floor(m / 60);  if (h < 24)  return `${h}h ago`;
+        return `${Math.floor(h / 24)}d ago`;
+    }
+
+    function _esc(s) {
+        const d = document.createElement('div');
+        d.textContent = String(s ?? '');
+        return d.innerHTML;
+    }
+
+    async function loadNotifications() {
+        const list = document.getElementById('notifList');
+        const auth = _authHeader();
+        if (!auth) { list.innerHTML = '<div class="notif-empty"><i class="fas fa-lock"></i>Sign in to see notifications.</div>'; return; }
+
+        try {
+            const res  = await fetch(`${NOTIF_API}/notifications/`, {
+                headers: { 'Authorization': auth }
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data    = await res.json();
+            const notifs  = Array.isArray(data) ? data : (data.results ?? []);
+
+            if (notifs.length === 0) {
+                list.innerHTML = '<div class="notif-empty"><i class="fas fa-bell-slash"></i>No notifications yet.</div>';
+                return;
+            }
+
+            list.innerHTML = notifs.map(n => {
+                const icon = TYPE_ICONS[n.type] || TYPE_ICONS.default;
+                const unread = !n.is_read ? 'unread' : '';
+                return `
+                <div class="notif-item ${unread}" data-id="${_esc(n.id)}" onclick="markRead('${_esc(n.id)}', '${_esc(n.link || '')}', this)">
+                    <div class="notif-icon"><i class="fas ${icon}"></i></div>
+                    <div class="notif-body">
+                        <div class="notif-title">${_esc(n.title || 'Notification')}</div>
+                        ${n.message ? `<div class="notif-msg">${_esc(n.message)}</div>` : ''}
+                        <div class="notif-time">${_timeAgo(n.created_at)}</div>
+                    </div>
+                </div>`;
+            }).join('');
+
+        } catch (err) {
+            list.innerHTML = `<div class="notif-empty"><i class="fas fa-exclamation-circle"></i>Could not load notifications.</div>`;
+            console.error('Notifications load error:', err);
+        }
+    }
+
+    async function markRead(id, link, el) {
+        el?.classList.remove('unread');
+        const auth = _authHeader();
+        if (auth) {
+            fetch(`${NOTIF_API}/notifications/${id}/mark_read/`, {
+                method: 'POST',
+                headers: { 'Authorization': auth, 'Content-Type': 'application/json' }
+            }).catch(() => {});
+        }
+        if (link) window.location.href = link;
+    }
+
+    async function markAllRead() {
+        const auth = _authHeader();
+        if (!auth) return;
+        try {
+            await fetch(`${NOTIF_API}/notifications/mark_all_read/`, {
+                method: 'POST',
+                headers: { 'Authorization': auth, 'Content-Type': 'application/json' }
+            });
+            document.querySelectorAll('.notif-item.unread').forEach(el => el.classList.remove('unread'));
+        } catch (_) {}
+    }
+
+    // User menu toggle (matches other pages)
+    function toggleUserMenu() {
+        const um = document.getElementById('userMenuDropdown');
+        if (um) um.classList.toggle('show');
+    }
+    document.addEventListener('click', function (e) {
+        const um  = document.getElementById('userMenuDropdown');
+        const btn = document.getElementById('userAvatarBtn');
+        if (um && um.classList.contains('show') && !um.contains(e.target) && e.target !== btn && !(btn && btn.contains(e.target))) {
+            um.classList.remove('show');
+        }
+    });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') document.getElementById('userMenuDropdown')?.classList.remove('show'); });
+
+    const logoutLink = document.getElementById('logoutLink');
+    if (logoutLink) {
+        logoutLink.addEventListener('click', function (e) {
+            e.preventDefault();
+            if (window._pageLogout) { window._pageLogout(); return; }
+            ['djangoAuthToken','authToken','token','firebaseIdToken','pageUser','user','userId','authSource']
+                .forEach(k => localStorage.removeItem(k));
+            window.location.href = 'auth.html';
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', loadNotifications);
+    </script>
+</body>
+</html>
