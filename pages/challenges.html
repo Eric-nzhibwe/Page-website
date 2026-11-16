@@ -54,7 +54,7 @@
             <div class="user-avatar-btn" id="userAvatarBtn" onclick="toggleUserMenu()" data-current-user-avatar
                 role="button" tabindex="0" aria-haspopup="menu" aria-expanded="false"
                 onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleUserMenu();}">
-                <i class="fas fa-user"></i>
+                <!-- avatar stamped by syncChallengeUserMenu on DOMContentLoaded -->
             </div>
         </div>
 
@@ -89,7 +89,7 @@
         <div class="user-menu-dropdown" id="userMenuDropdown">
             <div class="user-menu-header">
                 <div class="user-menu-avatar" data-current-user-avatar>
-                    <i class="fas fa-user"></i>
+                    <!-- avatar stamped by syncChallengeUserMenu on DOMContentLoaded -->
                 </div>
                 <div class="user-menu-info">
                     <h4 id="menuUsername">Player</h4>
@@ -1150,42 +1150,44 @@
                 ? getAvatarUrl(raw)
                 : (raw.profile_image_url || raw.avatar_url || raw.profile_image || null);
 
-            document.querySelectorAll('.user-avatar-btn, .user-menu-avatar, [data-current-user-avatar]').forEach(container => {
-                container.querySelectorAll('img').forEach(img => img.remove());
-                // Clear any previous fallback (icon or letter-span)
-                container.querySelectorAll('.fas.fa-user, .av-letter-fallback').forEach(el => el.remove());
+            // Use a Set to avoid stamping any element more than once
+            // (userAvatarBtn matches both '.user-avatar-btn' AND '[data-current-user-avatar]')
+            const seen = new Set();
+            document.querySelectorAll('[data-current-user-avatar]').forEach(container => {
+                if (seen.has(container)) return;
+                seen.add(container);
 
-                if (!avatarUrl) {
-                    // Coloured letter-initial fallback — matches _avatarBoot._stamp pattern
-                    const initial = (username || '?').charAt(0).toUpperCase();
-                    const colours = ['#6c63ff','#e74c3c','#2ecc71','#f39c12','#1abc9c','#9b59b6','#3498db','#e67322'];
-                    const colour  = colours[initial.charCodeAt(0) % colours.length];
-                    const span = document.createElement('span');
-                    span.className = 'av-letter-fallback';
-                    span.style.cssText = `display:inline-flex;align-items:center;justify-content:center;width:100%;height:100%;border-radius:50%;background:${colour};color:#fff;font-weight:700;font-size:14px;`;
-                    span.textContent = initial;
-                    container.appendChild(span);
-                    return;
+                // Clear ALL previous content — icon placeholder, old img, old letter
+                container.innerHTML = '';
+
+                if (avatarUrl) {
+                    const img = document.createElement('img');
+                    img.src = avatarUrl;
+                    img.alt = username;
+                    img.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;';
+                    img.addEventListener('error', () => {
+                        img.remove();
+                        container.appendChild(_letterAvatar(username));
+                    }, { once: true });
+                    container.appendChild(img);
+                } else {
+                    container.appendChild(_letterAvatar(username));
                 }
-
-                const img = document.createElement('img');
-                img.src = avatarUrl;
-                img.alt = username;
-                img.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;';
-                img.addEventListener('error', () => {
-                    img.remove();
-                    // Same coloured-letter fallback on image load failure
-                    const initial = (username || '?').charAt(0).toUpperCase();
-                    const colours = ['#6c63ff','#e74c3c','#2ecc71','#f39c12','#1abc9c','#9b59b6','#3498db','#e67322'];
-                    const colour  = colours[initial.charCodeAt(0) % colours.length];
-                    const span = document.createElement('span');
-                    span.className = 'av-letter-fallback';
-                    span.style.cssText = `display:inline-flex;align-items:center;justify-content:center;width:100%;height:100%;border-radius:50%;background:${colour};color:#fff;font-weight:700;font-size:14px;`;
-                    span.textContent = initial;
-                    container.appendChild(span);
-                }, { once: true });
-                container.appendChild(img);
             });
+        }
+
+        function _letterAvatar(username) {
+            const initial = (username || '?').charAt(0).toUpperCase();
+            const colours = ['#6c63ff','#e74c3c','#2ecc71','#f39c12','#1abc9c','#9b59b6','#3498db','#e67322'];
+            const colour  = colours[initial.charCodeAt(0) % colours.length];
+            const span = document.createElement('span');
+            span.className = 'av-letter-fallback';
+            span.setAttribute('aria-hidden', 'true');
+            span.style.cssText = `display:inline-flex;align-items:center;justify-content:center;` +
+                `width:100%;height:100%;border-radius:50%;background:${colour};` +
+                `color:#fff;font-weight:700;font-size:14px;user-select:none;`;
+            span.textContent = initial;
+            return span;
         }
 
         /* Populate immediately, after DOM scripts, and after avatar/API updates. */
@@ -1194,10 +1196,21 @@
 
             const base = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
                 ? 'http://localhost:8000/api' : `${window.location.origin}/api`;
-            const token = localStorage.getItem('djangoAuthToken') || localStorage.getItem('authToken');
-            if (!token) return;
 
-            fetch(`${base}/auth/profile/`, { headers: { Authorization: `Token ${token}` } })
+            // Build the best available auth header — Firebase token takes priority
+            function _bestAuthHeader() {
+                if (window._pageAuthHeader) return window._pageAuthHeader();
+                const fb  = localStorage.getItem('firebaseIdToken');
+                const drf = localStorage.getItem('djangoAuthToken') || localStorage.getItem('authToken');
+                if (fb)  return `FirebaseToken ${fb}`;
+                if (drf) return `Token ${drf}`;
+                return null;
+            }
+
+            const authHeader = _bestAuthHeader();
+            if (!authHeader) return;
+
+            fetch(`${base}/auth/profile/`, { headers: { Authorization: authHeader } })
                 .then(res => res.ok ? res.json() : null)
                 .then(user => {
                     if (!user) return;
