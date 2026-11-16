@@ -233,8 +233,13 @@ class UserProfileView(generics.RetrieveUpdateAPIView):
 
         return super().update(request, *args, **kwargs)
 
-    # Alias for PATCH (partial update)
-    partial_update = update
+    def partial_update(self, request, *args, **kwargs):
+        # PATCH must set partial=True so the serializer only validates
+        # fields the client actually sent.  Aliasing partial_update = update
+        # skips this flag, causing a 400 when required fields like email
+        # are absent from the PATCH body.
+        kwargs['partial'] = True
+        return self.update(request, *args, **kwargs)
 
     @staticmethod
     def _ephemeral_profile(user):
