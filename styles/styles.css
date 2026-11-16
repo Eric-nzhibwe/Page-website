@@ -143,6 +143,9 @@ body {
     background-clip: text;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
+    text-decoration: none;
+    color: inherit;
+    cursor: pointer;
 }
 
 @media (min-width: 640px) {

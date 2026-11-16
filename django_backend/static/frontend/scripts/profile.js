@@ -149,17 +149,19 @@ document.addEventListener('DOMContentLoaded', async () => {
 function pfBootAvatar() {
     try {
         const stored = JSON.parse(localStorage.getItem('pageUser') || '{}');
-        const url = stored.profile_image_url || stored.profile_image || null;
+        const url  = stored.profile_image_url || stored.profile_image || null;
         const name = stored.display_name || stored.username || '';
+
         if (url) {
+            // User has a profile image — apply it everywhere
             pfApplyAvatarEverywhere(url, name);
         } else {
-            const initial = name ? name.charAt(0).toUpperCase() : null;
-            if (initial && window.pageLetterAvatarHTML) {
+            // No image — show the user's initial in every avatar slot
+            const initial = (name || '?').charAt(0).toUpperCase();
+            if (window.pageLetterAvatarHTML) {
                 const html = window.pageLetterAvatarHTML(initial);
-                ['pfAv', 'pfModalAv', 'navAvatar'].forEach(id => {
-                    const el = document.getElementById(id);
-                    if (el) el.innerHTML = html;
+                document.querySelectorAll('[data-current-user-avatar]').forEach(el => {
+                    el.innerHTML = html;
                 });
             }
         }
@@ -472,8 +474,8 @@ async function pfUploadAvatar(input) {
         input.value = ''; return;
     }
 
-    // Instant local preview
-    pfApplyAvatarEverywhere(dataUri);
+    // Instant local preview (before upload completes)
+    pfApplyAvatarEverywhere(dataUri, _pfData?.display_name || _pfData?.username);
     pfToast('Uploading…');
 
     // Prefer DRF token (never expires) for uploads
@@ -495,22 +497,9 @@ async function pfUploadAvatar(input) {
 
         const imgUrl = data.profile_image_url || data.avatar_url || data.profile_image || dataUri;
 
-        // Persist
-        try {
-            const stored = JSON.parse(localStorage.getItem('pageUser') || '{}');
-            stored.profile_image     = imgUrl;
-            stored.profile_image_url = imgUrl;
-            stored.avatar_url        = imgUrl;
-            localStorage.setItem('pageUser', JSON.stringify(stored));
-        } catch (_) {}
-
-        if (_pfData) {
-            _pfData.profile_image     = imgUrl;
-            _pfData.profile_image_url = imgUrl;
-        }
-
-        pfApplyAvatarEverywhere(imgUrl, _pfData?.display_name || _pfData?.username);
-        window.dispatchEvent(new CustomEvent('page:avatarChanged', { detail: { url: imgUrl } }));
+        // Replace every initial / placeholder with the uploaded image,
+        // persist to localStorage, and broadcast the change.
+        pfReplaceAvatarWithImage(imgUrl, _pfData?.display_name || _pfData?.username);
         pfToast('Profile photo updated ✓');
     } catch (err) {
         console.error(err);
@@ -571,11 +560,12 @@ function pfApplyAvatarEverywhere(imgUrl, userName) {
             el.replaceWith(s);
         })(this)">`;
 
-    ['pfAv', 'pfModalAv', 'navAvatar'].forEach(id => {
+    ['pfAv', 'pfModalAv', 'userAvatarBtn'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.innerHTML = imgTag;
     });
 
+    // Catch any other slots tagged with data-current-user-avatar (e.g. .user-menu-avatar)
     document.querySelectorAll('[data-current-user-avatar]').forEach(el => { el.innerHTML = imgTag; });
 
     // Keep the wrapper's aria-label in sync
@@ -583,6 +573,39 @@ function pfApplyAvatarEverywhere(imgUrl, userName) {
         const el = document.getElementById(id);
         if (el && el.hasAttribute('role')) el.setAttribute('aria-label', altText);
     });
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   REPLACE INITIALS WITH UPLOADED IMAGE
+   Called after a successful avatar upload — swaps every letter-avatar
+   initial (or fa-user placeholder) for the real <img>, persists to
+   localStorage, updates in-memory profile data, and broadcasts the
+   change so other open pages react.
+═══════════════════════════════════════════════════════════════ */
+function pfReplaceAvatarWithImage(imgUrl, userName) {
+    if (!imgUrl) return;
+
+    // 1. Swap the <img> into every avatar slot on the page
+    pfApplyAvatarEverywhere(imgUrl, userName);
+
+    // 2. Persist to localStorage so it survives page reloads
+    try {
+        const stored = JSON.parse(localStorage.getItem('pageUser') || '{}');
+        stored.profile_image     = imgUrl;
+        stored.profile_image_url = imgUrl;
+        stored.avatar_url         = imgUrl;
+        localStorage.setItem('pageUser', JSON.stringify(stored));
+    } catch (_) {}
+
+    // 3. Keep in-memory profile data in sync
+    if (_pfData) {
+        _pfData.profile_image     = imgUrl;
+        _pfData.profile_image_url = imgUrl;
+        _pfData.avatar_url         = imgUrl;
+    }
+
+    // 4. Broadcast so other scripts / tabs can react
+    window.dispatchEvent(new CustomEvent('page:avatarChanged', { detail: { url: imgUrl } }));
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -961,6 +984,7 @@ window.pfCloseEdit         = pfCloseEdit;
 window.pfSaveProfile       = pfSaveProfile;
 window.pfUploadAvatar      = pfUploadAvatar;
 window.pfUploadCover       = pfUploadCover;
+window.pfReplaceAvatarWithImage = pfReplaceAvatarWithImage;
 window.pfToggleFollow      = pfToggleFollow;
 window.pfOpenFollowers     = pfOpenFollowers;
 window.pfCloseFollowers    = pfCloseFollowers;

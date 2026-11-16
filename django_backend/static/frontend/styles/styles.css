@@ -143,6 +143,10 @@ body {
     background-clip: text;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
+    /* Neutralise default <a> styles so the logo looks the same whether it's a div or an anchor */
+    text-decoration: none;
+    color: inherit;
+    cursor: pointer;
 }
 
 @media (min-width: 640px) {

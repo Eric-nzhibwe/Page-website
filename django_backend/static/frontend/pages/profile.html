@@ -72,6 +72,7 @@
              role="button" tabindex="0" aria-haspopup="menu" aria-expanded="false"
              onclick="toggleUserMenu(event)"
              onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleUserMenu(event);}">
+            <i class="fas fa-user" aria-hidden="true"></i>
         </div>
     </div>
 </header>
@@ -107,7 +108,7 @@
 <!-- User Menu Dropdown -->
 <div class="user-menu-dropdown" id="userMenuDropdown">
     <div class="user-menu-header">
-        <div class="user-menu-avatar" data-current-user-avatar></div>
+        <div class="user-menu-avatar" data-current-user-avatar><i class="fas fa-user" aria-hidden="true"></i></div>
         <div class="user-menu-info">
             <h4 id="userMenuName">Player</h4>
             <p id="userMenuTier">Bronze Tier</p>
@@ -252,7 +253,7 @@
         <!-- Avatar -->
         <div class="pf-av-wrap" id="pfAvWrap">
             <div class="pf-av-ring" id="pfAvRing" aria-hidden="true"></div>
-            <div class="pf-av" id="pfAv" data-current-user-avatar role="img" aria-label="Profile photo"></div>
+            <div class="pf-av" id="pfAv" data-current-user-avatar role="img" aria-label="Profile photo"><i class="fas fa-user" aria-hidden="true"></i></div>
             <label class="pf-av-cam" id="pfAvCam" for="pfAvatarInput" title="Change profile photo" aria-label="Change profile photo">
                 <i class="fas fa-camera" aria-hidden="true"></i>
             </label>
@@ -493,7 +494,7 @@
         <button class="pf-modal-close" aria-label="Close edit profile" onclick="pfCloseEdit()"><i class="fas fa-xmark" aria-hidden="true"></i></button>
 
         <div class="pf-modal-head">
-            <div class="pf-modal-av" id="pfModalAv" data-current-user-avatar role="img" aria-label="Profile photo"></div>
+            <div class="pf-modal-av" id="pfModalAv" data-current-user-avatar role="img" aria-label="Profile photo"><i class="fas fa-user" aria-hidden="true"></i></div>
             <div>
                 <h2 id="pfEditModalTitle">Edit Profile</h2>
                 <p>Update how PAGE sees you</p>
