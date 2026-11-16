@@ -1126,6 +1126,7 @@
         })();
     </script>
 
+        <script>
         function syncChallengeUserMenu(user) {
             const raw = user || (() => {
                 try { return JSON.parse(localStorage.getItem('pageUser') || localStorage.getItem('artCurrentUser') || '{}'); }
