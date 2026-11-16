@@ -108,10 +108,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('pfPerfTabs').addEventListener('click', e => {
         const btn = e.target.closest('.pf-tab');
         if (!btn) return;
-        document.querySelectorAll('.pf-tab').forEach(b => b.classList.remove('active'));
-        document.querySelectorAll('.pf-tab-panel').forEach(p => p.classList.remove('active'));
+        document.querySelectorAll('.pf-tab').forEach(b => {
+            b.classList.remove('active');
+            b.setAttribute('aria-selected', 'false');
+        });
+        document.querySelectorAll('.pf-tab-panel').forEach(p => {
+            p.classList.remove('active');
+            p.hidden = true;
+        });
         btn.classList.add('active');
-        document.getElementById(btn.dataset.tab).classList.add('active');
+        btn.setAttribute('aria-selected', 'true');
+        const panel = document.getElementById(btn.dataset.tab);
+        if (panel) { panel.classList.add('active'); panel.hidden = false; }
         // Animate donut when chart tab opens
         if (btn.dataset.tab === 'pf-tab-donut' && _pfData) pfBuildDonut(_pfData);
     });
@@ -120,8 +128,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.querySelector('.pf-act-filters').addEventListener('click', e => {
         const btn = e.target.closest('.pf-act-filter');
         if (!btn) return;
-        document.querySelectorAll('.pf-act-filter').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.pf-act-filter').forEach(b => {
+            b.classList.remove('active');
+            b.setAttribute('aria-pressed', 'false');
+        });
         btn.classList.add('active');
+        btn.setAttribute('aria-pressed', 'true');
         _pfCurrentFilter = btn.dataset.filter;
         _pfActShown = PF_PAGE_SIZE;
         pfRenderActivityItems(pfFilteredActs());
@@ -129,7 +141,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Avatar change broadcast listener
     window.addEventListener('page:avatarChanged', e => {
-        if (e.detail?.url) pfApplyAvatarEverywhere(e.detail.url);
+        if (e.detail?.url) pfApplyAvatarEverywhere(e.detail.url, _pfData?.display_name || _pfData?.username);
     });
 });
 
@@ -138,10 +150,10 @@ function pfBootAvatar() {
     try {
         const stored = JSON.parse(localStorage.getItem('pageUser') || '{}');
         const url = stored.profile_image_url || stored.profile_image || null;
+        const name = stored.display_name || stored.username || '';
         if (url) {
-            pfApplyAvatarEverywhere(url);
+            pfApplyAvatarEverywhere(url, name);
         } else {
-            const name    = stored.display_name || stored.username || '';
             const initial = name ? name.charAt(0).toUpperCase() : null;
             if (initial && window.pageLetterAvatarHTML) {
                 const html = window.pageLetterAvatarHTML(initial);
@@ -235,7 +247,7 @@ function pfRender(u, rank) {
     // Avatar
     const av = u.profile_image_url || u.profile_image || null;
     const avUrl = av ? ((typeof resolveMediaUrl === 'function') ? resolveMediaUrl(av) : av) : null;
-    if (avUrl) pfApplyAvatarEverywhere(avUrl);
+    if (avUrl) pfApplyAvatarEverywhere(avUrl, u.display_name || u.username);
 
     // Tier palette (cover gradient + ring)
     pfApplyTierPalette(u.access_tier);
@@ -257,7 +269,12 @@ function pfRender(u, rank) {
     const pct  = prev === next ? 100 : ((pts - prev) / (next - prev)) * 100;
     pfSet('pfXpCur',  pts.toLocaleString());
     pfSet('pfXpNext', next.toLocaleString());
-    setTimeout(() => pfSetWidth('pfXpFill', Math.min(pct, 100)), 350);
+    setTimeout(() => {
+        const pctClamped = Math.min(pct, 100);
+        pfSetWidth('pfXpFill', pctClamped);
+        const track = document.getElementById('pfXpTrack');
+        if (track) track.setAttribute('aria-valuenow', String(Math.round(pctClamped)));
+    }, 350);
 
     // Tier nodes
     const activeIdx = PF_TIERS.indexOf(u.access_tier);
@@ -281,7 +298,11 @@ function pfRender(u, rank) {
     pfSet('pfDlCorrect',  u.successful_submissions);
     pfSet('pfDlWrong',    wrong);
     pfSet('pfDlTotal',    u.total_submissions);
-    setTimeout(() => pfSetWidth('pfAccFill', u.success_rate), 500);
+    setTimeout(() => {
+        pfSetWidth('pfAccFill', u.success_rate);
+        const accTrack = document.getElementById('pfAccTrack');
+        if (accTrack) accTrack.setAttribute('aria-valuenow', String(Math.round(u.success_rate || 0)));
+    }, 500);
     setTimeout(() => pfBuildDonut(u), 500);
 
     // Page title
@@ -305,7 +326,7 @@ function pfRenderOther(u) {
 
     const av = u.profile_image_url || u.profile_image || null;
     const avUrl = av ? ((typeof resolveMediaUrl === 'function') ? resolveMediaUrl(av) : av) : null;
-    if (avUrl) pfApplyAvatarEverywhere(avUrl);
+    if (avUrl) pfApplyAvatarEverywhere(avUrl, u.display_name || u.username);
 
     pfApplyTierPalette(u.access_tier);
     document.title = `PAGE — ${u.display_name || u.username}`;
@@ -488,7 +509,7 @@ async function pfUploadAvatar(input) {
             _pfData.profile_image_url = imgUrl;
         }
 
-        pfApplyAvatarEverywhere(imgUrl);
+        pfApplyAvatarEverywhere(imgUrl, _pfData?.display_name || _pfData?.username);
         window.dispatchEvent(new CustomEvent('page:avatarChanged', { detail: { url: imgUrl } }));
         pfToast('Profile photo updated ✓');
     } catch (err) {
@@ -526,22 +547,29 @@ function pfResizeBase64(file, size = 256) {
 }
 
 /* ── Apply avatar to every slot on the page ────────────────── */
-function pfApplyAvatarEverywhere(imgUrl) {
+function pfApplyAvatarEverywhere(imgUrl, userName) {
     if (!imgUrl) return;
     const resolved = (typeof resolveMediaUrl === 'function') ? resolveMediaUrl(imgUrl) : imgUrl;
 
-    const fallback = `(function(){
-        try{var u=JSON.parse(localStorage.getItem('pageUser')||'{}');
-        var n=(u.display_name||u.username||'?').charAt(0).toUpperCase();
-        if(window.pageLetterAvatar)return window.pageLetterAvatar(n);
-        var s=document.createElement('span');
-        s.style='display:inline-flex;align-items:center;justify-content:center;width:100%;height:100%;border-radius:50%;background:#374151;color:#fff;font-weight:700;font-size:14px;';
-        s.textContent=n;return s;}catch(e){var s2=document.createElement('span');s2.textContent='?';return s2;}
-    })()`;
+    // Use provided name, or fall back to loaded profile data, or localStorage
+    const name = userName
+        || (_pfData && (_pfData.display_name || _pfData.username))
+        || (() => { try { const u = JSON.parse(localStorage.getItem('pageUser') || '{}'); return u.display_name || u.username || ''; } catch(_) { return ''; } })();
+    const altText = name ? `${name}'s profile photo` : 'Profile photo';
+    const initial = (name || '?').charAt(0).toUpperCase();
 
-    const imgTag = `<img src="${resolved}" alt="avatar"
+    // Safe inline onerror — avoids race with utils.js by checking window directly at error time
+    const imgTag = `<img src="${resolved}"
+        alt="${pfEsc(altText)}"
         style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;"
-        onerror="this.replaceWith(${fallback})">`;
+        onerror="(function(el){
+            var n='${pfEsc(initial)}';
+            if(window.pageLetterAvatar){el.replaceWith(window.pageLetterAvatar(n));return;}
+            var s=document.createElement('span');
+            s.style='display:inline-flex;align-items:center;justify-content:center;width:100%;height:100%;border-radius:50%;background:#374151;color:#fff;font-weight:700;font-size:14px;';
+            s.textContent=n;s.setAttribute('aria-label','${pfEsc(altText)}');
+            el.replaceWith(s);
+        })(this)">`;
 
     ['pfAv', 'pfModalAv', 'navAvatar'].forEach(id => {
         const el = document.getElementById(id);
@@ -549,6 +577,12 @@ function pfApplyAvatarEverywhere(imgUrl) {
     });
 
     document.querySelectorAll('[data-current-user-avatar]').forEach(el => { el.innerHTML = imgTag; });
+
+    // Keep the wrapper's aria-label in sync
+    ['pfAv', 'pfModalAv'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el && el.hasAttribute('role')) el.setAttribute('aria-label', altText);
+    });
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -664,7 +698,7 @@ async function pfLoadActivities() {
         if (lm) lm.style.display = _pfAllActs.length > PF_PAGE_SIZE ? 'flex' : 'none';
     } catch {
         const list = document.getElementById('pfActList');
-        if (list) list.innerHTML = '<div class="pf-empty"><i class="fas fa-triangle-exclamation"></i><span>Could not load activity</span></div>';
+        if (list) list.innerHTML = '<li class="pf-empty"><i class="fas fa-triangle-exclamation" aria-hidden="true"></i><span>Could not load activity</span></li>';
     }
 }
 
@@ -680,20 +714,20 @@ function pfRenderActivityItems(items) {
 
     const slice = items.slice(0, _pfActShown);
     if (!slice.length) {
-        list.innerHTML = '<div class="pf-empty"><i class="fas fa-bolt-lightning"></i><span>No activity in this category</span></div>';
+        list.innerHTML = '<li class="pf-empty"><i class="fas fa-bolt-lightning" aria-hidden="true"></i><span>No activity in this category</span></li>';
         return;
     }
 
     list.innerHTML = slice.map((a, i) => {
         const m = PF_ACT_META[a.activity_type] || { icon: 'fa-circle', bg: 'linear-gradient(135deg,#6b7280,#9ca3af)' };
-        return `<div class="pf-act-item" style="animation-delay:${i * 0.04}s">
-            <div class="pf-act-icon" style="background:${m.bg}"><i class="fas ${m.icon}"></i></div>
+        return `<li class="pf-act-item" style="animation-delay:${i * 0.04}s">
+            <div class="pf-act-icon" aria-hidden="true" style="background:${m.bg}"><i class="fas ${m.icon}"></i></div>
             <div class="pf-act-body">
                 <div class="pf-act-desc">${pfEsc(a.description || '')}</div>
-                <div class="pf-act-time">${pfTimeAgo(a.created_at)}</div>
+                <div class="pf-act-time"><time>${pfTimeAgo(a.created_at)}</time></div>
             </div>
-            ${a.points_change ? `<span class="pf-act-pts">+${a.points_change}</span>` : ''}
-        </div>`;
+            ${a.points_change ? `<span class="pf-act-pts" aria-label="${a.points_change} prestige points">+${a.points_change}</span>` : ''}
+        </li>`;
     }).join('');
 
     const lm = document.getElementById('pfLoadMore');
@@ -716,9 +750,16 @@ function pfCloseFollowers() { pfCloseModal('pfFollowModal'); }
 
 async function pfSwitchFollowTab(tab) {
     _pfFollowTab = tab;
-    document.querySelectorAll('.pf-follow-tab').forEach(b => b.classList.remove('active'));
-    const active = document.getElementById(tab === 'followers' ? 'pfFolTabFollowers' : 'pfFolTabFollowing');
-    if (active) active.classList.add('active');
+    document.querySelectorAll('.pf-follow-tab').forEach(b => {
+        b.classList.remove('active');
+        b.setAttribute('aria-selected', 'false');
+    });
+    const activeId = tab === 'followers' ? 'pfFolTabFollowers' : 'pfFolTabFollowing';
+    const active = document.getElementById(activeId);
+    if (active) {
+        active.classList.add('active');
+        active.setAttribute('aria-selected', 'true');
+    }
     await pfLoadFollowList(tab);
 }
 
@@ -743,33 +784,38 @@ async function pfLoadFollowList(tab) {
         }
 
         if (!users.length) {
-            list.innerHTML = `<div class="pf-empty"><i class="fas fa-users"></i><span>No ${tab} yet</span></div>`;
+            list.innerHTML = `<li class="pf-empty"><i class="fas fa-users" aria-hidden="true"></i><span>No ${tab} yet</span></li>`;
             return;
         }
 
         list.innerHTML = users.map(u => {
-            const name  = u.display_name || u.username || 'User';
+            const name   = u.display_name || u.username || 'User';
             const handle = u.username || '';
             const tier   = u.access_tier || 'Bronze';
             const av = u.profile_image_url || u.profile_image || null;
             const avUrl = av ? ((typeof resolveMediaUrl === 'function') ? resolveMediaUrl(av) : av) : null;
             const init = (name || '?').charAt(0).toUpperCase();
             const avHTML = avUrl
-                ? `<img src="${pfEsc(avUrl)}" alt="${pfEsc(name)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" onerror="this.replaceWith(window.pageLetterAvatar?window.pageLetterAvatar('${pfEsc(init)}'):this)">`
+                ? `<img src="${pfEsc(avUrl)}" alt="${pfEsc(name)}'s profile photo" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" onerror="(function(el){var s=document.createElement('span');s.style='display:inline-flex;align-items:center;justify-content:center;width:100%;height:100%;border-radius:50%;background:var(--page-primary,#374151);color:#fff;font-weight:700;font-size:14px;';s.textContent='${pfEsc(init)}';el.replaceWith(s);})(this)">`
                 : (window.pageLetterAvatarHTML ? window.pageLetterAvatarHTML(init)
-                    : `<span style="display:inline-flex;align-items:center;justify-content:center;width:100%;height:100%;border-radius:50%;background:var(--page-primary,#374151);color:#fff;font-weight:700;font-size:14px;">${init}</span>`);
+                    : `<span aria-hidden="true" style="display:inline-flex;align-items:center;justify-content:center;width:100%;height:100%;border-radius:50%;background:var(--page-primary,#374151);color:#fff;font-weight:700;font-size:14px;">${init}</span>`);
 
-            return `<div class="pf-follow-row" onclick="window.location.href='profile.html?id=${u.id}'">
-                <div class="pf-follow-av">${avHTML}</div>
+            return `<li class="pf-follow-row"
+                        role="button"
+                        tabindex="0"
+                        aria-label="View ${pfEsc(name)}'s profile"
+                        onclick="window.location.href='profile.html?id=${u.id}'"
+                        onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();window.location.href='profile.html?id=${u.id}';}">
+                <div class="pf-follow-av" aria-hidden="true">${avHTML}</div>
                 <div class="pf-follow-info">
                     <span class="pf-follow-name">${pfEsc(name)}</span>
                     <span class="pf-follow-handle">@${pfEsc(handle)}</span>
                 </div>
-                <span class="pf-follow-tier">${pfEsc(tier)}</span>
-            </div>`;
+                <span class="pf-follow-tier" aria-label="${pfEsc(tier)} tier">${pfEsc(tier)}</span>
+            </li>`;
         }).join('');
     } catch {
-        list.innerHTML = '<div class="pf-empty"><i class="fas fa-triangle-exclamation"></i><span>Could not load list</span></div>';
+        list.innerHTML = '<li class="pf-empty"><i class="fas fa-triangle-exclamation" aria-hidden="true"></i><span>Could not load list</span></li>';
     }
 }
 
@@ -823,12 +869,50 @@ function pfBuildDonut(u) {
 /* ═══════════════════════════════════════════════════════════════
    MODAL HELPERS
 ═══════════════════════════════════════════════════════════════ */
-function pfOpenModal(id)  { const el = document.getElementById(id); if (el) el.classList.add('open'); }
-function pfCloseModal(id) { const el = document.getElementById(id); if (el) el.classList.remove('open'); }
+// Track the currently open modal id and the element that opened it
+let _pfActiveModal    = null;
+let _pfModalTrigger   = null;
+
+function pfOpenModal(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.classList.add('open');
+    _pfActiveModal  = id;
+    _pfModalTrigger = document.activeElement;
+
+    // Move focus to the first focusable element inside the modal
+    requestAnimationFrame(() => {
+        const focusable = el.querySelectorAll(
+            'button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])'
+        );
+        if (focusable.length) focusable[0].focus();
+    });
+}
+
+function pfCloseModal(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.classList.remove('open');
+    if (_pfActiveModal === id) {
+        _pfActiveModal = null;
+        // Return focus to the element that opened the modal
+        if (_pfModalTrigger && typeof _pfModalTrigger.focus === 'function') {
+            _pfModalTrigger.focus();
+        }
+        _pfModalTrigger = null;
+    }
+}
 
 function pfBgClose(event, id) {
     if (event.target === document.getElementById(id)) pfCloseModal(id);
 }
+
+// Global Escape key handler — closes any open modal
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && _pfActiveModal) {
+        pfCloseModal(_pfActiveModal);
+    }
+});
 
 /* ═══════════════════════════════════════════════════════════════
    TOAST

@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Profile</title>
+    <meta name="description" content="Your PAGE profile — stats, activity, and prestige path.">
+    <title>Profile — PAGE</title>
     <link rel="icon" type="image/jpeg" href="../images/Page.jpeg">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -13,45 +14,59 @@
     <link rel="stylesheet" href="../styles/profile.css">
     <!-- Theme engine must be first -->
     <script src="../scripts/theme.js"></script>
+    <style>
+        /* Visually hidden but available to screen readers */
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0,0,0,0);
+            white-space: nowrap;
+            border: 0;
+        }
+    </style>
 </head>
 <body>
 
 <!-- ═══════════ NAVBAR — matches index.html exactly ═══════════ -->
 <header class="header w-100">
     <div class="header-left d-flex align-items-center">
-        <div class="logo" onclick="window.location.href='../index.html'" style="cursor:pointer">
-            <i class="fas fa-fire-flame-curved"></i>PAGE
-        </div>
+        <a class="logo" href="../index.html" aria-label="PAGE — go to dashboard">
+            <i class="fas fa-fire-flame-curved" aria-hidden="true"></i>PAGE
+        </a>
         <div class="search-bar d-none d-md-flex align-items-center">
             <i class="fas fa-magnifying-glass"></i>
-            <input type="text" placeholder="Search PAGE..." id="headerSearch">
+            <input type="text" placeholder="Search PAGE..." id="headerSearch" aria-label="Search PAGE">
         </div>
     </div>
 
-    <nav class="icon-nav d-flex justify-content-center flex-grow-1">
-        <button class="icon-nav-btn" title="Home" onclick="window.location.href='../index.html'">
-            <i class="fas fa-house"></i>
+    <nav class="icon-nav d-flex justify-content-center flex-grow-1" aria-label="Main navigation">
+        <button class="icon-nav-btn" aria-label="Home" title="Home" onclick="window.location.href='../index.html'">
+            <i class="fas fa-house" aria-hidden="true"></i>
         </button>
-        <button class="icon-nav-btn" title="Challenges" onclick="window.location.href='challenges.html'">
-            <i class="fas fa-trophy"></i>
-            <span class="notification-badge" id="challengesBadge" style="display:none;">0</span>
+        <button class="icon-nav-btn" aria-label="Challenges" title="Challenges" onclick="window.location.href='challenges.html'">
+            <i class="fas fa-trophy" aria-hidden="true"></i>
+            <span class="notification-badge" id="challengesBadge" style="display:none;" aria-live="polite" aria-label="New challenges">0</span>
         </button>
-        <button class="icon-nav-btn" title="Messages" onclick="window.location.href='messenger.html'">
-            <i class="fas fa-comment-dots"></i>
+        <button class="icon-nav-btn" aria-label="Messages" title="Messages" onclick="window.location.href='messenger.html'">
+            <i class="fas fa-comment-dots" aria-hidden="true"></i>
         </button>
-        <button class="icon-nav-btn active" title="Profile">
-            <i class="fas fa-circle-user"></i>
+        <button class="icon-nav-btn active" aria-label="Profile" aria-current="page" title="Profile">
+            <i class="fas fa-circle-user" aria-hidden="true"></i>
         </button>
     </nav>
 
     <!-- Right Side Icons -->
     <div class="header-right d-flex align-items-center">
-        <button class="header-icon-btn" id="notifBtn" title="Notifications">
-            <i class="fas fa-bell"></i>
-            <span class="notification-badge" id="notificationBadge" style="display:none;">0</span>
+        <button class="header-icon-btn" id="notifBtn" aria-label="Notifications" title="Notifications">
+            <i class="fas fa-bell" aria-hidden="true"></i>
+            <span class="notification-badge" id="notificationBadge" style="display:none;" aria-live="polite" aria-label="Unread notifications">0</span>
         </button>
-        <button class="header-icon-btn" id="quickMenuBtn" title="Menu">
-            <i class="fas fa-grid-2"></i>
+        <button class="header-icon-btn" id="quickMenuBtn" aria-label="Quick menu" aria-haspopup="menu" aria-expanded="false" title="Menu">
+            <i class="fas fa-grid-2" aria-hidden="true"></i>
         </button>
         <div class="user-avatar-btn" id="userAvatarBtn" data-current-user-avatar
              role="button" tabindex="0" aria-haspopup="menu" aria-expanded="false"
@@ -226,31 +241,31 @@
     <div class="pf-cover" id="pfCover">
         <div class="pf-cover-overlay"></div>
         <!-- Own profile: show change cover button -->
-        <label class="pf-cover-btn" id="pfCoverBtn" for="pfCoverInput" title="Change cover">
-            <i class="fas fa-camera"></i> Change Cover
+        <label class="pf-cover-btn" id="pfCoverBtn" for="pfCoverInput" title="Change cover photo" aria-label="Change cover photo">
+            <i class="fas fa-camera" aria-hidden="true"></i> Change Cover
         </label>
-        <input type="file" id="pfCoverInput" accept="image/*" style="display:none" onchange="pfUploadCover(this)">
+        <input type="file" id="pfCoverInput" accept="image/*" style="display:none" aria-label="Upload cover photo" onchange="pfUploadCover(this)">
     </div>
 
     <!-- ── PROFILE IDENTITY STRIP ── -->
     <div class="pf-identity">
         <!-- Avatar -->
         <div class="pf-av-wrap" id="pfAvWrap">
-            <div class="pf-av-ring" id="pfAvRing"></div>
-            <div class="pf-av" id="pfAv" data-current-user-avatar></div>
-            <label class="pf-av-cam" id="pfAvCam" for="pfAvatarInput" title="Change photo">
-                <i class="fas fa-camera"></i>
+            <div class="pf-av-ring" id="pfAvRing" aria-hidden="true"></div>
+            <div class="pf-av" id="pfAv" data-current-user-avatar role="img" aria-label="Profile photo"></div>
+            <label class="pf-av-cam" id="pfAvCam" for="pfAvatarInput" title="Change profile photo" aria-label="Change profile photo">
+                <i class="fas fa-camera" aria-hidden="true"></i>
             </label>
-            <input type="file" id="pfAvatarInput" accept="image/*" style="display:none" onchange="pfUploadAvatar(this)">
-            <div class="pf-level" id="pfLevel"><span>Lv</span><b>1</b></div>
+            <input type="file" id="pfAvatarInput" accept="image/*" style="display:none" aria-label="Upload profile photo" onchange="pfUploadAvatar(this)">
+            <div class="pf-level" id="pfLevel" aria-label="Level"><span aria-hidden="true">Lv</span><b>1</b></div>
         </div>
 
         <!-- Info -->
         <div class="pf-info">
             <div class="pf-name-row">
                 <h1 class="pf-name pf-sk" id="pfName">Loading…</h1>
-                <span class="pf-verified" id="pfVerified" style="display:none">
-                    <i class="fas fa-circle-check"></i>
+                <span class="pf-verified" id="pfVerified" style="display:none" aria-label="Verified account" title="Verified">
+                    <i class="fas fa-circle-check" aria-hidden="true"></i>
                 </span>
             </div>
             <div class="pf-handle pf-sk" id="pfHandle">@username</div>
@@ -275,39 +290,43 @@
     </div>
 
     <!-- ── STATS BAR ── -->
-    <div class="pf-stats" id="pfStats">
-        <div class="pf-stat pf-sk">
-            <span class="pf-stat-val" id="pfPrestige">0</span>
+    <div class="pf-stats" id="pfStats" role="list" aria-label="Profile statistics">
+        <div class="pf-stat pf-sk" role="listitem">
+            <span class="pf-stat-val" id="pfPrestige" aria-live="polite">0</span>
             <span class="pf-stat-key">Prestige</span>
         </div>
-        <div class="pf-stat pf-sk">
-            <span class="pf-stat-val" id="pfLevel2">1</span>
+        <div class="pf-stat pf-sk" role="listitem">
+            <span class="pf-stat-val" id="pfLevel2" aria-live="polite">1</span>
             <span class="pf-stat-key">Level</span>
         </div>
-        <div class="pf-stat pf-sk">
-            <span class="pf-stat-val" id="pfStreak">0 <i class="fas fa-fire"></i></span>
+        <div class="pf-stat pf-sk" role="listitem">
+            <span class="pf-stat-val" id="pfStreak" aria-live="polite">0 <i class="fas fa-fire" aria-hidden="true"></i></span>
             <span class="pf-stat-key">Streak</span>
         </div>
-        <div class="pf-stat pf-sk">
-            <span class="pf-stat-val" id="pfWins">0</span>
+        <div class="pf-stat pf-sk" role="listitem">
+            <span class="pf-stat-val" id="pfWins" aria-live="polite">0</span>
             <span class="pf-stat-key">Wins</span>
         </div>
-        <div class="pf-stat pf-sk">
-            <span class="pf-stat-val" id="pfAccuracy">0%</span>
+        <div class="pf-stat pf-sk" role="listitem">
+            <span class="pf-stat-val" id="pfAccuracy" aria-live="polite">0%</span>
             <span class="pf-stat-key">Accuracy</span>
         </div>
-        <div class="pf-stat pf-sk">
-            <span class="pf-stat-val" id="pfEarnings">K0</span>
+        <div class="pf-stat pf-sk" role="listitem">
+            <span class="pf-stat-val" id="pfEarnings" aria-live="polite">K0</span>
             <span class="pf-stat-key">Earned</span>
         </div>
-        <div class="pf-stat pf-stat--link pf-sk" onclick="pfOpenFollowers('followers')" title="Followers">
-            <span class="pf-stat-val" id="pfFollowers">0</span>
+        <button class="pf-stat pf-stat--link pf-sk" id="pfStatFollowers"
+                onclick="pfOpenFollowers('followers')"
+                aria-label="View followers list">
+            <span class="pf-stat-val" id="pfFollowers" aria-live="polite">0</span>
             <span class="pf-stat-key">Followers</span>
-        </div>
-        <div class="pf-stat pf-stat--link pf-sk" onclick="pfOpenFollowers('following')" title="Following">
-            <span class="pf-stat-val" id="pfFollowing">0</span>
+        </button>
+        <button class="pf-stat pf-stat--link pf-sk" id="pfStatFollowing"
+                onclick="pfOpenFollowers('following')"
+                aria-label="View following list">
+            <span class="pf-stat-val" id="pfFollowing" aria-live="polite">0</span>
             <span class="pf-stat-key">Following</span>
-        </div>
+        </button>
     </div>
 
     <!-- ── MAIN CONTENT ── -->
@@ -321,46 +340,46 @@
                 <h3 class="pf-card-title"><i class="fas fa-id-card-clip"></i> About</h3>
                 <p class="pf-about-bio pf-sk" id="pfAboutBio">No bio yet.</p>
                 <ul class="pf-detail-list">
-                    <li><i class="fas fa-calendar-days"></i>
+                    <li><i class="fas fa-calendar-days" aria-hidden="true"></i>
                         <span>Joined <b class="pf-sk" id="pfJoined">—</b></span></li>
-                    <li><i class="fas fa-envelope"></i>
+                    <li><i class="fas fa-envelope" aria-hidden="true"></i>
                         <span class="pf-sk" id="pfEmail">—</span></li>
                     <li id="pfLocationRow" style="display:none">
-                        <i class="fas fa-map-marker-alt"></i>
+                        <i class="fas fa-map-marker-alt" aria-hidden="true"></i>
                         <span id="pfLocation">—</span></li>
                     <li id="pfWebsiteRow" style="display:none">
-                        <i class="fas fa-globe"></i>
-                        <a id="pfWebsite" href="#" target="_blank" rel="noopener">—</a></li>
+                        <i class="fas fa-globe" aria-hidden="true"></i>
+                        <a id="pfWebsite" href="#" target="_blank" rel="noopener noreferrer">—</a></li>
                 </ul>
             </div>
 
             <!-- Prestige card -->
             <div class="pf-card">
                 <h3 class="pf-card-title"><i class="fas fa-crown"></i> Prestige Path</h3>
-                <div class="pf-xp-nums">
+                <div class="pf-xp-nums" aria-live="polite">
                     <span class="pf-xp-cur pf-sk" id="pfXpCur">0</span>
-                    <span class="pf-xp-sep">/ <span id="pfXpNext">200</span> pts</span>
+                    <span class="pf-xp-sep"><span class="sr-only">out of</span> <span id="pfXpNext">200</span> <span class="sr-only">prestige points to next tier</span></span>
                 </div>
-                <div class="pf-xp-track">
+                <div class="pf-xp-track" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" id="pfXpTrack" aria-label="Prestige progress">
                     <div class="pf-xp-fill" id="pfXpFill">
-                        <div class="pf-xp-shine"></div>
+                        <div class="pf-xp-shine" aria-hidden="true"></div>
                     </div>
                 </div>
                 <!-- Tier progression dots -->
-                <div class="pf-tier-nodes" id="pfTierNodes">
-                    <div class="pf-tnode" data-tier="Bronze"><div class="pf-tdot"></div><small>Bronze</small></div>
-                    <div class="pf-tline"></div>
-                    <div class="pf-tnode" data-tier="Silver"><div class="pf-tdot"></div><small>Silver</small></div>
-                    <div class="pf-tline"></div>
-                    <div class="pf-tnode" data-tier="Gold"><div class="pf-tdot"></div><small>Gold</small></div>
-                    <div class="pf-tline"></div>
-                    <div class="pf-tnode" data-tier="Platinum"><div class="pf-tdot"></div><small>Plat</small></div>
-                    <div class="pf-tline"></div>
-                    <div class="pf-tnode" data-tier="Diamond"><div class="pf-tdot"></div><small>Diam</small></div>
-                    <div class="pf-tline"></div>
-                    <div class="pf-tnode" data-tier="Elite"><div class="pf-tdot"></div><small>Elite</small></div>
-                    <div class="pf-tline"></div>
-                    <div class="pf-tnode" data-tier="Legendary"><div class="pf-tdot pf-tdot--legend"></div><small>Legend</small></div>
+                <div class="pf-tier-nodes" id="pfTierNodes" role="list" aria-label="Tier progression">
+                    <div class="pf-tnode" data-tier="Bronze" role="listitem"><div class="pf-tdot" aria-hidden="true"></div><small>Bronze</small></div>
+                    <div class="pf-tline" aria-hidden="true"></div>
+                    <div class="pf-tnode" data-tier="Silver" role="listitem"><div class="pf-tdot" aria-hidden="true"></div><small>Silver</small></div>
+                    <div class="pf-tline" aria-hidden="true"></div>
+                    <div class="pf-tnode" data-tier="Gold" role="listitem"><div class="pf-tdot" aria-hidden="true"></div><small>Gold</small></div>
+                    <div class="pf-tline" aria-hidden="true"></div>
+                    <div class="pf-tnode" data-tier="Platinum" role="listitem"><div class="pf-tdot" aria-hidden="true"></div><small>Plat</small></div>
+                    <div class="pf-tline" aria-hidden="true"></div>
+                    <div class="pf-tnode" data-tier="Diamond" role="listitem"><div class="pf-tdot" aria-hidden="true"></div><small>Diam</small></div>
+                    <div class="pf-tline" aria-hidden="true"></div>
+                    <div class="pf-tnode" data-tier="Elite" role="listitem"><div class="pf-tdot" aria-hidden="true"></div><small>Elite</small></div>
+                    <div class="pf-tline" aria-hidden="true"></div>
+                    <div class="pf-tnode" data-tier="Legendary" role="listitem"><div class="pf-tdot pf-tdot--legend" aria-hidden="true"></div><small>Legend</small></div>
                 </div>
             </div>
 
@@ -381,16 +400,18 @@
         <main class="pf-main">
 
             <!-- Performance card -->
-            <div class="pf-card">
+            <section class="pf-card" aria-labelledby="pfPerfTitle">
                 <div class="pf-card-header">
-                    <h3 class="pf-card-title"><i class="fas fa-chart-mixed"></i> Performance</h3>
-                    <div class="pf-tabs" id="pfPerfTabs">
-                        <button class="pf-tab active" data-tab="pf-tab-overview">Overview</button>
-                        <button class="pf-tab" data-tab="pf-tab-donut">Chart</button>
+                    <h3 class="pf-card-title" id="pfPerfTitle"><i class="fas fa-chart-mixed" aria-hidden="true"></i> Performance</h3>
+                    <div class="pf-tabs" id="pfPerfTabs" role="tablist" aria-label="Performance views">
+                        <button class="pf-tab active" data-tab="pf-tab-overview"
+                                role="tab" aria-selected="true" aria-controls="pf-tab-overview" id="pfTabOverview">Overview</button>
+                        <button class="pf-tab" data-tab="pf-tab-donut"
+                                role="tab" aria-selected="false" aria-controls="pf-tab-donut" id="pfTabDonut">Chart</button>
                     </div>
                 </div>
 
-                <div class="pf-tab-panel active" id="pf-tab-overview">
+                <div class="pf-tab-panel active" id="pf-tab-overview" role="tabpanel" aria-labelledby="pfTabOverview">
                     <div class="pf-kpi-grid">
                         <div class="pf-kpi" style="--kc:var(--page-primary)">
                             <div class="pf-kpi-val pf-sk" id="pfKpiTotal">0</div>
@@ -410,57 +431,57 @@
                         </div>
                     </div>
                     <div class="pf-acc-row">
-                        <span><i class="fas fa-bullseye"></i> Success rate</span>
-                        <span class="pf-acc-pct pf-sk" id="pfAccPct">0%</span>
+                        <span><i class="fas fa-bullseye" aria-hidden="true"></i> Success rate</span>
+                        <span class="pf-acc-pct pf-sk" id="pfAccPct" aria-live="polite">0%</span>
                     </div>
-                    <div class="pf-acc-track">
-                        <div class="pf-acc-fill" id="pfAccFill"><div class="pf-xp-shine"></div></div>
+                    <div class="pf-acc-track" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" id="pfAccTrack" aria-label="Success rate">
+                        <div class="pf-acc-fill" id="pfAccFill"><div class="pf-xp-shine" aria-hidden="true"></div></div>
                     </div>
                 </div>
 
-                <div class="pf-tab-panel" id="pf-tab-donut">
+                <div class="pf-tab-panel" id="pf-tab-donut" role="tabpanel" aria-labelledby="pfTabDonut" hidden>
                     <div class="pf-donut-layout">
                         <div class="pf-donut-box">
-                            <svg class="pf-donut" viewBox="0 0 140 140">
+                            <svg class="pf-donut" viewBox="0 0 140 140" aria-hidden="true" focusable="false">
                                 <circle class="pf-dring bg" cx="70" cy="70" r="52"/>
                                 <circle class="pf-dring correct" id="pfDCorrect" cx="70" cy="70" r="52"/>
                                 <circle class="pf-dring wrong"   id="pfDWrong"   cx="70" cy="70" r="52"/>
                             </svg>
-                            <div class="pf-donut-label">
+                            <div class="pf-donut-label" aria-hidden="true">
                                 <div class="pf-donut-pct pf-sk" id="pfDonutPct">0%</div>
                                 <div class="pf-donut-sub">accuracy</div>
                             </div>
                         </div>
-                        <div class="pf-donut-legend">
-                            <div class="pf-dl-row correct"><i class="fas fa-circle"></i><span>Correct</span><b id="pfDlCorrect">0</b></div>
-                            <div class="pf-dl-row wrong">  <i class="fas fa-circle"></i><span>Incorrect</span><b id="pfDlWrong">0</b></div>
-                            <div class="pf-dl-row total">  <i class="fas fa-circle"></i><span>Total</span><b id="pfDlTotal">0</b></div>
+                        <div class="pf-donut-legend" role="list" aria-label="Chart legend">
+                            <div class="pf-dl-row correct" role="listitem"><i class="fas fa-circle" aria-hidden="true"></i><span>Correct</span><b id="pfDlCorrect">0</b></div>
+                            <div class="pf-dl-row wrong"   role="listitem"><i class="fas fa-circle" aria-hidden="true"></i><span>Incorrect</span><b id="pfDlWrong">0</b></div>
+                            <div class="pf-dl-row total"   role="listitem"><i class="fas fa-circle" aria-hidden="true"></i><span>Total</span><b id="pfDlTotal">0</b></div>
                         </div>
                     </div>
                 </div>
-            </div>
+            </section>
 
             <!-- Recent Activity card -->
-            <div class="pf-card">
+            <section class="pf-card" aria-labelledby="pfActTitle">
                 <div class="pf-card-header">
-                    <h3 class="pf-card-title"><i class="fas fa-bolt-lightning"></i> Recent Activity</h3>
-                    <span class="pf-count-badge" id="pfActCount"></span>
+                    <h3 class="pf-card-title" id="pfActTitle"><i class="fas fa-bolt-lightning" aria-hidden="true"></i> Recent Activity</h3>
+                    <span class="pf-count-badge" id="pfActCount" aria-live="polite" aria-label="Activity count"></span>
                 </div>
-                <div class="pf-act-filters">
-                    <button class="pf-act-filter active" data-filter="all">All</button>
-                    <button class="pf-act-filter" data-filter="challenge">Challenges</button>
-                    <button class="pf-act-filter" data-filter="win">Wins</button>
-                    <button class="pf-act-filter" data-filter="social">Social</button>
+                <div class="pf-act-filters" role="group" aria-label="Filter activity by type">
+                    <button class="pf-act-filter active" data-filter="all" aria-pressed="true">All</button>
+                    <button class="pf-act-filter" data-filter="challenge" aria-pressed="false">Challenges</button>
+                    <button class="pf-act-filter" data-filter="win" aria-pressed="false">Wins</button>
+                    <button class="pf-act-filter" data-filter="social" aria-pressed="false">Social</button>
                 </div>
-                <div class="pf-act-list" id="pfActList">
-                    <div class="pf-skeleton-row"></div>
-                    <div class="pf-skeleton-row short"></div>
-                    <div class="pf-skeleton-row"></div>
-                </div>
-                <button class="pf-load-more" id="pfLoadMore" onclick="pfLoadMoreActivity()" style="display:none">
-                    <i class="fas fa-chevron-down"></i> Load more
+                <ul class="pf-act-list" id="pfActList" aria-live="polite" aria-label="Activity feed">
+                    <li class="pf-skeleton-row" aria-hidden="true"></li>
+                    <li class="pf-skeleton-row short" aria-hidden="true"></li>
+                    <li class="pf-skeleton-row" aria-hidden="true"></li>
+                </ul>
+                <button class="pf-load-more" id="pfLoadMore" onclick="pfLoadMoreActivity()" style="display:none" aria-label="Load more activity">
+                    <i class="fas fa-chevron-down" aria-hidden="true"></i> Load more
                 </button>
-            </div>
+            </section>
 
         </main>
     </div>
@@ -468,13 +489,13 @@
 
 <!-- ═══════════ EDIT PROFILE MODAL ═══════════ -->
 <div class="pf-modal-veil" id="pfEditModal" onclick="pfBgClose(event,'pfEditModal')">
-    <div class="pf-modal" role="dialog" aria-modal="true" aria-label="Edit Profile">
-        <button class="pf-modal-close" onclick="pfCloseEdit()"><i class="fas fa-xmark"></i></button>
+    <div class="pf-modal" role="dialog" aria-modal="true" aria-labelledby="pfEditModalTitle">
+        <button class="pf-modal-close" aria-label="Close edit profile" onclick="pfCloseEdit()"><i class="fas fa-xmark" aria-hidden="true"></i></button>
 
         <div class="pf-modal-head">
-            <div class="pf-modal-av" id="pfModalAv" data-current-user-avatar></div>
+            <div class="pf-modal-av" id="pfModalAv" data-current-user-avatar role="img" aria-label="Profile photo"></div>
             <div>
-                <h2>Edit Profile</h2>
+                <h2 id="pfEditModalTitle">Edit Profile</h2>
                 <p>Update how PAGE sees you</p>
             </div>
         </div>
@@ -487,18 +508,17 @@
             <div class="pf-field">
                 <label for="pfEditUsername">Username</label>
                 <div class="pf-field-prefix">
-                    <span class="pf-prefix">@</span>
-                    <input id="pfEditUsername" type="text" placeholder="handle" maxlength="50" autocomplete="off">
+                    <span class="pf-prefix" aria-hidden="true">@</span>
+                    <input id="pfEditUsername" type="text" placeholder="handle" maxlength="50" autocomplete="off" aria-label="Username handle">
                 </div>
             </div>
             <div class="pf-field">
-                <label for="pfEditBio">
-                    Bio
-                    <span class="pf-char-count"><span id="pfBioCount">0</span>/500</span>
-                </label>
+                <label for="pfEditBio">Bio</label>
                 <textarea id="pfEditBio" placeholder="Tell the community about yourself…"
                           rows="3" maxlength="500"
+                          aria-describedby="pfBioHint"
                           oninput="document.getElementById('pfBioCount').textContent=this.value.length"></textarea>
+                <span class="pf-char-count" id="pfBioHint" aria-live="polite"><span id="pfBioCount">0</span>/500 characters</span>
             </div>
             <div class="pf-field-row">
                 <div class="pf-field">
@@ -510,7 +530,7 @@
                     <input id="pfEditWebsite" type="url" placeholder="https://…" maxlength="255" autocomplete="off">
                 </div>
             </div>
-            <div class="pf-error" id="pfEditError" style="display:none"></div>
+            <div class="pf-error" id="pfEditError" role="alert" aria-live="assertive" style="display:none"></div>
         </div>
 
         <div class="pf-modal-foot">
@@ -524,18 +544,18 @@
 
 <!-- ═══════════ DELETE ACCOUNT CONFIRM MODAL ═══════════ -->
 <div class="pf-modal-veil" id="pfDeleteModal" onclick="pfBgClose(event,'pfDeleteModal')">
-    <div class="pf-modal pf-modal--danger" role="dialog" aria-modal="true" aria-label="Delete Account">
-        <button class="pf-modal-close" onclick="pfCloseDelete()"><i class="fas fa-xmark"></i></button>
+    <div class="pf-modal pf-modal--danger" role="dialog" aria-modal="true" aria-labelledby="pfDeleteModalTitle">
+        <button class="pf-modal-close" aria-label="Close delete account" onclick="pfCloseDelete()"><i class="fas fa-xmark" aria-hidden="true"></i></button>
         <div class="pf-modal-head">
-            <div class="pf-danger-icon"><i class="fas fa-skull-crossbones"></i></div>
+            <div class="pf-danger-icon" aria-hidden="true"><i class="fas fa-skull-crossbones"></i></div>
             <div>
-                <h2>Delete Account</h2>
+                <h2 id="pfDeleteModalTitle">Delete Account</h2>
                 <p>This is permanent — your data cannot be recovered.</p>
             </div>
         </div>
         <div class="pf-modal-body">
-            <div class="pf-delete-warning">
-                <i class="fas fa-triangle-exclamation"></i>
+            <div class="pf-delete-warning" role="note">
+                <i class="fas fa-triangle-exclamation" aria-hidden="true"></i>
                 Deleting your account will permanently remove all your profile data,
                 challenge submissions, earnings history, and messages. This action
                 <strong>cannot be undone</strong>.
@@ -547,7 +567,7 @@
                 <input id="pfDeleteConfirm" type="text" placeholder="Type your username here"
                        oninput="pfCheckDeleteConfirm(this.value)" autocomplete="off">
             </div>
-            <div class="pf-error" id="pfDeleteError" style="display:none"></div>
+            <div class="pf-error" id="pfDeleteError" role="alert" aria-live="assertive" style="display:none"></div>
         </div>
         <div class="pf-modal-foot">
             <button class="pf-btn pf-btn--danger" id="pfDeleteConfirmBtn" onclick="pfDeleteAccount()" disabled>
@@ -560,22 +580,28 @@
 
 <!-- ═══════════ FOLLOWERS / FOLLOWING MODAL ═══════════ -->
 <div class="pf-modal-veil" id="pfFollowModal" onclick="pfBgClose(event,'pfFollowModal')">
-    <div class="pf-modal pf-modal--narrow" role="dialog" aria-modal="true" aria-label="Followers">
-        <button class="pf-modal-close" onclick="pfCloseFollowers()"><i class="fas fa-xmark"></i></button>
-        <div class="pf-follow-tabs">
-            <button class="pf-follow-tab active" id="pfFolTabFollowers" onclick="pfSwitchFollowTab('followers')">Followers</button>
-            <button class="pf-follow-tab"        id="pfFolTabFollowing" onclick="pfSwitchFollowTab('following')">Following</button>
+    <div class="pf-modal pf-modal--narrow" role="dialog" aria-modal="true" aria-labelledby="pfFollowModalTitle">
+        <button class="pf-modal-close" aria-label="Close followers" onclick="pfCloseFollowers()"><i class="fas fa-xmark" aria-hidden="true"></i></button>
+        <div class="pf-follow-tabs" role="tablist" aria-label="Followers and following">
+            <button class="pf-follow-tab active" id="pfFolTabFollowers"
+                    role="tab" aria-selected="true" aria-controls="pfFollowList"
+                    onclick="pfSwitchFollowTab('followers')">
+                <span id="pfFollowModalTitle">Followers</span>
+            </button>
+            <button class="pf-follow-tab" id="pfFolTabFollowing"
+                    role="tab" aria-selected="false" aria-controls="pfFollowList"
+                    onclick="pfSwitchFollowTab('following')">Following</button>
         </div>
-        <div class="pf-follow-list" id="pfFollowList">
-            <div class="pf-skeleton-row"></div>
-            <div class="pf-skeleton-row short"></div>
-            <div class="pf-skeleton-row"></div>
-        </div>
+        <ul class="pf-follow-list" id="pfFollowList" role="tabpanel" aria-live="polite" aria-label="User list">
+            <li class="pf-skeleton-row" aria-hidden="true"></li>
+            <li class="pf-skeleton-row short" aria-hidden="true"></li>
+            <li class="pf-skeleton-row" aria-hidden="true"></li>
+        </ul>
     </div>
 </div>
 
 <!-- ═══════════ TOAST ═══════════ -->
-<div class="pf-toast" id="pfToast"></div>
+<div class="pf-toast" id="pfToast" role="status" aria-live="polite" aria-atomic="true"></div>
 
 <!-- ═══════════ SCRIPTS ═══════════ -->
 <script src="../scripts/api-service.js"></script>
