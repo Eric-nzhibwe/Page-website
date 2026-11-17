@@ -55,6 +55,10 @@
             <div class="logo" onclick="window.location.href='../index.html'" style="cursor:pointer">
                 <i class="fas fa-fire-flame-curved"></i>PAGE
             </div>
+            <div class="search-bar d-none d-md-flex align-items-center">
+                <i class="fas fa-magnifying-glass"></i>
+                <input type="text" placeholder="Search PAGE..." id="headerSearch">
+            </div>
         </div>
         <nav class="icon-nav d-flex justify-content-center flex-grow-1">
             <button class="icon-nav-btn" title="Home" onclick="window.location.href='../index.html'">
@@ -71,11 +75,12 @@
             </button>
         </nav>
         <div class="header-right d-flex align-items-center">
+            <button class="header-icon-btn" id="quickMenuBtn" title="Menu">
+                <i class="fas fa-grid-2"></i>
+            </button>
             <div class="user-avatar-btn" id="userAvatarBtn"
                 onclick="toggleUserMenu()" data-current-user-avatar
-                role="button" tabindex="0" aria-haspopup="menu" aria-expanded="false">
-                <i class="fas fa-user"></i>
-            </div>
+                role="button" tabindex="0" aria-haspopup="menu" aria-expanded="false"></div>
         </div>
     </header>
 
@@ -88,13 +93,35 @@
                 <p id="userMenuTier">Bronze Tier</p>
             </div>
         </div>
+        <div class="user-menu-stats">
+            <div class="user-menu-stat"><i class="fas fa-bolt-lightning"></i><span id="userMenuStreak">0</span></div>
+            <div class="user-menu-stat"><i class="fas fa-star"></i><span id="userMenuPrestige">0</span></div>
+            <div class="user-menu-stat"><i class="fas fa-wallet"></i><span id="userMenuBalance">K0.00</span></div>
+        </div>
         <div class="user-menu-links">
             <a href="profile.html"><i class="fas fa-id-card"></i> View Profile</a>
             <a href="challenges.html"><i class="fas fa-trophy"></i> Challenges</a>
             <a href="messenger.html"><i class="fas fa-comment-dots"></i> Messages</a>
+            <a href="chatbot.html"><i class="fas fa-robot"></i> PAGE AI</a>
+            <a href="followers.html"><i class="fas fa-user-plus"></i> Followers</a>
+            <a href="#" id="settingsLink"><i class="fas fa-gear"></i> Settings</a>
             <a href="#" id="logoutLink" class="logout-link">
                 <i class="fas fa-right-from-bracket"></i> Logout
             </a>
+        </div>
+    </div>
+
+    <!-- Quick Menu Dropdown -->
+    <div class="quick-menu-dropdown" id="quickMenuDropdown">
+        <div class="quick-menu-header"><h3>Quick Access</h3></div>
+        <div class="quick-menu-grid">
+            <a href="../index.html" class="quick-menu-item"><i class="fas fa-chart-line"></i><span>Dashboard</span></a>
+            <a href="community.html" class="quick-menu-item"><i class="fas fa-people-group"></i><span>Community</span></a>
+            <a href="challenges.html" class="quick-menu-item"><i class="fas fa-trophy"></i><span>Challenges</span></a>
+            <a href="payment.html" class="quick-menu-item"><i class="fas fa-wallet"></i><span>Wallet</span></a>
+            <a href="chatbot.html" class="quick-menu-item"><i class="fas fa-robot"></i><span>PAGE AI</span></a>
+            <a href="messenger.html" class="quick-menu-item"><i class="fas fa-comment-dots"></i><span>Messages</span></a>
+            <a href="influencers.html" class="quick-menu-item"><i class="fas fa-star"></i><span>Influencers</span></a>
         </div>
     </div>
 
@@ -230,30 +257,28 @@
         } catch (_) {}
     }
 
-    // User menu toggle (matches other pages)
-    function toggleUserMenu() {
-        const um = document.getElementById('userMenuDropdown');
-        if (um) um.classList.toggle('show');
-    }
-    document.addEventListener('click', function (e) {
-        const um  = document.getElementById('userMenuDropdown');
-        const btn = document.getElementById('userAvatarBtn');
-        if (um && um.classList.contains('show') && !um.contains(e.target) && e.target !== btn && !(btn && btn.contains(e.target))) {
-            um.classList.remove('show');
-        }
-    });
-    document.addEventListener('keydown', e => { if (e.key === 'Escape') document.getElementById('userMenuDropdown')?.classList.remove('show'); });
-
-    const logoutLink = document.getElementById('logoutLink');
-    if (logoutLink) {
-        logoutLink.addEventListener('click', function (e) {
-            e.preventDefault();
-            if (window._pageLogout) { window._pageLogout(); return; }
-            ['djangoAuthToken','authToken','token','firebaseIdToken','pageUser','user','userId','authSource']
-                .forEach(k => localStorage.removeItem(k));
-            window.location.href = 'auth.html';
-        });
-    }
+    // Standard navbar controller — same IIFE as all other pages
+    (function(){
+        'use strict';
+        function _open(id){var el=document.getElementById(id);if(el)el.classList.add('show');if(id==='userMenuDropdown'){var b=document.getElementById('userAvatarBtn');if(b)b.setAttribute('aria-expanded','true');}}
+        function _close(id){var el=document.getElementById(id);if(el){el.classList.remove('show');el.style.removeProperty('top');el.style.removeProperty('bottom');el.style.removeProperty('right');el.style.removeProperty('position');}if(id==='userMenuDropdown'){var b=document.getElementById('userAvatarBtn');if(b)b.setAttribute('aria-expanded','false');}}
+        function _toggle(id,other){var el=document.getElementById(id);if(!el)return;var open=el.classList.contains('show');_close(other);if(open){_close(id);}else{_open(id);}}
+        window.toggleUserMenu =function(){_toggle('userMenuDropdown','quickMenuDropdown');};
+        window.toggleQuickMenu=function(){_toggle('quickMenuDropdown','userMenuDropdown');};
+        window.closeUserMenu  =function(){_close('userMenuDropdown');};
+        document.addEventListener('DOMContentLoaded',function(){
+            var qb=document.getElementById('quickMenuBtn'),sl=document.getElementById('settingsLink'),ll=document.getElementById('logoutLink');
+            if(qb)qb.addEventListener('click',function(e){e.stopPropagation();_toggle('quickMenuDropdown','userMenuDropdown');});
+            if(sl)sl.addEventListener('click',function(e){e.preventDefault();_close('userMenuDropdown');if(typeof showSettings==='function')showSettings();});
+            if(ll)ll.addEventListener('click',function(e){e.preventDefault();_close('userMenuDropdown');if(window._pageLogout){window._pageLogout();}else{['djangoAuthToken','authToken','token','firebaseIdToken','pageUser','user','userId','authSource'].forEach(function(k){localStorage.removeItem(k);});window.location.href='auth.html';}});
+            document.addEventListener('click',function(e){var um=document.getElementById('userMenuDropdown'),qm=document.getElementById('quickMenuDropdown'),ab=document.getElementById('userAvatarBtn'),qb2=document.getElementById('quickMenuBtn');if(um&&um.classList.contains('show')&&!um.contains(e.target)&&(!ab||!ab.contains(e.target)))_close('userMenuDropdown');if(qm&&qm.classList.contains('show')&&!qm.contains(e.target)&&(!qb2||!qb2.contains(e.target)))_close('quickMenuDropdown');});
+            document.addEventListener('keydown',function(e){if(e.key==='Escape'){_close('userMenuDropdown');_close('quickMenuDropdown');}});
+            // Stamp avatar + stats from localStorage immediately
+            try
+            {var u=JSON.parse(localStorage.getItem('pageUser')||'{}');if(u.id){var n=u.display_name||u.username||'Player';document.getElementById('userMenuName').textContent=n;document.getElementById('userMenuTier').textContent=(u.access_tier||'Bronze')+' Tier';document.getElementById('userMenuStreak').textContent=u.current_streak??0;document.getElementById('userMenuPrestige').textContent=u.prestige_points??0;var bal=u.wallet_balance??u.total_earnings??null;document.getElementById('userMenuBalance').textContent=bal!=null?'K'+Number(bal).toFixed(2):'K0.00';var cols=['#374151','#6c63ff','#e74c3c','#2ecc71','#f39c12','#1abc9c','#9b59b6','#3498db'];var init=n.charAt(0).toUpperCase();var col=cols[init.charCodeAt(0)%cols.length];var url=u.profile_image_url||u.avatar_url||u.profile_image||null;var seen=new Set();document.querySelectorAll('[data-current-user-avatar]').forEach(function(el){if(seen.has(el))return;seen.add(el);el.innerHTML='';if(url){var img=document.createElement('img');img.src=url;img.style.cssText='width:100%;height:100%;border-radius:50%;object-fit:cover;display:block;';img.onerror=function(){el.innerHTML='<span style="width:100%;height:100%;border-radius:50%;background:'+col+';display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;font-size:14px;">'+init+'</span>';};el.appendChild(img);}else{el.innerHTML='<span style="width:100%;height:100%;border-radius:50%;background:'+col+';display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;font-size:14px;">'+init+'</span>';}});}
+            try{(_)}
+        catch{}}finally{});
+    })();
 
     document.addEventListener('DOMContentLoaded', loadNotifications);
     </script>

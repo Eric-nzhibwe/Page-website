@@ -20,8 +20,9 @@
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-      background: #f0f2f5;
+      background: #ffffff;
       padding-top: 56px; /* clear the sticky header */
+      line-height: 1.6;
     }
 
     /* Force the navbar white — matches index.html light-mode look
@@ -39,10 +40,10 @@
     .profile-wrapper { display: flex; justify-content: center; padding: 20px; }
 
     .profile-card {
-      width: 100%; max-width: 390px;
+      width: 100%; max-width: 680px;
       background: #ffffff;
       border-radius: 20px; overflow: hidden;
-      box-shadow: 0 4px 24px rgba(0,0,0,0.10);
+      box-shadow: 0 2px 12px rgba(0,0,0,0.07);
       border: none;
     }
 
@@ -54,18 +55,6 @@
     }
     .profile-cover img { width:100%; height:100%; object-fit:cover; display:block; }
 
-    /* cover camera btn — own profile only, hidden by default */
-    .cover-cam-btn {
-      display: none;          /* shown via JS for own profile */
-      position: absolute; bottom: 10px; right: 12px;
-      background: rgba(0,0,0,0.55); color: #fff;
-      border: none; border-radius: 9999px;
-      padding: 6px 12px; font-size: 12px; font-weight: 600;
-      cursor: pointer; gap: 5px; align-items: center;
-      transition: background .15s;
-    }
-    .cover-cam-btn:hover { background: rgba(0,0,0,0.75); }
-
     /* ── avatar wrap ── */
     .profile-av-outer {
       position: relative;
@@ -74,7 +63,7 @@
     .profile-av-wrap {
       width: 110px; height: 110px;
       border-radius: 50%;
-      border: 5px solid #ffffff;
+      border: 6px solid #ffffff;
       overflow: hidden;
       box-shadow: 0 4px 12px rgba(0,0,0,0.10);
       background: #e5e7eb;
@@ -102,7 +91,7 @@
     .av-cam-btn:hover { background: #374151; }
 
     /* ── identity text ── */
-    .profile-name     { font-size:24px; font-weight:700; color:#111827; text-align:center; min-height:30px; }
+    .profile-name     { font-size:26px; font-weight:700; color:#111827; text-align:center; min-height:30px; }
     .profile-username { margin:4px 0 8px; font-size:15px; color:#6b7280; text-align:center; }
     .profile-bio      { margin:0 0 8px; font-size:14px; color:#374151; text-align:center; line-height:1.4; min-height:20px; }
     .profile-meta     { display:flex; justify-content:center; gap:16px; font-size:13px; color:#6b7280; margin-bottom:18px; flex-wrap:wrap; }
@@ -113,16 +102,17 @@
       flex:1; padding:12px; border-radius:9999px;
       font-size:15px; font-weight:600; cursor:pointer;
       display:flex; align-items:center; justify-content:center; gap:8px;
-      transition: opacity .15s; border:none;
+      transition: opacity .15s, transform .15s; border:none;
     }
-    .pf-btn-primary:hover, .pf-btn-secondary:hover { opacity:.85; }
+    .pf-btn-primary:hover   { opacity:.85; transform: translateY(-1px); }
+    .pf-btn-secondary:hover { opacity:.85; }
     .pf-btn-primary   { background:#111827; color:#ffffff; }
     .pf-btn-secondary { background:#ffffff; color:#111827; border:1.5px solid #d1d5db; }
     .pf-btn-primary.following { background:#f3f4f6; color:#374151; border:1.5px solid #d1d5db; }
     .pf-btn-primary:disabled  { opacity:.5; cursor:default; }
 
     /* ── stats ── */
-    .profile-stats { display:flex; background:#f9fafb; border-radius:16px; padding:14px 0; margin-bottom:20px; }
+    .profile-stats { display:flex; background:#ffffff; border-radius:16px; padding:14px 0; margin-bottom:20px; border:1px solid #e5e7eb; }
     .profile-stat  { flex:1; text-align:center; border-right:1px solid #e5e7eb; cursor:pointer; }
     .profile-stat:last-child { border-right:none; }
     .stat-val { font-size:17px; font-weight:700; color:#111827; }
@@ -139,11 +129,11 @@
       cursor:pointer; background:none; border-left:none; border-right:none; border-top:none;
       transition: color .15s;
     }
-    .pf-tab.active { font-weight:600; color:#111827; border-bottom-color:#111827; }
+    .pf-tab.active { font-weight:600; color:#111827; border-bottom-color:#16a34a; }
 
     /* ── post cards ── */
     .profile-posts { display:flex; flex-direction:column; gap:14px; }
-    .post-card { background:#fff; border:1px solid #e5e7eb; border-radius:16px; padding:14px; }
+    .post-card { background:#fafafa; border:1px solid #e5e7eb; border-radius:16px; padding:14px; }
     .post-header { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
     .post-av {
       width:36px; height:36px; border-radius:50%;
@@ -228,8 +218,8 @@
     /* ── desktop ≥ 768px ── */
     @media (min-width:768px) {
       .profile-wrapper { padding:40px 24px; align-items:flex-start; }
-      .profile-card    { max-width:720px; border-radius:20px; box-shadow:0 4px 24px rgba(0,0,0,0.10); }
-      .profile-cover   { height:220px !important; }
+      .profile-card    { max-width:680px; border-radius:20px; box-shadow:0 2px 12px rgba(0,0,0,0.07); padding:0 32px 32px; }
+      .profile-cover   { height:240px !important; margin: 0 -32px; width: calc(100% + 64px); }
       .profile-av-outer{ width:130px; margin-top:-65px !important; }
       .profile-av-wrap { width:130px !important; height:130px !important; }
       .profile-av-wrap .av-letter { font-size:52px; }
@@ -303,7 +293,7 @@
       <i class="fas fa-trophy"></i><span>Challenges</span>
     </a>
     <a href="#" class="quick-menu-item">
-      <i class="fas fa-wallet"></i><span>Wallet - COMMING SOON</span>
+      <i class="fas fa-wallet"></i><span>Wallet - COMING SOON</span>
     </a>
     <a href="chatbot.html" class="quick-menu-item">
       <i class="fas fa-robot"></i><span>PAGE AI</span>
@@ -324,6 +314,20 @@
     <div class="user-menu-info">
       <h4 id="userMenuName">Player</h4>
       <p id="userMenuTier">Bronze Tier</p>
+    </div>
+  </div>
+  <div class="user-menu-stats">
+    <div class="user-menu-stat">
+      <i class="fas fa-bolt-lightning"></i>
+      <span id="userMenuStreak">0</span>
+    </div>
+    <div class="user-menu-stat">
+      <i class="fas fa-star"></i>
+      <span id="userMenuPrestige">0</span>
+    </div>
+    <div class="user-menu-stat">
+      <i class="fas fa-wallet"></i>
+      <span id="userMenuBalance">K0.00</span>
     </div>
   </div>
   <div class="user-menu-links">
@@ -442,13 +446,9 @@
 <div class="profile-wrapper">
   <div class="profile-card">
 
-    <!-- ── Cover ── -->
+    <!-- ── Cover (decorative gradient only — no upload button) ── -->
     <div class="profile-cover" id="pfCover">
-      <!-- cover image injected by JS -->
-      <button class="cover-cam-btn" id="pfCoverBtn" onclick="document.getElementById('pfCoverInput').click()">
-        <i class="fas fa-camera"></i> Change Cover
-      </button>
-      <input type="file" id="pfCoverInput" accept="image/*" style="display:none" onchange="pfUploadCover(this)">
+      <!-- cover image injected by JS if cover_image_url is present -->
     </div>
 
     <!-- ── Profile Content ── -->
@@ -713,6 +713,63 @@ window.pfAvatarFallback = function(img, init, color) {
 };
 
 /* ══════════════════════════════════════════════════════════
+   STAMP NAVBAR  (avatar + name + tier + stats in dropdown)
+══════════════════════════════════════════════════════════ */
+function stampNavAvatar(user) {
+  if (!user) return;
+
+  // ── Text fields ──
+  const name = user.display_name || user.username || 'Player';
+  const tier = user.access_tier  || 'Bronze';
+
+  const nameEl = document.getElementById('userMenuName');
+  const tierEl = document.getElementById('userMenuTier');
+  if (nameEl) nameEl.textContent = name;
+  if (tierEl) tierEl.textContent = `${tier} Tier`;
+
+  // ── Stats row ──
+  const streakEl   = document.getElementById('userMenuStreak');
+  const prestigeEl = document.getElementById('userMenuPrestige');
+  const balanceEl  = document.getElementById('userMenuBalance');
+  if (streakEl)   streakEl.textContent   = user.current_streak    ?? 0;
+  if (prestigeEl) prestigeEl.textContent = user.prestige_points   ?? 0;
+  if (balanceEl) {
+    const bal = user.wallet_balance ?? user.total_earnings ?? null;
+    balanceEl.textContent = bal != null ? `K${Number(bal).toFixed(2)}` : 'K0.00';
+  }
+
+  // ── Avatar — stamp every [data-current-user-avatar] element exactly once ──
+  const seen = new Set();
+  document.querySelectorAll('[data-current-user-avatar]').forEach(el => {
+    if (seen.has(el)) return;
+    seen.add(el);
+    el.innerHTML = '';
+    const url   = user.profile_image_url || user.avatar_url || user.profile_image || null;
+    const init  = name.charAt(0).toUpperCase();
+    const color = pfAvColour(init);
+    if (url) {
+      const img = document.createElement('img');
+      img.src   = url;
+      img.alt   = name;
+      img.style.cssText = 'width:100%;height:100%;border-radius:50%;object-fit:cover;display:block;';
+      img.onerror = function() {
+        const span = document.createElement('span');
+        span.textContent = init;
+        span.style.cssText = `width:100%;height:100%;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;font-size:14px;user-select:none;`;
+        el.innerHTML = '';
+        el.appendChild(span);
+      };
+      el.appendChild(img);
+    } else {
+      const span = document.createElement('span');
+      span.textContent = init;
+      span.style.cssText = `width:100%;height:100%;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;font-size:14px;user-select:none;`;
+      el.appendChild(span);
+    }
+  });
+}
+
+/* ══════════════════════════════════════════════════════════
    SMALL AVATAR HTML  (post cards)
 ══════════════════════════════════════════════════════════ */
 function pfSmallAvHTML(user) {
@@ -781,6 +838,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (_pfIsOwn && stored.id) {
     _pfUser = stored;
     pfRenderProfile(stored, true);
+    stampNavAvatar(stored);
+  } else if (stored.id) {
+    // Not own profile but we can still stamp the navbar with the logged-in user's info
+    stampNavAvatar(stored);
   }
 
   if (_pfIsOwn) {
@@ -790,12 +851,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     await pfLoadOtherProfile(viewId);
   }
 
+  // Stamp nav avatar once profile is loaded (covers other-profile path too)
+  if (_pfUser) stampNavAvatar(_pfUser);
+
   await pfLoadFollowCounts(_pfViewId);
   pfLoadPosts();
 
   // Listen for avatar changes from other scripts (e.g. settings page)
   window.addEventListener('page:avatarChanged', e => {
-    if (e.detail?.url) pfApplyAvatar(e.detail.url, _pfUser?.display_name || _pfUser?.username);
+    if (e.detail?.url) {
+      pfApplyAvatar(e.detail.url, _pfUser?.display_name || _pfUser?.username);
+      if (_pfUser) {
+        _pfUser.profile_image_url = e.detail.url;
+        _pfUser.avatar_url        = e.detail.url;
+        stampNavAvatar(_pfUser);
+      }
+    }
   });
 
   // Escape key closes modals
@@ -852,8 +923,9 @@ async function pfPollProfile() {
     // Update about tab quietly
     pfPopulateAbout(u);
 
-    // Update cache
+    // Update state and cache
     _pfUser = { ..._pfUser, ...u };
+    stampNavAvatar(_pfUser);
     try {
       const stored = JSON.parse(localStorage.getItem('pageUser') || '{}');
       localStorage.setItem('pageUser', JSON.stringify({ ...stored, ...u }));
@@ -872,6 +944,7 @@ async function pfLoadOwnProfile() {
     const data = await res.json();
     _pfUser = data.user || data;
     pfRenderProfile(_pfUser, true);
+    stampNavAvatar(_pfUser);
     // Update localStorage cache
     try {
       const stored = JSON.parse(localStorage.getItem('pageUser') || '{}');
@@ -880,23 +953,54 @@ async function pfLoadOwnProfile() {
   } catch (err) {
     console.error('[PF] own profile load error', err);
     const stored = JSON.parse(localStorage.getItem('pageUser') || '{}');
-    if (stored.id && !_pfUser) { _pfUser = stored; pfRenderProfile(stored, true); }
+    if (stored.id && !_pfUser) { _pfUser = stored; pfRenderProfile(stored, true); stampNavAvatar(stored); }
     else if (!_pfUser) pfToast('Could not load profile. Try refreshing.', 'error');
   }
 }
 
 /* ══════════════════════════════════════════════════════════
    LOAD OTHER PROFILE
+   Primary:  GET /auth/stats/?user_id={userId}
+   Fallback: GET /social/follows/counts/?user_id={userId}
 ══════════════════════════════════════════════════════════ */
 async function pfLoadOtherProfile(userId) {
   try {
-    const res   = await fetch(`${PF_API}/auth/discover/?limit=200`, { headers: await pfHeadersAsync() });
-    if (!res.ok) throw new Error('discover failed');
-    const list  = await res.json();
-    const users = Array.isArray(list) ? list : (list.results || []);
-    const u     = users.find(x => String(x.id) === String(userId));
-    if (u) { _pfUser = u; pfRenderProfile(u, false); }
-    else pfToast('User not found.', 'error');
+    // Primary: direct stats endpoint
+    const res = await fetch(`${PF_API}/auth/stats/?user_id=${userId}`, { headers: await pfHeadersAsync() });
+
+    if (res.ok) {
+      const data = await res.json();
+      _pfUser = data.user || data;
+      pfRenderProfile(_pfUser, false);
+      return;
+    }
+
+    if (res.status === 404) {
+      // Fallback: get counts only and show minimal profile from whatever data is in URL / state
+      console.warn('[PF] /auth/stats/ returned 404 for user', userId, '— falling back to counts endpoint');
+      let minimalUser = { id: userId };
+
+      try {
+        const fcRes = await fetch(`${PF_API}/social/follows/counts/?user_id=${userId}`, { headers: await pfHeadersAsync() });
+        if (fcRes.ok) {
+          const fcData = await fcRes.json();
+          minimalUser = { ...minimalUser, ...fcData };
+          // Stamp counts into UI directly since we may render before pfLoadFollowCounts runs
+          const fcEl = document.getElementById('statFollowers');
+          const fgEl = document.getElementById('statFollowing');
+          if (fcEl && fcData.followers_count != null) fcEl.textContent = _pfFmt(fcData.followers_count);
+          if (fgEl && fcData.following_count != null) fgEl.textContent = _pfFmt(fcData.following_count);
+        }
+      } catch (_) { /* ignore counts failure */ }
+
+      _pfUser = minimalUser;
+      pfRenderProfile(_pfUser, false);
+      pfToast('Showing limited profile data.', 'info');
+      return;
+    }
+
+    throw new Error(`stats endpoint returned ${res.status}`);
+
   } catch (err) {
     console.error('[PF] other profile load error', err);
     pfToast('Could not load user profile.', 'error');
@@ -914,18 +1018,21 @@ function pfRenderProfile(u, isOwn) {
   const avUrl = u.profile_image_url || u.avatar_url || u.profile_image || null;
   pfApplyAvatar(avUrl, u.display_name || u.username);
 
-  // Show / hide upload controls
-  const camBtn   = document.getElementById('pfAvCamBtn');
-  const coverBtn = document.getElementById('pfCoverBtn');
-  if (camBtn)   camBtn.style.display   = isOwn ? 'flex' : 'none';
-  if (coverBtn) coverBtn.style.display = isOwn ? 'flex' : 'none';
+  // Show / hide avatar upload control (cover upload removed entirely)
+  const camBtn = document.getElementById('pfAvCamBtn');
+  if (camBtn) camBtn.style.display = isOwn ? 'flex' : 'none';
 
-  // Cover image
+  // Cover image — decorative only, show stored image if present but no upload
   const cover = document.getElementById('pfCover');
   if (cover && u.cover_image_url) {
-    const img = cover.querySelector('img') || document.createElement('img');
-    img.src = u.cover_image_url;
-    if (!img.parentNode) cover.insertBefore(img, cover.firstChild);
+    const existing = cover.querySelector('img');
+    if (existing) {
+      existing.src = u.cover_image_url;
+    } else {
+      const img = document.createElement('img');
+      img.src = u.cover_image_url;
+      cover.insertBefore(img, cover.firstChild);
+    }
   }
 
   // Meta row
@@ -937,6 +1044,9 @@ function pfRenderProfile(u, isOwn) {
 
   pfPopulateAbout(u);
   pfRenderButtons(u, isOwn);
+
+  // Stamp navbar avatars after render
+  stampNavAvatar(u);
 
   document.title = `PAGE — ${u.display_name || u.username || 'Profile'}`;
 }
@@ -1150,6 +1260,7 @@ async function pfUploadAvatar(input) {
     } catch (_) {}
 
     pfApplyAvatar(imgUrl, _pfUser?.display_name || _pfUser?.username);
+    if (_pfUser) stampNavAvatar(_pfUser);
     // Notify other scripts / pages
     window.dispatchEvent(new CustomEvent('page:avatarChanged', { detail: { url: imgUrl } }));
     pfToast('Profile photo updated ✓', 'success');
@@ -1166,65 +1277,10 @@ async function pfUploadAvatar(input) {
 }
 
 /* ══════════════════════════════════════════════════════════
-   COVER UPLOAD  —  base64 via canvas
-══════════════════════════════════════════════════════════ */
-async function pfUploadCover(input) {
-  const file = input.files[0];
-  if (!file) return;
-
-  const ALLOWED = ['image/jpeg', 'image/png', 'image/webp'];
-  if (!ALLOWED.includes(file.type)) { pfToast('Use JPEG, PNG or WebP for cover.', 'error'); input.value = ''; return; }
-  if (file.size > 8 * 1024 * 1024) { pfToast('Cover max size is 8 MB.', 'error');          input.value = ''; return; }
-
-  pfToast('Processing cover…');
-
-  let dataUri;
-  try {
-    // Cover dimensions: 1200×400 (3:1 banner)
-    dataUri = await pfResizeBase64(file, 1200, 400, 0.85);
-  } catch {
-    pfToast('Could not process image.', 'error');
-    input.value = ''; return;
-  }
-
-  // Instant preview
-  const coverEl = document.getElementById('pfCover');
-  if (coverEl) {
-    let img = coverEl.querySelector('img');
-    if (!img) { img = document.createElement('img'); coverEl.insertBefore(img, coverEl.firstChild); }
-    img.src = dataUri;
-  }
-  pfToast('Uploading cover…');
-
-  const auth = pfUploadAuthHeader();
-  if (!auth) { pfToast('Not logged in.', 'error'); input.value = ''; return; }
-
-  try {
-    const res  = await fetch(`${PF_API}/auth/profile/`, {
-      method: 'PATCH',
-      headers: { 'Authorization': auth, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ cover_image_url: dataUri }),
-    });
-    if (!res.ok) { pfToast('Cover upload failed.', 'error'); return; }
-
-    if (_pfUser) _pfUser.cover_image_url = dataUri;
-    try {
-      const stored = JSON.parse(localStorage.getItem('pageUser') || '{}');
-      stored.cover_image_url = dataUri;
-      localStorage.setItem('pageUser', JSON.stringify(stored));
-    } catch (_) {}
-
-    pfToast('Cover photo updated ✓', 'success');
-  } catch (err) {
-    console.error('[PF] cover upload error', err);
-    pfToast('Cover upload failed. Check your connection.', 'error');
-  } finally {
-    input.value = '';
-  }
-}
-
-/* ══════════════════════════════════════════════════════════
    POSTS
+   Fetches posts authored by the viewed user directly via
+   query param. Falls back to client-side filter if the
+   server doesn't support the param.
 ══════════════════════════════════════════════════════════ */
 async function pfLoadPosts() {
   const container = document.getElementById('pfPostsList');
@@ -1232,13 +1288,16 @@ async function pfLoadPosts() {
   container.innerHTML = '<div class="posts-loading"><i class="fas fa-spinner"></i> Loading posts…</div>';
 
   try {
-    const res  = await fetch(`${PF_API}/social/posts/`, { headers: await pfHeadersAsync() });
+    const res  = await fetch(`${PF_API}/social/posts/?author=${_pfViewId}`, { headers: await pfHeadersAsync() });
     if (!res.ok) throw new Error('posts failed');
     const data  = await res.json();
     const all   = Array.isArray(data) ? data : (data.results || []);
 
+    // Safety net: if the server ignored the query param and returned posts
+    // from multiple authors, filter client-side.
     const posts = all.filter(p => {
       const aid = p.author?.id ?? p.author_id;
+      // If every post is already from the right author, this is a no-op.
       return String(aid) === String(_pfViewId);
     });
 
