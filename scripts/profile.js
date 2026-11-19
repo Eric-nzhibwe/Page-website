@@ -408,6 +408,20 @@ async function pfSaveProfile() {
             method: 'PATCH', headers, body: JSON.stringify(body),
         });
         if (res.ok) {
+            try {
+                const appMod = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js');
+                const authMod = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js');
+                const apps = appMod.getApps ? appMod.getApps() : [];
+                if (apps.length) {
+                    const auth = authMod.getAuth(apps[0]);
+                    if (auth.currentUser) {
+                        await authMod.updateProfile(auth.currentUser, {
+                            displayName: body.display_name || body.username,
+                        });
+                    }
+                }
+            } catch (_) { /* Firebase display-name sync is best-effort */ }
+
             pfCloseEdit();
             pfToast('Profile updated ✓');
             await pfLoadOwnProfile();

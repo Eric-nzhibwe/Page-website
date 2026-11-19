@@ -96,10 +96,18 @@ class FirebaseAuthenticationBackend(BaseBackend):
                 firebase_uid=firebase_uid
             )
             user = profile.user
-            # Keep the local email in sync if Firebase email changed
+            profile_changed = False
+
+            # Keep the local profile aligned with Firebase Auth's displayName.
             if email and user.email != email:
                 user.email = email
-                user.save(update_fields=['email'])
+                profile_changed = True
+            if name and user.display_name != name:
+                user.display_name = name
+                profile_changed = True
+
+            if profile_changed:
+                user.save(update_fields=['email', 'display_name'] if email else ['display_name'])
             return user
         except UserFirebaseProfile.DoesNotExist:
             pass
@@ -109,6 +117,9 @@ class FirebaseAuthenticationBackend(BaseBackend):
         if email:
             try:
                 user = User.objects.get(email__iexact=email)
+                if name and user.display_name != name:
+                    user.display_name = name
+                    user.save(update_fields=['display_name'])
             except User.DoesNotExist:
                 pass
 

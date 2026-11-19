@@ -510,6 +510,7 @@ async function _registerWithFirebase(email, password, username) {
         if (result.success && result.user) {
             await _patchUsername(result.token, username);
             result.user.username = username;
+            result.user.display_name = username;
         }
 
         return result;
@@ -606,7 +607,7 @@ async function _patchUsername(token, username) {
                 'Content-Type':  'application/json',
                 'Authorization': authHeader,
             },
-            body: JSON.stringify({ username }),
+            body: JSON.stringify({ username, display_name: username }),
         }, 8000);
     } catch { /* non-fatal */ }
 }

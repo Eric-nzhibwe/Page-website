@@ -283,7 +283,7 @@ class UserProfileView(generics.RetrieveUpdateAPIView):
             from users.firestore_user_service import update_user_fields
             # Only update safe, non-sensitive fields
             safe_fields = {}
-            for key in ('display_name', 'bio', 'location', 'website',
+            for key in ('username', 'display_name', 'bio', 'location', 'website',
                         'preferences', 'social_connections'):
                 if key in data:
                     safe_fields[key] = data[key]

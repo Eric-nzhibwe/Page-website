@@ -462,7 +462,7 @@ async function handleSignup(event) {
         const res  = await fetchWithTimeout(`${API_BASE_URL}/auth/register/`, {
             method:  'POST',
             headers: { 'Content-Type': 'application/json' },
-            body:    JSON.stringify({ username, email, display_name: username, password, password_confirm: password }),
+            body:    JSON.stringify({ username, display_name: username, email, password, password_confirm: password }),
         }, 8000); // reduced from 15s
         const data = await res.json().catch(() => ({}));
 
@@ -510,6 +510,7 @@ async function _registerWithFirebase(email, password, username) {
         if (result.success && result.user) {
             await _patchUsername(result.token, username);
             result.user.username = username;
+            result.user.display_name = username;
         }
 
         return result;
@@ -606,7 +607,7 @@ async function _patchUsername(token, username) {
                 'Content-Type':  'application/json',
                 'Authorization': authHeader,
             },
-            body: JSON.stringify({ username }),
+            body: JSON.stringify({ username, display_name: username }),
         }, 8000);
     } catch { /* non-fatal */ }
 }
