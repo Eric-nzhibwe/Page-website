@@ -98,11 +98,13 @@ class FirebaseAuthenticationBackend(BaseBackend):
             user = profile.user
             profile_changed = False
 
-            # Keep the local profile aligned with Firebase Auth's displayName.
+            # Keep the local profile aligned with Firebase Auth's displayName,
+            # but never overwrite a user-set display_name with a Firebase-derived
+            # value (e.g. the email prefix).  Only fill it in when it is blank.
             if email and user.email != email:
                 user.email = email
                 profile_changed = True
-            if name and user.display_name != name:
+            if name and not user.display_name:
                 user.display_name = name
                 profile_changed = True
 
@@ -117,7 +119,9 @@ class FirebaseAuthenticationBackend(BaseBackend):
         if email:
             try:
                 user = User.objects.get(email__iexact=email)
-                if name and user.display_name != name:
+                # Same guard: only set display_name when it is blank, never
+                # overwrite a user-set value with the Firebase Auth claim.
+                if name and not user.display_name:
                     user.display_name = name
                     user.save(update_fields=['display_name'])
             except User.DoesNotExist:
