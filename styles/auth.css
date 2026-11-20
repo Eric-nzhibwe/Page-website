@@ -40,9 +40,22 @@ body {
     height: 100%;
     background: #ffffff;
     display: flex;
+    flex-direction: column;
     justify-content: center;
     align-items: center;
+    gap: 24px;
     z-index: 9999;
+}
+
+/* Render cold-start status line — hidden until JS shows it */
+.splash-wake-msg {
+    font-size: 14px;
+    font-family: 'Segoe UI', sans-serif;
+    color: #9ca3af;
+    letter-spacing: 0.3px;
+    opacity: 0;
+    transition: opacity 0.4s ease;
+    margin: 0;
 }
 
 .splash-logo {

@@ -100,13 +100,11 @@ services:
         sync: false
 
   # ── Keep-alive cron ──────────────────────────────────────────────────────────
-  # Pings /health/ every 10 minutes from outside the web service so Render's
-  # free tier never cold-starts. 10 min gives a safe buffer before the 15-min
-  # inactivity sleep window.
-  #
-  # IMPORTANT: Set SERVICE_URL in your Render dashboard environment variables
-  # to your actual web service URL, e.g. https://page-backend.onrender.com
-  # The cron will not keep the service alive if this points to the wrong URL.
+  # Pings /health/ every 10 minutes so Render's free tier never cold-starts.
+  # IMPORTANT: Set SERVICE_URL in the Render dashboard to your web service URL,
+  # e.g. https://page-backend.onrender.com
+  # Uses only the Python standard library (no pip install) so the cron itself
+  # starts instantly and doesn't cold-start-fail before it can ping the backend.
   - type: cron
     name: keep-alive
     runtime: python
@@ -114,23 +112,23 @@ services:
     plan: free
     branch: main
     rootDir: django_backend
-    buildCommand: pip install requests
+    buildCommand: "true"
     schedule: "*/10 * * * *"
     startCommand: >
       python -c "
-      import requests, os, sys;
+      import urllib.request, os, sys, time;
       url = os.environ.get('SERVICE_URL', '').rstrip('/');
       if not url:
-          print('ERROR: SERVICE_URL env var not set. Set it in the Render dashboard.');
+          print('ERROR: SERVICE_URL not set. Add it in the Render dashboard.');
           sys.exit(1);
+      target = url + '/health/';
       try:
-          r = requests.get(url + '/health/', timeout=20);
-          print('keep-alive ping', r.status_code, url);
-          sys.exit(0 if r.status_code < 500 else 1)
+          r = urllib.request.urlopen(target, timeout=25);
+          print('keep-alive OK', r.status, target);
       except Exception as e:
           print('keep-alive failed:', e);
           sys.exit(1)
       "
     envVars:
       - key: SERVICE_URL
-        sync: true
+        sync: false

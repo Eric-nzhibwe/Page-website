@@ -20,7 +20,56 @@
     <!-- Splash Screen -->
     <div id="splashScreen" class="splash-screen">
         <div class="splash-logo">PAGE</div>
+        <p id="wakeMsg" class="splash-wake-msg"></p>
     </div>
+
+    <script>
+        // Wake the backend as early as possible — runs before DOM ready.
+        // On Render free tier the service sleeps after 15 min of inactivity;
+        // pinging /health/ here starts the wake-up during the 1.5 s splash
+        // animation so the server is ready by the time the user tries to log in.
+        (function wakeBackend() {
+            if (window.location.hostname === 'localhost' ||
+                window.location.hostname === '127.0.0.1') return; // skip in local dev
+
+            var HEALTH = window.location.origin + '/health/';
+            var TIMEOUT = 30000; // give Render up to 30 s to wake
+            var start = Date.now();
+            var msgEl = null; // set after DOM ready
+
+            // Show "waking up" text only if the server is taking > 3 s
+            var slowTimer = setTimeout(function () {
+                msgEl = document.getElementById('wakeMsg');
+                if (msgEl) {
+                    msgEl.textContent = 'Waking up server… hang tight';
+                    msgEl.style.opacity = '1';
+                }
+            }, 3000);
+
+            function tryPing() {
+                var ctrl = new AbortController();
+                var killSwitch = setTimeout(function () { ctrl.abort(); }, 8000);
+
+                fetch(HEALTH, { method: 'GET', signal: ctrl.signal })
+                    .then(function (r) {
+                        clearTimeout(killSwitch);
+                        clearTimeout(slowTimer);
+                        if (msgEl) { msgEl.style.opacity = '0'; }
+                    })
+                    .catch(function () {
+                        clearTimeout(killSwitch);
+                        if (Date.now() - start < TIMEOUT) {
+                            setTimeout(tryPing, 2000); // retry every 2 s
+                        } else {
+                            // Give up quietly — login will show its own error if backend is dead
+                            clearTimeout(slowTimer);
+                        }
+                    });
+            }
+
+            tryPing();
+        })();
+    </script>
 
     <!-- Landing Page -->
     <div id="landingPage" class="landing-page">

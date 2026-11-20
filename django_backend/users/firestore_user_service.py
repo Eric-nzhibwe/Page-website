@@ -308,6 +308,7 @@ def _user_to_doc(user, request=None) -> dict:
     return {
         'id':                    str(user.id),
         'username':              user.username,
+        'username_lower':        user.username.lower(),   # for case-insensitive Firestore lookups
         'display_name':          user.display_name or user.username,
         'bio':                   user.bio or '',
         'profile_image_url':     profile_image_url,

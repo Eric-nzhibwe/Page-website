@@ -72,19 +72,20 @@ def login_view(request):
     """
     Legacy email/password login endpoint.
 
-    When Firebase is configured (the default), the frontend authenticates
-    with Firebase and exchanges the ID token at /api/auth/firebase-login/.
-    This endpoint is kept as a fallback for environments where Firebase
-    is not set up, or for users created before Firebase was enabled.
+    Priority order:
+      1. Firebase Auth REST API — verifies the password directly against
+         Firebase and fetches the user profile from Firestore. Works even
+         when the local SQLite DB is empty (Render ephemeral disk wipe).
+      2. Local Django DB — fallback for dev environments or users whose
+         records haven't been synced from Firestore yet.
 
-    If the database is unavailable, returns a helpful message directing
-    the user to Firebase login instead of crashing with a 500.
+    If the database is unavailable we skip straight to Firebase.
     """
     import logging
     log = logging.getLogger('users.login')
 
     identifier = (request.data.get('username') or '').strip()
-    password   = (request.data.get('password') or '')   # do NOT strip passwords
+    password   = (request.data.get('password') or '')
 
     if not identifier:
         return Response({
@@ -98,26 +99,37 @@ def login_view(request):
             'message': 'Please enter your password.'
         }, status=status.HTTP_400_BAD_REQUEST)
 
-    # ── Diagnostic logging (visible in Render logs) ───────────────────────
     identifier_type = 'email' if '@' in identifier else 'username'
     log.info('LOGIN attempt: identifier_type=%s len(password)=%d', identifier_type, len(password))
 
-    # Check whether the user exists — catch DB errors gracefully
+    # ── 1. Try Firebase Auth first (works even when DB is empty) ──────────────
+    from page_platform.firebase_client import firebase_enabled
+    if firebase_enabled():
+        result = _firebase_password_login(identifier, password, request, log)
+        if result is not None:
+            return result
+        # If result is None it means Firebase Auth doesn't know this user
+        # OR the identifier is a username (not email) — fall through to DB.
+
+    # ── 2. Local Django DB fallback ───────────────────────────────────────────
     try:
         if '@' in identifier:
             _u = User.objects.get(email__iexact=identifier)
         else:
             _u = User.objects.get(username__iexact=identifier)
-        log.info('LOGIN user found: id=%s has_usable_password=%s is_active=%s',
+        log.info('LOGIN user found in DB: id=%s has_usable_password=%s is_active=%s',
                  _u.pk, _u.has_usable_password(), _u.is_active)
     except User.DoesNotExist:
-        log.warning('LOGIN user NOT found for identifier=%r', identifier)
+        log.warning('LOGIN user NOT found in DB or Firebase for identifier=%r', identifier)
+        return Response({
+            'error': 'authentication_failed',
+            'message': 'Invalid credentials. Please check your email/username and password.'
+        }, status=status.HTTP_401_UNAUTHORIZED)
     except Exception as exc:
         log.error('LOGIN user lookup error: %s', exc)
-        # Database is unavailable — redirect to Firebase login
         return Response({
             'error': 'database_unavailable',
-            'message': 'Sign in is handled by Firebase. Please use the Firebase login flow.',
+            'message': 'Sign in is temporarily unavailable. Please try again in a moment.',
         }, status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
     serializer = UserLoginSerializer(
@@ -126,7 +138,6 @@ def login_view(request):
     )
 
     if not serializer.is_valid():
-        # Flatten serializer errors into a single readable message
         raw = serializer.errors
         if isinstance(raw, dict):
             msgs = []
@@ -145,42 +156,249 @@ def login_view(request):
         }, status=status.HTTP_401_UNAUTHORIZED)
 
     user = serializer.validated_data['user']
+    return _build_login_response(user, request)
 
-    # Create or retrieve DRF token
+
+def _firebase_password_login(identifier, password, request, log):
+    """
+    Authenticate against Firebase Auth REST API using email + password.
+
+    If the identifier is a username (no @), we first look it up in Firestore
+    to resolve the email, then authenticate with that email.
+
+    Returns a DRF Response on success or explicit failure.
+    Returns None if Firebase doesn't know the user (fall through to DB).
+    """
+    import os, urllib.request as urlreq, urllib.error, json as _json
+
+    api_key = os.environ.get('FIREBASE_WEB_API_KEY', '')
+    if not api_key:
+        log.warning('FIREBASE_WEB_API_KEY not set — skipping Firebase login')
+        return None
+
+    email = identifier
+
+    # ── Resolve username → email via Firestore ────────────────────────────────
+    if '@' not in identifier:
+        try:
+            from page_platform.firebase_client import get_firestore
+            db = get_firestore()
+            if db:
+                from google.cloud.firestore_v1 import FieldFilter
+
+                # Try exact match first, then lowercase field (case-insensitive fallback)
+                for search_val, field in [
+                    (identifier,         'username'),
+                    (identifier.lower(), 'username_lower'),
+                ]:
+                    docs = (
+                        db.collection('user_profiles')
+                        .where(filter=FieldFilter(field, '==', search_val))
+                        .limit(1)
+                        .stream()
+                    )
+                    doc = next(iter(docs), None)
+                    if doc:
+                        fs_data = doc.to_dict()
+                        firebase_uid = fs_data.get('firebase_uid', '')
+                        if firebase_uid:
+                            import firebase_admin.auth as fb_auth
+                            fb_user = fb_auth.get_user(firebase_uid)
+                            if fb_user.email:
+                                email = fb_user.email
+                                log.info('LOGIN resolved username %r → email via Firebase uid', identifier)
+                                break
+                        # Try email field on the doc as last resort
+                        fs_email = fs_data.get('email', '')
+                        if fs_email:
+                            email = fs_email
+                            break
+        except Exception as exc:
+            log.warning('LOGIN username→email resolution failed: %s', exc)
+
+    if '@' not in email:
+        # Still a username with no email found — can't use Firebase REST API
+        log.info('LOGIN cannot resolve username %r to email for Firebase auth', identifier)
+        return None
+
+    # ── Call Firebase Auth signInWithPassword REST endpoint ───────────────────
+    url     = f'https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={api_key}'
+    payload = _json.dumps({
+        'email':             email,
+        'password':          password,
+        'returnSecureToken': True,
+    }).encode()
+
+    try:
+        req = urlreq.Request(url, data=payload,
+                             headers={'Content-Type': 'application/json'})
+        with urlreq.urlopen(req, timeout=10) as resp:
+            data = _json.loads(resp.read())
+    except urllib.error.HTTPError as exc:
+        body = exc.read().decode('utf-8', errors='replace')
+        try:
+            err_code = _json.loads(body).get('error', {}).get('message', '')
+        except Exception:
+            err_code = body[:120]
+
+        if err_code in ('EMAIL_NOT_FOUND', 'USER_NOT_FOUND'):
+            log.info('LOGIN Firebase: user not found for email %r', email)
+            return None  # fall through to DB
+        if err_code in ('INVALID_PASSWORD', 'INVALID_LOGIN_CREDENTIALS',
+                        'WRONG_PASSWORD'):
+            log.warning('LOGIN Firebase: wrong password for %r', email)
+            return Response({
+                'error': 'authentication_failed',
+                'message': 'Invalid credentials. Please check your email/username and password.'
+            }, status=status.HTTP_401_UNAUTHORIZED)
+        if err_code == 'USER_DISABLED':
+            return Response({
+                'error': 'authentication_failed',
+                'message': 'This account has been disabled.'
+            }, status=status.HTTP_401_UNAUTHORIZED)
+        if err_code == 'TOO_MANY_ATTEMPTS_TRY_LATER':
+            return Response({
+                'error': 'too_many_attempts',
+                'message': 'Too many failed login attempts. Please try again later.'
+            }, status=status.HTTP_429_TOO_MANY_REQUESTS)
+
+        log.error('LOGIN Firebase REST error: %s', err_code)
+        return None  # unknown error — fall through to DB
+
+    except Exception as exc:
+        log.error('LOGIN Firebase REST request failed: %s', exc)
+        return None  # network issue — fall through to DB
+
+    # ── Firebase says password is correct — find or create local User ─────────
+    firebase_uid   = data.get('localId', '')
+    firebase_token = data.get('idToken', '')
+
+    # Use the existing FirebaseAuthenticationBackend to find/create the user
+    # (it handles the get-or-create + Firestore sync for us)
+    try:
+        from users.firebase_auth_backend import FirebaseAuthenticationBackend
+        backend = FirebaseAuthenticationBackend()
+        user = backend.authenticate(request, firebase_token=firebase_token)
+    except Exception as exc:
+        log.error('LOGIN FirebaseAuthenticationBackend error: %s', exc)
+        user = None
+
+    if user is None:
+        # Backend failed — try a direct Firestore lookup as last resort
+        try:
+            user = _get_or_create_user_from_firebase_uid(firebase_uid, email, log)
+        except Exception as exc:
+            log.error('LOGIN direct Firestore user resolve failed: %s', exc)
+            return Response({
+                'error': 'server_error',
+                'message': 'Login succeeded but we could not load your profile. Please try again.'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    if user is None:
+        return Response({
+            'error': 'server_error',
+            'message': 'Login succeeded but we could not load your profile. Please try again.'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    log.info('LOGIN Firebase success for user %r (id=%s)', user.username, user.pk)
+    return _build_login_response(user, request)
+
+
+def _get_or_create_user_from_firebase_uid(firebase_uid, email, log):
+    """
+    Last-resort: find or create a local User from a Firebase UID directly,
+    without needing to re-verify a token (we already know the password was correct).
+    """
+    import firebase_admin.auth as fb_auth
+
+    # Fetch Firebase Auth user record
+    try:
+        fb_user = fb_auth.get_user(firebase_uid)
+    except Exception as exc:
+        log.error('_get_or_create_user_from_firebase_uid: get_user failed: %s', exc)
+        return None
+
+    display_name = fb_user.display_name or ''
+    picture      = fb_user.photo_url    or ''
+
+    # Try DB first
+    try:
+        from .models import UserFirebaseProfile
+        profile = UserFirebaseProfile.objects.select_related('user').get(
+            firebase_uid=firebase_uid
+        )
+        return profile.user
+    except Exception:
+        pass
+
+    if email:
+        try:
+            return User.objects.get(email__iexact=email)
+        except User.DoesNotExist:
+            pass
+
+    # Create new local user
+    import re
+    base = (re.sub(r'[^a-zA-Z0-9_]', '', email.split('@')[0])
+            or f'user_{firebase_uid[:8]}')
+    username = base[:30]
+    suffix   = 1
+    while User.objects.filter(username=username).exists():
+        username = f'{base[:27]}_{suffix}'; suffix += 1
+
+    user = User(username=username, email=email, display_name=display_name)
+    user.set_unusable_password()
+    user.save()
+
+    try:
+        from .models import UserFirebaseProfile
+        UserFirebaseProfile.objects.get_or_create(
+            user=user,
+            defaults={'firebase_uid': firebase_uid, 'picture_url': picture}
+        )
+    except Exception:
+        pass
+
+    log.info('Created local user %r from Firebase uid=%s', username, firebase_uid)
+    return user
+
+
+def _build_login_response(user, request):
+    """Shared response builder for successful logins."""
+    import logging
+    log = logging.getLogger('users.login')
+
     token, _ = Token.objects.get_or_create(user=user)
-
-    # Establish Django session too (for browser clients)
     login(request, user, backend='users.backends.EmailOrUsernameBackend')
 
-    # Send login notification email (non-blocking)
+    # Login notification email (non-blocking)
     try:
         from users.email_service import email_service
-        ip      = (request.META.get('HTTP_X_FORWARDED_FOR') or
-                   request.META.get('REMOTE_ADDR', 'Unknown')).split(',')[0].strip()
-        device  = request.META.get('HTTP_USER_AGENT', 'Unknown browser')[:120]
+        ip     = (request.META.get('HTTP_X_FORWARDED_FOR') or
+                  request.META.get('REMOTE_ADDR', 'Unknown')).split(',')[0].strip()
+        device = request.META.get('HTTP_USER_AGENT', 'Unknown browser')[:120]
         email_service.send_login_notification(user, ip_address=ip, device=device)
     except Exception:
-        pass  # Never block login if email fails
+        pass
 
-    # Send login alert SMS (non-blocking, only if user has a phone number)
+    # SMS alert (non-blocking)
     try:
         from users.sms_service import sms_service
         sms_service.send_login_alert(user)
     except Exception:
-        pass  # Never block login if SMS fails
+        pass
 
-    # ── Mirror to Firestore (always, as a backup — non-blocking) ──────────
+    # Firestore sync (non-blocking)
     try:
-        from page_platform.firebase_client import firebase_enabled
         if firebase_enabled():
             from users.firestore_user_service import sync_user
             sync_user(user, request=request)
     except Exception:
-        pass  # Never block login if Firestore sync fails
+        pass
 
     return Response({
         'token': token.key,
-        'user': UserProfileSerializer(user, context={'request': request}).data,
+        'user':  UserProfileSerializer(user, context={'request': request}).data,
         'message': f'Welcome back, {user.username}! 🔥'
     }, status=status.HTTP_200_OK)
 
