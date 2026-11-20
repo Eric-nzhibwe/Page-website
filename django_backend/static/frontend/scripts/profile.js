@@ -177,6 +177,31 @@ async function pfLoadOwnProfile() {
         if (!res.ok) throw new Error('Failed');
         const data = await res.json();
         _pfData = data.user;
+
+        // Guard: if the server returned a blank display_name/username (can
+        // happen when the Firestore doc was corrupted by the display_name bug),
+        // fill in from localStorage so the page never shows an empty name.
+        if (!_pfData.display_name && !_pfData.username) {
+            try {
+                const cached = JSON.parse(localStorage.getItem('pageUser') || '{}');
+                if (cached.display_name) _pfData.display_name = cached.display_name;
+                if (cached.username)     _pfData.username     = cached.username;
+            } catch (_) { /* non-critical */ }
+        }
+
+        // Keep localStorage in sync with the freshest server values so that
+        // pfBootAvatar shows the correct initial on the next page load.
+        try {
+            const cached = JSON.parse(localStorage.getItem('pageUser') || '{}');
+            localStorage.setItem('pageUser', JSON.stringify({
+                ...cached,
+                username:          _pfData.username     || cached.username     || '',
+                display_name:      _pfData.display_name || cached.display_name || '',
+                profile_image_url: _pfData.profile_image_url || cached.profile_image_url || null,
+                profile_image:     _pfData.profile_image_url || _pfData.profile_image || cached.profile_image || null,
+            }));
+        } catch (_) { /* non-critical */ }
+
         pfRender(_pfData, data.rank);
         await pfLoadFollowCounts(_pfData.id, false);
     } catch (e) {

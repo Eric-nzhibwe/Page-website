@@ -1304,6 +1304,15 @@ async function _pollUserStats() {
         patch('userMenuBalance',   balance);
         patch('userMenuTier',      `${tier} Tier`);
 
+        // Profile page — identity fields (pfRender IDs from profile.js)
+        // These only patch when the value actually changed, so they won't
+        // flicker on pages that already have the correct name displayed.
+        if (u.display_name || u.username) {
+            patch('pfName',    u.display_name || u.username);
+            patch('pfHandle',  `@${u.username}`);
+            patch('userMenuName', u.display_name || u.username);
+        }
+
         // Profile page stats (profile.html via user.js set())
         patch('statPrestige',      pts);
         patch('statLevel',         level);
@@ -1340,12 +1349,29 @@ async function _pollUserStats() {
                 // Always refresh the avatar URL from the server
                 profile_image_url: u.profile_image_url || stored.profile_image_url || null,
                 profile_image:     u.profile_image_url || u.profile_image || stored.profile_image || null,
+                // Keep identity fields fresh — guards against stale logins
+                // where display_name / username were blank or email-derived.
+                username:          u.username    || stored.username    || '',
+                display_name:      u.display_name || stored.display_name || '',
             };
             localStorage.setItem('pageUser', JSON.stringify(updated));
 
-            // Re-stamp avatar if the server returned one (handles first load after upload)
+            // Re-stamp avatar — image if available, letter-circle if not
             const freshUrl = updated.profile_image_url || updated.profile_image;
-            if (freshUrl) _stampCurrentUserAvatar(freshUrl);
+            if (freshUrl) {
+                _stampCurrentUserAvatar(freshUrl);
+            } else {
+                // No image — stamp a fresh letter-circle in case the name
+                // just got corrected (e.g. after the display_name bug was fixed).
+                const freshName    = updated.display_name || updated.username || '';
+                const freshInitial = freshName ? freshName.charAt(0).toUpperCase() : null;
+                if (freshInitial && window.pageLetterAvatarHTML) {
+                    const letterHTML = window.pageLetterAvatarHTML(freshInitial);
+                    document.querySelectorAll('[data-current-user-avatar]').forEach(el => {
+                        el.innerHTML = letterHTML;
+                    });
+                }
+            }
         } catch (_) { /* non-critical */ }
 
     } catch (_) { /* silent — don't disrupt the UI */ }
