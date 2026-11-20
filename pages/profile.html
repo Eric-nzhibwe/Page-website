@@ -21,20 +21,22 @@
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
       background: #ffffff;
-      padding-top: 56px; /* clear the sticky header */
+      padding-top: 0;
       line-height: 1.6;
     }
 
-    /* Force the navbar white — matches index.html light-mode look
-       regardless of which theme is active */
+    /* Match index.html: 54/60/64px header heights and no extra margins. */
     .header {
       background: #ffffff !important;
       border-bottom: 1px solid #e4e6ea !important;
       backdrop-filter: none !important;
-      margin-bottom: 0 !important;
+      margin: 0 !important;
+      border-radius: 0 !important;
+      height: 54px !important;
+      z-index: 900 !important;
     }
-    /* Keep nav icon / text colours readable on white */
-    .header * { color: inherit; }
+    @media (min-width: 768px) { .header { height: 60px !important; } }
+    @media (min-width: 1200px) { .header { height: 64px !important; } }
 
     /* ── wrapper / card ── */
     .profile-wrapper { display: flex; justify-content: center; padding: 20px; }
@@ -1472,9 +1474,7 @@ async function pfOpenFollowers(tab) {
   pfOpenModal('pfFollowModal');
 
   const list = document.getElementById('pfFollowList');
-  list.innerHTML = '<div style="text-align:center;padding:20px;color:#9ca3af;"><i class="fas fa-spinner" style="animation:spin .8s linear infinite;"></i></div>';
-
-  try {
+  list.innerHTML = '<div style="text-align:center;padding:20px;color:#9ca3af;"><
     const ep  = tab === 'followers'
       ? `${PF_API}/social/follows/followers/?user_id=${_pfViewId}`
       : `${PF_API}/social/follows/following/?user_id=${_pfViewId}`;

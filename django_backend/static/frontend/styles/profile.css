@@ -15,21 +15,33 @@ body {
 }
 
 /* ══════════════════════════════════════════
-   HEADER / NAVBAR — force white background
+   HEADER / NAVBAR — matches index.html exactly
 ══════════════════════════════════════════ */
 .header {
+    position: sticky !important;
+    top: 0;
+    z-index: 1000 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    width: 100% !important;
+    height: 54px !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    padding: 0 12px !important;
+    gap: 8px !important;
+    flex-wrap: nowrap !important;
     background: #ffffff !important;
-    border-bottom: 1px solid var(--theme-border);
-    margin-bottom: 0;
+    border-bottom: 1.5px solid var(--theme-border) !important;
+    box-shadow: 0 2px 12px rgba(85,107,47,.12) !important;
 }
-    position: sticky; top: 0; z-index: 100;
-    display: flex; align-items: center;
-    justify-content: space-between;
-    padding: 0 20px;
-    height: 56px;
-    background: var(--theme-surface);
-    border-bottom: 1px solid var(--theme-border);
-    box-shadow: var(--theme-card-shadow);
+
+@media (min-width: 768px) {
+    .header { height: 60px !important; padding: 0 20px !important; gap: 16px !important; }
+}
+
+@media (min-width: 1200px) {
+    .header { height: 64px !important; padding: 0 32px !important; }
 }
 
 .pf-logo {
