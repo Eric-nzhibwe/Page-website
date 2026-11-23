@@ -5,17 +5,13 @@ set -e  # Exit immediately on any error
 echo "==> Installing Python dependencies"
 pip install -r requirements.txt
 
-echo "==> Copying frontend files to static directory"
-mkdir -p static/frontend
-if [ -f ../index.html ]; then
-    cp -r ../index.html static/frontend/
-    cp -r ../pages static/frontend/
-    cp -r ../scripts static/frontend/
-    cp -r ../styles static/frontend/
-    cp -r ../images static/frontend/
-    echo "   Frontend files copied."
-else
-    echo "   Frontend files not found at ../  -- skipping (API-only deploy)."
+echo "==> Frontend"
+# The frontend lives in django_backend/static/frontend (single source of truth,
+# committed to the repo).  Nothing is copied — collectstatic below ships it.
+# Serving is handled by page_platform.urls.serve_frontend_file.
+if [ ! -d static/frontend ]; then
+    echo "   ERROR: static/frontend is missing — cannot serve the frontend."
+    exit 1
 fi
 
 echo "==> Collecting static files"
