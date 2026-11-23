@@ -676,18 +676,38 @@ def search_users_view(request):
 @permission_classes([permissions.IsAuthenticated])
 def user_stats_view(request):
     """Get user statistics"""
+    import logging
+    log = logging.getLogger(__name__)
     user = request.user
-    
-    # Calculate additional stats
-    recent_activities = UserActivity.objects.filter(user=user)[:10]
-    recent_submissions = UserSubmission.objects.filter(user=user)[:10]
-    
-    # Find user rank
-    user_rank = User.objects.filter(prestige_points__gt=user.prestige_points).count() + 1
-    total_users = User.objects.count()
-    
+
+    from users.firebase_token_auth import EphemeralUser
+    is_ephemeral = isinstance(user, EphemeralUser)
+
+    # DB-dependent queries — skip for ephemeral (Firebase-only) users
+    if is_ephemeral:
+        recent_activities  = []
+        recent_submissions = []
+        user_rank          = 1
+        total_users        = 0
+        # Build profile data directly from the ephemeral user object so the
+        # ModelSerializer (which expects a real User instance) is never called.
+        user_data = UserProfileView._ephemeral_profile(user)
+    else:
+        try:
+            recent_activities  = UserActivity.objects.filter(user=user)[:10]
+            recent_submissions = UserSubmission.objects.filter(user=user)[:10]
+            user_rank = User.objects.filter(prestige_points__gt=user.prestige_points).count() + 1
+            total_users = User.objects.count()
+        except Exception as exc:
+            log.warning('user_stats_view: DB query failed (%s) — returning safe defaults', exc)
+            recent_activities  = []
+            recent_submissions = []
+            user_rank          = 1
+            total_users        = 0
+        user_data = UserProfileSerializer(user, context={'request': request}).data
+
     return Response({
-        'user': UserProfileSerializer(user, context={'request': request}).data,
+        'user': user_data,
         'rank': user_rank,
         'total_users': total_users,
         'recent_activities': UserActivitySerializer(recent_activities, many=True).data,

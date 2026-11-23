@@ -3,11 +3,15 @@ Django settings for PAGE Platform
 """
 import os
 from pathlib import Path
-from decouple import config, Csv
+from decouple import config, Csv, AutoConfig
 import dj_database_url
 
 # ─── Paths ────────────────────────────────────────────────────────────────────
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Point decouple at the directory that contains .env so settings load correctly
+# regardless of which directory manage.py / uvicorn is invoked from.
+config = AutoConfig(search_path=BASE_DIR)
 
 # ─── Security ─────────────────────────────────────────────────────────────────
 SECRET_KEY = config('SECRET_KEY', default='django-insecure-change-me-in-production')
@@ -377,8 +381,17 @@ LOGGING = {
     },
 }
 
-# ─── Security hardening (production) ─────────────────────────────────────────
-if not DEBUG:
+# ─── Security hardening ───────────────────────────────────────────────────────
+# In development (DEBUG=True) all HTTPS enforcement is explicitly disabled so
+# the dev server stays on plain HTTP.  SecurityMiddleware's defaults are already
+# False, but setting them here makes the intent unambiguous and prevents any
+# accidental redirect loop when DEBUG doesn't load from .env correctly.
+if DEBUG:
+    SECURE_SSL_REDIRECT = False
+    SESSION_COOKIE_SECURE = False
+    CSRF_COOKIE_SECURE = False
+    SECURE_HSTS_SECONDS = 0
+else:
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
     SECURE_SSL_REDIRECT = True
     SESSION_COOKIE_SECURE = True

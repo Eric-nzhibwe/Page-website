@@ -266,7 +266,7 @@ class ChallengeViewSet(viewsets.ModelViewSet):
             return Response(get_challenges_by_creator(request.user.id, user=request.user))
 
         challenges = Challenge.objects.filter(
-            created_by=request.user
+            created_by_id=request.user.id
         ).order_by('-created_at')
         return Response(self.get_serializer(challenges, many=True).data)
 
@@ -297,7 +297,7 @@ class ChallengeViewSet(viewsets.ModelViewSet):
             return self._publish_firestore(request, pk)
 
         challenge = self.get_object()
-        if challenge.created_by != request.user:
+        if str(challenge.created_by_id) != str(request.user.id):
             return Response({'error': 'Only the creator can publish this challenge.'},
                             status=status.HTTP_403_FORBIDDEN)
         if challenge.status == 'ended':
@@ -349,7 +349,7 @@ class ChallengeViewSet(viewsets.ModelViewSet):
             return self._unpublish_firestore(request, pk)
 
         challenge = self.get_object()
-        if challenge.created_by != request.user:
+        if str(challenge.created_by_id) != str(request.user.id):
             return Response({'error': 'Only the creator can unpublish this challenge.'},
                             status=status.HTTP_403_FORBIDDEN)
         if challenge.status not in ('active', 'paused'):
@@ -380,7 +380,7 @@ class ChallengeViewSet(viewsets.ModelViewSet):
             return self._destroy_firestore(request, kwargs.get('pk'))
 
         challenge = self.get_object()
-        if challenge.created_by != request.user:
+        if str(challenge.created_by_id) != str(request.user.id):
             return Response(
                 {'error': 'Only the creator can delete this challenge.'},
                 status=status.HTTP_403_FORBIDDEN,
