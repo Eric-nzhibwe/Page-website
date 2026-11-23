@@ -26,6 +26,23 @@ def _use_fs_social():
     return django_settings.FIRESTORE_COLLECTIONS.get('social', False)
 
 
+def _is_ephemeral(user):
+    """True when the request is Firebase-authenticated with no DB row."""
+    from users.firebase_token_auth import EphemeralUser
+    return isinstance(user, EphemeralUser)
+
+
+def _require_db_user(request):
+    """Return a 503 Response for ephemeral users, else None."""
+    if _is_ephemeral(request.user):
+        return Response(
+            {'error': 'This action requires a database-backed account. '
+                      'Please sign in with email/password.'},
+            status=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
+    return None
+
+
 def _resolve_user_id(request, param='user_id'):
     """
     Safely resolve a user_id query param, treating 'null'/'undefined'/''
@@ -333,6 +350,8 @@ class PostViewSet(viewsets.ModelViewSet):
             return Response(result, status=code)
 
         post     = self.get_object()
+        guarded = _require_db_user(request)
+        if guarded: return guarded
         reaction, created = PostReaction.objects.update_or_create(
             post=post, user=request.user,
             defaults={'reaction_type': reaction_type}
@@ -352,6 +371,8 @@ class PostViewSet(viewsets.ModelViewSet):
                             status=status.HTTP_404_NOT_FOUND)
 
         post     = self.get_object()
+        guarded = _require_db_user(request)
+        if guarded: return guarded
         reaction = post.reactions.filter(user=request.user).first()
         if reaction:
             reaction.delete()
@@ -367,6 +388,8 @@ class PostViewSet(viewsets.ModelViewSet):
         if not platform:
             return Response({'error': 'Platform is required'},
                             status=status.HTTP_400_BAD_REQUEST)
+        guarded = _require_db_user(request)
+        if guarded: return guarded
         share, created = PostShare.objects.get_or_create(
             post=post, user=request.user, platform=platform
         )
@@ -506,6 +529,8 @@ class CommentViewSet(viewsets.ModelViewSet):
     def react(self, request, pk=None):
         comment      = self.get_object()
         reaction_type = request.data.get('reaction_type', 'fire')
+        guarded = _require_db_user(request)
+        if guarded: return guarded
         reaction, created = CommentReaction.objects.update_or_create(
             comment=comment, user=request.user,
             defaults={'reaction_type': reaction_type}
@@ -527,6 +552,8 @@ class CommentViewSet(viewsets.ModelViewSet):
                                   content, parent_id=str(pk))
             return Response(comment, status=status.HTTP_201_CREATED)
 
+        guarded = _require_db_user(request)
+        if guarded: return guarded
         parent_comment = self.get_object()
         reply = Comment.objects.create(
             post=parent_comment.post, author=request.user,
@@ -551,11 +578,38 @@ class FollowViewSet(viewsets.ViewSet):
         if not user_id:
             return Response({'error': 'user_id is required'}, status=status.HTTP_400_BAD_REQUEST)
         
-        user_to_follow = get_object_or_404(User, id=user_id)
+        user_to_follow = None
+        try:
+            user_to_follow = User.objects.get(id=user_id)
+        except (User.DoesNotExist, ValueError, TypeError):
+            return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
         
-        if request.user == user_to_follow:
+        if str(request.user.id) == str(user_to_follow.id):
             return Response({'error': 'Cannot follow yourself'}, status=status.HTTP_400_BAD_REQUEST)
-        
+
+        if _is_ephemeral(request.user):
+            # Ephemeral (Firebase-only) follower — record the follow in Firestore
+            try:
+                from page_platform.firebase_client import get_firestore
+                import datetime as _dt
+                db = get_firestore()
+                if db is None:
+                    return Response({'error': 'Social features temporarily unavailable.'},
+                                    status=status.HTTP_503_SERVICE_UNAVAILABLE)
+                ref = db.collection('social_follows').document(
+                    f'{request.user.id}_{user_to_follow.id}')
+                ref.set({
+                    'follower_id':     str(request.user.id),
+                    'follower_name':   request.user.display_name or request.user.username,
+                    'following_id':    str(user_to_follow.id),
+                    'following_name':  user_to_follow.display_name or user_to_follow.username,
+                    'created_at':      _dt.datetime.now(tz=_dt.timezone.utc),
+                })
+                return Response({'status': 'following'}, status=status.HTTP_201_CREATED)
+            except Exception:
+                return Response({'error': 'Could not follow user. Please try again.'},
+                                status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
         follow, created = Follow.objects.get_or_create(
             follower=request.user,
             following=user_to_follow
@@ -586,7 +640,25 @@ class FollowViewSet(viewsets.ViewSet):
         if not user_id:
             return Response({'error': 'user_id is required'}, status=status.HTTP_400_BAD_REQUEST)
         
-        user_to_unfollow = get_object_or_404(User, id=user_id)
+        user_to_unfollow = None
+        try:
+            user_to_unfollow = User.objects.get(id=user_id)
+        except (User.DoesNotExist, ValueError, TypeError):
+            return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        if _is_ephemeral(request.user):
+            try:
+                from page_platform.firebase_client import get_firestore
+                db = get_firestore()
+                if db is None:
+                    return Response({'error': 'Social features temporarily unavailable.'},
+                                    status=status.HTTP_503_SERVICE_UNAVAILABLE)
+                db.collection('social_follows').document(
+                    f'{request.user.id}_{user_to_unfollow.id}').delete()
+                return Response({'status': 'unfollowed'}, status=status.HTTP_200_OK)
+            except Exception:
+                return Response({'error': 'Could not unfollow user. Please try again.'},
+                                status=status.HTTP_503_SERVICE_UNAVAILABLE)
         
         follow = Follow.objects.filter(
             follower=request.user,
@@ -766,6 +838,21 @@ class StoryViewSet(viewsets.ModelViewSet):
         # ── Videos → fall back to default_storage ────────────────────────────
         # Videos are too large for base64 in Firestore (1 MB doc limit).
         # They still use whatever DEFAULT_FILE_STORAGE is configured.
+        # Without Cloudinary the file lands on the ephemeral filesystem, so
+        # reject the upload rather than hand out a URL that dies on the next
+        # deploy.
+        from django.conf import settings as _s
+        cloudinary_on = all([
+            _s.CLOUDINARY_STORAGE.get('CLOUD_NAME'),
+            _s.CLOUDINARY_STORAGE.get('API_KEY'),
+            _s.CLOUDINARY_STORAGE.get('API_SECRET'),
+        ])
+        if not cloudinary_on:
+            import logging
+            logging.getLogger(__name__).warning(
+                'Story video rejected — no durable storage configured (Cloudinary).')
+            return None, None
+
         import os
         from django.core.files.storage import default_storage
         from django.core.files.base import ContentFile
@@ -835,6 +922,9 @@ class StoryViewSet(viewsets.ModelViewSet):
 
         content = request.data.get('content', '').strip()
 
+        guarded = _require_db_user(request)
+        if guarded: return guarded
+
         from django.utils import timezone
         story = Story.objects.create(
             author     = request.user,
@@ -883,13 +973,17 @@ class StoryViewSet(viewsets.ModelViewSet):
         """Get stories feed for current user (Firestore or PostgreSQL)."""
         if self._use_firestore():
             from .firestore_story_service import get_story_feed
-            followed = list(request.user.following.values_list('following', flat=True))
+            followed = []
+            if not _is_ephemeral(request.user):
+                followed = list(request.user.following.values_list('following', flat=True))
             stories  = get_story_feed(followed, request.user.id)
             return Response(stories)
 
         # PostgreSQL fallback
         from django.utils import timezone
-        user           = request.user
+        user = request.user
+        if _is_ephemeral(user):
+            return Response([])
         followed_users = user.following.values_list('following', flat=True)
         stories = Story.objects.filter(
             Q(author=user) | Q(author__in=followed_users),
@@ -913,6 +1007,8 @@ class StoryViewSet(viewsets.ModelViewSet):
             return Response(result, status=code)
 
         # PostgreSQL fallback
+        guarded = _require_db_user(request)
+        if guarded: return guarded
         story = self.get_object()
         view, created = StoryView.objects.get_or_create(
             story=story, viewer=request.user
@@ -939,7 +1035,7 @@ class StoryViewSet(viewsets.ModelViewSet):
 
         # PostgreSQL fallback
         story = self.get_object()
-        if story.author != request.user:
+        if str(story.author_id) != str(request.user.id):
             return Response({'error': 'Permission denied'},
                             status=status.HTTP_403_FORBIDDEN)
         views      = story.views.all().order_by('-viewed_at')
@@ -979,7 +1075,7 @@ class StoryViewSet(viewsets.ModelViewSet):
                 pass
 
         # Send in-app notification to story author
-        if story_author and story_author != reactor:
+        if story_author and str(getattr(story_author, 'id', '')) != str(reactor.id):
             try:
                 from notifications.views import create_notification
                 create_notification(

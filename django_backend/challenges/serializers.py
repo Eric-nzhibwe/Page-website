@@ -137,10 +137,34 @@ class ChallengeCreateSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         image_file = validated_data.pop('image')
         request = self.context.get('request')
-        ext = os.path.splitext(image_file.name)[1].lower()
-        safe_name = f"challenges/{validated_data['title'][:40].replace(' ', '_')}{ext}"
-        path = default_storage.save(safe_name, ContentFile(image_file.read()))
-        image_url = request.build_absolute_uri(default_storage.url(path)) if request else default_storage.url(path)
+
+        # Prefer durable cloud storage when Cloudinary is configured.
+        from django.conf import settings as _s
+        cloudinary_on = all([
+            _s.CLOUDINARY_STORAGE.get('CLOUD_NAME'),
+            _s.CLOUDINARY_STORAGE.get('API_KEY'),
+            _s.CLOUDINARY_STORAGE.get('API_SECRET'),
+        ])
+
+        if cloudinary_on:
+            ext = os.path.splitext(image_file.name)[1].lower()
+            safe_name = f"challenges/{validated_data['title'][:40].replace(' ', '_')}{ext}"
+            path = default_storage.save(safe_name, ContentFile(image_file.read()))
+            image_url = (request.build_absolute_uri(default_storage.url(path))
+                         if request else default_storage.url(path))
+        else:
+            # No durable storage (Render free tier) — embed as base64 data URI
+            # so the image survives restarts and redeploys.  Capped to keep
+            # DB rows (and Firestore docs, if the FS flag is ever on) sane.
+            import base64
+            if image_file.size > 500 * 1024:
+                raise serializers.ValidationError(
+                    "Challenge image must be 500 KB or smaller when cloud storage is not configured."
+                )
+            ext = os.path.splitext(image_file.name)[1].lower().lstrip('.') or 'jpeg'
+            encoded = base64.b64encode(image_file.read()).decode('utf-8')
+            image_url = f'data:image/{ext};base64,{encoded}'
+
         return Challenge.objects.create(
             image_url=image_url,
             status='draft',   # always draft on creation

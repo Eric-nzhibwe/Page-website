@@ -298,7 +298,7 @@ class APIService {
      * Get global leaderboard
      */
     getGlobalLeaderboard() {
-        return this.get('/leaderboards/global_leaderboard/', { auth: false });
+        return this.get('/challenges/leaderboards/global_leaderboard/', { auth: false });
     }
 
     // ==================== ACTIVITIES ====================

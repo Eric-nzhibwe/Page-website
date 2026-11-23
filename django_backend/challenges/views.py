@@ -70,7 +70,7 @@ class ChallengeViewSet(viewsets.ModelViewSet):
 
     def _create_firestore(self, request, serializer):
         """Save a new challenge to Firestore."""
-        import os
+        import os, base64
         from django.core.files.storage import default_storage
         from django.core.files.base import ContentFile
         from .firestore_challenge_service import create_challenge
@@ -79,11 +79,30 @@ class ChallengeViewSet(viewsets.ModelViewSet):
         if not image_file:
             return Response({'error': 'Image is required.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        ext       = os.path.splitext(image_file.name)[1].lower()
-        safe_name = f"challenges/{serializer.validated_data['title'][:40].replace(' ', '_')}{ext}"
-        path      = default_storage.save(safe_name, ContentFile(image_file.read()))
-        image_url = (request.build_absolute_uri(default_storage.url(path))
-                     if request else default_storage.url(path))
+        # Durable storage when Cloudinary is configured; base64 otherwise
+        # (capped small — Firestore docs have a 1 MB limit).
+        from django.conf import settings as _s
+        cloudinary_on = all([
+            _s.CLOUDINARY_STORAGE.get('CLOUD_NAME'),
+            _s.CLOUDINARY_STORAGE.get('API_KEY'),
+            _s.CLOUDINARY_STORAGE.get('API_SECRET'),
+        ])
+
+        if cloudinary_on:
+            ext       = os.path.splitext(image_file.name)[1].lower()
+            safe_name = f"challenges/{serializer.validated_data['title'][:40].replace(' ', '_')}{ext}"
+            path      = default_storage.save(safe_name, ContentFile(image_file.read()))
+            image_url = (request.build_absolute_uri(default_storage.url(path))
+                         if request else default_storage.url(path))
+        else:
+            if image_file.size > 300 * 1024:
+                return Response(
+                    {'error': 'Challenge image must be 300 KB or smaller when cloud storage is not configured.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            ext     = os.path.splitext(image_file.name)[1].lower().lstrip('.') or 'jpeg'
+            encoded = base64.b64encode(image_file.read()).decode('utf-8')
+            image_url = f'data:image/{ext};base64,{encoded}'
 
         doc = create_challenge(serializer.validated_data, image_url, request.user)
         if doc is None:
@@ -432,6 +451,9 @@ class ChallengeSubmissionViewSet(viewsets.ModelViewSet):
         return django_settings.FIRESTORE_COLLECTIONS.get('submissions', False)
 
     def get_queryset(self):
+        from users.firebase_token_auth import EphemeralUser
+        if isinstance(self.request.user, EphemeralUser):
+            return ChallengeSubmission.objects.none()
         return ChallengeSubmission.objects.filter(
             user=self.request.user
         ).select_related('challenge', 'user')

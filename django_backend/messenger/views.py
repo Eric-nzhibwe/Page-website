@@ -67,6 +67,9 @@ class ConversationViewSet(viewsets.ModelViewSet):
         return ConversationListSerializer
 
     def get_queryset(self):
+        from users.firebase_token_auth import EphemeralUser
+        if isinstance(self.request.user, EphemeralUser):
+            return Conversation.objects.none()
         return (
             Conversation.objects
             .filter(participants=self.request.user)
@@ -90,13 +93,21 @@ class ConversationViewSet(viewsets.ModelViewSet):
 
         try:
             other_user = User.objects.get(id=other_user_id)
-        except User.DoesNotExist:
+        except (User.DoesNotExist, ValueError, TypeError):
             return Response({'error': 'User not found'},
                             status=status.HTTP_404_NOT_FOUND)
 
-        if other_user == request.user:
+        if str(other_user.id) == str(request.user.id):
             return Response({'error': 'Cannot start a conversation with yourself'},
                             status=status.HTTP_400_BAD_REQUEST)
+
+        from users.firebase_token_auth import EphemeralUser
+        if isinstance(request.user, EphemeralUser):
+            return Response(
+                {'error': 'Messaging requires a database-backed account. '
+                          'Please sign in with email/password.'},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
 
         # Find existing 1-on-1 conversation
         conversation = (
@@ -266,7 +277,12 @@ def available_users_view(request):
         thirty_days_ago = timezone.now() - timedelta(days=30)
 
         # Build base queryset excluding self
-        qs = User.objects.filter(is_active=True).exclude(id=request.user.id)
+        from users.firebase_token_auth import EphemeralUser
+        is_ephemeral = isinstance(request.user, EphemeralUser)
+        my_id = str(request.user.id) if not is_ephemeral else None
+        qs = User.objects.filter(is_active=True)
+        if my_id:
+            qs = qs.exclude(id=my_id)
 
         # Apply search filter if provided
         if q:
@@ -336,10 +352,16 @@ def available_users_view(request):
 @permission_classes([IsAuthenticated])
 def unread_count_view(request):
     """Total unread message count for the current user."""
-    count = Message.objects.filter(
-        conversation__participants=request.user,
-        read=False,
-    ).exclude(sender=request.user).count()
+    from users.firebase_token_auth import EphemeralUser
+    if isinstance(request.user, EphemeralUser):
+        return Response({'unread_count': 0})
+    try:
+        count = Message.objects.filter(
+            conversation__participants=request.user,
+            read=False,
+        ).exclude(sender=request.user).count()
+    except Exception:
+        count = 0
 
     return Response({'unread_count': count})
 

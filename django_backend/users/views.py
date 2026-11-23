@@ -519,13 +519,24 @@ class UserProfileView(generics.RetrieveUpdateAPIView):
         return Response({'message': 'No fields to update.'})
 
 
+def _is_ephemeral(user):
+    """True when the request is authenticated via Firebase with no DB row."""
+    from users.firebase_token_auth import EphemeralUser
+    return isinstance(user, EphemeralUser)
+
+
 class UserActivitiesView(generics.ListAPIView):
     """User activities endpoint"""
     serializer_class = UserActivitySerializer
     permission_classes = [permissions.IsAuthenticated]
     
     def get_queryset(self):
-        return UserActivity.objects.filter(user=self.request.user)[:20]
+        if _is_ephemeral(self.request.user):
+            return UserActivity.objects.none()
+        try:
+            return UserActivity.objects.filter(user=self.request.user)[:20]
+        except Exception:
+            return UserActivity.objects.none()
 
 
 class SubmitAnswerView(generics.CreateAPIView):
@@ -534,9 +545,22 @@ class SubmitAnswerView(generics.CreateAPIView):
     permission_classes = [permissions.IsAuthenticated]
     
     def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        submission = serializer.save()
+        # Ephemeral (Firebase-only) users cannot write submissions to the DB
+        if _is_ephemeral(request.user):
+            return Response(
+                {'error': 'Submissions require a database-backed account. '
+                          'Please sign in with email/password or contact support.'},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        try:
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            submission = serializer.save()
+        except Exception:
+            return Response(
+                {'error': 'Could not save your answer. Please try again.'},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
         
         # Return updated user profile
         user_data = UserProfileSerializer(request.user, context={'request': request}).data
@@ -719,6 +743,19 @@ def user_stats_view(request):
 @permission_classes([permissions.IsAuthenticated])
 def add_social_connection_view(request):
     """Add social media connection"""
+    if _is_ephemeral(request.user):
+        # Update Firestore profile instead — same pattern as _update_firestore_profile
+        try:
+            from users.firestore_user_service import update_user_fields
+            current = (request.user.social_connections or {})
+            current[request.data.get('platform', '')] = request.data
+            update_user_fields(str(request.user.id), {'social_connections': current})
+            return Response({'message': 'Social account connected.',
+                             'social_connections': current})
+        except Exception:
+            return Response({'error': 'Could not connect social account.'},
+                            status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
     serializer = SocialConnectionSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
     
@@ -740,6 +777,21 @@ def add_social_connection_view(request):
 @permission_classes([permissions.IsAuthenticated])
 def remove_social_connection_view(request, platform):
     """Remove social media connection"""
+    if _is_ephemeral(request.user):
+        try:
+            from users.firestore_user_service import update_user_fields
+            current = dict(request.user.social_connections or {})
+            removed = current.pop(platform, None)
+            if removed is None:
+                return Response({'error': f"No {platform} connection found"},
+                                status=status.HTTP_404_NOT_FOUND)
+            update_user_fields(str(request.user.id), {'social_connections': current})
+            return Response({'message': f"Successfully disconnected {platform} account",
+                            'social_connections': current})
+        except Exception:
+            return Response({'error': 'Could not disconnect social account.'},
+                            status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
     user = request.user
     connections = user.get_social_connections()
     
@@ -869,6 +921,13 @@ def change_password_view(request):
     if len(new_password) < 8:
         return Response(
             {'error': 'New password must be at least 8 characters.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if _is_ephemeral(request.user):
+        return Response(
+            {'error': 'This account uses Firebase sign-in. '
+                      'Please change your password via the Firebase login flow (forgot password).'},
             status=status.HTTP_400_BAD_REQUEST,
         )
 
@@ -1033,6 +1092,10 @@ def upload_avatar_view(request):
 @permission_classes([permissions.IsAuthenticated])
 def logout_all_devices_view(request):
     """Invalidate all tokens for the current user (logout all devices)."""
+    if _is_ephemeral(request.user):
+        # Firebase sessions are revoked client-side by signing out;
+        # there are no DRF tokens to delete for an ephemeral user.
+        return Response({'message': 'Logged out from all devices successfully.'})
     from rest_framework.authtoken.models import Token
     Token.objects.filter(user=request.user).delete()
     return Response({'message': 'Logged out from all devices successfully.'})
@@ -1042,8 +1105,13 @@ def logout_all_devices_view(request):
 @permission_classes([permissions.IsAuthenticated])
 def active_sessions_view(request):
     """Return a list of active tokens / sessions for the current user."""
+    if _is_ephemeral(request.user):
+        return Response({'sessions': []})
     from rest_framework.authtoken.models import Token
-    tokens = Token.objects.filter(user=request.user).values('key', 'created')
+    try:
+        tokens = Token.objects.filter(user=request.user).values('key', 'created')
+    except Exception:
+        return Response({'sessions': []})
     sessions = [
         {
             'key_preview': f"...{t['key'][-6:]}",
@@ -1060,8 +1128,17 @@ def active_sessions_view(request):
 def update_preferences_view(request):
     """Merge-update the user's stored preferences JSON."""
     user = request.user
-    current = user.preferences or {}
+    current = dict(user.preferences or {})
     current.update(request.data)
+    if _is_ephemeral(user):
+        # Persist to Firestore instead of the database
+        try:
+            from users.firestore_user_service import update_user_fields
+            update_user_fields(str(user.id), {'preferences': current})
+        except Exception:
+            return Response({'error': 'Could not save preferences.'},
+                            status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        return Response({'message': 'Preferences saved.', 'preferences': current})
     user.preferences = current
     user.save(update_fields=['preferences'])
     return Response({'message': 'Preferences saved.', 'preferences': user.preferences})
@@ -1071,6 +1148,12 @@ def update_preferences_view(request):
 @permission_classes([permissions.IsAuthenticated])
 def deactivate_account_view(request):
     """Deactivate (soft-disable) the user's account."""
+    if _is_ephemeral(request.user):
+        return Response(
+            {'error': 'This account is managed by Firebase. Please delete it '
+                      'from your Firebase account settings instead.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
     password = request.data.get('password', '').strip()
     if not password or not request.user.check_password(password):
         return Response({'error': 'Incorrect password.'}, status=status.HTTP_400_BAD_REQUEST)
@@ -1090,6 +1173,12 @@ def deactivate_account_view(request):
 @permission_classes([permissions.IsAuthenticated])
 def delete_account_view(request):
     """Permanently delete the user's account after password confirmation."""
+    if _is_ephemeral(request.user):
+        return Response(
+            {'error': 'This account is managed by Firebase. Please delete it '
+                      'from your Firebase account settings instead.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
     password = request.data.get('password', '').strip()
     confirm  = request.data.get('confirm', '').strip()
 
@@ -1551,7 +1640,11 @@ def password_reset_request_view(request):
     cache.set(rate_key, True, timeout=120)
 
     # Build the reset URL -- points to the frontend page
-    frontend_base = getattr(settings, 'FRONTEND_BASE_URL', 'http://localhost:8000').rstrip('/')
+    # Prefer the configured FRONTEND_BASE_URL; fall back to the request's own
+    # origin so links never point at localhost on a production host.
+    frontend_base = getattr(settings, 'FRONTEND_BASE_URL', '').rstrip('/')
+    if (not frontend_base) or 'localhost' in frontend_base:
+        frontend_base = request.build_absolute_uri('/').rstrip('/')
     reset_url = f'{frontend_base}/pages/forgot-password.html?token={token}'
 
     # Send email + SMS reset notifications

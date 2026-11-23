@@ -106,13 +106,31 @@ def create_alliance_view(request):
     logo_url = None
     logo_file = request.FILES.get('logo')
     if logo_file:
-        import os
+        import os, base64
         from django.core.files.storage import default_storage
         from django.core.files.base import ContentFile
-        ext       = os.path.splitext(logo_file.name)[1].lower()
-        safe_name = f"alliance_logos/{tag.upper()}_{tag}{ext}"
-        path      = default_storage.save(safe_name, ContentFile(logo_file.read()))
-        logo_url  = request.build_absolute_uri(default_storage.url(path))
+        ext = os.path.splitext(logo_file.name)[1].lower()
+
+        # When Cloudinary is configured, save to durable cloud storage.
+        # Otherwise the Render filesystem is ephemeral — a saved file would
+        # vanish on the next deploy, so embed as a base64 data URI instead
+        # (capped at 200 KB to keep the Firestore doc small).
+        from django.conf import settings as _s
+        cloudinary_on = all([
+            _s.CLOUDINARY_STORAGE.get('CLOUD_NAME'),
+            _s.CLOUDINARY_STORAGE.get('API_KEY'),
+            _s.CLOUDINARY_STORAGE.get('API_SECRET'),
+        ])
+        if cloudinary_on:
+            safe_name = f"alliance_logos/{tag.upper()}_{tag}{ext}"
+            path      = default_storage.save(safe_name, ContentFile(logo_file.read()))
+            logo_url  = request.build_absolute_uri(default_storage.url(path))
+        else:
+            if logo_file.size > 200 * 1024:
+                return Response({'error': 'Logo must be 200 KB or smaller.'},
+                                status=status.HTTP_400_BAD_REQUEST)
+            encoded = base64.b64encode(logo_file.read()).decode()
+            logo_url = f'data:image/{ext.lstrip(".")};base64,{encoded}'
 
     from .firestore_alliance_service import create_alliance
     try:

@@ -34,7 +34,9 @@ class Challenge(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     title = models.CharField(max_length=255)
     description = models.TextField()
-    image_url = models.URLField(max_length=500)
+    # TextField — accepts either a hosted URL (Cloudinary) or a base64
+    # data URI when no durable file storage is configured (Render free tier).
+    image_url = models.TextField(blank=True, default='')
 
     # Challenge type
     challenge_type = models.CharField(

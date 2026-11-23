@@ -30,7 +30,7 @@ def create_notification(recipient, notif_type, title, message, actor=None, link=
     Firestore regardless of the FIRESTORE_COLLECTIONS flag so that the
     frontend's onSnapshot listeners fire in real time for every user.
     """
-    if recipient == actor:
+    if recipient is not None and actor is not None and str(recipient.id) == str(actor.id):
         return None  # never notify yourself
 
     if _use_firestore():
@@ -41,6 +41,22 @@ def create_notification(recipient, notif_type, title, message, actor=None, link=
             _push_websocket(recipient, notif)
         return notif
     else:
+        # PostgreSQL path — the recipient must be a real DB user
+        from users.firebase_token_auth import EphemeralUser
+        if isinstance(recipient, EphemeralUser) or (actor is not None and isinstance(actor, EphemeralUser)):
+            # Can't write a DB FK for an ephemeral user — Firestore only
+            try:
+                from page_platform.firebase_client import firebase_enabled
+                if firebase_enabled():
+                    from .firestore_service import create_notification as fs_create
+                    notif = fs_create(recipient, notif_type, title, message, actor=actor, link=link)
+                    if notif:
+                        _push_websocket(recipient, notif)
+                    return notif
+            except Exception:
+                pass
+            return None
+
         notif = InAppNotification.objects.create(
             recipient=recipient,
             actor=actor,
@@ -117,6 +133,9 @@ def list_notifications(request):
         data         = fs_list(request.user, limit=50)
         unread       = sum(1 for n in data if not n['is_read'])
     else:
+        from users.firebase_token_auth import EphemeralUser
+        if isinstance(request.user, EphemeralUser):
+            return Response({'notifications': [], 'unread_count': 0})
         notifs = InAppNotification.objects.filter(
             recipient=request.user
         ).select_related('actor')[:50]
@@ -137,6 +156,9 @@ def mark_notifications_read(request):
         from .firestore_service import mark_read as fs_mark
         updated = fs_mark(request.user, ids=ids)
     else:
+        from users.firebase_token_auth import EphemeralUser
+        if isinstance(request.user, EphemeralUser):
+            return Response({'marked_read': 0})
         qs = InAppNotification.objects.filter(recipient=request.user, is_read=False)
         if ids:
             qs = qs.filter(id__in=ids)

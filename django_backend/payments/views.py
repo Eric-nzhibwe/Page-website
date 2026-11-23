@@ -37,14 +37,38 @@ class PaymentHistoryView(generics.ListAPIView):
     serializer_class   = PaymentSerializer
     permission_classes = [permissions.IsAuthenticated]
     def get_queryset(self):
-        return Payment.objects.filter(user=self.request.user).order_by('-created_at')
+        from users.firebase_token_auth import EphemeralUser
+        if isinstance(self.request.user, EphemeralUser):
+            return Payment.objects.none()
+        try:
+            return Payment.objects.filter(user=self.request.user).order_by('-created_at')
+        except Exception:
+            return Payment.objects.none()
 
 
 class WithdrawalHistoryView(generics.ListAPIView):
     serializer_class   = WithdrawalSerializer
     permission_classes = [permissions.IsAuthenticated]
     def get_queryset(self):
-        return Withdrawal.objects.filter(user=self.request.user).order_by('-created_at')
+        from users.firebase_token_auth import EphemeralUser
+        if isinstance(self.request.user, EphemeralUser):
+            return Withdrawal.objects.none()
+        try:
+            return Withdrawal.objects.filter(user=self.request.user).order_by('-created_at')
+        except Exception:
+            return Withdrawal.objects.none()
+
+
+def _require_db_user(request):
+    """Return a 503 Response if the user is ephemeral (no DB row), else None."""
+    from users.firebase_token_auth import EphemeralUser
+    if isinstance(request.user, EphemeralUser):
+        return Response(
+            {'error': 'Wallet operations require a database-backed account. '
+                      'Please sign in with email/password.'},
+            status=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
+    return None
 
 
 @api_view(['GET'])
@@ -58,6 +82,8 @@ def payment_status_view(request, payment_id):
         if fs_status:
             return Response(fs_status)
 
+    guarded = _require_db_user(request)
+    if guarded: return guarded
     try:
         payment = Payment.objects.get(id=payment_id, user=request.user)
     except Payment.DoesNotExist:
@@ -68,6 +94,8 @@ def payment_status_view(request, payment_id):
 @api_view(['GET'])
 @permission_classes([permissions.IsAuthenticated])
 def withdrawal_status_view(request, withdrawal_id):
+    guarded = _require_db_user(request)
+    if guarded: return guarded
     try:
         withdrawal = Withdrawal.objects.get(id=withdrawal_id, user=request.user)
     except Withdrawal.DoesNotExist:
@@ -78,6 +106,8 @@ def withdrawal_status_view(request, withdrawal_id):
 @api_view(['GET'])
 @permission_classes([permissions.IsAuthenticated])
 def payment_audit_log_view(request, payment_id):
+    guarded = _require_db_user(request)
+    if guarded: return guarded
     try:
         payment = Payment.objects.get(id=payment_id, user=request.user)
     except Payment.DoesNotExist:
@@ -103,6 +133,9 @@ def deposit_funds_view(request):
             {'error': 'Invalid request.', 'details': serializer.errors},
             status=status.HTTP_400_BAD_REQUEST
         )
+
+    guarded = _require_db_user(request)
+    if guarded: return guarded
 
     wallet, _ = Wallet.objects.get_or_create(user=request.user)
     if wallet.is_locked:
@@ -174,6 +207,9 @@ def withdraw_funds_view(request):
     if not serializer.is_valid():
         return Response({'error': 'Invalid request.', 'details': serializer.errors},
                         status=status.HTTP_400_BAD_REQUEST)
+
+    guarded = _require_db_user(request)
+    if guarded: return guarded
 
     user   = request.user
     amount = serializer.validated_data['amount']
@@ -280,6 +316,9 @@ def wallet_balance_view(request):
             return Response({'wallet': fs_wallet, 'source': 'firestore'})
         # Fall through to PostgreSQL if Firestore doc doesn't exist yet
 
+    guarded = _require_db_user(request)
+    if guarded: return guarded
+
     wallet, _ = Wallet.objects.get_or_create(user=request.user)
     if wallet.total_earned != request.user.total_earnings:
         wallet.total_earned = request.user.total_earnings
@@ -305,6 +344,9 @@ def transaction_history_view(request):
         if txs is not None:
             return Response({'transactions': txs, 'count': len(txs)})
 
+    guarded = _require_db_user(request)
+    if guarded: return guarded
+
     wallet, _ = Wallet.objects.get_or_create(user=request.user)
     qs = wallet.transactions.all()
     if tx_type:
@@ -329,6 +371,9 @@ def add_game_earnings_view(request):
     except Exception:
         return Response({'error': 'Invalid amount.'}, status=status.HTTP_400_BAD_REQUEST)
 
+    guarded = _require_db_user(request)
+    if guarded: return guarded
+
     wallet, _ = Wallet.objects.get_or_create(user=request.user)
     try:
         wallet.add_funds(amount=amount, transaction_type='earning',
@@ -349,6 +394,8 @@ def add_game_earnings_view(request):
 def withdrawal_limits_view(request):
     from django.db.models import Sum
     from django.utils import timezone as tz
+    guarded = _require_db_user(request)
+    if guarded: return guarded
     user  = request.user
     today = tz.now().date()
     now   = tz.now()

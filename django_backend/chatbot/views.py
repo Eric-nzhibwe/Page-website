@@ -35,7 +35,24 @@ def chat_view(request):
 
     if _use_firestore():
         return _chat_firestore(request, message, conversation_id)
+
+    # PostgreSQL path — ephemeral users have no DB row for the FK
+    from users.firebase_token_auth import EphemeralUser
+    if isinstance(request.user, EphemeralUser):
+        return _chat_stateless(request, message)
     return _chat_postgres(request, message, conversation_id)
+
+
+def _chat_stateless(request, message):
+    """Stateless chat for ephemeral users — no history persisted."""
+    ai_response, ai_source = _call_ai(message, [], request.user)
+    return Response({
+        'conversation_id': None,
+        'reply':           ai_response,
+        'user_message':    {'role': 'user', 'content': message},
+        'ai_message':      {'role': 'assistant', 'content': ai_response},
+        'ai_source':       ai_source,
+    })
 
 
 def _chat_firestore(request, message, conversation_id):
@@ -155,6 +172,9 @@ def conversation_list_view(request):
         data = list_conversations(request.user, limit=20)
         return Response({'conversations': data})
 
+    from users.firebase_token_auth import EphemeralUser
+    if isinstance(request.user, EphemeralUser):
+        return Response({'conversations': []})
     conversations = ChatConversation.objects.filter(user=request.user)[:20]
     return Response({'conversations': ChatConversationSerializer(conversations, many=True).data})
 
@@ -188,6 +208,9 @@ def conversation_delete_view(request, conversation_id):
             return Response({'error': 'Not found.'}, status=404)
         return Response({'message': 'Conversation deleted'})
 
+    from users.firebase_token_auth import EphemeralUser
+    if isinstance(request.user, EphemeralUser):
+        return Response({'error': 'Not found.'}, status=404)
     conversation = get_object_or_404(
         ChatConversation, id=conversation_id, user=request.user
     )
@@ -206,6 +229,12 @@ def conversation_new_view(request):
             return Response({'error': 'Could not create conversation.'}, status=500)
         return Response({'conversation_id': conv['id'], 'message': 'New conversation started'})
 
+    from users.firebase_token_auth import EphemeralUser
+    if isinstance(request.user, EphemeralUser):
+        return Response(
+            {'error': 'Conversations require a database-backed account.'},
+            status=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
     conversation = ChatConversation.objects.create(
         user=request.user, title='New Conversation'
     )
