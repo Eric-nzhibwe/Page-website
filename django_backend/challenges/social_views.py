@@ -644,17 +644,30 @@ def post_qa_answer(request, qa_id):
         return Response({'error': 'Q&A not found.'}, status=404)
 
     ledger = XPointsLedger.get_or_create_for(request.user)
-    if not ledger.spend(XPOINTS_ENTRY_COST):
-        return Response({'error': f'Need {XPOINTS_ENTRY_COST} xP to answer.'}, status=402)
 
     # One answer per user — enforce before spending xP
     if QAAnswer.objects.filter(qa=qa, user=request.user).exists():
         return Response({'error': 'You have already answered this question.'}, status=409)
 
+    # Ensure the answerer is recorded as a participant.
+    # If they skipped the explicit join step, create the record now.
+    participant, participant_created = QAParticipant.objects.get_or_create(
+        qa=qa, user=request.user
+    )
+
+    # Only charge xP if they haven't already paid to join
+    if participant_created:
+        if not ledger.spend(XPOINTS_ENTRY_COST):
+            # Roll back participant record — can't participate without xP
+            participant.delete()
+            return Response({'error': f'Need {XPOINTS_ENTRY_COST} xP to answer.'}, status=402)
+
     answer = QAAnswer.objects.create(qa=qa, user=request.user, text=text)
     ledger.earn(XPOINTS_EARN)
 
-    # Broadcast via WebSocket
+    participant_count = QAParticipant.objects.filter(qa=qa).count()
+
+    # Broadcast the answer to all WS listeners
     payload = {
         'user':       request.user.username,
         'text':       text,
@@ -662,12 +675,21 @@ def post_qa_answer(request, qa_id):
     }
     _broadcast_qa(str(qa_id), payload)
 
+    # If this was the first time they became a participant, also broadcast
+    # the updated participant count so all cards update in real time
+    if participant_created:
+        _broadcast_qa_join(str(qa_id), {
+            'user':              request.user.username,
+            'participant_count': participant_count,
+        })
+
     return Response({
-        'id':         str(answer.id),
-        'user':       request.user.username,
-        'text':       text,
-        'created_at': answer.created_at.isoformat(),
-        'balance':    ledger.balance,
+        'id':                str(answer.id),
+        'user':              request.user.username,
+        'text':              text,
+        'created_at':        answer.created_at.isoformat(),
+        'balance':           ledger.balance,
+        'participant_count': participant_count,
     }, status=201)
 
 

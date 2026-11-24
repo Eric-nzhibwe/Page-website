@@ -2106,7 +2106,7 @@ async function _chJoinQA(id) {
 
     try {
         const res = await _chPost(`${_CH_API}/qa/${id}/join/`, {});
-        const data = res || {};
+        const data = res?.data || {};
 
         // Swap gate → input tray
         if (joinGate)  joinGate.style.display  = 'none';
@@ -2117,6 +2117,25 @@ async function _chJoinQA(id) {
             countEl.textContent = data.participant_count;
             const labelEl = countEl.parentElement?.querySelector('.qa-participant-label');
             if (labelEl) labelEl.textContent = `participant${data.participant_count !== 1 ? 's' : ''}`;
+            // Flash so the joiner sees the count animate
+            countEl.closest('.qa-new-meta-participants')?.classList.add('qa-count-flash');
+            setTimeout(() => countEl.closest('.qa-new-meta-participants')?.classList.remove('qa-count-flash'), 800);
+        }
+
+        // Add joiner's own pip to the participant strip
+        const username = _currentUsername();
+        if (username) {
+            const card = document.querySelector(`.challenge-card[data-id="${id}"]`);
+            const pipWrap = card?.querySelector('.qa-participant-avatars');
+            if (pipWrap && !pipWrap.querySelector(`[title="${CSS.escape(username)}"]`)) {
+                const [pipBg] = _qaUserColors(username);
+                const pip = document.createElement('span');
+                pip.className = 'qa-participant-pip';
+                pip.style.setProperty('--qa-pip-bg', pipBg);
+                pip.title = username;
+                pip.textContent = (username[0] || '?').toUpperCase();
+                pipWrap.appendChild(pip);
+            }
         }
 
         // Auto-open the answers panel and focus the input
@@ -2460,7 +2479,8 @@ async function _chSubmitQA(event, id) {
 
     // ── Send to API ──────────────────────────────────────────────────────────
     try {
-        await _chPost(`${_CH_API}/qa/${id}/answer/`, { text });
+        const res = await _chPost(`${_CH_API}/qa/${id}/answer/`, { text });
+        const answerData = res?.data || {};
 
         // Update status to delivered tick (like messenger)
         const bubble = pane?.querySelector(`[data-optimistic-id="${optimisticId}"]`);
@@ -2468,6 +2488,19 @@ async function _chSubmitQA(event, id) {
         if (statusSpan) {
             statusSpan.innerHTML = '<i class="fas fa-check-double"></i>';
             statusSpan.classList.add('qa-bubble-status--sent');
+        }
+
+        // If the server returned an updated participant count (e.g. user skipped
+        // the join gate and answered directly), update the visible count now
+        if (answerData.participant_count != null) {
+            const countEl = document.getElementById(`qaCount_${id}`);
+            if (countEl) {
+                countEl.textContent = answerData.participant_count;
+                const labelEl = countEl.parentElement?.querySelector('.qa-participant-label');
+                if (labelEl) labelEl.textContent = `participant${answerData.participant_count !== 1 ? 's' : ''}`;
+                countEl.closest('.qa-new-meta-participants')?.classList.add('qa-count-flash');
+                setTimeout(() => countEl.closest('.qa-new-meta-participants')?.classList.remove('qa-count-flash'), 800);
+            }
         }
 
         // Update the answers badge count
