@@ -1823,8 +1823,7 @@ function _renderQACard(c) {
     const prizeText = hasPrize ? `K${parseFloat(c.prize_amount).toFixed(0)}` : '';
 
     // ── Participant count ─────────────────────────────────────────────────
-    const uniqueUsers     = [...new Set(answers.map(a => a.user))];
-    const participantCount= c.participant_count ?? uniqueUsers.length;
+    const participantCount= c.participant_count ?? (c.participants?.length ?? 0);
 
     // ── Question count ────────────────────────────────────────────────────
     const questionCount = c.question_count ?? c.num_questions ?? 10;
@@ -1856,12 +1855,21 @@ function _renderQACard(c) {
     const answersHTML = answers.slice(-12).map(a => _renderQABubble(a, currentUser, creatorUser)).join('');
 
     // ── Participant pip strip ─────────────────────────────────────────────
-    const visibleUsers = uniqueUsers.slice(0, 5);
-    const overflow     = uniqueUsers.length > 5 ? uniqueUsers.length - 5 : 0;
+    // Build from the dedicated participants list when available, fall back to
+    // unique answer authors so the strip is always populated on first render.
+    const participantUsernames = c.participants?.length
+        ? c.participants.map(p => p.username).filter(Boolean)
+        : [...new Set(answers.map(a => a.user))];
+    const visibleUsers = participantUsernames.slice(0, 5);
+    const overflow     = participantUsernames.length > 5 ? participantUsernames.length - 5 : 0;
     const pipsHTML = visibleUsers.map(u => {
         const [bg] = _qaUserColors(u);
         return `<span class="qa-participant-pip" style="--qa-pip-bg:${bg};" title="${escHtml(u)}">${u[0].toUpperCase()}</span>`;
     }).join('') + (overflow ? `<span class="qa-participant-pip qa-pip-overflow">+${overflow}</span>` : '');
+
+    // ── Open answers panel by default when there is already content ───────
+    const hasContent   = answers.length > 0 || participantUsernames.length > 0;
+    const panelOpen    = hasContent || isOwner; // creator always sees the panel open
 
     // ── Input state ───────────────────────────────────────────────────────
     const userAlreadyAnswered = _qaHasAnswered(id, currentUser);
@@ -1966,11 +1974,11 @@ function _renderQACard(c) {
 
         <!-- ══ LIVE ANSWERS PANE (collapsible) ════════════════════════ -->
         <div class="qa-new-answers-wrap">
-            <button class="qa-new-answers-toggle" onclick="_qaToggleAnswers('${id}')" aria-expanded="false" aria-controls="qaLive_${id}">
+            <button class="qa-new-answers-toggle" onclick="_qaToggleAnswers('${id}')" aria-expanded="${panelOpen}" aria-controls="qaLive_${id}">
                 <span><i class="fas fa-comments"></i> Answers <span class="qa-new-ans-badge">${answers.length}</span></span>
-                <i class="fas fa-chevron-down qa-new-toggle-caret"></i>
+                <i class="fas fa-chevron-down qa-new-toggle-caret" style="${panelOpen ? 'transform:rotate(180deg)' : ''}"></i>
             </button>
-            <div class="qa-new-answers-panel" id="qaAnswersPanel_${id}" hidden>
+            <div class="qa-new-answers-panel" id="qaAnswersPanel_${id}" ${panelOpen ? '' : 'hidden'}>
                 <div class="qa-live-pane" id="qaLive_${id}" role="log" aria-live="polite" aria-label="Answers">
                     ${answersHTML || `<div class="qa-empty-hint">
                         <div class="qa-empty-icon"><i class="fas fa-comments"></i></div>

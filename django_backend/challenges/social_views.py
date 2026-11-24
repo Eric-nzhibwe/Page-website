@@ -528,7 +528,12 @@ def qa_list(request):
     data = []
     for q in qas:
         answers = list(q.answers.select_related('user').order_by('-created_at')[:20])
-        participant_count = QAParticipant.objects.filter(qa=q).count()
+        participants = list(
+            QAParticipant.objects.filter(qa=q)
+            .select_related('user')
+            .order_by('joined_at')[:20]
+        )
+        participant_count = len(participants)
         data.append({
             'id':                str(q.id),
             'title':             q.title,
@@ -542,6 +547,10 @@ def qa_list(request):
             'created_at':        q.created_at.isoformat(),
             'participant_count': participant_count,
             'user_joined':       q.id in user_joined,
+            'participants': [
+                {'username': p.user.username}
+                for p in participants
+            ],
             'answers': [
                 {
                     'user':       a.user.username,
@@ -570,6 +579,16 @@ def qa_detail(request, qa_id):
         qa.answers.select_related('user')
         .order_by('-created_at')[:20]
     )
+    participants = list(
+        qa.participants.select_related('user')
+        .order_by('joined_at')[:20]
+    )
+    participant_count = QAParticipant.objects.filter(qa=qa).count()
+
+    user_joined = False
+    if request.user.is_authenticated:
+        user_joined = QAParticipant.objects.filter(qa=qa, user=request.user).exists()
+
     return Response({
         'id': str(qa.id),
         'title': qa.title,
@@ -581,6 +600,12 @@ def qa_detail(request, qa_id):
         'created_by': qa.created_by.username,
         'creator': _creator_obj(qa.created_by),
         'created_at': qa.created_at.isoformat(),
+        'participant_count': participant_count,
+        'user_joined': user_joined,
+        'participants': [
+            {'username': p.user.username}
+            for p in participants
+        ],
         'answers': [
             {
                 'user': a.user.username,
