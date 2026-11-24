@@ -2022,7 +2022,7 @@ function _renderQACard(c) {
                 <span class="qa-new-btn-start-arrow"><i class="fas fa-arrow-right"></i></span>
             </button>
             <button class="qa-new-icon-btn" title="Share"
-                    onclick="(navigator.share?navigator.share({title:${JSON.stringify(c.title)},url:location.origin+'/pages/${detailUrl}'}):navigator.clipboard.writeText(location.origin+'/pages/${detailUrl}').then(()=>showToast('Link copied!','success')))">
+                    onclick="_qaShareChallenge('${escHtml(String(c.title))}','${detailUrl}')">
                 <i class="fas fa-share-nodes"></i>
             </button>
             <button class="qa-new-icon-btn" title="View answers" onclick="_qaToggleAnswers('${id}')">
@@ -2031,6 +2031,17 @@ function _renderQACard(c) {
         </div>
 
     </div>`;
+}
+
+function _qaShareChallenge(title, relativeUrl) {
+    const fullUrl = `${location.origin}/pages/${relativeUrl}`;
+    if (navigator.share) {
+        navigator.share({ title, url: fullUrl }).catch(() => {});
+    } else {
+        navigator.clipboard.writeText(fullUrl)
+            .then(() => showToast('Link copied!', 'success'))
+            .catch(() => showToast('Could not copy link.', 'error'));
+    }
 }
 
 function _qaOnInput(input, id) {
