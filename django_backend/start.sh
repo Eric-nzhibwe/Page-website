@@ -21,7 +21,10 @@ for i in $(seq 1 $MAX_RETRIES); do
         sleep $RETRY_DELAY
     fi
     if [ "$i" = "$MAX_RETRIES" ]; then
-        echo "   WARNING: Migrations failed after $MAX_RETRIES attempts. Starting server anyway."
+        echo "   FATAL: Migrations failed after $MAX_RETRIES attempts."
+        echo "   The database has no tables — restore/superuser/sync would all fail."
+        echo "   Failing the deploy instead of starting a broken server."
+        exit 1
     fi
 done
 

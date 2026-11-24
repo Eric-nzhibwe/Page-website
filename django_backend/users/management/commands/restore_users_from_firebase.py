@@ -295,6 +295,7 @@ class Command(BaseCommand):
         ]
         str_fields = [
             'bio', 'location', 'website', 'power_rank', 'access_tier',
+            'avatar_url',
         ]
         bool_fields = ['is_verified']
 
