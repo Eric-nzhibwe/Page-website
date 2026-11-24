@@ -1740,6 +1740,9 @@ function _qaConnectWS(cardId) {
                             pip.textContent = (p.user[0] || '?').toUpperCase();
                             pipWrap.appendChild(pip);
                         }
+                        // Open the answers panel so the creator can see the new joiner
+                        const panel = document.getElementById(`qaAnswersPanel_${cardId}`);
+                        if (panel?.hidden) _qaToggleAnswers(cardId);
                     }
                 }
             } catch (_) {}

@@ -220,23 +220,58 @@ class ChallengeViewSet(viewsets.ModelViewSet):
         ]
 
         # ── Q&As ──────────────────────────────────────────────────────────────
+        from .models import QAAnswer, QAParticipant
         qas = QAChallenge.objects.filter(is_active=True).select_related('created_by')
-        qas_data = [
-            {
-                'id':             str(q.id),
-                'challenge_type': 'qa',
-                'title':          q.title,
-                'description':    q.description,
-                'image_url':      q.image_url,
-                'prize_amount':   str(q.prize_amount),
-                'difficulty':     q.difficulty,
-                'duration_days':  q.duration_days,
-                'created_by':     q.created_by.username,
-                'creator':        _creator_info(q.created_by),
-                'created_at':     q.created_at.isoformat(),
-            }
-            for q in qas
-        ]
+
+        # Pre-fetch answers and participants for all QAs in two bulk queries
+        all_qa_ids = [q.id for q in qas]
+        from django.db.models import Prefetch
+        qa_answers_qs = QAAnswer.objects.select_related('user').order_by('-created_at')
+        qa_parts_qs   = QAParticipant.objects.select_related('user').order_by('joined_at')
+        qas = qas.prefetch_related(
+            Prefetch('answers',      queryset=qa_answers_qs),
+            Prefetch('participants', queryset=qa_parts_qs),
+        )
+
+        # Determine which QAs the current user has joined (single query)
+        user_joined_qas = set()
+        if request.user.is_authenticated:
+            user_joined_qas = set(
+                QAParticipant.objects.filter(user=request.user, qa__in=all_qa_ids)
+                .values_list('qa_id', flat=True)
+            )
+
+        qas_data = []
+        for q in qas:
+            answers      = list(q.answers.all())[:20]
+            participants = list(q.participants.all())[:20]
+            qas_data.append({
+                'id':                str(q.id),
+                'challenge_type':    'qa',
+                'title':             q.title,
+                'description':       q.description,
+                'image_url':         q.image_url,
+                'prize_amount':      str(q.prize_amount),
+                'difficulty':        q.difficulty,
+                'duration_days':     q.duration_days,
+                'created_by':        q.created_by.username,
+                'creator':           _creator_info(q.created_by),
+                'created_at':        q.created_at.isoformat(),
+                'participant_count': len(participants),
+                'user_joined':       q.id in user_joined_qas,
+                'participants': [
+                    {'username': p.user.username}
+                    for p in participants
+                ],
+                'answers': [
+                    {
+                        'user':       a.user.username,
+                        'text':       a.text,
+                        'created_at': a.created_at.isoformat(),
+                    }
+                    for a in reversed(answers)
+                ],
+            })
 
         # Merge and sort by created_at descending
         merged = list(std_data) + polls_data + debates_data + qas_data
