@@ -28,7 +28,12 @@
         <i class="fas fa-arrow-left"></i>
     </button>
     <span class="cd-topbar-title" id="cdTopbarTitle">Challenge</span>
-    <div class="cd-topbar-spacer"></div>
+    <div class="user-avatar-btn" id="userAvatarBtn" data-current-user-avatar
+         onclick="window.location.href='profile.html'" title="My Profile"
+         role="button" tabindex="0"
+         onkeydown="if(event.key==='Enter'||event.key===' '){window.location.href='profile.html';}">
+        <i class="fas fa-user"></i>
+    </div>
 </header>
 
 <!-- ══════════════════════════════════════════════════════════════════════════
@@ -717,6 +722,68 @@ function showToast(msg, type = 'info') {
         toast.addEventListener('transitionend', () => toast.remove(), { once: true });
     }, 3500);
 }
+
+// ── Logged-in user avatar in topbar ──────────────────────────────────────────
+(function initTopbarAvatar() {
+    const colours = ['#6c63ff','#e74c3c','#2ecc71','#f39c12','#1abc9c','#9b59b6','#3498db','#e67e22'];
+
+    function letterCircleHTML(letter) {
+        const colour = colours[(letter || '?').charCodeAt(0) % colours.length];
+        const l = String(letter || '?').toUpperCase()
+            .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        return `<span style="display:inline-flex;align-items:center;justify-content:center;
+            width:100%;height:100%;border-radius:50%;background:${colour};
+            color:#fff;font-weight:700;font-size:14px;user-select:none;">${l}</span>`;
+    }
+
+    function stampAvatar(user) {
+        const container = document.getElementById('userAvatarBtn');
+        if (!container) return;
+
+        const url = user.profile_image_url || user.avatar_url || user.profile_image || null;
+        if (url) {
+            const name = (user.display_name || user.username || '').replace(/"/g, '&quot;');
+            container.innerHTML = `<img src="${url}" alt="${name}"
+                style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;"
+                onerror="this.parentElement.innerHTML='${letterCircleHTML((user.display_name || user.username || '?')[0])}'">`;
+        } else {
+            const name = user.display_name || user.username || '';
+            const initial = name ? name.charAt(0).toUpperCase() : null;
+            if (initial) {
+                container.innerHTML = letterCircleHTML(initial);
+            }
+            // else: keep the default fa-user icon
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        // 1. Stamp immediately from cache
+        try {
+            const user = JSON.parse(localStorage.getItem('pageUser') || '{}');
+            if (user.username || user.display_name) stampAvatar(user);
+        } catch (_) {}
+
+        // 2. Refresh from API
+        const token = localStorage.getItem('djangoAuthToken') || localStorage.getItem('authToken');
+        if (!token) return;
+        const base = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+            ? 'http://localhost:8000/api' : `${window.location.origin}/api`;
+
+        fetch(`${base}/auth/profile/`, { headers: { Authorization: `Token ${token}` } })
+            .then(r => r.ok ? r.json() : null)
+            .then(user => {
+                if (!user) return;
+                const stored = JSON.parse(localStorage.getItem('pageUser') || '{}');
+                const merged = { ...stored, ...user,
+                    profile_image_url: user.profile_image_url || stored.profile_image_url || null,
+                    avatar_url: user.avatar_url || stored.avatar_url || null,
+                };
+                localStorage.setItem('pageUser', JSON.stringify(merged));
+                stampAvatar(merged);
+            })
+            .catch(() => {});
+    });
+})();
 </script>
 
 </body>
