@@ -1697,10 +1697,16 @@ function _qaConnectWS(cardId) {
                 const msg = JSON.parse(e.data);
                 if (msg.type === 'qa_answer') {
                     const p = msg.payload || {};
-                    // Deduplicate: don't re-render if this user's bubble already exists
-                    if (_qaHasAnswered(cardId, p.user)) return;
+                    // Don't re-append a bubble that the local submit already added
+                    // (options.own path). For remote answers, always show them.
+                    const isOwnAnswer = p.user === _currentUsername();
+                    if (isOwnAnswer && _qaHasAnswered(cardId, p.user)) return;
                     _qaMarkAnswered(cardId, p.user);
-                    _appendQAAnswer(cardId, p, { now: false });
+                    _appendQAAnswer(cardId, p, { now: false, own: isOwnAnswer });
+
+                    // Auto-open the answers panel so the creator sees incoming answers
+                    const panel = document.getElementById(`qaAnswersPanel_${cardId}`);
+                    if (panel?.hidden) _qaToggleAnswers(cardId);
                 } else if (msg.type === 'qa_participant_joined') {
                     // Update the participant count + label in realtime for all viewers
                     const p = msg.payload || {};
@@ -1719,6 +1725,20 @@ function _qaConnectWS(cardId) {
                                                ?.querySelector('.qa-participant-label');
                         if (labelEl) {
                             labelEl.textContent = `participant${p.participant_count !== 1 ? 's' : ''}`;
+                        }
+                    }
+                    // Add a pip for the new participant if not already present
+                    if (p.user) {
+                        const card = document.querySelector(`.challenge-card[data-id="${cardId}"]`);
+                        const pipWrap = card?.querySelector('.qa-participant-avatars');
+                        if (pipWrap && !pipWrap.querySelector(`[title="${CSS.escape(p.user)}"]`)) {
+                            const [pipBg] = _qaUserColors(p.user);
+                            const pip = document.createElement('span');
+                            pip.className = 'qa-participant-pip';
+                            pip.style.setProperty('--qa-pip-bg', pipBg);
+                            pip.title = p.user;
+                            pip.textContent = (p.user[0] || '?').toUpperCase();
+                            pipWrap.appendChild(pip);
                         }
                     }
                 }
@@ -2186,13 +2206,11 @@ function _appendQAAnswer(id, answer, options = {}) {
     if (messages.length > 15) messages[0].remove();
     pane.scrollTo({ top: pane.scrollHeight, behavior: options.now ? 'smooth' : 'auto' });
 
-    // Update answer counter
-    const count = document.getElementById(`qaCount_${id}`)
-               || pane.closest('.challenge-card')?.querySelector('.qa-answer-count');
-    if (count) {
-        const match = count.textContent.match(/\d+/);
-        const next  = match ? Number(match[0]) + 1 : 1;
-        count.innerHTML = `<i class="fas fa-comment-dots"></i> ${next} answer${next === 1 ? '' : 's'}`;
+    // Update answer badge on the toggle button (NOT the participant count)
+    const toggleBtn = pane.closest('.qa-new-answers-wrap')?.querySelector('.qa-new-ans-badge');
+    if (toggleBtn) {
+        const current = parseInt(toggleBtn.textContent, 10) || 0;
+        toggleBtn.textContent = current + 1;
     }
 
     // Update participant pip strip
