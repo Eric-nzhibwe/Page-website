@@ -37,6 +37,14 @@ echo "==> Restoring users from Firebase Auth + Firestore..."
 # Ensures users are never lost even after an SQLite wipe (Render ephemeral disk).
 python manage.py restore_users_from_firebase || echo "   WARNING: restore_users_from_firebase failed (Firebase may not be configured yet)."
 
+echo "==> Hydrating Postgres from Firestore (challenges, alliances, social)..."
+# Step 3: restore all Firestore-mirrored tables (users already done above).
+# On a normal redeploy this is a fast no-op (all rows already exist).
+# On a fresh-database deploy it rebuilds everything automatically.
+python manage.py hydrate_postgres_from_firestore --only challenges || echo "   WARNING: challenge hydration failed."
+python manage.py hydrate_postgres_from_firestore --only alliances  || echo "   WARNING: alliance hydration failed."
+python manage.py hydrate_postgres_from_firestore --only social     || echo "   WARNING: social hydration failed."
+
 echo "==> Syncing users to Firestore backup..."
 python manage.py sync_users_to_firestore || echo "   WARNING: Firestore sync failed (Firebase may not be configured)."
 
