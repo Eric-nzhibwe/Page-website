@@ -506,7 +506,7 @@ class UserProfileView(generics.RetrieveUpdateAPIView):
                 if key in data:
                     safe_fields[key] = data[key]
             if safe_fields:
-                update_user_fields(user.id, safe_fields)
+                update_user_fields(user, safe_fields)
                 return Response({
                     'message': 'Profile updated (Firestore mode).',
                     **UserProfileView._ephemeral_profile(user),
@@ -749,7 +749,7 @@ def add_social_connection_view(request):
             from users.firestore_user_service import update_user_fields
             current = (request.user.social_connections or {})
             current[request.data.get('platform', '')] = request.data
-            update_user_fields(str(request.user.id), {'social_connections': current})
+            update_user_fields(request.user, {'social_connections': current})
             return Response({'message': 'Social account connected.',
                              'social_connections': current})
         except Exception:
@@ -785,7 +785,7 @@ def remove_social_connection_view(request, platform):
             if removed is None:
                 return Response({'error': f"No {platform} connection found"},
                                 status=status.HTTP_404_NOT_FOUND)
-            update_user_fields(str(request.user.id), {'social_connections': current})
+            update_user_fields(request.user, {'social_connections': current})
             return Response({'message': f"Successfully disconnected {platform} account",
                             'social_connections': current})
         except Exception:
@@ -1134,7 +1134,7 @@ def update_preferences_view(request):
         # Persist to Firestore instead of the database
         try:
             from users.firestore_user_service import update_user_fields
-            update_user_fields(str(user.id), {'preferences': current})
+            update_user_fields(user, {'preferences': current})
         except Exception:
             return Response({'error': 'Could not save preferences.'},
                             status=status.HTTP_503_SERVICE_UNAVAILABLE)

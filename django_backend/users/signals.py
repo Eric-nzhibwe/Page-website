@@ -66,10 +66,10 @@ def update_follow_counts_on_firestore(sender, instance, created, **kwargs):
         # Recount from PostgreSQL to stay accurate
         follower  = instance.follower
         following = instance.following
-        update_user_fields(str(following.id), {
+        update_user_fields(following, {
             'followers_count': following.followers.count(),
         })
-        update_user_fields(str(follower.id), {
+        update_user_fields(follower, {
             'following_count': follower.following.count(),
         })
     except Exception as exc:

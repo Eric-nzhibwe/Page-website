@@ -20,8 +20,9 @@ the user's name, avatar, and tier without a cross-collection join.
 Firestore collection layout
 ---------------------------
   user_profiles/
-    {user_id}/                     ← UUID string (same as Postgres PK)
-      id                 : str
+    {firebase_uid}/                ← Firebase Auth uid (stable across SQL DB rebuilds)
+      id                 : str      ← legacy SQL pk, kept for API compatibility
+      firebase_uid       : str      ← same as the doc key, for reverse lookups
       username           : str
       display_name       : str
       bio                : str
@@ -62,12 +63,79 @@ COLLECTION = 'user_profiles'
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+#  Doc-ID resolution
+#  user_profiles docs are keyed by the Firebase UID (stable across SQL DB
+#  rebuilds — Render Postgres expiry no longer orphans documents).
+#  Legacy docs keyed by the old SQL integer id are still readable.
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _uid_for_pk(pk) -> str:
+    """Look up the Firebase UID for a SQL user pk (empty string if none)."""
+    if pk is None:
+        return ''
+    try:
+        from users.models import UserFirebaseProfile
+        return (
+            UserFirebaseProfile.objects
+            .filter(user_id=pk)
+            .values_list('firebase_uid', flat=True)
+            .first()
+        ) or ''
+    except Exception:
+        return ''
+
+
+def resolve_doc_id(target) -> str:
+    """
+    Return the Firestore document id for `target`.
+
+    Accepts a Django User, an EphemeralUser (users.firebase_token_auth),
+    or a raw id (SQL pk or Firebase uid string).  Resolution order:
+      1. object exposing `firebase_uid`        (EphemeralUser)
+      2. object with a linked firebase_profile (Django User)
+      3. object with a pk                     (DB lookup by pk)
+      4. raw value, stringified               (assumed to be a uid)
+    """
+    # User-like objects
+    if hasattr(target, 'firebase_uid'):
+        uid = getattr(target, 'firebase_uid', '')
+        if uid:
+            return uid
+    if hasattr(target, 'pk'):
+        uid = _get_firebase_uid(target)
+        if uid:
+            return uid
+        pk = getattr(target, 'pk', None)
+        if pk is not None:
+            return _uid_for_pk(pk) or str(pk)
+    # Raw id — a uid, or a legacy numeric SQL id (resolve via DB)
+    raw = str(target)
+    if raw.isdigit():
+        uid = _uid_for_pk(raw)
+        if uid:
+            return uid
+    return raw
+
+
+def _legacy_doc_id(target) -> str | None:
+    """Old doc key (SQL integer id) if the target has one, else None."""
+    pk = getattr(target, 'pk', None)
+    if pk is None and hasattr(target, 'id'):
+        try:
+            pk = int(getattr(target, 'id'))
+        except (TypeError, ValueError):
+            return None
+    return str(pk) if pk is not None else None
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 #  Write — sync one user
 # ─────────────────────────────────────────────────────────────────────────────
 
 def sync_user(user, request=None) -> bool:
     """
-    Write (create or overwrite) a user_profiles document for `user`.
+    Write (create or overwrite) a user_profiles document for `user`,
+    keyed by the user's Firebase UID.
     Safe to call on every User.save() — always a full overwrite, never
     a partial update, so the document stays consistent.
     Returns True on success.
@@ -78,47 +146,58 @@ def sync_user(user, request=None) -> bool:
 
     doc = _user_to_doc(user, request=request)
     try:
-        db.collection(COLLECTION).document(str(user.id)).set(doc)
+        db.collection(COLLECTION).document(resolve_doc_id(user)).set(doc)
         return True
     except Exception as exc:
         logger.error(f'Firestore sync_user error for {user.id}: {exc}')
         return False
 
 
-def update_user_fields(user_id: str, fields: dict) -> bool:
+def update_user_fields(user, fields: dict) -> bool:
     """
     Partial update — only the supplied fields are changed.
-    Use this for high-frequency counter increments (prestige, streak, etc.)
-    to avoid a full document read-write cycle.
+    Accepts a User object or a raw id (uid or legacy SQL id).
+    Falls back to the legacy SQL-id document when the uid-keyed
+    document does not exist yet.
     """
     db = get_firestore()
     if db is None:
         return False
 
     fields['updated_at'] = datetime.now(tz=timezone.utc)
+    key = resolve_doc_id(user)
     try:
-        db.collection(COLLECTION).document(str(user_id)).update(fields)
-        return True
+        try:
+            db.collection(COLLECTION).document(key).update(fields)
+            return True
+        except Exception:
+            # Fall back to a legacy SQL-id keyed doc (pre-uid-keying)
+            legacy = _legacy_doc_id(user)
+            if legacy and legacy != key:
+                db.collection(COLLECTION).document(legacy).update(fields)
+                return True
+            raise
     except Exception as exc:
-        logger.error(f'Firestore update_user_fields error for {user_id}: {exc}')
+        logger.error(f'Firestore update_user_fields error for {key}: {exc}')
         return False
 
 
-def increment_user_counter(user_id: str, field: str, delta: int = 1) -> bool:
+def increment_user_counter(user, field: str, delta: int = 1) -> bool:
     """Atomically increment a numeric field (prestige_points, total_submissions…)."""
     db = get_firestore()
     if db is None:
         return False
 
+    key = resolve_doc_id(user)
     try:
         from google.cloud.firestore_v1 import Increment
-        db.collection(COLLECTION).document(str(user_id)).update({
+        db.collection(COLLECTION).document(key).update({
             field:        Increment(delta),
             'updated_at': datetime.now(tz=timezone.utc),
         })
         return True
     except Exception as exc:
-        logger.error(f'Firestore increment_user_counter ({field}) error: {exc}')
+        logger.error(f'Firestore increment_user_counter ({field}) error for {key}: {exc}')
         return False
 
 
@@ -127,7 +206,11 @@ def increment_user_counter(user_id: str, field: str, delta: int = 1) -> bool:
 # ─────────────────────────────────────────────────────────────────────────────
 
 def get_user_profile(user_id: str) -> dict | None:
-    """Fetch a public user profile by ID."""
+    """
+    Fetch a public user profile.
+    `user_id` may be a Firebase uid (current keying) or a legacy SQL id —
+    both are tried, since the doc key is whatever was passed.
+    """
     db = get_firestore()
     if db is None:
         return None
@@ -187,8 +270,11 @@ def search_users(query: str, exclude_user_id: str = None,
         for doc in docs:
             d = doc.to_dict()
             d['id'] = doc.id
-            if exclude_user_id and d['id'] == str(exclude_user_id):
-                continue
+            if exclude_user_id:
+                excl = str(exclude_user_id)
+                # Match by doc key (uid), embedded SQL id, or uid field
+                if excl in (doc.id, d.get('id', ''), d.get('firebase_uid', '')):
+                    continue
             results.append(_fmt(d))
         return results
     except Exception as exc:
@@ -197,15 +283,22 @@ def search_users(query: str, exclude_user_id: str = None,
 
 
 def get_users_by_ids(user_ids: list) -> list:
-    """Batch-fetch multiple user profiles by ID list."""
+    """
+    Batch-fetch multiple user profiles by ID list.
+    Each id may be a Firebase uid or a legacy SQL id; a SQL id is
+    resolved to its uid when a DB is available.
+    """
     db = get_firestore()
     if db is None:
         return []
 
     results = []
     try:
-        for uid in user_ids:
-            snap = db.collection(COLLECTION).document(str(uid)).get()
+        for _id in user_ids:
+            key = resolve_doc_id(_id)
+            snap = db.collection(COLLECTION).document(key).get()
+            if not snap.exists and key != str(_id):
+                snap = db.collection(COLLECTION).document(str(_id)).get()
             if snap.exists:
                 d = snap.to_dict()
                 d['id'] = snap.id
@@ -241,7 +334,7 @@ def migrate_from_postgres(queryset):
 
     for user in queryset.iterator():
         doc = _user_to_doc(user)
-        ref = db.collection(COLLECTION).document(str(user.id))
+        ref = db.collection(COLLECTION).document(resolve_doc_id(user))
         batch.set(ref, doc)
         count    += 1
         migrated += 1
