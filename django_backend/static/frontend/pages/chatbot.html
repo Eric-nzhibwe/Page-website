@@ -165,10 +165,10 @@
 
                     <button type="button" class="input-icon-btn chat-voice-btn" id="voiceBtn"
                         title="Hold to record voice message"
-                        onmousedown="startRecording()"
-                        onmouseup="stopRecording()"
-                        ontouchstart="startRecording()"
-                        ontouchend="stopRecording()">
+                        onmousedown="startRecording(event)"
+                        onmouseup="stopRecording(event)"
+                        ontouchstart="startRecording(event)"
+                        ontouchend="stopRecording(event)">
                         <i class="fas fa-microphone"></i>
                     </button>
 

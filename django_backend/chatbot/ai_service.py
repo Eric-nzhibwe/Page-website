@@ -23,33 +23,30 @@ GROQ_MODEL_FALLBACK = getattr(settings, "GROQ_MODEL_FALLBACK", "openai/gpt-oss-2
 GROQ_API_URL        = "https://api.groq.com/openai/v1/chat/completions"
 
 # ── System prompt ─────────────────────────────────────────────────────────────
-SYSTEM_PROMPT = """You are PAGE AI, the smart assistant built into the PAGE competitive gaming platform.
+SYSTEM_PROMPT = """You are PAGE AI — a chill, helpful assistant built into the PAGE competitive gaming platform.
 
-## Your personality
-- Friendly, conversational, and helpful — like talking to a knowledgeable friend
-- Give direct, useful answers without being robotic or repeating canned phrases
-- Use bullet points or numbered steps when that makes things clearer
-- Use 1–2 emojis per reply to stay lively, not overwhelming
-- Be honest when you don't know something
+Talk like a real person would. That means:
+- Short messages when the question is simple. Long ones only when it actually needs it.
+- Use casual language. Contractions are fine ("you're", "it's", "don't"). Don't be stiff.
+- Skip the intros. Don't say "Great question!" or "Certainly!" or "Of course!". Just answer.
+- If something is a list (steps, options, tiers), bullet points are fine. Otherwise just talk normally.
+- Throw in an emoji here and there if it fits — but don't force it on every message.
+- If you don't know something, say so plainly. Don't make stuff up.
+- Never say "As an AI..." — you're PAGE AI, just answer.
 
-## About PAGE
+About PAGE:
 - Competitive gaming and challenges platform based in Zambia
 - Currency: Zambian Kwacha (ZMW, shown as "K")
-- Payment methods: PawaPay mobile money (MTN Zambia, Airtel Money), Stripe card, Paystack
-- Prestige tier system (earned by completing challenges, winning tournaments, daily streaks):
+- Payments: PawaPay mobile money (MTN Zambia, Airtel Money), Stripe card, Paystack
+- Prestige tiers (earned via challenges, tournaments, daily streaks):
     Bronze (0–199) → Silver (200–499) → Gold (500–999) → Platinum (1,000–1,499)
     → Diamond (1,500–2,499) → Elite (2,500–4,999) → Legendary (5,000+)
-- Alliances: teams where players collaborate on group challenges and share rewards
-- Wallet: users deposit and withdraw funds; withdrawals process within 24 hours
-- Messenger: real-time chat and media sharing between users
-- Daily streaks: log in and complete a challenge each day to multiply prestige earnings
+- Alliances: teams that do group challenges and share rewards
+- Wallet: deposit and withdraw funds — withdrawals take up to 24 hours
+- Messenger: chat and share media with other users
+- Daily streaks: log in + complete a challenge every day to boost prestige earnings
 
-## How to respond
-- Answer the user's actual question first, then offer related info if useful
-- Use the user's personal context (balance, tier, username) naturally when available
-- For questions outside the platform (general knowledge, coding, current events, etc.) — answer helpfully; you are a full-featured AI assistant, not just a FAQ bot
-- Keep responses under ~200 words unless the question genuinely needs more depth
-- Never say "As an AI language model..." — just answer naturally
+You're not just a FAQ bot — if someone asks something outside PAGE (general knowledge, coding, life advice, whatever), help them out like a knowledgeable friend would.
 """
 
 
@@ -163,26 +160,27 @@ def _rule_based_response(message: str, user_context: dict | None) -> str:
     ctx = user_context or {}
 
     if any(w in m for w in ["hi", "hello", "hey", "howdy", "sup", "good morning", "good evening"]):
-        name = ctx.get("username", "there")
-        return f"Hey {name}! 👋 I'm PAGE AI. Ask me about your wallet, challenges, tiers — or anything else!"
+        name = ctx.get("username", "")
+        greeting = f"Hey {name}! 👋" if name else "Hey! 👋"
+        return f"{greeting} What can I help you with?"
 
     if any(w in m for w in ["how are you", "how r u", "you okay"]):
-        return "Doing great, thanks! How can I help you today? 😊"
+        return "All good! What's up?"
 
     if any(w in m for w in ["balance", "how much", "my wallet", "my money"]):
         bal = ctx.get("wallet_balance")
         if bal is not None:
-            return f"Your current wallet balance is **K{float(bal):.2f}**. Want to top it up or make a withdrawal?"
-        return "Head to the **Wallet** page to check your balance. You can deposit via mobile money (MTN/Airtel) or card anytime."
+            return f"You've got **K{float(bal):.2f}** in your wallet. Want to top it up or cash out?"
+        return "Head to the **Wallet** page to check your balance. You can deposit via mobile money or card."
 
     if any(w in m for w in ["deposit", "add money", "top up", "fund"]):
         return (
-            "To deposit funds:\n"
+            "To deposit:\n"
             "1. Open the **Wallet** page\n"
             "2. Tap **Deposit**\n"
-            "3. Choose Mobile Money (MTN/Airtel) or Card\n"
+            "3. Pick Mobile Money (MTN/Airtel) or Card\n"
             "4. Enter the amount and confirm\n\n"
-            "Deposits are credited instantly! 💰"
+            "Goes in instantly 💰"
         )
 
     if any(w in m for w in ["withdraw", "cash out", "payout", "send money"]):
@@ -190,45 +188,45 @@ def _rule_based_response(message: str, user_context: dict | None) -> str:
             "To withdraw:\n"
             "1. Open the **Wallet** page\n"
             "2. Tap **Withdraw**\n"
-            "3. Choose your method — Mobile Money, Bank Transfer, or PayPal\n"
+            "3. Choose Mobile Money, Bank Transfer, or PayPal\n"
             "4. Enter amount and account details\n\n"
-            "Withdrawals are processed within 24 hours."
+            "Usually processed within 24 hours."
         )
 
     if any(w in m for w in ["prestige", "tier", "level", "rank", "points", "bronze", "gold", "diamond", "legendary"]):
         pts  = ctx.get("prestige_points")
         tier = ctx.get("tier")
-        intro = f"You're at **{pts} prestige points** — **{tier} tier**.\n\n" if pts is not None else ""
+        intro = f"You're sitting at **{pts} prestige points** — **{tier} tier**.\n\n" if pts is not None else ""
         return (
             intro +
             "Tier ladder:\n"
             "🥉 Bronze → 🥈 Silver → 🥇 Gold → 💎 Platinum → 💠 Diamond → ⭐ Elite → 🏆 Legendary\n\n"
-            "Earn points by completing challenges, winning tournaments, and keeping your daily streak."
+            "Complete challenges, win tournaments, and keep your daily streak going to climb."
         )
 
     if any(w in m for w in ["challenge", "play", "compete", "game", "quiz"]):
-        return "Challenges are PAGE's core feature — answer correctly to earn prestige and cash. Browse the **Challenges** tab to get started!"
+        return "Challenges are how you earn prestige and cash on PAGE. Hit the **Challenges** tab to find one and get in."
 
     if any(w in m for w in ["tournament", "competition", "event", "contest"]):
-        return "Tournaments are timed events with prize pools. Top scorers share the winnings. Check the **Challenges** section for live events."
+        return "Tournaments are timed events with prize pools — top scorers split the winnings. Check **Challenges** for what's live."
 
     if any(w in m for w in ["alliance", "team", "clan", "group", "squad"]):
-        return "Alliances let you team up for group challenges and shared rewards. Visit **Community** to browse or create one."
+        return "Alliances let you team up with other players for group challenges and shared rewards. Go to **Community** to find or create one."
 
     if any(w in m for w in ["streak", "daily", "consecutive"]):
-        return "Log in and complete at least one challenge every day to build your streak. Longer streaks = more prestige per challenge! 🔥"
+        return "Log in and complete at least one challenge every day to keep your streak alive. The longer the streak, the more prestige you earn per challenge 🔥"
 
     if any(w in m for w in ["payment", "mtn", "airtel", "mpesa", "stripe", "paystack", "mobile money"]):
         return (
             "PAGE supports:\n"
             "📱 **Mobile Money** via PawaPay — MTN, Airtel, M-Pesa\n"
-            "💳 **Card payments** via Stripe\n"
+            "💳 **Card** via Stripe\n"
             "🏦 **Paystack** — card and bank\n\n"
-            "All transactions are in Zambian Kwacha (ZMW)."
+            "All amounts are in Zambian Kwacha (ZMW)."
         )
 
     if any(w in m for w in ["thank", "thanks", "cheers", "appreciate"]):
-        return "You're welcome! Let me know if there's anything else. 😊"
+        return "No problem! Anything else?"
 
     if any(w in m for w in ["help", "what can you do", "support"]):
         return (
@@ -237,13 +235,13 @@ def _rule_based_response(message: str, user_context: dict | None) -> str:
             "🎮 Challenges, tournaments & games\n"
             "⭐ Prestige points, tiers & streaks\n"
             "🤝 Alliances & community\n\n"
-            "I also answer general questions — just ask!"
+            "And general questions too — just ask."
         )
 
     return (
-        "I'm running in basic mode and can't answer that right now.\n\n"
+        "I'm running in basic mode right now and can't answer that one.\n\n"
         "Add **GROQ_API_KEY** to your `.env` to unlock full AI (free at console.groq.com/keys). "
-        "In the meantime, ask me about wallets, challenges, tiers, or anything PAGE-related!"
+        "In the meantime, ask me about wallets, challenges, tiers, or anything PAGE-related."
     )
 
 

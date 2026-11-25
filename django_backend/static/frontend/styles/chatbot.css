@@ -59,6 +59,9 @@ body {
   height: 100dvh;
   overflow: hidden;
   padding-bottom: 0 !important;
+  /* Prevent iOS Safari from resizing the viewport when the soft keyboard opens */
+  position: fixed;
+  width: 100%;
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -78,6 +81,25 @@ body {
 }
 @media (min-width: 1024px) {
   .mobile-only { display: none !important; }
+}
+
+/*
+  Mobile keyboard fix
+  -------------------
+  When the soft keyboard opens on Android/iOS the visual viewport shrinks
+  but window.innerHeight stays the same in some browsers, pushing the input
+  bar under the keyboard.  Listening to visualViewport resize and setting a
+  CSS custom property --keyboard-offset lets us shift the input area up by
+  exactly the keyboard height.  The JS that drives this lives in chatbot.js.
+*/
+@supports (height: 100dvh) {
+  @media (max-width: 1023px) {
+    .chat-input-bar {
+      /* Lifted by keyboard height when the soft keyboard is open */
+      transform: translateY(calc(-1 * var(--keyboard-offset, 0px)));
+      transition: transform 0.15s ease;
+    }
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -193,6 +215,15 @@ body {
   color: var(--cb-text);
 }
 .sidebar-prompt:hover i { color: var(--cb-accent); }
+
+/* Active (currently open) conversation */
+.sidebar-prompt--active {
+  background: var(--cb-accent-lt);
+  color: var(--cb-text);
+  border-left: 2px solid var(--cb-accent);
+  padding-left: 8px;
+}
+.sidebar-prompt--active i { color: var(--cb-accent); }
 
 .sidebar-spacer { flex: 1; }
 

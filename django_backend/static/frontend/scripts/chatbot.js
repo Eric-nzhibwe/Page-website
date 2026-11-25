@@ -45,6 +45,17 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // ── Mobile keyboard fix: shift input bar up when soft keyboard opens ──
+    if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', () => {
+            const keyboardHeight = window.innerHeight - window.visualViewport.height;
+            document.documentElement.style.setProperty(
+                '--keyboard-offset',
+                Math.max(0, keyboardHeight) + 'px'
+            );
+        });
+    }
+
     checkAiStatus();
     loadHistory();
 });
@@ -143,6 +154,9 @@ async function sendMessage(event) {
         setWaiting(false);
         if (content) appendMessage(content, 'bot', source);
         else appendMessage('No response received — please try again.', 'bot', 'fallback', true);
+
+        // If this was the first message in a new conversation, refresh the sidebar list
+        if (data?.conversation_id && messageCount <= 2) loadHistory();
     } catch (err) {
         setWaiting(false);
         const msg = err.message || '';
@@ -184,7 +198,9 @@ async function callBackend(message) {
 }
 
 // ── Voice recording ────────────────────────────────────────────────────────
-async function startRecording() {
+async function startRecording(e) {
+    // Prevent touch events from also firing mouse events (double-trigger fix)
+    if (e && e.cancelable) e.preventDefault();
     if (_isRecording || isWaiting) return;
 
     try {
@@ -213,7 +229,9 @@ async function startRecording() {
     }
 }
 
-async function stopRecording() {
+async function stopRecording(e) {
+    // Prevent touch events from also firing mouse events (double-trigger fix)
+    if (e && e.cancelable) e.preventDefault();
     if (!_isRecording || !_mediaRecorder) return;
     _isRecording = false;
     clearTimeout(_recordingTimer);
@@ -511,19 +529,32 @@ function updateLastVoiceBubbleTranscript(transcript) {
     }
 }
 
-// ── Markdown renderer (unchanged) ─────────────────────────────────────────
+// ── Markdown renderer ─────────────────────────────────────────────────────
 function renderMarkdown(raw) {
     let t = raw.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    // Code blocks
     t = t.replace(/```(\w*)\n?([\s\S]*?)```/g, (_,lang,code) => `<pre><code class="lang-${lang||'text'}">${code.trim()}</code></pre>`);
     t = t.replace(/`([^`\n]+)`/g, '<code>$1</code>');
+    // Headings
     t = t.replace(/^### (.+)$/gm,'<h3>$1</h3>').replace(/^## (.+)$/gm,'<h2>$1</h2>').replace(/^# (.+)$/gm,'<h1>$1</h1>');
+    // Bold / italic
     t = t.replace(/\*\*\*(.+?)\*\*\*/g,'<strong><em>$1</em></strong>').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\*([^\s*][^*]*[^\s*])\*/g,'<em>$1</em>');
+    // HR
     t = t.replace(/^[-*_]{3,}$/gm,'<hr>');
-    t = t.replace(/^[ \t]*[-•*]\s+(.+)$/gm,'<li>$1</li>').replace(/^[ \t]*\d+\.\s+(.+)$/gm,'<oli>$1</oli>');
-    t = t.replace(/(<li>[\s\S]+?<\/li>)/g, m => /<ol>/.test(m) ? m : '<ul>'+m+'</ul>');
-    t = t.replace(/(<oli>[\s\S]+?<\/oli>)/g, m => '<ol>'+m.replace(/<\/?oli>/g,x=>x.replace('oli','li'))+'</ol>');
+    // Links
     t = t.replace(/\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/g,'<a href="$2" target="_blank" rel="noopener">$1</a>');
     t = t.replace(/(^|[\s(])(https?:\/\/[^\s<)]+)/g,'$1<a href="$2" target="_blank" rel="noopener">$2</a>');
+    // Lists — collect consecutive bullet/numbered lines into a single <ul>/<ol>
+    // rather than wrapping each <li> in its own list element.
+    t = t.replace(/((?:^[ \t]*[-•*]\s+.+\n?)+)/gm, block => {
+        const items = block.trim().split('\n').map(l => l.replace(/^[ \t]*[-•*]\s+/, '').trim());
+        return '<ul>' + items.map(i => `<li>${i}</li>`).join('') + '</ul>';
+    });
+    t = t.replace(/((?:^[ \t]*\d+\.\s+.+\n?)+)/gm, block => {
+        const items = block.trim().split('\n').map(l => l.replace(/^[ \t]*\d+\.\s+/, '').trim());
+        return '<ol>' + items.map(i => `<li>${i}</li>`).join('') + '</ol>';
+    });
+    // Newlines (outside block elements)
     t = t.replace(/\n/g,'<br>');
     return t;
 }
@@ -553,7 +584,13 @@ async function loadHistory() {
         const res  = await fetch(`${CHAT_API}/chatbot/history/`, { headers: authHeader ? { 'Authorization': authHeader } : {} });
         if (!res.ok) return;
         const data = await res.json();
-        const conv = data?.conversations?.[0];
+        const conversations = data?.conversations || [];
+
+        // Populate sidebar conversation list
+        _renderSidebarHistory(conversations);
+
+        // Restore the most recent conversation into the main panel
+        const conv = conversations[0];
         if (!conv?.messages?.length) return;
         conversationId = conv.id;
         hideWelcome();
@@ -564,8 +601,89 @@ async function loadHistory() {
     } catch { /* new conversation */ }
 }
 
+function _renderSidebarHistory(conversations) {
+    // Find or create the history section in the sidebar
+    let section = document.getElementById('sidebarHistorySection');
+    if (!section) {
+        const sidebar = document.querySelector('.chat-sidebar');
+        if (!sidebar) return;
+
+        section = document.createElement('div');
+        section.id = 'sidebarHistorySection';
+        section.className = 'sidebar-section';
+        section.innerHTML = '<p class="sidebar-section-title">Recent chats</p>';
+
+        // Insert before the spacer
+        const spacer = sidebar.querySelector('.sidebar-spacer');
+        spacer ? sidebar.insertBefore(section, spacer) : sidebar.appendChild(section);
+    }
+
+    // Remove old entries (keep the title)
+    const title = section.querySelector('.sidebar-section-title');
+    section.innerHTML = '';
+    if (title) section.appendChild(title);
+
+    if (!conversations.length) {
+        const empty = document.createElement('p');
+        empty.style.cssText = 'font-size:12px;color:var(--cb-text-4);padding:6px 10px;';
+        empty.textContent = 'No previous chats';
+        section.appendChild(empty);
+        return;
+    }
+
+    conversations.slice(0, 10).forEach(conv => {
+        const btn = document.createElement('button');
+        btn.className = 'sidebar-prompt';
+        btn.dataset.convId = conv.id;
+
+        // Truncate the title to fit the sidebar
+        const label = (conv.title || 'Chat').slice(0, 32) + ((conv.title || '').length > 32 ? '…' : '');
+        btn.innerHTML = `<i class="fas fa-message"></i><span>${label}</span>`;
+
+        // Highlight active conversation
+        if (conv.id === conversationId) btn.classList.add('sidebar-prompt--active');
+
+        btn.addEventListener('click', () => _loadConversation(conv.id));
+        section.appendChild(btn);
+    });
+}
+
+async function _loadConversation(convId) {
+    if (convId === conversationId) return; // already open
+    const authHeader = window._pageAuthHeader ? window._pageAuthHeader() : null;
+    try {
+        const res  = await fetch(`${CHAT_API}/chatbot/conversations/${convId}/`, { headers: authHeader ? { 'Authorization': authHeader } : {} });
+        if (!res.ok) return;
+        const conv = await res.json();
+
+        conversationId = convId;
+        messageCount   = 0;
+
+        const feed = document.getElementById('chatMessages');
+        feed.innerHTML = '';
+
+        const messages = conv.messages || [];
+        if (messages.length) {
+            messages.forEach(msg => {
+                if (msg.role === 'user') appendMessage(msg.content, 'user');
+                else if (msg.role === 'assistant') appendMessage(msg.content, 'bot', 'groq');
+            });
+        } else {
+            // Empty conversation — show welcome
+            clearConversation(true);
+        }
+
+        // Update active highlight in sidebar
+        document.querySelectorAll('.sidebar-prompt[data-conv-id]').forEach(b => {
+            b.classList.toggle('sidebar-prompt--active', b.dataset.convId === convId);
+        });
+    } catch (err) {
+        console.error('Failed to load conversation:', err);
+    }
+}
+
 // ── Clear conversation ─────────────────────────────────────────────────────
-function clearConversation() {
+function clearConversation(keepHistory = false) {
     conversationId = null;
     messageCount   = 0;
     clearAttachment();
@@ -584,6 +702,13 @@ function clearConversation() {
                 <button class="starter-card" onclick="sendQuickMessage('How do alliances work?')"><i class="fas fa-users"></i><span>Alliances</span></button>
             </div>
         </div>`;
+
+    // Clear the active highlight in the sidebar — no conversation is open
+    if (!keepHistory) {
+        document.querySelectorAll('.sidebar-prompt[data-conv-id]').forEach(b => {
+            b.classList.remove('sidebar-prompt--active');
+        });
+    }
 }
 
 
