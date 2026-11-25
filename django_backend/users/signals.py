@@ -29,13 +29,17 @@ def sync_user_profile_to_firestore(sender, instance, created, **kwargs):
     """
     Mirror a User's public profile to Firestore whenever the row is saved.
 
+    This is the safety-net write — it fires for every user.save() regardless
+    of whether dual_write_user() was used. When dual_write_user() is used,
+    Firestore was already written first (Step 2 pattern); this signal is then
+    a harmless no-op second write.  For any path that calls user.save()
+    directly (admin, management commands, etc.) this signal ensures Firestore
+    still stays in sync.
+
     Skipped for:
       - raw=True  (bulk inserts / loaddata)
       - FS_USERS flag is False
       - Firebase not configured
-    Runs in the foreground on the same thread.  For high-traffic production
-    you'd push this to a Celery task, but it's fast enough (< 100 ms) for
-    the current scale.
     """
     if kwargs.get('raw', False):
         return  # loaddata / fixtures — skip

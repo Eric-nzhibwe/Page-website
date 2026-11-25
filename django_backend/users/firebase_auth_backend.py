@@ -110,6 +110,13 @@ class FirebaseAuthenticationBackend(BaseBackend):
 
             if profile_changed:
                 user.save(update_fields=['email', 'display_name'] if email else ['display_name'])
+            # Dual-write: mirror to Firestore (Firestore already written via
+            # sync_user inside _get_or_create_user, so just ensure it's current)
+            try:
+                from users.firestore_user_service import sync_user
+                sync_user(user)
+            except Exception:
+                pass
             return user
         except UserFirebaseProfile.DoesNotExist:
             pass
@@ -136,23 +143,29 @@ class FirebaseAuthenticationBackend(BaseBackend):
                 display_name= name,
             )
             user.set_unusable_password()   # logins always go through Firebase
-            user.save()
+
+            # Dual-write: Firestore first, then Postgres
+            try:
+                from users.firestore_user_service import dual_write_user
+                dual_write_user(user)
+            except Exception:
+                # Firestore unavailable or Postgres failed — try plain save
+                user.save()
+
             logger.info(f'Created new User {user.username} from Firebase uid={firebase_uid}')
+        else:
+            # Existing user found by email — ensure Firestore is in sync
+            try:
+                from users.firestore_user_service import sync_user
+                sync_user(user)
+            except Exception:
+                pass
 
         # ── Link this User to the Firebase uid ─────────────────────────
         UserFirebaseProfile.objects.get_or_create(
             user=user,
             defaults={'firebase_uid': firebase_uid, 'picture_url': picture},
         )
-
-        # ── Mirror to Firestore (always, non-blocking backup) ──────────
-        try:
-            from page_platform.firebase_client import get_firestore
-            if get_firestore() is not None:
-                from users.firestore_user_service import sync_user
-                sync_user(user)
-        except Exception:
-            pass
 
         return user
 

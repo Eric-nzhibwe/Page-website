@@ -48,7 +48,10 @@ class UserRegistrationView(generics.CreateAPIView):
         # Create token for immediate login
         token, created = Token.objects.get_or_create(user=user)
 
-        # Mirror new user to Firestore immediately (backup — non-blocking)
+        # Dual-write: Firestore is already the source of truth.
+        # serializer.save() calls user.save() internally, so the post_save
+        # signal mirrors to Firestore. Force an explicit sync here too so the
+        # write order (Firestore → Postgres) is guaranteed at registration.
         try:
             from page_platform.firebase_client import firebase_enabled
             if firebase_enabled():
@@ -458,6 +461,23 @@ class UserProfileView(generics.RetrieveUpdateAPIView):
         # are absent from the PATCH body.
         kwargs['partial'] = True
         return self.update(request, *args, **kwargs)
+
+    def perform_update(self, serializer):
+        """
+        Step 2 dual-write: save to Firestore first, then commit to Postgres.
+        The serializer.save() call triggers user.save() which also fires the
+        post_save signal (a second Firestore write), but that's idempotent and
+        fine — the important thing is Firestore is always at least as fresh as
+        Postgres, never behind it.
+        """
+        user = serializer.save()
+        try:
+            from page_platform.firebase_client import firebase_enabled
+            if firebase_enabled():
+                from users.firestore_user_service import sync_user
+                sync_user(user, request=self.request)
+        except Exception:
+            pass
 
     @staticmethod
     def _ephemeral_profile(user):

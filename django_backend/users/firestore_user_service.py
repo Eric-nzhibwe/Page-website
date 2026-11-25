@@ -129,7 +129,57 @@ def _legacy_doc_id(target) -> str | None:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-#  Write — sync one user
+#  Step 2 — Dual-Write
+#
+#  Rule: Firestore is the permanent source of truth.
+#        Write to Firestore FIRST, then commit to Postgres.
+#        If Firestore is unavailable, still commit to Postgres so the
+#        app keeps running (Firestore is the backup, not a blocker).
+# ─────────────────────────────────────────────────────────────────────────────
+
+def dual_write_user(user, update_fields=None, request=None) -> bool:
+    """
+    Dual-write pattern — Firestore first, then Postgres.
+
+    Call this instead of plain ``user.save()`` whenever you create or
+    update a user row so that Firestore always has an up-to-date copy
+    before the Postgres write commits.
+
+    Args:
+        user:          Django User instance (must already have uid linked, or
+                       be a brand-new unsaved user where you want the save
+                       itself to happen here).
+        update_fields: list of field names for a partial Postgres update
+                       (passed straight to user.save()).  None = full save.
+        request:       optional HttpRequest for building absolute image URLs.
+
+    Returns True when BOTH writes succeed; False when Firestore failed
+    (Postgres still saved — the app stays live).
+    """
+    # ── 1. Firestore first ────────────────────────────────────────────────
+    fs_ok = sync_user(user, request=request)
+    if not fs_ok:
+        logger.warning(
+            'dual_write_user: Firestore write failed for uid=%s — '
+            'continuing to Postgres anyway.',
+            resolve_doc_id(user),
+        )
+
+    # ── 2. Postgres second ────────────────────────────────────────────────
+    try:
+        if update_fields is not None:
+            user.save(update_fields=update_fields)
+        else:
+            user.save()
+    except Exception as exc:
+        logger.error(f'dual_write_user: Postgres save failed for {user}: {exc}')
+        raise  # re-raise so callers can handle the DB error
+
+    return fs_ok
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  Write — sync one user (Firestore only, no Postgres touch)
 # ─────────────────────────────────────────────────────────────────────────────
 
 def sync_user(user, request=None) -> bool:
