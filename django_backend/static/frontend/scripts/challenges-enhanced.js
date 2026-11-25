@@ -1340,37 +1340,9 @@ async function loadAndRenderChallenges() {
         fragment.appendChild(card);
     });
 
-    // Render Q&As
-    (qas || []).forEach(q => {
-        const card = document.createElement('div');
-        card.className = 'challenge-card';
-        card.setAttribute('data-status', 'active');
-        card.setAttribute('data-category', 'qa');
-        card.setAttribute('data-id', q.id);
-        card.setAttribute('data-from-db', '1');
-        card.innerHTML = buildQACard(q.id, q.title, q.description, q.image_url || null,
-            q.duration_days);
-        setTimeout(() => {
-            const pane = document.getElementById(`qaLive_${q.id}`);
-            if (pane) {
-                pane.innerHTML = '';
-                (q.answers || []).slice(-8).forEach(a => {
-                    const el = document.createElement('div');
-                    el.className = 'qa-live-msg';
-                    el.innerHTML = `
-                        <div class="qa-live-avatar">${a.user[0].toUpperCase()}</div>
-                        <div class="qa-live-bubble">
-                            <span class="qa-live-user">${a.user}</span>
-                            <span class="qa-live-text">${a.text}</span>
-                        </div>`;
-                    pane.appendChild(el);
-                });
-                pane.scrollTop = pane.scrollHeight;
-            }
-            openQAWS(q.id);
-        }, 100);
-        fragment.appendChild(card);
-    });
+    // Q&A challenges are fully rendered by challenges.js (_renderQACard / renderChallenges).
+    // Rendering them here too would produce a duplicate card for every QA challenge, so
+    // we intentionally skip them in this enhanced loader.
 
     // Prepend DB cards — newest at the top, static samples stay below
     grid.insertBefore(fragment, grid.firstChild);

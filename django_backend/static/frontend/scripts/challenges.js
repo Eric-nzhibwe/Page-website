@@ -1697,10 +1697,16 @@ function _qaConnectWS(cardId) {
                 const msg = JSON.parse(e.data);
                 if (msg.type === 'qa_answer') {
                     const p = msg.payload || {};
-                    // Deduplicate: don't re-render if this user's bubble already exists
-                    if (_qaHasAnswered(cardId, p.user)) return;
+                    // Don't re-append a bubble that the local submit already added
+                    // (options.own path). For remote answers, always show them.
+                    const isOwnAnswer = p.user === _currentUsername();
+                    if (isOwnAnswer && _qaHasAnswered(cardId, p.user)) return;
                     _qaMarkAnswered(cardId, p.user);
-                    _appendQAAnswer(cardId, p, { now: false });
+                    _appendQAAnswer(cardId, p, { now: false, own: isOwnAnswer });
+
+                    // Auto-open the answers panel so the creator sees incoming answers
+                    const panel = document.getElementById(`qaAnswersPanel_${cardId}`);
+                    if (panel?.hidden) _qaToggleAnswers(cardId);
                 } else if (msg.type === 'qa_participant_joined') {
                     // Update the participant count + label in realtime for all viewers
                     const p = msg.payload || {};
@@ -1720,6 +1726,23 @@ function _qaConnectWS(cardId) {
                         if (labelEl) {
                             labelEl.textContent = `participant${p.participant_count !== 1 ? 's' : ''}`;
                         }
+                    }
+                    // Add a pip for the new participant if not already present
+                    if (p.user) {
+                        const card = document.querySelector(`.challenge-card[data-id="${cardId}"]`);
+                        const pipWrap = card?.querySelector('.qa-participant-avatars');
+                        if (pipWrap && !pipWrap.querySelector(`[title="${CSS.escape(p.user)}"]`)) {
+                            const [pipBg] = _qaUserColors(p.user);
+                            const pip = document.createElement('span');
+                            pip.className = 'qa-participant-pip';
+                            pip.style.setProperty('--qa-pip-bg', pipBg);
+                            pip.title = p.user;
+                            pip.textContent = (p.user[0] || '?').toUpperCase();
+                            pipWrap.appendChild(pip);
+                        }
+                        // Open the answers panel so the creator can see the new joiner
+                        const panel = document.getElementById(`qaAnswersPanel_${cardId}`);
+                        if (panel?.hidden) _qaToggleAnswers(cardId);
                     }
                 }
             } catch (_) {}
@@ -1803,8 +1826,7 @@ function _renderQACard(c) {
     const prizeText = hasPrize ? `K${parseFloat(c.prize_amount).toFixed(0)}` : '';
 
     // ── Participant count ─────────────────────────────────────────────────
-    const uniqueUsers     = [...new Set(answers.map(a => a.user))];
-    const participantCount= c.participant_count ?? uniqueUsers.length;
+    const participantCount= c.participant_count ?? (c.participants?.length ?? 0);
 
     // ── Question count ────────────────────────────────────────────────────
     const questionCount = c.question_count ?? c.num_questions ?? 10;
@@ -1836,12 +1858,21 @@ function _renderQACard(c) {
     const answersHTML = answers.slice(-12).map(a => _renderQABubble(a, currentUser, creatorUser)).join('');
 
     // ── Participant pip strip ─────────────────────────────────────────────
-    const visibleUsers = uniqueUsers.slice(0, 5);
-    const overflow     = uniqueUsers.length > 5 ? uniqueUsers.length - 5 : 0;
+    // Build from the dedicated participants list when available, fall back to
+    // unique answer authors so the strip is always populated on first render.
+    const participantUsernames = c.participants?.length
+        ? c.participants.map(p => p.username).filter(Boolean)
+        : [...new Set(answers.map(a => a.user))];
+    const visibleUsers = participantUsernames.slice(0, 5);
+    const overflow     = participantUsernames.length > 5 ? participantUsernames.length - 5 : 0;
     const pipsHTML = visibleUsers.map(u => {
         const [bg] = _qaUserColors(u);
         return `<span class="qa-participant-pip" style="--qa-pip-bg:${bg};" title="${escHtml(u)}">${u[0].toUpperCase()}</span>`;
     }).join('') + (overflow ? `<span class="qa-participant-pip qa-pip-overflow">+${overflow}</span>` : '');
+
+    // ── Open answers panel by default when there is already content ───────
+    const hasContent   = answers.length > 0 || participantUsernames.length > 0;
+    const panelOpen    = hasContent || isOwner; // creator always sees the panel open
 
     // ── Input state ───────────────────────────────────────────────────────
     const userAlreadyAnswered = _qaHasAnswered(id, currentUser);
@@ -1946,11 +1977,11 @@ function _renderQACard(c) {
 
         <!-- ══ LIVE ANSWERS PANE (collapsible) ════════════════════════ -->
         <div class="qa-new-answers-wrap">
-            <button class="qa-new-answers-toggle" onclick="_qaToggleAnswers('${id}')" aria-expanded="false" aria-controls="qaLive_${id}">
+            <button class="qa-new-answers-toggle" onclick="_qaToggleAnswers('${id}')" aria-expanded="${panelOpen}" aria-controls="qaLive_${id}">
                 <span><i class="fas fa-comments"></i> Answers <span class="qa-new-ans-badge">${answers.length}</span></span>
-                <i class="fas fa-chevron-down qa-new-toggle-caret"></i>
+                <i class="fas fa-chevron-down qa-new-toggle-caret" style="${panelOpen ? 'transform:rotate(180deg)' : ''}"></i>
             </button>
-            <div class="qa-new-answers-panel" id="qaAnswersPanel_${id}" hidden>
+            <div class="qa-new-answers-panel" id="qaAnswersPanel_${id}" ${panelOpen ? '' : 'hidden'}>
                 <div class="qa-live-pane" id="qaLive_${id}" role="log" aria-live="polite" aria-label="Answers">
                     ${answersHTML || `<div class="qa-empty-hint">
                         <div class="qa-empty-icon"><i class="fas fa-comments"></i></div>
@@ -2022,7 +2053,7 @@ function _renderQACard(c) {
                 <span class="qa-new-btn-start-arrow"><i class="fas fa-arrow-right"></i></span>
             </button>
             <button class="qa-new-icon-btn" title="Share"
-                    onclick="(navigator.share?navigator.share({title:${JSON.stringify(c.title)},url:location.origin+'/pages/${detailUrl}'}):navigator.clipboard.writeText(location.origin+'/pages/${detailUrl}').then(()=>showToast('Link copied!','success')))">
+                    onclick="_qaShareChallenge('${escHtml(String(c.title))}','${detailUrl}')">
                 <i class="fas fa-share-nodes"></i>
             </button>
             <button class="qa-new-icon-btn" title="View answers" onclick="_qaToggleAnswers('${id}')">
@@ -2031,6 +2062,17 @@ function _renderQACard(c) {
         </div>
 
     </div>`;
+}
+
+function _qaShareChallenge(title, relativeUrl) {
+    const fullUrl = `${location.origin}/pages/${relativeUrl}`;
+    if (navigator.share) {
+        navigator.share({ title, url: fullUrl }).catch(() => {});
+    } else {
+        navigator.clipboard.writeText(fullUrl)
+            .then(() => showToast('Link copied!', 'success'))
+            .catch(() => showToast('Could not copy link.', 'error'));
+    }
 }
 
 function _qaOnInput(input, id) {
@@ -2075,7 +2117,7 @@ async function _chJoinQA(id) {
 
     try {
         const res = await _chPost(`${_CH_API}/qa/${id}/join/`, {});
-        const data = res || {};
+        const data = res?.data || {};
 
         // Swap gate → input tray
         if (joinGate)  joinGate.style.display  = 'none';
@@ -2086,6 +2128,25 @@ async function _chJoinQA(id) {
             countEl.textContent = data.participant_count;
             const labelEl = countEl.parentElement?.querySelector('.qa-participant-label');
             if (labelEl) labelEl.textContent = `participant${data.participant_count !== 1 ? 's' : ''}`;
+            // Flash so the joiner sees the count animate
+            countEl.closest('.qa-new-meta-participants')?.classList.add('qa-count-flash');
+            setTimeout(() => countEl.closest('.qa-new-meta-participants')?.classList.remove('qa-count-flash'), 800);
+        }
+
+        // Add joiner's own pip to the participant strip
+        const username = _currentUsername();
+        if (username) {
+            const card = document.querySelector(`.challenge-card[data-id="${id}"]`);
+            const pipWrap = card?.querySelector('.qa-participant-avatars');
+            if (pipWrap && !pipWrap.querySelector(`[title="${CSS.escape(username)}"]`)) {
+                const [pipBg] = _qaUserColors(username);
+                const pip = document.createElement('span');
+                pip.className = 'qa-participant-pip';
+                pip.style.setProperty('--qa-pip-bg', pipBg);
+                pip.title = username;
+                pip.textContent = (username[0] || '?').toUpperCase();
+                pipWrap.appendChild(pip);
+            }
         }
 
         // Auto-open the answers panel and focus the input
@@ -2175,13 +2236,11 @@ function _appendQAAnswer(id, answer, options = {}) {
     if (messages.length > 15) messages[0].remove();
     pane.scrollTo({ top: pane.scrollHeight, behavior: options.now ? 'smooth' : 'auto' });
 
-    // Update answer counter
-    const count = document.getElementById(`qaCount_${id}`)
-               || pane.closest('.challenge-card')?.querySelector('.qa-answer-count');
-    if (count) {
-        const match = count.textContent.match(/\d+/);
-        const next  = match ? Number(match[0]) + 1 : 1;
-        count.innerHTML = `<i class="fas fa-comment-dots"></i> ${next} answer${next === 1 ? '' : 's'}`;
+    // Update answer badge on the toggle button (NOT the participant count)
+    const toggleBtn = pane.closest('.qa-new-answers-wrap')?.querySelector('.qa-new-ans-badge');
+    if (toggleBtn) {
+        const current = parseInt(toggleBtn.textContent, 10) || 0;
+        toggleBtn.textContent = current + 1;
     }
 
     // Update participant pip strip
@@ -2431,7 +2490,8 @@ async function _chSubmitQA(event, id) {
 
     // ── Send to API ──────────────────────────────────────────────────────────
     try {
-        await _chPost(`${_CH_API}/qa/${id}/answer/`, { text });
+        const res = await _chPost(`${_CH_API}/qa/${id}/answer/`, { text });
+        const answerData = res?.data || {};
 
         // Update status to delivered tick (like messenger)
         const bubble = pane?.querySelector(`[data-optimistic-id="${optimisticId}"]`);
@@ -2439,6 +2499,19 @@ async function _chSubmitQA(event, id) {
         if (statusSpan) {
             statusSpan.innerHTML = '<i class="fas fa-check-double"></i>';
             statusSpan.classList.add('qa-bubble-status--sent');
+        }
+
+        // If the server returned an updated participant count (e.g. user skipped
+        // the join gate and answered directly), update the visible count now
+        if (answerData.participant_count != null) {
+            const countEl = document.getElementById(`qaCount_${id}`);
+            if (countEl) {
+                countEl.textContent = answerData.participant_count;
+                const labelEl = countEl.parentElement?.querySelector('.qa-participant-label');
+                if (labelEl) labelEl.textContent = `participant${answerData.participant_count !== 1 ? 's' : ''}`;
+                countEl.closest('.qa-new-meta-participants')?.classList.add('qa-count-flash');
+                setTimeout(() => countEl.closest('.qa-new-meta-participants')?.classList.remove('qa-count-flash'), 800);
+            }
         }
 
         // Update the answers badge count
