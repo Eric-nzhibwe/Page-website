@@ -275,7 +275,7 @@ GEMINI_API_KEY = config('GEMINI_API_KEY', default='')
 # See https://console.groq.com/docs/deprecations
 GROQ_MODEL = config('GROQ_MODEL', default='openai/gpt-oss-120b')
 GROQ_MODEL_FALLBACK = config('GROQ_MODEL_FALLBACK', default='openai/gpt-oss-20b')
-GROQ_VISION_MODEL = config('GROQ_VISION_MODEL', default='qwen/qwen3.8-27b')
+GROQ_VISION_MODEL = config('GROQ_VISION_MODEL', default='meta-llama/llama-4-scout-17b-16e-instruct')
 
 # ─── Firebase / Firestore ─────────────────────────────────────────────────────
 # Method 1 (recommended on Render): paste the entire serviceAccountKey.json

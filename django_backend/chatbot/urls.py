@@ -4,25 +4,10 @@ from . import views
 app_name = 'chatbot'
 
 urlpatterns = [
-    # Chat endpoint
-    path('chat/', views.chat_view, name='chat'),
-
-    # AI engine status (used by frontend to show Gemini badge)
-    path('status/', views.ai_status_view, name='status'),
-
-    # Conversation management
-    path('conversations/', views.conversation_list_view, name='conversation_list'),
-    path('history/', views.conversation_list_view, name='history'),
-    path('conversations/new/', views.conversation_new_view, name='conversation_new'),
-    path('conversations/<int:conversation_id>/', views.conversation_detail_view, name='conversation_detail'),
-    path('conversations/<int:conversation_id>/delete/', views.conversation_delete_view, name='conversation_delete'),
-]
-
-
-# Voice transcription + media chat
-from . import media_views  # noqa — imported here to keep url registration clean
-
-urlpatterns += [
-    path('transcribe/', media_views.transcribe_voice, name='transcribe'),
-    path('media-chat/', media_views.media_chat, name='media_chat'),
+    path('chat/',                   views.chat,           name='chat'),
+    path('media/',                  views.media_chat,     name='media_chat'),
+    path('transcribe/',             views.transcribe,     name='transcribe'),
+    path('sessions/',               views.session_list,   name='session_list'),
+    path('sessions/<int:session_id>/', views.session_detail, name='session_detail'),
+    path('status/',                 views.status,         name='status'),
 ]

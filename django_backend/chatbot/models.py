@@ -1,45 +1,42 @@
 """
-Chatbot models for PAGE Platform
+Chatbot models — PAGE Platform
 """
 from django.db import models
 from django.conf import settings
 
 
-class ChatConversation(models.Model):
-    """Chat conversation with AI bot"""
-    
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='chat_conversations')
-    title = models.CharField(max_length=255, default='New Conversation')
-    is_active = models.BooleanField(default=True)
+class ChatSession(models.Model):
+    """One continuous chat thread per user. Title is auto-set from first message."""
+    user       = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
+                                   related_name='chat_sessions')
+    title      = models.CharField(max_length=200, default='New chat')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
     class Meta:
-        db_table = 'chat_conversations'
-        ordering = ['-updated_at']
-    
+        db_table  = 'chat_sessions'
+        ordering  = ['-updated_at']
+
     def __str__(self):
-        return f"{self.user.username}: {self.title}"
+        return f'{self.user.username} — {self.title}'
 
 
 class ChatMessage(models.Model):
-    """Individual chat message"""
-    
-    ROLE_CHOICES = [
-        ('user', 'User'),
-        ('assistant', 'Assistant'),
-        ('system', 'System'),
-    ]
-    
-    conversation = models.ForeignKey(ChatConversation, on_delete=models.CASCADE, related_name='messages')
-    role = models.CharField(max_length=20, choices=ROLE_CHOICES)
-    content = models.TextField()
-    metadata = models.JSONField(default=dict, blank=True)
+    ROLE_USER      = 'user'
+    ROLE_ASSISTANT = 'assistant'
+    ROLES = [(ROLE_USER, 'User'), (ROLE_ASSISTANT, 'Assistant')]
+
+    session    = models.ForeignKey(ChatSession, on_delete=models.CASCADE,
+                                   related_name='messages')
+    role       = models.CharField(max_length=12, choices=ROLES)
+    content    = models.TextField()
+    # Store any extra info (model used, latency, media type, etc.)
+    meta       = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    
+
     class Meta:
         db_table = 'chat_messages'
         ordering = ['created_at']
-    
+
     def __str__(self):
-        return f"{self.role}: {self.content[:50]}"
+        return f'[{self.role}] {self.content[:60]}'

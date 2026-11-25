@@ -1,233 +1,251 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PAGE AI</title>
-    <link rel="icon" type="image/jpeg" href="../images/Page.jpeg">
-    <link rel="stylesheet" href="../styles/styles.css">
-    <link rel="stylesheet" href="../styles/chatbot.css">
-    <link rel="stylesheet" href="../styles/responsive-pro.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
-    <script src="../scripts/theme.js"></script>
-    <script src="../scripts/utils.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>PAGE AI — Your Assistant</title>
+  <link rel="icon" type="image/jpeg" href="../images/Page.jpeg">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../styles/styles.css">
+  <link rel="stylesheet" href="../styles/icon-nav.css">
+  <link rel="stylesheet" href="../styles/chatbot.css">
+  <link rel="stylesheet" href="../styles/responsive-pro.css">
+  <script src="../scripts/theme.js"></script>
+  <script src="../scripts/utils.js"></script>
 </head>
 <body>
-<div class="chat-page">
 
-    <!-- ══════════════════════════════════
-         LEFT SIDEBAR
-    ══════════════════════════════════ -->
-    <aside class="chat-sidebar">
+<!-- ═══════════════════════════════════════════════════════
+     APP SHELL
+     ═══════════════════════════════════════════════════════ -->
+<div class="ai-app" id="aiApp">
 
-        <!-- Brand -->
-        <div class="sidebar-brand">
-            <div class="brand-icon"><i class="fas fa-microchip"></i></div>
-            <span class="brand-label">PAGE AI</span>
+  <!-- Drawer overlay (mobile) -->
+  <div class="ai-drawer-overlay" id="drawerOverlay" onclick="closeSidebar()"></div>
+
+  <!-- ════════════════ SIDEBAR ════════════════ -->
+  <aside class="ai-sidebar" id="aiSidebar">
+
+    <!-- Brand strip -->
+    <div class="ai-sidebar-top">
+      <a href="../index.html" class="ai-brand">
+        <div class="ai-brand-orb"><i class="fas fa-microchip"></i></div>
+        <div class="ai-brand-text">
+          <span class="ai-brand-name">PAGE AI</span>
+          <span class="ai-brand-sub">Powered by Groq</span>
         </div>
+      </a>
+      <button class="ai-new-btn" onclick="newSession()" title="New chat">
+        <i class="fas fa-pen-to-square"></i>
+      </button>
+    </div>
 
-        <!-- New chat -->
-        <button class="new-chat-btn" onclick="clearConversation()">
-            <i class="fas fa-plus"></i>
-            <span>New chat</span>
-        </button>
+    <!-- Scrollable body -->
+    <div class="ai-sidebar-scroll">
 
-        <!-- Suggested prompts -->
-        <div class="sidebar-section">
-            <p class="sidebar-section-title">Suggestions</p>
-            <button class="sidebar-prompt" onclick="sendQuickMessage('How do I deposit funds into my wallet?')">
-                <i class="fas fa-wallet"></i><span>Deposit funds</span>
-            </button>
-            <button class="sidebar-prompt" onclick="sendQuickMessage('How do I earn money on PAGE?')">
-                <i class="fas fa-coins"></i><span>Earn money</span>
-            </button>
-            <button class="sidebar-prompt" onclick="sendQuickMessage('How do tournaments work?')">
-                <i class="fas fa-trophy"></i><span>Tournaments</span>
-            </button>
-            <button class="sidebar-prompt" onclick="sendQuickMessage('Explain the prestige tier system')">
-                <i class="fas fa-layer-group"></i><span>Prestige tiers</span>
-            </button>
-            <button class="sidebar-prompt" onclick="sendQuickMessage('What payment methods does PAGE support?')">
-                <i class="fas fa-credit-card"></i><span>Payments</span>
-            </button>
-            <button class="sidebar-prompt" onclick="sendQuickMessage('How do alliances work?')">
-                <i class="fas fa-shield-halved"></i><span>Alliances</span>
-            </button>
-        </div>
+      <!-- Quick suggestions -->
+      <p class="ai-sidebar-label">Quick ask</p>
+      <button class="ai-sidebar-row" onclick="quickSend('How do I deposit funds into my wallet?')">
+        <i class="fas fa-wallet"></i><span>Deposit funds</span>
+      </button>
+      <button class="ai-sidebar-row" onclick="quickSend('How do I earn money on PAGE?')">
+        <i class="fas fa-coins"></i><span>Earn money</span>
+      </button>
+      <button class="ai-sidebar-row" onclick="quickSend('How do tournaments work?')">
+        <i class="fas fa-trophy"></i><span>Tournaments</span>
+      </button>
+      <button class="ai-sidebar-row" onclick="quickSend('Explain the prestige tier system')">
+        <i class="fas fa-layer-group"></i><span>Prestige tiers</span>
+      </button>
+      <button class="ai-sidebar-row" onclick="quickSend('What payment methods are supported?')">
+        <i class="fas fa-credit-card"></i><span>Payments</span>
+      </button>
+      <button class="ai-sidebar-row" onclick="quickSend('How do alliances work?')">
+        <i class="fas fa-shield-halved"></i><span>Alliances</span>
+      </button>
+      <button class="ai-sidebar-row" onclick="quickSend('What is my current prestige tier?')">
+        <i class="fas fa-star"></i><span>My tier</span>
+      </button>
+      <button class="ai-sidebar-row" onclick="quickSend('How do daily streaks work?')">
+        <i class="fas fa-fire"></i><span>Daily streaks</span>
+      </button>
 
-        <div class="sidebar-spacer"></div>
+      <!-- Past sessions — injected by JS -->
+      <div id="sidebarHistory"></div>
 
-        <!-- Back link -->
-        <a href="../index.html" class="sidebar-back">
-            <i class="fas fa-arrow-left"></i>
-            <span>Back to PAGE</span>
-        </a>
+    </div>
 
-    </aside>
+    <!-- Footer -->
+    <div class="ai-sidebar-footer">
+      <a href="../index.html" class="ai-back-link">
+        <i class="fas fa-arrow-left"></i> Back to PAGE
+      </a>
+    </div>
 
-    <!-- ══════════════════════════════════
-         MAIN CHAT PANEL
-    ══════════════════════════════════ -->
-    <div class="chat-main">
+  </aside>
 
-        <!-- Top bar -->
-        <header class="chat-topbar">
-            <!-- Mobile: back button -->
-            <button class="topbar-icon-btn mobile-only" onclick="window.location.href='../index.html'" aria-label="Back">
-                <i class="fas fa-arrow-left"></i>
-            </button>
+  <!-- ════════════════ MAIN ════════════════ -->
+  <div class="ai-main" id="aiMain">
 
-            <div class="topbar-identity">
-                <div class="topbar-avatar">
-                    <i class="fas fa-microchip"></i>
-                </div>
-                <div class="topbar-info">
-                    <span class="topbar-name">PAGE AI</span>
-                    <span class="topbar-status" id="aiStatusBadge">
-                        <span class="status-dot"></span>
-                        <span id="aiStatusLabel">Connecting…</span>
-                    </span>
-                </div>
-            </div>
+    <!-- Top bar -->
+    <header class="ai-topbar">
 
-            <!-- Mobile: new chat -->
-            <button class="topbar-icon-btn mobile-only" onclick="clearConversation()" aria-label="New chat">
-                <i class="fas fa-pen-to-square"></i>
-            </button>
-        </header>
-
-        <!-- Messages -->
-        <main class="chat-messages" id="chatMessages">
-
-            <!-- Welcome (matches clearConversation() structure exactly) -->
-            <div class="welcome-screen" id="welcomeScreen">
-                <div class="welcome-orb">
-                    <i class="fas fa-microchip"></i>
-                </div>
-                <h2>PAGE AI Assistant</h2>
-                <p>Powered by Groq. Ask me anything — or send a voice message or image.</p>
-                <div class="starter-grid">
-                    <button class="starter-card" onclick="sendQuickMessage('How do I deposit funds into my wallet?')">
-                        <i class="fas fa-wallet"></i><span>Deposit funds</span>
-                    </button>
-                    <button class="starter-card" onclick="sendQuickMessage('How do I earn money on PAGE?')">
-                        <i class="fas fa-coins"></i><span>Earn money</span>
-                    </button>
-                    <button class="starter-card" onclick="sendQuickMessage('How do tournaments work?')">
-                        <i class="fas fa-trophy"></i><span>Tournaments</span>
-                    </button>
-                    <button class="starter-card" onclick="sendQuickMessage('Explain the prestige tier system')">
-                        <i class="fas fa-layer-group"></i><span>Prestige tiers</span>
-                    </button>
-                    <button class="starter-card" onclick="sendQuickMessage('What payment methods does PAGE support?')">
-                        <i class="fas fa-credit-card"></i><span>Payments</span>
-                    </button>
-                    <button class="starter-card" onclick="sendQuickMessage('How do alliances work?')">
-                        <i class="fas fa-shield-halved"></i><span>Alliances</span>
-                    </button>
-                </div>
-            </div>
-
-        </main>
-
-        <!-- Typing indicator -->
-        <div class="chat-typing" id="typingIndicator" style="display:none">
-            <div class="typing-avatar"><i class="fas fa-microchip"></i></div>
-            <div class="typing-bubble">
-                <span></span><span></span><span></span>
-            </div>
-        </div>
-
-        <!-- Input bar -->
-        <footer class="chat-input-bar">
-            <form id="chatForm" onsubmit="sendMessage(event)">
-                <div class="chat-attachment-preview" id="attachmentPreview" style="display:none;"></div>
-
-                <div class="chat-input-wrap" id="inputWrap">
-                    <button type="button" class="input-icon-btn" id="attachBtn"
-                        title="Attach image or file"
-                        onclick="document.getElementById('fileInput').click()">
-                        <i class="fas fa-paperclip"></i>
-                    </button>
-                    <input type="file" id="fileInput"
-                        accept="image/*,.pdf,.txt,.csv,.md"
-                        style="display:none"
-                        onchange="handleFileAttach(event)">
-
-                    <textarea
-                        id="messageInput"
-                        placeholder="Message PAGE AI…"
-                        rows="1"
-                        maxlength="2000"
-                        aria-label="Message input"
-                    ></textarea>
-
-                    <button type="button" class="input-icon-btn chat-voice-btn" id="voiceBtn"
-                        title="Hold to record voice message"
-                        onmousedown="startRecording(event)"
-                        onmouseup="stopRecording(event)"
-                        ontouchstart="startRecording(event)"
-                        ontouchend="stopRecording(event)">
-                        <i class="fas fa-microphone"></i>
-                    </button>
-
-                    <button type="submit" class="chat-send-btn" id="sendBtn" disabled title="Send">
-                        <i class="fas fa-arrow-up"></i>
-                    </button>
-                </div>
-
-                <p class="chat-disclaimer">PAGE AI may make mistakes. Verify important information.</p>
-            </form>
-        </footer>
-
-    </div><!-- /chat-main -->
-
-</div><!-- /chat-page -->
-
-<!-- Mobile bottom nav -->
-<nav class="mobile-bottom-nav" id="mobileBottomNav">
-    <button class="icon-nav-btn" title="Home" onclick="window.location.href='../index.html'">
-        <i class="fas fa-home"></i>
-    </button>
-    <button class="icon-nav-btn" title="Challenges" onclick="window.location.href='challenges.html'">
-        <i class="fas fa-trophy"></i>
-    </button>
-    <button class="icon-nav-btn" title="Messages" onclick="window.location.href='messenger.html'">
-        <i class="fas fa-comment-dots"></i>
-    </button>
-    <button class="icon-nav-btn" title="Community" onclick="window.location.href='community.html'">
-        <i class="fas fa-users"></i>
-    </button>
-    <button class="icon-nav-btn active" onclick="toggleMobileMoreMenu(this)" title="More">
+      <!-- Mobile: open sidebar drawer -->
+      <button class="ai-topbar-btn ai-mobile-only" onclick="openSidebar()" aria-label="Menu">
         <i class="fas fa-bars"></i>
-    </button>
+      </button>
+
+      <!-- AI identity -->
+      <div class="ai-topbar-id">
+        <div class="ai-topbar-avatar" id="topbarAvatar">
+          <i class="fas fa-microchip"></i>
+        </div>
+        <div class="ai-topbar-info">
+          <span class="ai-topbar-name">PAGE AI</span>
+          <div class="ai-status-row">
+            <span class="ai-status-dot" id="statusDot"></span>
+            <span id="statusLabel">Connecting…</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Desktop: new chat -->
+      <button class="ai-topbar-btn ai-desktop-only" onclick="newSession()" title="New chat">
+        <i class="fas fa-pen-to-square"></i>
+      </button>
+
+      <!-- Mobile: new chat -->
+      <button class="ai-topbar-btn ai-mobile-only" onclick="newSession()" aria-label="New chat">
+        <i class="fas fa-pen-to-square"></i>
+      </button>
+
+    </header>
+
+    <!-- Message feed -->
+    <main class="ai-feed" id="aiFeed">
+      <!-- Welcome screen inserted by JS on boot -->
+    </main>
+
+    <!-- Typing indicator -->
+    <div class="ai-typing-row" id="typingRow" style="display:none">
+      <div class="ai-typing-avatar"><i class="fas fa-microchip"></i></div>
+      <div class="ai-typing-bubble">
+        <span></span><span></span><span></span>
+      </div>
+    </div>
+
+    <!-- Input bar -->
+    <footer class="ai-input-bar" id="inputBar">
+      <form id="aiForm" onsubmit="sendMessage(event)" autocomplete="off">
+
+        <!-- Attachment preview strip -->
+        <div class="ai-attach-strip" id="attachStrip"></div>
+
+        <!-- Input pill -->
+        <div class="ai-input-pill" id="inputPill">
+
+          <!-- Attach file -->
+          <button type="button" class="ai-pill-btn" title="Attach image or file"
+                  onclick="document.getElementById('fileInput').click()">
+            <i class="fas fa-paperclip"></i>
+          </button>
+          <input type="file" id="fileInput"
+                 accept="image/*,.pdf,.txt,.csv,.md"
+                 style="display:none"
+                 onchange="handleAttach(event)">
+
+          <!-- Text input -->
+          <textarea id="aiMsgInput" rows="1" maxlength="2000"
+                    placeholder="Ask PAGE AI anything…"
+                    aria-label="Message"></textarea>
+
+          <!-- Voice -->
+          <button type="button" class="ai-pill-btn" id="voiceBtn"
+                  title="Hold to record a voice message"
+                  onmousedown="startRec(event)"
+                  onmouseup="stopRec(event)"
+                  ontouchstart="startRec(event)"
+                  ontouchend="stopRec(event)">
+            <i class="fas fa-microphone"></i>
+          </button>
+
+          <!-- Send -->
+          <button type="submit" id="aiSendBtn" disabled title="Send message">
+            <i class="fas fa-paper-plane"></i>
+          </button>
+
+        </div>
+
+        <p class="ai-disclaimer">PAGE AI can make mistakes. Double-check important info.</p>
+      </form>
+    </footer>
+
+  </div><!-- /ai-main -->
+
+</div><!-- /ai-app -->
+
+<!-- ═══════════════════════════════════════════════════════
+     MOBILE BOTTOM NAV
+     ═══════════════════════════════════════════════════════ -->
+<nav class="mobile-bottom-nav" id="mobileBottomNav">
+  <button class="icon-nav-btn" onclick="window.location.href='../index.html'" title="Home">
+    <i class="fas fa-home"></i>
+  </button>
+  <button class="icon-nav-btn" onclick="window.location.href='challenges.html'" title="Challenges">
+    <i class="fas fa-trophy"></i>
+  </button>
+  <button class="icon-nav-btn" onclick="window.location.href='messenger.html'" title="Messages">
+    <i class="fas fa-comment-dots"></i>
+  </button>
+  <button class="icon-nav-btn" onclick="window.location.href='community.html'" title="Community">
+    <i class="fas fa-users"></i>
+  </button>
+  <button class="icon-nav-btn active" onclick="toggleMoreMenu(this)" title="More">
+    <i class="fas fa-bars"></i>
+  </button>
 </nav>
 
+<!-- ═══════════════════════════════════════════════════════
+     SCRIPTS
+     ═══════════════════════════════════════════════════════ -->
 <script src="../scripts/chatbot.js"></script>
 <script>
-function toggleMobileMoreMenu(btn) {
-    const dropdown = document.getElementById('userMenuDropdown');
-    if (!dropdown) return;
-    const isOpen = dropdown.classList.contains('show');
-    if (isOpen) {
-        dropdown.classList.remove('show');
-        ['top','bottom','right','position'].forEach(p => dropdown.style.removeProperty(p));
-    } else {
-        const navH = document.getElementById('mobileBottomNav').offsetHeight;
-        Object.assign(dropdown.style, { position:'fixed', bottom:(navH+8)+'px', top:'auto', right:'8px' });
-        dropdown.classList.add('show');
-    }
+/* Sidebar drawer (mobile) */
+function openSidebar() {
+  document.getElementById('aiSidebar').classList.add('open');
+  document.getElementById('drawerOverlay').classList.add('visible');
+  document.body.style.overflow = 'hidden';
+}
+function closeSidebar() {
+  document.getElementById('aiSidebar').classList.remove('open');
+  document.getElementById('drawerOverlay').classList.remove('visible');
+  document.body.style.overflow = '';
+}
+
+/* More menu (bottom nav) */
+function toggleMoreMenu(btn) {
+  const dd = document.getElementById('userMenuDropdown');
+  if (!dd) return;
+  const open = dd.classList.contains('show');
+  if (open) {
+    dd.classList.remove('show');
+    ['top','bottom','right','position'].forEach(p => dd.style.removeProperty(p));
+  } else {
+    const navH = document.getElementById('mobileBottomNav').offsetHeight;
+    Object.assign(dd.style, { position:'fixed', bottom:(navH+8)+'px', top:'auto', right:'8px' });
+    dd.classList.add('show');
+  }
 }
 document.addEventListener('click', e => {
-    const dd = document.getElementById('userMenuDropdown');
-    if (dd?.classList.contains('show') && dd.style.bottom) {
-        const btn = document.querySelector('.mobile-bottom-nav .icon-nav-btn[title="More"]');
-        if (!dd.contains(e.target) && !btn?.contains(e.target)) {
-            dd.classList.remove('show');
-            ['top','bottom','right','position'].forEach(p => dd.style.removeProperty(p));
-        }
+  const dd = document.getElementById('userMenuDropdown');
+  if (dd?.classList.contains('show') && dd.style.bottom) {
+    const btn = document.querySelector('.mobile-bottom-nav .icon-nav-btn[title="More"]');
+    if (!dd.contains(e.target) && !btn?.contains(e.target)) {
+      dd.classList.remove('show');
+      ['top','bottom','right','position'].forEach(p => dd.style.removeProperty(p));
     }
+  }
 });
 </script>
 </body>

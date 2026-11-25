@@ -1,35 +1,35 @@
-"""
-Chatbot serializers
-"""
 from rest_framework import serializers
-from .models import ChatConversation, ChatMessage
+from .models import ChatSession, ChatMessage
 
 
 class ChatMessageSerializer(serializers.ModelSerializer):
-    """Chat message serializer"""
-    
     class Meta:
-        model = ChatMessage
-        fields = ['id', 'role', 'content', 'metadata', 'created_at']
-        read_only_fields = ['id', 'created_at']
+        model  = ChatMessage
+        fields = ['id', 'role', 'content', 'meta', 'created_at']
+        read_only_fields = fields
 
 
-class ChatConversationSerializer(serializers.ModelSerializer):
-    """Chat conversation serializer"""
-    messages = ChatMessageSerializer(many=True, read_only=True)
+class ChatSessionSerializer(serializers.ModelSerializer):
+    messages      = ChatMessageSerializer(many=True, read_only=True)
     message_count = serializers.SerializerMethodField()
-    
+
     class Meta:
-        model = ChatConversation
-        fields = ['id', 'title', 'is_active', 'message_count', 'messages', 'created_at', 'updated_at']
-        read_only_fields = ['id', 'created_at', 'updated_at']
-    
+        model  = ChatSession
+        fields = ['id', 'title', 'message_count', 'messages', 'created_at', 'updated_at']
+        read_only_fields = fields
+
     def get_message_count(self, obj):
         return obj.messages.count()
 
 
-class ChatRequestSerializer(serializers.Serializer):
-    """Chat request serializer"""
-    message = serializers.CharField(max_length=2000)
-    # Accept both int (Postgres auto-id) and str (Firestore UUID)
-    conversation_id = serializers.CharField(required=False, allow_null=True, allow_blank=True)
+class ChatSessionListSerializer(serializers.ModelSerializer):
+    """Lightweight serializer for sidebar list — no messages included."""
+    message_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model  = ChatSession
+        fields = ['id', 'title', 'message_count', 'updated_at']
+        read_only_fields = fields
+
+    def get_message_count(self, obj):
+        return obj.messages.count()

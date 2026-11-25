@@ -1,714 +1,643 @@
 /**
- * PAGE AI Chatbot
- * Talks to the Django backend which calls Groq.
- * Supports: text, voice recording (Whisper transcription), image & file upload.
+ * PAGE AI — Chat client
+ * ─────────────────────────────────────────────────────────────────────
+ * Endpoints:
+ *   POST /api/chatbot/chat/           text chat
+ *   POST /api/chatbot/media/          image / file + optional text
+ *   POST /api/chatbot/transcribe/     voice recording → text
+ *   GET  /api/chatbot/sessions/       sidebar history list
+ *   GET  /api/chatbot/sessions/<id>/  load a past session
+ *   GET  /api/chatbot/status/         live AI status badge
  */
 
-const CHAT_API = (() => {
-    if (typeof API_BASE_URL !== 'undefined') return API_BASE_URL;
-    const h = window.location.hostname;
-    return (h === 'localhost' || h === '127.0.0.1')
-        ? 'http://localhost:8000/api'
-        : `${window.location.origin}/api`;
+'use strict';
+
+/* ── API root ──────────────────────────────────────────────────────────── */
+const API = (() => {
+  if (typeof API_BASE_URL !== 'undefined') return API_BASE_URL;
+  const h = window.location.hostname;
+  return (h === 'localhost' || h === '127.0.0.1')
+    ? 'http://localhost:8000/api'
+    : `${window.location.origin}/api`;
 })();
 
-// ── State ──────────────────────────────────────────────────────────────────
-let conversationId  = null;
-let messageCount    = 0;
-let isWaiting       = false;
-let currentAiSource = 'groq';
+/* ── State ─────────────────────────────────────────────────────────────── */
+let sessionId  = null;
+let msgCount   = 0;
+let isBusy     = false;
+let aiSrc      = 'groq';
 
-// Voice recording state
-let _mediaRecorder  = null;
-let _audioChunks    = [];
-let _recordingTimer = null;
-let _isRecording    = false;
+/* Voice */
+let _recorder  = null;
+let _chunks    = [];
+let _recTimer  = null;
+let _recActive = false;
 
-// File attachment state
-let _attachedFile   = null;    // File object
-let _attachedPreviewUrl = null;
+/* Attachment */
+let _file      = null;
+let _fileURL   = null;
 
-// ── Boot ───────────────────────────────────────────────────────────────────
+/* ── Boot ──────────────────────────────────────────────────────────────── */
 document.addEventListener('DOMContentLoaded', () => {
-    if (!window._pageIsAuthed || !window._pageIsAuthed()) {
-        if (!(localStorage.getItem('djangoAuthToken') || localStorage.getItem('firebaseIdToken'))) {
-            window.location.href = 'auth.html'; return;
-        }
-    }
 
-    const input = document.getElementById('messageInput');
-    input.addEventListener('input', () => { autoGrow(input); toggleSendBtn(); });
-    input.addEventListener('keydown', e => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            document.getElementById('chatForm').dispatchEvent(new Event('submit'));
-        }
+  /* Auth guard */
+  if (typeof window._pageIsAuthed === 'function' && !window._pageIsAuthed()) {
+    if (!localStorage.getItem('djangoAuthToken') && !localStorage.getItem('firebaseIdToken')) {
+      window.location.href = 'auth.html'; return;
+    }
+  }
+
+  /* Auto-grow textarea + send button */
+  const inp = document.getElementById('aiMsgInput');
+  inp.addEventListener('input', () => { _grow(inp); _toggleSend(); });
+  inp.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      document.getElementById('aiForm').dispatchEvent(new Event('submit'));
+    }
+  });
+
+  /* Mobile keyboard lift via Visual Viewport API */
+  if (window.visualViewport) {
+    const bar = document.getElementById('inputBar');
+    window.visualViewport.addEventListener('resize', () => {
+      const kbH = Math.max(0, window.innerHeight - window.visualViewport.height);
+      document.documentElement.style.setProperty('--kb-h', kbH + 'px');
     });
+  }
 
-    // ── Mobile keyboard fix: shift input bar up when soft keyboard opens ──
-    if (window.visualViewport) {
-        window.visualViewport.addEventListener('resize', () => {
-            const keyboardHeight = window.innerHeight - window.visualViewport.height;
-            document.documentElement.style.setProperty(
-                '--keyboard-offset',
-                Math.max(0, keyboardHeight) + 'px'
-            );
-        });
-    }
-
-    checkAiStatus();
-    loadHistory();
+  _renderWelcome();
+  _checkStatus();
+  _loadSessions();
 });
 
-// ── Input helpers ──────────────────────────────────────────────────────────
-function autoGrow(el) {
-    el.style.height = 'auto';
-    el.style.height = Math.min(el.scrollHeight, 140) + 'px';
+/* ── Auth helper ───────────────────────────────────────────────────────── */
+function _authHeader() {
+  if (typeof window._pageAuthHeader === 'function') return window._pageAuthHeader();
+  const tk = localStorage.getItem('djangoAuthToken') || localStorage.getItem('firebaseIdToken');
+  return tk ? `Token ${tk}` : null;
 }
 
-function toggleSendBtn() {
-    const input = document.getElementById('messageInput');
-    const btn   = document.getElementById('sendBtn');
-    btn.disabled = (input.value.trim() === '' && !_attachedFile) || isWaiting;
+async function _apiFetch(url, opts = {}) {
+  const auth = _authHeader();
+  if (!auth) throw new Error('401 — not authenticated');
+  opts.headers = { ...(opts.headers || {}), 'Authorization': auth };
+  const res = await fetch(url, opts);
+  if (!res.ok) {
+    let msg = '';
+    try { msg = (await res.json()).error || ''; } catch { msg = res.statusText; }
+    throw new Error(`${res.status} — ${msg}`);
+  }
+  return res.json();
 }
 
-// ── AI status badge ────────────────────────────────────────────────────────
-async function checkAiStatus() {
-    const authHeader = window._pageAuthHeader ? window._pageAuthHeader() : null;
-    const label = document.getElementById('aiStatusLabel');
-    const dot   = document.querySelector('.status-dot');
-    dot.className   = 'status-dot';
-    label.innerHTML = 'Checking…';
+/* ── Status badge ──────────────────────────────────────────────────────── */
+async function _checkStatus() {
+  const dot   = document.getElementById('statusDot');
+  const label = document.getElementById('statusLabel');
+  const ava   = document.getElementById('topbarAvatar');
+  const ctrl  = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 9000);
 
-    // Abort after 8s — handles Render cold starts gracefully
-    const controller = new AbortController();
-    const timeout    = setTimeout(() => controller.abort(), 8000);
-
-    try {
-        const res = await fetch(`${CHAT_API}/chatbot/status/`, {
-            headers: authHeader ? { 'Authorization': authHeader } : {},
-            signal:  controller.signal,
-        });
-        clearTimeout(timeout);
-
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
-
-        currentAiSource = data.engine;
-
-        if (data.engine === 'groq' && data.status === 'online') {
-            dot.className   = 'status-dot online';
-            label.innerHTML = `${data.label} <span class="engine-badge">✓ Live</span>`;
-        } else if (data.status === 'error') {
-            dot.className   = 'status-dot error';
-            label.innerHTML = `<span class="engine-badge fallback">${data.label}</span>`;
-            if (data.reason) console.warn('[PAGE AI] Status error:', data.reason);
-        } else {
-            dot.className   = 'status-dot limited';
-            label.innerHTML = 'Basic Mode <span class="engine-badge fallback">Limited</span>';
-            if (data.reason) console.warn('[PAGE AI] Fallback reason:', data.reason);
-        }
-    } catch (err) {
-        clearTimeout(timeout);
-        if (err.name === 'AbortError') {
-            // Server waking up — optimistically mark as online so user isn't blocked
-            dot.className   = 'status-dot online';
-            label.innerHTML = 'PAGE AI <span class="engine-badge">Ready</span>';
-            currentAiSource = 'groq';
-        } else {
-            dot.className   = 'status-dot error';
-            label.textContent = 'Offline';
-        }
-    }
-}
-
-// ── Send text message ──────────────────────────────────────────────────────
-async function sendMessage(event) {
-    event.preventDefault();
-    if (isWaiting) return;
-
-    const input   = document.getElementById('messageInput');
-    const message = input.value.trim();
-
-    if (!message && !_attachedFile) return;
-
-    input.value = '';
-    input.style.height = 'auto';
-    toggleSendBtn();
-    hideWelcome();
-
-    if (_attachedFile) {
-        await sendMediaMessage(message, _attachedFile);
-        clearAttachment();
-        return;
-    }
-
-    appendMessage(message, 'user');
-    setWaiting(true);
-
-    try {
-        const data    = await callBackend(message);
-        // Backend sends both `reply` (shortcut) and `ai_message.content` — accept either
-        const content = data?.ai_message?.content || data?.reply;
-        const source  = data?.ai_source || currentAiSource;
-        setWaiting(false);
-        if (content) appendMessage(content, 'bot', source);
-        else appendMessage('No response received — please try again.', 'bot', 'fallback', true);
-
-        // If this was the first message in a new conversation, refresh the sidebar list
-        if (data?.conversation_id && messageCount <= 2) loadHistory();
-    } catch (err) {
-        setWaiting(false);
-        const msg = err.message || '';
-        if (msg.includes('401'))       appendMessage('Session expired — please log in again.', 'bot', 'fallback', true);
-        else if (msg.includes('403'))  appendMessage('Access denied. Please refresh and try again.', 'bot', 'fallback', true);
-        else if (msg.includes('500'))  appendMessage('The AI server hit an error. Please try again in a moment.', 'bot', 'fallback', true);
-        else if (msg.includes('503'))  appendMessage('AI service is starting up — please wait a few seconds and retry.', 'bot', 'fallback', true);
-        else                           appendMessage(`Connection error (${msg || 'unknown'}) — check your network and try again.`, 'bot', 'fallback', true);
-    }
-}
-
-function sendQuickMessage(text) {
-    const input = document.getElementById('messageInput');
-    input.value = text;
-    toggleSendBtn();
-    document.getElementById('chatForm').dispatchEvent(new Event('submit'));
-}
-
-async function callBackend(message) {
-    const authHeader = window._pageAuthHeader ? window._pageAuthHeader() : null;
-    if (!authHeader) throw new Error('401 — not authenticated');
-
-    const res = await fetch(`${CHAT_API}/chatbot/chat/`, {
-        method:  'POST',
-        headers: { ...(authHeader ? { 'Authorization': authHeader } : {}), 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ message, conversation_id: conversationId || undefined }),
+  try {
+    const auth = _authHeader();
+    const res  = await fetch(`${API}/chatbot/status/`, {
+      headers: auth ? { 'Authorization': auth } : {},
+      signal: ctrl.signal,
     });
+    clearTimeout(timer);
+    if (!res.ok) throw new Error(`${res.status}`);
+    const d = await res.json();
+    aiSrc = d.engine;
 
-    if (!res.ok) {
-        // Try to get the server's error message for better diagnostics
-        let errText = '';
-        try { errText = (await res.json()).error || (await res.text()); } catch { /* ignore */ }
-        throw new Error(`${res.status} — ${errText || res.statusText}`);
+    if (d.engine === 'groq' && d.status === 'online') {
+      dot.className   = 'ai-status-dot online';
+      label.innerHTML = `${d.label || 'PAGE AI'} <span class="ai-engine-pill live">● Live</span>`;
+      if (ava) ava.classList.add('is-online');
+    } else if (d.status === 'error') {
+      dot.className   = 'ai-status-dot error';
+      label.innerHTML = `<span class="ai-engine-pill limited">${d.label || 'Basic Mode'}</span>`;
+    } else {
+      dot.className   = 'ai-status-dot limited';
+      label.innerHTML = 'Basic Mode <span class="ai-engine-pill limited">Limited</span>';
     }
-
-    const data = await res.json();
-    if (data.conversation_id) conversationId = data.conversation_id;
-    return data;
+  } catch (err) {
+    clearTimeout(timer);
+    if (err.name === 'AbortError') {
+      /* Server cold-starting — optimistically show ready */
+      dot.className   = 'ai-status-dot online';
+      label.innerHTML = 'PAGE AI <span class="ai-engine-pill live">Ready</span>';
+      if (document.getElementById('topbarAvatar'))
+        document.getElementById('topbarAvatar').classList.add('is-online');
+    } else {
+      dot.className   = 'ai-status-dot error';
+      label.textContent = 'Offline';
+    }
+  }
 }
 
-// ── Voice recording ────────────────────────────────────────────────────────
-async function startRecording(e) {
-    // Prevent touch events from also firing mouse events (double-trigger fix)
-    if (e && e.cancelable) e.preventDefault();
-    if (_isRecording || isWaiting) return;
-
-    try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        _audioChunks  = [];
-        _mediaRecorder = new MediaRecorder(stream, { mimeType: getSupportedAudioMime() });
-
-        _mediaRecorder.ondataavailable = e => {
-            if (e.data.size > 0) _audioChunks.push(e.data);
-        };
-
-        _mediaRecorder.start(100);
-        _isRecording = true;
-
-        // Visual feedback
-        const btn = document.getElementById('voiceBtn');
-        btn.classList.add('recording');
-        btn.title = 'Release to send';
-
-        // Safety: auto-stop after 60s
-        _recordingTimer = setTimeout(() => stopRecording(), 60000);
-
-    } catch (err) {
-        console.error('Microphone error:', err);
-        appendMessage('Could not access microphone. Please allow microphone permission.', 'bot', 'fallback', true);
-    }
+/* ── Welcome / empty state ─────────────────────────────────────────────── */
+function _renderWelcome() {
+  const feed = document.getElementById('aiFeed');
+  feed.innerHTML = `
+    <div class="ai-welcome" id="aiWelcome">
+      <div class="ai-welcome-icon"><i class="fas fa-microchip"></i></div>
+      <h2>Hey, I'm PAGE AI</h2>
+      <p class="ai-welcome-sub">
+        Ask me anything — your wallet, challenges, prestige tiers, or
+        honestly just about anything else. I'm here.
+      </p>
+      <div class="ai-starter-grid">
+        <button class="ai-starter-card" onclick="quickSend('How do I deposit funds into my wallet?')">
+          <i class="fas fa-wallet"></i><span>Deposit funds</span>
+        </button>
+        <button class="ai-starter-card" onclick="quickSend('How do I earn money on PAGE?')">
+          <i class="fas fa-coins"></i><span>Earn money</span>
+        </button>
+        <button class="ai-starter-card" onclick="quickSend('How do tournaments work?')">
+          <i class="fas fa-trophy"></i><span>Tournaments</span>
+        </button>
+        <button class="ai-starter-card" onclick="quickSend('Explain the prestige tier system')">
+          <i class="fas fa-layer-group"></i><span>Prestige tiers</span>
+        </button>
+        <button class="ai-starter-card" onclick="quickSend('What payment methods are supported?')">
+          <i class="fas fa-credit-card"></i><span>Payments</span>
+        </button>
+        <button class="ai-starter-card" onclick="quickSend('How do alliances work?')">
+          <i class="fas fa-shield-halved"></i><span>Alliances</span>
+        </button>
+      </div>
+    </div>`;
+  sessionId = null;
+  msgCount  = 0;
 }
 
-async function stopRecording(e) {
-    // Prevent touch events from also firing mouse events (double-trigger fix)
-    if (e && e.cancelable) e.preventDefault();
-    if (!_isRecording || !_mediaRecorder) return;
-    _isRecording = false;
-    clearTimeout(_recordingTimer);
+function _hideWelcome() {
+  const ws = document.getElementById('aiWelcome');
+  if (!ws) return;
+  ws.style.transition = 'opacity 0.2s, transform 0.2s';
+  ws.style.opacity    = '0';
+  ws.style.transform  = 'translateY(-8px)';
+  setTimeout(() => ws.remove(), 220);
+}
 
+/* ── New session ───────────────────────────────────────────────────────── */
+function newSession() {
+  _clearAttach();
+  _renderWelcome();
+  _updateSidebarActive(null);
+  closeSidebar();
+}
+
+/* ── Send text ─────────────────────────────────────────────────────────── */
+async function sendMessage(e) {
+  e.preventDefault();
+  if (isBusy) return;
+
+  const inp  = document.getElementById('aiMsgInput');
+  const text = inp.value.trim();
+  if (!text && !_file) return;
+
+  /* Reset input */
+  inp.value = '';
+  inp.style.height = 'auto';
+  _toggleSend();
+  _hideWelcome();
+  closeSidebar();
+
+  /* File / image takes a separate path */
+  if (_file) {
+    await _sendMedia(text, _file);
+    _clearAttach();
+    return;
+  }
+
+  _appendMsg(text, 'user');
+  _setBusy(true);
+
+  try {
+    const data = await _apiFetch(`${API}/chatbot/chat/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: text, session_id: sessionId || undefined }),
+    });
+    _setBusy(false);
+    if (data.session_id) {
+      const isNew = !sessionId;
+      sessionId = data.session_id;
+      if (isNew) _loadSessions(); /* update sidebar after first message */
+    }
+    _appendMsg(data.reply || data.message?.content || '…', 'bot', data.ai_source);
+  } catch (err) {
+    _setBusy(false);
+    _appendErr(_friendlyError(err.message));
+  }
+}
+
+function quickSend(text) {
+  const inp = document.getElementById('aiMsgInput');
+  inp.value = text;
+  _toggleSend();
+  document.getElementById('aiForm').dispatchEvent(new Event('submit'));
+}
+
+function _friendlyError(msg) {
+  if (msg.includes('401')) return 'Your session expired — please log in again.';
+  if (msg.includes('403')) return 'Access denied. Try refreshing the page.';
+  if (msg.includes('500')) return 'The AI server hit an error. Give it a moment and try again.';
+  if (msg.includes('503')) return 'AI is warming up — wait a few seconds then try again.';
+  return `Couldn't reach the server (${msg}) — check your connection.`;
+}
+
+/* ── Session history (sidebar) ─────────────────────────────────────────── */
+async function _loadSessions() {
+  const container = document.getElementById('sidebarHistory');
+  if (!container) return;
+  try {
+    const data     = await _apiFetch(`${API}/chatbot/sessions/`);
+    const sessions = (data.sessions || []).slice(0, 15);
+    if (!sessions.length) { container.innerHTML = ''; return; }
+
+    container.innerHTML = '<p class="ai-sidebar-label">Recent chats</p>';
+    sessions.forEach(s => {
+      const btn   = document.createElement('button');
+      btn.className  = `ai-sidebar-row${s.id === sessionId ? ' active' : ''}`;
+      btn.dataset.sid = s.id;
+      const title = (s.title || 'Chat').slice(0, 36) + ((s.title?.length || 0) > 36 ? '…' : '');
+      btn.innerHTML   = `<i class="fas fa-message"></i><span>${_esc(title)}</span>`;
+      btn.addEventListener('click', () => _openSession(s.id));
+      container.appendChild(btn);
+    });
+  } catch { /* sidebar history is non-critical */ }
+}
+
+async function _openSession(id) {
+  if (id === sessionId) { closeSidebar(); return; }
+  try {
+    const data = await _apiFetch(`${API}/chatbot/sessions/${id}/`);
+    sessionId  = id;
+    msgCount   = 0;
+    const feed = document.getElementById('aiFeed');
+    feed.innerHTML = '';
+    const msgs = data.messages || [];
+    if (msgs.length) {
+      msgs.forEach(m => _appendMsg(m.content,
+        m.role === 'user' ? 'user' : 'bot',
+        m.role === 'assistant' ? (m.meta?.source || 'groq') : null));
+    } else {
+      _renderWelcome();
+    }
+    _updateSidebarActive(id);
+    closeSidebar();
+  } catch (err) { console.error('Failed to load session:', err); }
+}
+
+function _updateSidebarActive(id) {
+  document.querySelectorAll('.ai-sidebar-row[data-sid]').forEach(b => {
+    b.classList.toggle('active', String(b.dataset.sid) === String(id));
+  });
+}
+
+/* ── Voice recording ───────────────────────────────────────────────────── */
+async function startRec(e) {
+  if (e && e.cancelable) e.preventDefault();
+  if (_recActive || isBusy) return;
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    _chunks   = [];
+    _recorder = new MediaRecorder(stream, { mimeType: _bestMime() });
+    _recorder.ondataavailable = ev => { if (ev.data.size > 0) _chunks.push(ev.data); };
+    _recorder.start(100);
+    _recActive = true;
     const btn = document.getElementById('voiceBtn');
-    btn.classList.remove('recording');
-    btn.title = 'Hold to record voice message';
-
-    // Collect remaining chunks
-    _mediaRecorder.stop();
-    _mediaRecorder.stream.getTracks().forEach(t => t.stop());
-
-    // Wait for the final ondataavailable event
-    await new Promise(res => setTimeout(res, 150));
-
-    const audioBlob = new Blob(_audioChunks, { type: getSupportedAudioMime() });
-
-    if (audioBlob.size < 1000) {
-        appendMessage('Recording too short. Hold the mic button longer.', 'bot', 'fallback', true);
-        return;
-    }
-
-    // Show user a "voice message" bubble
-    hideWelcome();
-    appendVoiceBubble('user');
-    setWaiting(true);
-
-    try {
-        const transcript = await transcribeAudio(audioBlob);
-        if (!transcript) {
-            setWaiting(false);
-            appendMessage('Could not understand the audio. Please try again.', 'bot', 'fallback', true);
-            return;
-        }
-
-        // Update the voice bubble with the transcript
-        updateLastVoiceBubbleTranscript(transcript);
-
-        // Send as a regular text message
-        const data    = await callBackend(transcript);
-        // Accept both ai_message.content and top-level reply
-        const content = data?.ai_message?.content || data?.reply;
-        const source  = data?.ai_source || currentAiSource;
-        setWaiting(false);
-        if (content) appendMessage(content, 'bot', source);
-        else appendMessage('Sorry, no response. Please try again.', 'bot', 'fallback', true);
-
-    } catch (err) {
-        setWaiting(false);
-        appendMessage(`Voice message failed (${err.message || 'unknown error'}) — please try again.`, 'bot', 'fallback', true);
-    }
+    btn.classList.add('recording'); btn.title = 'Release to send';
+    _recTimer = setTimeout(() => stopRec(), 60000);
+  } catch {
+    _appendErr('Could not access microphone — please allow microphone permission.');
+  }
 }
 
-async function transcribeAudio(blob) {
-    const authHeader = window._pageAuthHeader ? window._pageAuthHeader() : null;
-    const formData = new FormData();
-    formData.append('audio', blob, `voice_${Date.now()}.webm`);
+async function stopRec(e) {
+  if (e && e.cancelable) e.preventDefault();
+  if (!_recActive || !_recorder) return;
+  _recActive = false;
+  clearTimeout(_recTimer);
+  const btn = document.getElementById('voiceBtn');
+  btn.classList.remove('recording'); btn.title = 'Hold to record a voice message';
+  _recorder.stop();
+  _recorder.stream.getTracks().forEach(t => t.stop());
+  await new Promise(r => setTimeout(r, 160));
 
-    const res = await fetch(`${CHAT_API}/chatbot/transcribe/`, {
-        method:  'POST',
-        headers: authHeader ? { 'Authorization': authHeader } : {},
-        body:    formData,
+  const blob = new Blob(_chunks, { type: _bestMime() });
+  if (blob.size < 800) { _appendErr('Recording too short — hold the mic button longer.'); return; }
+
+  _hideWelcome();
+  _appendVoiceBubble();
+  _setBusy(true);
+
+  try {
+    const transcript = await _transcribe(blob);
+    if (!transcript) {
+      _setBusy(false);
+      _appendErr('Could not understand the audio. Please try again.');
+      return;
+    }
+    _updateVoiceBubble(transcript);
+    const data = await _apiFetch(`${API}/chatbot/chat/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: transcript, session_id: sessionId || undefined }),
     });
-
-    if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || `HTTP ${res.status}`);
-    }
-
-    const data = await res.json();
-    return data.transcript;
+    _setBusy(false);
+    if (data.session_id) { const isNew = !sessionId; sessionId = data.session_id; if (isNew) _loadSessions(); }
+    _appendMsg(data.reply || data.message?.content || '…', 'bot', data.ai_source);
+  } catch (err) {
+    _setBusy(false);
+    _appendErr(`Voice message failed (${err.message}).`);
+  }
 }
 
-function getSupportedAudioMime() {
-    const types = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/ogg', 'audio/mp4'];
-    return types.find(t => MediaRecorder.isTypeSupported(t)) || 'audio/webm';
+async function _transcribe(blob) {
+  const form = new FormData();
+  form.append('audio', blob, `voice_${Date.now()}.webm`);
+  const auth = _authHeader();
+  const res  = await fetch(`${API}/chatbot/transcribe/`, {
+    method: 'POST',
+    headers: auth ? { 'Authorization': auth } : {},
+    body: form,
+  });
+  if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || `${res.status}`); }
+  return (await res.json()).transcript || null;
 }
 
-// ── File / image attachment ────────────────────────────────────────────────
-function handleFileAttach(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    // Derive type from extension if browser doesn't report it
-    let fileType = file.type;
-    if (!fileType) {
-        const ext = file.name.split('.').pop().toLowerCase();
-        const extMap = { png:'image/png', jpg:'image/jpeg', jpeg:'image/jpeg',
-                         gif:'image/gif', webp:'image/webp', bmp:'image/bmp' };
-        fileType = extMap[ext] || 'application/octet-stream';
-    }
-
-    const isImage = fileType.startsWith('image/');
-    const maxMb   = isImage ? 10 : 5;
-    if (file.size > maxMb * 1024 * 1024) {
-        alert(`File too large. Max ${maxMb} MB.`);
-        event.target.value = '';
-        return;
-    }
-
-    // Store corrected type on the file object reference we'll use later
-    _attachedFile      = file;
-    _attachedFile._resolvedType = fileType;
-
-    const preview = document.getElementById('attachmentPreview');
-    preview.style.display = 'flex';
-
-    if (isImage) {
-        const url = URL.createObjectURL(file);
-        _attachedPreviewUrl = url;
-        preview.innerHTML = `
-            <div class="attachment-chip">
-                <img src="${url}" alt="attachment" class="attachment-thumb">
-                <span class="attachment-name">${file.name}</span>
-                <button type="button" onclick="clearAttachment()" class="attachment-remove"><i class="fas fa-times"></i></button>
-            </div>`;
-    } else {
-        preview.innerHTML = `
-            <div class="attachment-chip">
-                <i class="fas fa-file attachment-file-icon"></i>
-                <span class="attachment-name">${file.name}</span>
-                <button type="button" onclick="clearAttachment()" class="attachment-remove"><i class="fas fa-times"></i></button>
-            </div>`;
-    }
-
-    toggleSendBtn();
+function _bestMime() {
+  const types = ['audio/webm;codecs=opus','audio/webm','audio/ogg;codecs=opus','audio/ogg','audio/mp4'];
+  return types.find(t => MediaRecorder.isTypeSupported(t)) || 'audio/webm';
 }
 
-function clearAttachment() {
-    _attachedFile = null;
-    if (_attachedPreviewUrl) { URL.revokeObjectURL(_attachedPreviewUrl); _attachedPreviewUrl = null; }
-    const preview = document.getElementById('attachmentPreview');
-    preview.style.display = 'none';
-    preview.innerHTML = '';
-    document.getElementById('fileInput').value = '';
-    toggleSendBtn();
+/* ── File / image attachment ───────────────────────────────────────────── */
+function handleAttach(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  let mime = file.type || '';
+  if (!mime) {
+    const ext = file.name.split('.').pop().toLowerCase();
+    mime = {png:'image/png',jpg:'image/jpeg',jpeg:'image/jpeg',
+            gif:'image/gif',webp:'image/webp',bmp:'image/bmp'}[ext] || 'application/octet-stream';
+  }
+  const isImg = mime.startsWith('image/');
+  const maxMb = isImg ? 10 : 5;
+  if (file.size > maxMb * 1024 * 1024) {
+    alert(`File is too large. Max ${maxMb} MB.`); e.target.value = ''; return;
+  }
+  _file = file; _file._mime = mime;
+
+  const strip = document.getElementById('attachStrip');
+  strip.innerHTML = '';
+  strip.classList.add('visible');
+
+  const chip = document.createElement('div');
+  chip.className = 'ai-attach-chip';
+
+  if (isImg) {
+    const url = URL.createObjectURL(file); _fileURL = url;
+    chip.innerHTML = `
+      <img src="${url}" class="ai-attach-thumb" alt="">
+      <span class="ai-attach-name">${_esc(file.name)}</span>
+      <button type="button" class="ai-attach-remove" onclick="clearAttach()"><i class="fas fa-times"></i></button>`;
+  } else {
+    chip.innerHTML = `
+      <i class="fas fa-file ai-attach-file-icon"></i>
+      <span class="ai-attach-name">${_esc(file.name)}</span>
+      <button type="button" class="ai-attach-remove" onclick="clearAttach()"><i class="fas fa-times"></i></button>`;
+  }
+  strip.appendChild(chip);
+  _toggleSend();
 }
 
-async function sendMediaMessage(message, file) {
-    hideWelcome();
-
-    // Use the resolved type (handles browsers that leave file.type empty)
-    const resolvedType = file._resolvedType || file.type || '';
-    const isImage = resolvedType.startsWith('image/');
-
-    if (isImage) {
-        const previewUrl = URL.createObjectURL(file);
-        const feed = document.getElementById('chatMessages');
-        const row  = document.createElement('div');
-        row.className = 'msg-row user-row fade-in';
-        const time = new Date().toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit' });
-        row.innerHTML = `
-            <div class="msg-avatar">${_chatUserAvatarHTML()}</div>
-            <div class="msg-bubble-wrap">
-                <div class="msg-bubble msg-image-bubble">
-                    <img src="${previewUrl}" alt="${file.name}"
-                         style="max-width:220px;max-height:220px;border-radius:12px;display:block;object-fit:cover;"
-                         onload="URL.revokeObjectURL(this.src)">
-                    ${message ? `<p style="margin:6px 0 0;font-size:13px;">${renderMarkdown(message)}</p>` : ''}
-                </div>
-                <div class="msg-meta"><span class="msg-time">${time}</span></div>
-            </div>`;
-        feed.appendChild(row);
-        messageCount++;
-        scrollToBottom();
-    } else {
-        const displayMsg = message ? `${message}\n📎 ${file.name}` : `📎 ${file.name}`;
-        appendMessage(displayMsg, 'user');
-    }
-
-    setWaiting(true);
-
-    try {
-        const authHeader = window._pageAuthHeader ? window._pageAuthHeader() : null;
-        const formData = new FormData();
-        if (message) formData.append('message', message);
-
-        // Re-wrap the file as a Blob with the correct type so the backend
-        // gets the right Content-Type in the multipart form (fixes empty type bug)
-        const blob = resolvedType && resolvedType !== file.type
-            ? new Blob([await file.arrayBuffer()], { type: resolvedType })
-            : file;
-        formData.append('file', blob, file.name);
-
-        if (conversationId) formData.append('conversation_id', conversationId);
-
-        const res = await fetch(`${CHAT_API}/chatbot/media-chat/`, {
-            method:  'POST',
-            headers: authHeader ? { 'Authorization': authHeader } : {},
-            body:    formData,
-        });
-
-        const data = await res.json().catch(() => ({}));
-        setWaiting(false);
-
-        if (!res.ok) {
-            appendMessage(data.error || 'Failed to process file.', 'bot', 'fallback', true);
-            return;
-        }
-
-        if (data.conversation_id) conversationId = data.conversation_id;
-        const content = data?.ai_message?.content || data?.reply;
-        const source  = data?.ai_source || currentAiSource;
-        if (content) appendMessage(content, 'bot', source);
-        else appendMessage('No response received. Please try again.', 'bot', 'fallback', true);
-
-    } catch (err) {
-        setWaiting(false);
-        appendMessage('Failed to send file. Check your connection.', 'bot', 'fallback', true);
-    }
+function clearAttach() { _clearAttach(); }
+function _clearAttach() {
+  _file = null;
+  if (_fileURL) { URL.revokeObjectURL(_fileURL); _fileURL = null; }
+  const strip = document.getElementById('attachStrip');
+  if (strip) { strip.classList.remove('visible'); strip.innerHTML = ''; }
+  const fi = document.getElementById('fileInput');
+  if (fi) fi.value = '';
+  _toggleSend();
 }
 
-// ── Message rendering ──────────────────────────────────────────────────────
-// ── Avatar helpers for chat bubbles ──────────────────────────────────────────
-function _chatUserAvatarHTML() {
-    // utils.js is loaded before chatbot.js — use its helpers if available.
-    try {
-        const u   = JSON.parse(localStorage.getItem('pageUser') || '{}');
-        // avatarHTML() from utils.js handles resolveMediaUrl + onerror automatically
-        if (typeof avatarHTML === 'function') {
-            return avatarHTML(u, 'width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;');
-        }
-        // Inline fallback if utils.js somehow unavailable
-        const raw  = u.profile_image_url || u.avatar_url || u.profile_image || null;
-        const url  = raw ? ((typeof resolveMediaUrl === 'function') ? resolveMediaUrl(raw) : raw) : null;
-        const init = (u.display_name || u.username || 'Y').charAt(0).toUpperCase();
-        if (url) {
-            return `<img src="${url}" alt="${init}"
-                style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;"
-                onerror="this.replaceWith(window.pageLetterAvatar ? window.pageLetterAvatar('${init}') : this)">`;
-        }
-        return window.pageLetterAvatarHTML
-            ? window.pageLetterAvatarHTML(init)
-            : `<span style="display:inline-flex;align-items:center;justify-content:center;width:100%;height:100%;border-radius:50%;background:#6c63ff;color:#fff;font-weight:700;font-size:14px;">${init}</span>`;
-    } catch (_) {
-        return window.pageLetterAvatarHTML ? window.pageLetterAvatarHTML('Y') : '';
-    }
-}
+async function _sendMedia(text, file) {
+  const isImg = (file._mime || '').startsWith('image/');
+  _hideWelcome();
 
-function appendMessage(text, sender, source = null, isError = false) {
-    const feed = document.getElementById('chatMessages');
+  /* Show the user's message bubble first */
+  if (isImg) {
+    const url  = URL.createObjectURL(file);
+    const feed = document.getElementById('aiFeed');
     const row  = document.createElement('div');
-    row.className = `msg-row ${sender === 'user' ? 'user-row' : 'bot-row'} fade-in`;
-
-    const time        = new Date().toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit' });
-    const sourceBadge = (sender === 'bot' && source)
-        ? `<span class="msg-source-badge ${source.includes('fallback') ? 'fallback' : ''}">${source === 'groq' ? '✦ Groq' : source === 'groq-vision' ? '✦ Vision' : 'Basic'}</span>`
-        : '';
-
-    const avatarInner = sender === 'user'
-        ? _chatUserAvatarHTML()
-        : `<i class="fas fa-microchip"></i>`;
-
+    row.className = 'ai-msg-row user-row fade-in';
     row.innerHTML = `
-        <div class="msg-avatar">${avatarInner}</div>
-        <div class="msg-bubble-wrap">
-            <div class="msg-bubble ${isError ? 'error-bubble' : ''}">${renderMarkdown(text)}</div>
-            <div class="msg-meta"><span class="msg-time">${time}</span>${sourceBadge}</div>
-        </div>`;
+      <div class="ai-msg-avatar">${_userAvatarHTML()}</div>
+      <div class="ai-bubble-wrap">
+        <div class="ai-bubble ai-image-bubble">
+          <img src="${url}" alt="${_esc(file.name)}"
+               style="max-width:220px;max-height:220px;border-radius:10px;display:block;object-fit:cover;"
+               onload="URL.revokeObjectURL(this.src)">
+          ${text ? `<p style="margin:5px 0 0;font-size:13px;color:rgba(255,255,255,0.9);">${_md(text)}</p>` : ''}
+        </div>
+        <div class="ai-msg-meta"><span class="ai-msg-time">${_time()}</span></div>
+      </div>`;
+    feed.appendChild(row); msgCount++; _scrollDown();
+  } else {
+    _appendMsg(text ? `${text}\n📎 ${file.name}` : `📎 ${file.name}`, 'user');
+  }
 
-    feed.appendChild(row);
-    messageCount++;
-    scrollToBottom();
-}
+  _setBusy(true);
+  try {
+    const auth = _authHeader();
+    const form = new FormData();
+    if (text) form.append('message', text);
+    const mime = file._mime || file.type || '';
+    const blob = (mime && mime !== file.type)
+      ? new Blob([await file.arrayBuffer()], { type: mime }) : file;
+    form.append('file', blob, file.name);
+    if (sessionId) form.append('session_id', sessionId);
 
-function appendVoiceBubble(sender) {
-    const feed = document.getElementById('chatMessages');
-    const row  = document.createElement('div');
-    row.className = `msg-row ${sender === 'user' ? 'user-row' : 'bot-row'} fade-in`;
-    row.id = 'lastVoiceBubble';
-    const time = new Date().toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit' });
-    const avatarInner = sender === 'user'
-        ? _chatUserAvatarHTML()
-        : `<i class="fas fa-microchip"></i>`;
-    row.innerHTML = `
-        <div class="msg-avatar">${avatarInner}</div>
-        <div class="msg-bubble-wrap">
-            <div class="msg-bubble voice-bubble">
-                <i class="fas fa-microphone-alt" style="margin-right:6px;color:#e63946;"></i>
-                <span class="voice-transcript-text"><em>Transcribing…</em></span>
-            </div>
-            <div class="msg-meta"><span class="msg-time">${time}</span><span class="msg-source-badge">🎙 Voice</span></div>
-        </div>`;
-    feed.appendChild(row);
-    messageCount++;
-    scrollToBottom();
-}
-
-function updateLastVoiceBubbleTranscript(transcript) {
-    const bubble = document.getElementById('lastVoiceBubble');
-    if (bubble) {
-        const el = bubble.querySelector('.voice-transcript-text');
-        if (el) el.innerHTML = `"${transcript}"`;
-        bubble.removeAttribute('id');
-    }
-}
-
-// ── Markdown renderer ─────────────────────────────────────────────────────
-function renderMarkdown(raw) {
-    let t = raw.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-    // Code blocks
-    t = t.replace(/```(\w*)\n?([\s\S]*?)```/g, (_,lang,code) => `<pre><code class="lang-${lang||'text'}">${code.trim()}</code></pre>`);
-    t = t.replace(/`([^`\n]+)`/g, '<code>$1</code>');
-    // Headings
-    t = t.replace(/^### (.+)$/gm,'<h3>$1</h3>').replace(/^## (.+)$/gm,'<h2>$1</h2>').replace(/^# (.+)$/gm,'<h1>$1</h1>');
-    // Bold / italic
-    t = t.replace(/\*\*\*(.+?)\*\*\*/g,'<strong><em>$1</em></strong>').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\*([^\s*][^*]*[^\s*])\*/g,'<em>$1</em>');
-    // HR
-    t = t.replace(/^[-*_]{3,}$/gm,'<hr>');
-    // Links
-    t = t.replace(/\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/g,'<a href="$2" target="_blank" rel="noopener">$1</a>');
-    t = t.replace(/(^|[\s(])(https?:\/\/[^\s<)]+)/g,'$1<a href="$2" target="_blank" rel="noopener">$2</a>');
-    // Lists — collect consecutive bullet/numbered lines into a single <ul>/<ol>
-    // rather than wrapping each <li> in its own list element.
-    t = t.replace(/((?:^[ \t]*[-•*]\s+.+\n?)+)/gm, block => {
-        const items = block.trim().split('\n').map(l => l.replace(/^[ \t]*[-•*]\s+/, '').trim());
-        return '<ul>' + items.map(i => `<li>${i}</li>`).join('') + '</ul>';
+    const res  = await fetch(`${API}/chatbot/media/`, {
+      method: 'POST',
+      headers: auth ? { 'Authorization': auth } : {},
+      body: form,
     });
-    t = t.replace(/((?:^[ \t]*\d+\.\s+.+\n?)+)/gm, block => {
-        const items = block.trim().split('\n').map(l => l.replace(/^[ \t]*\d+\.\s+/, '').trim());
-        return '<ol>' + items.map(i => `<li>${i}</li>`).join('') + '</ol>';
-    });
-    // Newlines (outside block elements)
-    t = t.replace(/\n/g,'<br>');
-    return t;
-}
-
-// ── UI helpers ─────────────────────────────────────────────────────────────
-function setWaiting(on) {
-    isWaiting = on;
-    document.getElementById('typingIndicator').style.display = on ? 'flex' : 'none';
-    toggleSendBtn();
-    if (on) scrollToBottom();
-}
-
-function scrollToBottom() {
-    const feed = document.getElementById('chatMessages');
-    requestAnimationFrame(() => { feed.scrollTop = feed.scrollHeight; });
-}
-
-function hideWelcome() {
-    const ws = document.getElementById('welcomeScreen');
-    if (ws) { ws.style.transition='opacity .2s'; ws.style.opacity='0'; setTimeout(()=>ws.remove(),200); }
-}
-
-// ── History ────────────────────────────────────────────────────────────────
-async function loadHistory() {
-    const authHeader = window._pageAuthHeader ? window._pageAuthHeader() : null;
-    try {
-        const res  = await fetch(`${CHAT_API}/chatbot/history/`, { headers: authHeader ? { 'Authorization': authHeader } : {} });
-        if (!res.ok) return;
-        const data = await res.json();
-        const conversations = data?.conversations || [];
-
-        // Populate sidebar conversation list
-        _renderSidebarHistory(conversations);
-
-        // Restore the most recent conversation into the main panel
-        const conv = conversations[0];
-        if (!conv?.messages?.length) return;
-        conversationId = conv.id;
-        hideWelcome();
-        conv.messages.forEach(msg => {
-            if (msg.role === 'user') appendMessage(msg.content, 'user');
-            else if (msg.role === 'assistant') appendMessage(msg.content, 'bot', 'groq');
-        });
-    } catch { /* new conversation */ }
-}
-
-function _renderSidebarHistory(conversations) {
-    // Find or create the history section in the sidebar
-    let section = document.getElementById('sidebarHistorySection');
-    if (!section) {
-        const sidebar = document.querySelector('.chat-sidebar');
-        if (!sidebar) return;
-
-        section = document.createElement('div');
-        section.id = 'sidebarHistorySection';
-        section.className = 'sidebar-section';
-        section.innerHTML = '<p class="sidebar-section-title">Recent chats</p>';
-
-        // Insert before the spacer
-        const spacer = sidebar.querySelector('.sidebar-spacer');
-        spacer ? sidebar.insertBefore(section, spacer) : sidebar.appendChild(section);
+    const data = await res.json().catch(() => ({}));
+    _setBusy(false);
+    if (!res.ok) { _appendErr(data.error || 'Failed to process file.'); return; }
+    if (data.session_id) {
+      const isNew = !sessionId; sessionId = data.session_id;
+      if (isNew) _loadSessions();
     }
-
-    // Remove old entries (keep the title)
-    const title = section.querySelector('.sidebar-section-title');
-    section.innerHTML = '';
-    if (title) section.appendChild(title);
-
-    if (!conversations.length) {
-        const empty = document.createElement('p');
-        empty.style.cssText = 'font-size:12px;color:var(--cb-text-4);padding:6px 10px;';
-        empty.textContent = 'No previous chats';
-        section.appendChild(empty);
-        return;
-    }
-
-    conversations.slice(0, 10).forEach(conv => {
-        const btn = document.createElement('button');
-        btn.className = 'sidebar-prompt';
-        btn.dataset.convId = conv.id;
-
-        // Truncate the title to fit the sidebar
-        const label = (conv.title || 'Chat').slice(0, 32) + ((conv.title || '').length > 32 ? '…' : '');
-        btn.innerHTML = `<i class="fas fa-message"></i><span>${label}</span>`;
-
-        // Highlight active conversation
-        if (conv.id === conversationId) btn.classList.add('sidebar-prompt--active');
-
-        btn.addEventListener('click', () => _loadConversation(conv.id));
-        section.appendChild(btn);
-    });
+    _appendMsg(data.reply || data.message?.content || '…', 'bot', data.ai_source);
+  } catch {
+    _setBusy(false);
+    _appendErr('Failed to send file — check your connection.');
+  }
 }
 
-async function _loadConversation(convId) {
-    if (convId === conversationId) return; // already open
-    const authHeader = window._pageAuthHeader ? window._pageAuthHeader() : null;
-    try {
-        const res  = await fetch(`${CHAT_API}/chatbot/conversations/${convId}/`, { headers: authHeader ? { 'Authorization': authHeader } : {} });
-        if (!res.ok) return;
-        const conv = await res.json();
+/* ── Message rendering ──────────────────────────────────────────────────── */
+function _appendMsg(text, sender, source = null) {
+  const feed = document.getElementById('aiFeed');
+  const row  = document.createElement('div');
+  row.className = `ai-msg-row ${sender === 'user' ? 'user-row' : 'bot-row'} fade-in`;
 
-        conversationId = convId;
-        messageCount   = 0;
-
-        const feed = document.getElementById('chatMessages');
-        feed.innerHTML = '';
-
-        const messages = conv.messages || [];
-        if (messages.length) {
-            messages.forEach(msg => {
-                if (msg.role === 'user') appendMessage(msg.content, 'user');
-                else if (msg.role === 'assistant') appendMessage(msg.content, 'bot', 'groq');
-            });
-        } else {
-            // Empty conversation — show welcome
-            clearConversation(true);
-        }
-
-        // Update active highlight in sidebar
-        document.querySelectorAll('.sidebar-prompt[data-conv-id]').forEach(b => {
-            b.classList.toggle('sidebar-prompt--active', b.dataset.convId === convId);
-        });
-    } catch (err) {
-        console.error('Failed to load conversation:', err);
+  /* Source badge (AI messages only) */
+  let badge = '';
+  if (sender === 'bot' && source) {
+    if (source === 'groq') {
+      badge = '<span class="ai-src-pill">✦ Groq</span>';
+    } else if (source === 'groq-vision') {
+      badge = '<span class="ai-src-pill vision">✦ Vision</span>';
+    } else {
+      badge = '<span class="ai-src-pill fallback">Basic</span>';
     }
+  }
+
+  row.innerHTML = `
+    <div class="ai-msg-avatar">
+      ${sender === 'user' ? _userAvatarHTML() : '<i class="fas fa-microchip"></i>'}
+    </div>
+    <div class="ai-bubble-wrap">
+      <div class="ai-bubble">${_md(text)}</div>
+      <div class="ai-msg-meta">
+        <span class="ai-msg-time">${_time()}</span>${badge}
+      </div>
+    </div>`;
+
+  feed.appendChild(row); msgCount++; _scrollDown();
 }
 
-// ── Clear conversation ─────────────────────────────────────────────────────
-function clearConversation(keepHistory = false) {
-    conversationId = null;
-    messageCount   = 0;
-    clearAttachment();
-    const feed = document.getElementById('chatMessages');
-    feed.innerHTML = `
-        <div class="welcome-screen" id="welcomeScreen">
-            <div class="welcome-orb"><i class="fas fa-microchip"></i></div>
-            <h2>PAGE AI Assistant</h2>
-            <p>Powered by Groq. Ask me anything — or send a voice message or image.</p>
-            <div class="starter-grid">
-                <button class="starter-card" onclick="sendQuickMessage('How do I deposit funds into my wallet?')"><i class="fas fa-wallet"></i><span>Deposit funds</span></button>
-                <button class="starter-card" onclick="sendQuickMessage('How do I earn money on PAGE?')"><i class="fas fa-coins"></i><span>Earn money</span></button>
-                <button class="starter-card" onclick="sendQuickMessage('How do tournaments work?')"><i class="fas fa-trophy"></i><span>Tournaments</span></button>
-                <button class="starter-card" onclick="sendQuickMessage('Explain the prestige tier system')"><i class="fas fa-star"></i><span>Prestige tiers</span></button>
-                <button class="starter-card" onclick="sendQuickMessage('What payment methods does PAGE support?')"><i class="fas fa-credit-card"></i><span>Payments</span></button>
-                <button class="starter-card" onclick="sendQuickMessage('How do alliances work?')"><i class="fas fa-users"></i><span>Alliances</span></button>
-            </div>
-        </div>`;
-
-    // Clear the active highlight in the sidebar — no conversation is open
-    if (!keepHistory) {
-        document.querySelectorAll('.sidebar-prompt[data-conv-id]').forEach(b => {
-            b.classList.remove('sidebar-prompt--active');
-        });
-    }
+function _appendErr(text) {
+  const feed = document.getElementById('aiFeed');
+  const row  = document.createElement('div');
+  row.className = 'ai-msg-row bot-row fade-in';
+  row.innerHTML = `
+    <div class="ai-msg-avatar"><i class="fas fa-microchip"></i></div>
+    <div class="ai-bubble-wrap">
+      <div class="ai-bubble error-bubble">${_esc(text)}</div>
+      <div class="ai-msg-meta"><span class="ai-msg-time">${_time()}</span></div>
+    </div>`;
+  feed.appendChild(row); _scrollDown();
 }
 
+function _appendVoiceBubble() {
+  const feed = document.getElementById('aiFeed');
+  const row  = document.createElement('div');
+  row.className = 'ai-msg-row user-row fade-in';
+  row.id = '_voiceRow';
+  row.innerHTML = `
+    <div class="ai-msg-avatar">${_userAvatarHTML()}</div>
+    <div class="ai-bubble-wrap">
+      <div class="ai-bubble ai-voice-bubble">
+        <i class="fas fa-microphone-alt" style="color:#bef264;margin-right:6px;"></i>
+        <span id="_voiceText"><em style="opacity:0.75;">Transcribing…</em></span>
+      </div>
+      <div class="ai-msg-meta">
+        <span class="ai-msg-time">${_time()}</span>
+        <span class="ai-src-pill">🎙 Voice</span>
+      </div>
+    </div>`;
+  feed.appendChild(row); msgCount++; _scrollDown();
+}
 
+function _updateVoiceBubble(transcript) {
+  const el = document.getElementById('_voiceText');
+  if (el) el.textContent = `"${transcript}"`;
+  const row = document.getElementById('_voiceRow');
+  if (row) row.removeAttribute('id');
+}
+
+/* ── User avatar ────────────────────────────────────────────────────────── */
+function _userAvatarHTML() {
+  try {
+    const u = JSON.parse(localStorage.getItem('pageUser') || '{}');
+    if (typeof avatarHTML === 'function')
+      return avatarHTML(u, 'width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;');
+    const raw  = u.profile_image_url || u.avatar_url || null;
+    const url  = raw ? (typeof resolveMediaUrl === 'function' ? resolveMediaUrl(raw) : raw) : null;
+    const init = (u.display_name || u.username || 'Y').charAt(0).toUpperCase();
+    if (url)
+      return `<img src="${url}" alt="${init}"
+        style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;"
+        onerror="this.style.display='none'">`;
+    return `<span style="display:flex;align-items:center;justify-content:center;
+      width:100%;height:100%;border-radius:50%;
+      background:var(--ai-gradient-msg);color:#fff;font-weight:700;font-size:14px;">${init}</span>`;
+  } catch { return ''; }
+}
+
+/* ── Markdown renderer ──────────────────────────────────────────────────── */
+function _md(raw) {
+  let t = _esc(String(raw));
+  /* Code blocks */
+  t = t.replace(/```(\w*)\n?([\s\S]*?)```/g,
+    (_, lang, code) => `<pre><code class="lang-${lang||'text'}">${code.trim()}</code></pre>`);
+  t = t.replace(/`([^`\n]+)`/g, '<code>$1</code>');
+  /* Headings */
+  t = t.replace(/^### (.+)$/gm,'<h3>$1</h3>')
+       .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+       .replace(/^# (.+)$/gm,  '<h1>$1</h1>');
+  /* Bold / italic */
+  t = t.replace(/\*\*\*(.+?)\*\*\*/g,'<strong><em>$1</em></strong>')
+       .replace(/\*\*(.+?)\*\*/g,     '<strong>$1</strong>')
+       .replace(/\*([^\s*][^*]*[^\s*])\*/g,'<em>$1</em>');
+  /* HR */
+  t = t.replace(/^[-*_]{3,}$/gm,'<hr>');
+  /* Links */
+  t = t.replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g,
+    '<a href="$2" target="_blank" rel="noopener">$1</a>');
+  t = t.replace(/(^|[\s(])(https?:\/\/[^\s<)]+)/g,
+    '$1<a href="$2" target="_blank" rel="noopener">$2</a>');
+  /* Lists — group consecutive lines into a single <ul> or <ol> */
+  t = t.replace(/((?:^[ \t]*[-•*] .+\n?)+)/gm, block => {
+    const items = block.trim().split('\n').map(l => l.replace(/^[ \t]*[-•*] /, '').trim());
+    return '<ul>' + items.map(i => `<li>${i}</li>`).join('') + '</ul>';
+  });
+  t = t.replace(/((?:^[ \t]*\d+\. .+\n?)+)/gm, block => {
+    const items = block.trim().split('\n').map(l => l.replace(/^[ \t]*\d+\. /, '').trim());
+    return '<ol>' + items.map(i => `<li>${i}</li>`).join('') + '</ol>';
+  });
+  /* Newlines */
+  t = t.replace(/\n/g,'<br>');
+  return t;
+}
+
+function _esc(s) {
+  return String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+/* ── UI helpers ─────────────────────────────────────────────────────────── */
+function _setBusy(on) {
+  isBusy = on;
+  document.getElementById('typingRow').style.display = on ? 'flex' : 'none';
+  _toggleSend();
+  if (on) _scrollDown();
+}
+
+function _scrollDown() {
+  const feed = document.getElementById('aiFeed');
+  requestAnimationFrame(() => { feed.scrollTop = feed.scrollHeight; });
+}
+
+function _grow(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 130) + 'px';
+}
+
+function _toggleSend() {
+  const inp = document.getElementById('aiMsgInput');
+  const btn = document.getElementById('aiSendBtn');
+  btn.disabled = (inp.value.trim() === '' && !_file) || isBusy;
+}
+
+function _time() {
+  return new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+}

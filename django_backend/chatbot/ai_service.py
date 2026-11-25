@@ -1,16 +1,13 @@
 """
-PAGE AI Service — powered by Groq
-==================================
-Primary:  openai/gpt-oss-120b  — Groq's current quality model
-Fallback: openai/gpt-oss-20b   — faster, lighter model
+PAGE AI Service
+===============
+Primary model  : openai/gpt-oss-120b  (via Groq)
+Fallback model : openai/gpt-oss-20b   (via Groq)
+Vision model   : meta-llama/llama-4-scout-17b-16e-instruct (via Groq — multimodal)
+Voice          : whisper-large-v3 (via Groq)
 
-Groq retires models regularly and retired IDs return 404, so both model IDs
-are read from settings and can be overridden with env vars.
-
-Setup:
-  1. Get a FREE key at https://console.groq.com/keys
-  2. Add GROQ_API_KEY=gsk_... to your .env file
-  3. Restart the server — done, no pip install needed.
+Both text model IDs are overridable with env vars so a Groq deprecation
+is a config change, not a code change.
 """
 import logging
 import requests as http
@@ -18,256 +15,248 @@ from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
-GROQ_MODEL          = getattr(settings, "GROQ_MODEL", "openai/gpt-oss-120b")
-GROQ_MODEL_FALLBACK = getattr(settings, "GROQ_MODEL_FALLBACK", "openai/gpt-oss-20b")
-GROQ_API_URL        = "https://api.groq.com/openai/v1/chat/completions"
+GROQ_API_URL     = 'https://api.groq.com/openai/v1/chat/completions'
+GROQ_WHISPER_URL = 'https://api.groq.com/openai/v1/audio/transcriptions'
 
-# ── System prompt ─────────────────────────────────────────────────────────────
-SYSTEM_PROMPT = """You are PAGE AI — a chill, helpful assistant built into the PAGE competitive gaming platform.
+PRIMARY_MODEL  = getattr(settings, 'GROQ_MODEL',          'openai/gpt-oss-120b')
+FALLBACK_MODEL = getattr(settings, 'GROQ_MODEL_FALLBACK',  'openai/gpt-oss-20b')
+VISION_MODEL   = getattr(settings, 'GROQ_VISION_MODEL',    'meta-llama/llama-4-scout-17b-16e-instruct')
 
-Talk like a real person would. That means:
-- Short messages when the question is simple. Long ones only when it actually needs it.
-- Use casual language. Contractions are fine ("you're", "it's", "don't"). Don't be stiff.
-- Skip the intros. Don't say "Great question!" or "Certainly!" or "Of course!". Just answer.
-- If something is a list (steps, options, tiers), bullet points are fine. Otherwise just talk normally.
-- Throw in an emoji here and there if it fits — but don't force it on every message.
-- If you don't know something, say so plainly. Don't make stuff up.
-- Never say "As an AI..." — you're PAGE AI, just answer.
+# ── System prompt ──────────────────────────────────────────────────────────────
+_SYSTEM = """You are PAGE AI — the assistant built into PAGE, a competitive gaming platform based in Zambia.
+
+Talk like a real person. Specifically:
+- Get to the point. If the question needs two sentences, give two sentences.
+- Use casual, natural language. Contractions ("you're", "it's") are fine.
+- Never start a reply with "Great question!", "Sure!", "Of course!", or anything like that. Just answer.
+- Bullet points are fine when listing steps or options. Skip them when you're just chatting.
+- One or two emojis is fine if they genuinely fit — don't force them.
+- If you don't know something, say so plainly. Don't invent facts.
+- Never say "As an AI..." — you're PAGE AI. Just talk.
 
 About PAGE:
-- Competitive gaming and challenges platform based in Zambia
-- Currency: Zambian Kwacha (ZMW, shown as "K")
-- Payments: PawaPay mobile money (MTN Zambia, Airtel Money), Stripe card, Paystack
-- Prestige tiers (earned via challenges, tournaments, daily streaks):
+- Competitive gaming and challenges platform in Zambia.
+- Currency: Zambian Kwacha (ZMW) shown as "K".
+- Payments: PawaPay mobile money (MTN Zambia, Airtel Money), Stripe card, Paystack.
+- Prestige tier system (earned from challenges, tournaments, daily streaks):
     Bronze (0–199) → Silver (200–499) → Gold (500–999) → Platinum (1,000–1,499)
     → Diamond (1,500–2,499) → Elite (2,500–4,999) → Legendary (5,000+)
-- Alliances: teams that do group challenges and share rewards
-- Wallet: deposit and withdraw funds — withdrawals take up to 24 hours
-- Messenger: chat and share media with other users
-- Daily streaks: log in + complete a challenge every day to boost prestige earnings
+- Alliances: teams that run group challenges and split rewards.
+- Wallet: users deposit and withdraw. Withdrawals process within 24 hours.
+- Messenger: real-time chat and media sharing between users.
+- Daily streaks: log in + complete a challenge every day to multiply prestige earnings.
 
-You're not just a FAQ bot — if someone asks something outside PAGE (general knowledge, coding, life advice, whatever), help them out like a knowledgeable friend would.
+You're not limited to PAGE topics. If someone asks something general — coding, life, current events, whatever — help them like a knowledgeable friend would.
 """
 
 
-def _build_system(user_context: dict | None) -> str:
-    """Append live user data to the system prompt when available."""
-    prompt = SYSTEM_PROMPT
-    if not user_context:
+def _build_system(user_ctx: dict | None) -> str:
+    prompt = _SYSTEM
+    if not user_ctx:
         return prompt
-
     lines = []
-    if user_context.get("username"):
-        lines.append(f"- Username: {user_context['username']}")
-    if user_context.get("prestige_points") is not None:
-        lines.append(f"- Prestige points: {user_context['prestige_points']}")
-    if user_context.get("tier"):
-        lines.append(f"- Current tier: {user_context['tier']}")
-    if user_context.get("wallet_balance") is not None:
-        lines.append(f"- Wallet balance: K{float(user_context['wallet_balance']):.2f}")
-
+    if user_ctx.get('username'):
+        lines.append(f"- Username: {user_ctx['username']}")
+    if user_ctx.get('prestige_points') is not None:
+        lines.append(f"- Prestige points: {user_ctx['prestige_points']}")
+    if user_ctx.get('tier'):
+        lines.append(f"- Current tier: {user_ctx['tier']}")
+    if user_ctx.get('wallet_balance') is not None:
+        lines.append(f"- Wallet balance: K{float(user_ctx['wallet_balance']):.2f}")
     if lines:
-        prompt += "\n\n## Current user's live data\n" + "\n".join(lines)
-
+        prompt += '\n\n## This user\'s live data\n' + '\n'.join(lines)
     return prompt
 
 
-def _groq_response(
-    message: str,
-    history: list,
-    user_context: dict | None,
-) -> str | None:
-    """
-    Call Groq LLaMA 3.3 directly via its REST API using the `requests`
-    library that is already in requirements.txt — no extra SDK needed.
+# ── Groq text completion ───────────────────────────────────────────────────────
 
-    history items: {"role": "user"|"assistant", "content": "..."}
-    Returns the response text, or None if Groq is unavailable.
+def groq_chat(message: str, history: list, user_ctx: dict | None) -> str | None:
     """
-    api_key = getattr(settings, "GROQ_API_KEY", "").strip()
+    Call Groq with the primary model, auto-retry with fallback on 400/404.
+    Returns the response string, or None if Groq is unreachable / misconfigured.
+    history: list of {"role": "user"|"assistant", "content": "..."} dicts.
+    """
+    api_key = getattr(settings, 'GROQ_API_KEY', '').strip()
     if not api_key:
-        logger.warning("GROQ_API_KEY not set — falling back to rule-based responses.")
+        logger.warning('GROQ_API_KEY not set — using rule-based fallback')
         return None
+
+    messages = [{'role': 'system', 'content': _build_system(user_ctx)}]
+    for turn in history[-20:]:
+        role    = turn.get('role', 'user')
+        content = turn.get('content', '').strip()
+        if role in ('user', 'assistant') and content:
+            messages.append({'role': role, 'content': content})
+    messages.append({'role': 'user', 'content': message})
+
+    def _call(model_id: str):
+        return http.post(
+            GROQ_API_URL,
+            headers={'Authorization': f'Bearer {api_key}', 'Content-Type': 'application/json'},
+            json={'model': model_id, 'messages': messages,
+                  'temperature': 0.75, 'max_tokens': 800, 'top_p': 0.95},
+            timeout=30,
+        )
 
     try:
-        # Build messages: system + history + current turn
-        messages = [{"role": "system", "content": _build_system(user_context)}]
+        resp = _call(PRIMARY_MODEL)
+        if resp.status_code in (400, 404):
+            logger.warning(f'Primary model {PRIMARY_MODEL!r} → {resp.status_code}, retrying with fallback')
+            resp = _call(FALLBACK_MODEL)
 
-        for turn in history[-20:]:
-            role    = turn.get("role", "user")
-            content = turn.get("content", "").strip()
-            if role in ("user", "assistant") and content:
-                messages.append({"role": role, "content": content})
-
-        messages.append({"role": "user", "content": message})
-
-        def _call_model(model_id):
-            return http.post(
-                GROQ_API_URL,
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type":  "application/json",
-                },
-                json={
-                    "model":       model_id,
-                    "messages":    messages,
-                    "temperature": 0.75,
-                    "max_tokens":  700,
-                    "top_p":       0.95,
-                },
-                timeout=30,
-            )
-
-        response = _call_model(GROQ_MODEL)
-
-        # If primary model is 404/400, auto-retry with the fallback model
-        if response.status_code in (400, 404):
-            logger.warning(
-                f"Primary model '{GROQ_MODEL}' returned {response.status_code} — "
-                f"retrying with fallback '{GROQ_MODEL_FALLBACK}'"
-            )
-            response = _call_model(GROQ_MODEL_FALLBACK)
-
-        if response.status_code != 200:
-            error_body = response.text[:500]
-            logger.error(f"Groq API returned {response.status_code}: {error_body}")
-            if response.status_code in (400, 401, 404):
-                logger.error(
-                    f"Groq config error ({response.status_code}) — check GROQ_API_KEY and GROQ_MODEL. "
-                    f"Valid models: https://console.groq.com/docs/models"
-                )
+        if resp.status_code != 200:
+            logger.error(f'Groq API {resp.status_code}: {resp.text[:400]}')
             return None
 
-        data = response.json()
-        # Guard against unexpected response shapes (e.g. deprecated model error bodies)
-        choices = data.get("choices")
-        if not choices or not isinstance(choices, list) or not choices[0].get("message"):
-            logger.error(f"Groq unexpected response shape: {str(data)[:300]}")
+        data    = resp.json()
+        choices = data.get('choices')
+        if not choices or not choices[0].get('message'):
+            logger.error(f'Unexpected Groq response shape: {str(data)[:300]}')
             return None
+        return data['choices'][0]['message']['content'].strip()
 
-        return data["choices"][0]["message"]["content"].strip()
-
-    except Exception as e:
-        logger.error(f"Groq API error: {e}")
+    except Exception as exc:
+        logger.error(f'Groq request error: {exc}')
         return None
 
 
-# ── Smart rule-based fallback ─────────────────────────────────────────────────
+# ── Groq vision completion ─────────────────────────────────────────────────────
 
-def _rule_based_response(message: str, user_context: dict | None) -> str:
-    """Covers common queries when Groq is unavailable."""
+def groq_vision(message: str, image_b64: str, image_mime: str,
+                user_ctx: dict | None, api_key: str) -> tuple[str, str]:
+    """
+    Send an image + text to the Groq vision model.
+    Returns (response_text, source_label).
+    """
+    try:
+        resp = http.post(
+            GROQ_API_URL,
+            headers={'Authorization': f'Bearer {api_key}', 'Content-Type': 'application/json'},
+            json={
+                'model': VISION_MODEL,
+                'messages': [
+                    {'role': 'system', 'content': _build_system(user_ctx)},
+                    {
+                        'role': 'user',
+                        'content': [
+                            {'type': 'image_url',
+                             'image_url': {'url': f'data:{image_mime};base64,{image_b64}', 'detail': 'auto'}},
+                            {'type': 'text', 'text': message or 'What do you see in this image?'},
+                        ],
+                    },
+                ],
+                'temperature': 0.65,
+                'max_tokens': 1024,
+            },
+            timeout=60,
+        )
+        logger.info(f'Vision model {VISION_MODEL!r} → {resp.status_code}')
+        if resp.status_code == 200:
+            return resp.json()['choices'][0]['message']['content'].strip(), 'groq-vision'
+
+        err = resp.json().get('error', {}).get('message', resp.text[:300])
+        logger.error(f'Vision failed ({resp.status_code}): {err}')
+        return ("Couldn't analyse that image right now. Try describing what's in it and I'll help from there 🖼️",
+                'fallback')
+    except Exception as exc:
+        logger.error(f'Vision exception: {exc}')
+        return "Had trouble reading the image. Please try again.", 'fallback'
+
+
+# ── Groq Whisper transcription ─────────────────────────────────────────────────
+
+def groq_transcribe(audio_path: str, ext: str, mime: str, api_key: str) -> str | None:
+    """Transcribe an audio file. Returns transcript string or None on failure."""
+    try:
+        with open(audio_path, 'rb') as f:
+            resp = http.post(
+                GROQ_WHISPER_URL,
+                headers={'Authorization': f'Bearer {api_key}'},
+                files={'file': (f'recording{ext}', f, mime)},
+                data={'model': 'whisper-large-v3', 'response_format': 'verbose_json', 'language': 'en'},
+                timeout=60,
+            )
+        if resp.status_code != 200:
+            logger.error(f'Whisper {resp.status_code}: {resp.text[:300]}')
+            return None
+        return resp.json().get('text', '').strip() or None
+    except Exception as exc:
+        logger.error(f'Whisper exception: {exc}')
+        return None
+
+
+# ── Rule-based fallback ────────────────────────────────────────────────────────
+
+def rule_based(message: str, user_ctx: dict | None) -> str:
+    """Plain keyword responses used when Groq is unavailable."""
     m   = message.lower()
-    ctx = user_context or {}
+    ctx = user_ctx or {}
 
-    if any(w in m for w in ["hi", "hello", "hey", "howdy", "sup", "good morning", "good evening"]):
-        name = ctx.get("username", "")
-        greeting = f"Hey {name}! 👋" if name else "Hey! 👋"
-        return f"{greeting} What can I help you with?"
+    if any(w in m for w in ['hi', 'hello', 'hey', 'howdy', 'sup', 'good morning', 'good evening']):
+        name = ctx.get('username', '')
+        return (f"Hey {name}! 👋 What can I help you with?" if name else "Hey! 👋 What can I help you with?")
 
-    if any(w in m for w in ["how are you", "how r u", "you okay"]):
+    if any(w in m for w in ['how are you', 'how r u', 'you okay']):
         return "All good! What's up?"
 
-    if any(w in m for w in ["balance", "how much", "my wallet", "my money"]):
-        bal = ctx.get("wallet_balance")
+    if any(w in m for w in ['balance', 'how much', 'my wallet', 'my money']):
+        bal = ctx.get('wallet_balance')
         if bal is not None:
             return f"You've got **K{float(bal):.2f}** in your wallet. Want to top it up or cash out?"
-        return "Head to the **Wallet** page to check your balance. You can deposit via mobile money or card."
+        return "Head to the **Wallet** page to check your balance."
 
-    if any(w in m for w in ["deposit", "add money", "top up", "fund"]):
-        return (
-            "To deposit:\n"
-            "1. Open the **Wallet** page\n"
-            "2. Tap **Deposit**\n"
-            "3. Pick Mobile Money (MTN/Airtel) or Card\n"
-            "4. Enter the amount and confirm\n\n"
-            "Goes in instantly 💰"
-        )
+    if any(w in m for w in ['deposit', 'add money', 'top up', 'fund']):
+        return ("To deposit:\n1. Open **Wallet**\n2. Tap **Deposit**\n"
+                "3. Pick Mobile Money (MTN/Airtel) or Card\n4. Enter amount and confirm\n\nGoes in instantly 💰")
 
-    if any(w in m for w in ["withdraw", "cash out", "payout", "send money"]):
-        return (
-            "To withdraw:\n"
-            "1. Open the **Wallet** page\n"
-            "2. Tap **Withdraw**\n"
-            "3. Choose Mobile Money, Bank Transfer, or PayPal\n"
-            "4. Enter amount and account details\n\n"
-            "Usually processed within 24 hours."
-        )
+    if any(w in m for w in ['withdraw', 'cash out', 'payout', 'send money']):
+        return ("To withdraw:\n1. Open **Wallet**\n2. Tap **Withdraw**\n"
+                "3. Choose Mobile Money, Bank, or PayPal\n4. Enter amount and details\n\nProcessed within 24 hours.")
 
-    if any(w in m for w in ["prestige", "tier", "level", "rank", "points", "bronze", "gold", "diamond", "legendary"]):
-        pts  = ctx.get("prestige_points")
-        tier = ctx.get("tier")
-        intro = f"You're sitting at **{pts} prestige points** — **{tier} tier**.\n\n" if pts is not None else ""
-        return (
-            intro +
-            "Tier ladder:\n"
-            "🥉 Bronze → 🥈 Silver → 🥇 Gold → 💎 Platinum → 💠 Diamond → ⭐ Elite → 🏆 Legendary\n\n"
-            "Complete challenges, win tournaments, and keep your daily streak going to climb."
-        )
+    if any(w in m for w in ['prestige', 'tier', 'level', 'rank', 'points', 'bronze', 'gold', 'diamond', 'legendary']):
+        pts  = ctx.get('prestige_points')
+        tier = ctx.get('tier')
+        intro = f"You're at **{pts} prestige points** — **{tier} tier**.\n\n" if pts is not None else ''
+        return (intro + "Tier ladder:\n"
+                "🥉 Bronze → 🥈 Silver → 🥇 Gold → 💎 Platinum → 💠 Diamond → ⭐ Elite → 🏆 Legendary\n\n"
+                "Complete challenges, win tournaments, and keep your daily streak going to climb.")
 
-    if any(w in m for w in ["challenge", "play", "compete", "game", "quiz"]):
-        return "Challenges are how you earn prestige and cash on PAGE. Hit the **Challenges** tab to find one and get in."
+    if any(w in m for w in ['challenge', 'play', 'compete', 'game', 'quiz']):
+        return "Challenges are how you earn prestige and cash on PAGE. Check the **Challenges** tab to find one."
 
-    if any(w in m for w in ["tournament", "competition", "event", "contest"]):
+    if any(w in m for w in ['tournament', 'competition', 'event', 'contest']):
         return "Tournaments are timed events with prize pools — top scorers split the winnings. Check **Challenges** for what's live."
 
-    if any(w in m for w in ["alliance", "team", "clan", "group", "squad"]):
-        return "Alliances let you team up with other players for group challenges and shared rewards. Go to **Community** to find or create one."
+    if any(w in m for w in ['alliance', 'team', 'clan', 'group', 'squad']):
+        return "Alliances let you team up for group challenges and shared rewards. Go to **Community** to find or create one."
 
-    if any(w in m for w in ["streak", "daily", "consecutive"]):
-        return "Log in and complete at least one challenge every day to keep your streak alive. The longer the streak, the more prestige you earn per challenge 🔥"
+    if any(w in m for w in ['streak', 'daily', 'consecutive']):
+        return "Log in and complete at least one challenge every day to keep your streak. Longer streak = more prestige per challenge 🔥"
 
-    if any(w in m for w in ["payment", "mtn", "airtel", "mpesa", "stripe", "paystack", "mobile money"]):
-        return (
-            "PAGE supports:\n"
-            "📱 **Mobile Money** via PawaPay — MTN, Airtel, M-Pesa\n"
-            "💳 **Card** via Stripe\n"
-            "🏦 **Paystack** — card and bank\n\n"
-            "All amounts are in Zambian Kwacha (ZMW)."
-        )
+    if any(w in m for w in ['payment', 'mtn', 'airtel', 'mpesa', 'stripe', 'paystack', 'mobile money']):
+        return ("PAGE supports:\n📱 **Mobile Money** via PawaPay — MTN, Airtel, M-Pesa\n"
+                "💳 **Card** via Stripe\n🏦 **Paystack** — card and bank\n\nAll amounts in Zambian Kwacha (ZMW).")
 
-    if any(w in m for w in ["thank", "thanks", "cheers", "appreciate"]):
+    if any(w in m for w in ['thank', 'thanks', 'cheers', 'appreciate']):
         return "No problem! Anything else?"
 
-    if any(w in m for w in ["help", "what can you do", "support"]):
-        return (
-            "I can help with:\n"
-            "💰 Wallet, deposits & withdrawals\n"
-            "🎮 Challenges, tournaments & games\n"
-            "⭐ Prestige points, tiers & streaks\n"
-            "🤝 Alliances & community\n\n"
-            "And general questions too — just ask."
-        )
+    if any(w in m for w in ['help', 'what can you do', 'support']):
+        return ("I can help with:\n💰 Wallet, deposits & withdrawals\n🎮 Challenges, tournaments & games\n"
+                "⭐ Prestige points, tiers & streaks\n🤝 Alliances & community\n\nAnd general questions too — just ask.")
 
-    return (
-        "I'm running in basic mode right now and can't answer that one.\n\n"
-        "Add **GROQ_API_KEY** to your `.env` to unlock full AI (free at console.groq.com/keys). "
-        "In the meantime, ask me about wallets, challenges, tiers, or anything PAGE-related."
-    )
+    return ("I'm in basic mode and can't answer that one right now.\n\n"
+            "Add **GROQ_API_KEY** to your `.env` to unlock full AI (free at console.groq.com/keys).")
 
 
-# ── Main service class ────────────────────────────────────────────────────────
+# ── Main callable ──────────────────────────────────────────────────────────────
 
-class AIService:
+def get_ai_response(message: str, history: list, user_ctx: dict | None) -> tuple[str, str]:
     """
-    Primary:  Groq openai/gpt-oss-120b (requires GROQ_API_KEY in .env)
-    Fallback: Groq openai/gpt-oss-20b → Smart rule-based responses
+    Returns (response_text, source_label).
+    source_label: 'groq' | 'fallback'
     """
-
-    def get_response(
-        self,
-        message: str,
-        user_context: dict | None = None,
-        history: list | None = None,
-    ) -> str:
-        history = history or []
-
-        result = _groq_response(message, history, user_context)
-        if result:
-            return result
-
-        logger.info("Groq unavailable — using rule-based fallback")
-        return _rule_based_response(message, user_context)
-
-
-# Singleton used by views.py
-ai_service = AIService()
+    result = groq_chat(message, history, user_ctx)
+    if result:
+        return result, 'groq'
+    logger.info('Groq unavailable — using rule-based fallback')
+    return rule_based(message, user_ctx), 'fallback'
