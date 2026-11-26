@@ -28,6 +28,9 @@ from rest_framework.response import Response
 from .ai_service import get_ai_response, groq_vision, groq_transcribe, rule_based
 from .models import ChatMessage, ChatSession
 from .serializers import ChatMessageSerializer, ChatSessionListSerializer, ChatSessionSerializer
+from . import firestore_chatbot_service as fs_chat
+
+_FS_ENABLED = lambda: getattr(settings, 'FIRESTORE_COLLECTIONS', {}).get('chatbot', False)
 
 logger = logging.getLogger(__name__)
 
@@ -63,8 +66,13 @@ def _get_or_create_session(user, session_id: str | None, first_message: str) -> 
             return ChatSession.objects.get(id=int(session_id), user=user)
         except (ChatSession.DoesNotExist, ValueError, TypeError):
             pass
-    title = (first_message[:60] + '…') if len(first_message) > 60 else first_message
-    return ChatSession.objects.create(user=user, title=title)
+    title   = (first_message[:60] + '…') if len(first_message) > 60 else first_message
+    session = ChatSession.objects.create(user=user, title=title)
+    if _FS_ENABLED():
+        # Refresh so created_at/updated_at are populated before mirroring
+        session.refresh_from_db()
+        fs_chat.mirror_new_session(session)
+    return session
 
 
 def _build_history(session: ChatSession) -> list:
@@ -75,7 +83,7 @@ def _build_history(session: ChatSession) -> list:
 def _persist(session: ChatSession, user_text: str, ai_text: str,
              ai_source: str, user_meta: dict | None = None) -> dict:
     """Save both turns and return a response dict."""
-    ChatMessage.objects.create(
+    user_msg = ChatMessage.objects.create(
         session=session, role=ChatMessage.ROLE_USER,
         content=user_text, meta=user_meta or {},
     )
@@ -85,6 +93,12 @@ def _persist(session: ChatSession, user_text: str, ai_text: str,
     )
     # Touch updated_at so the session sorts to the top
     ChatSession.objects.filter(pk=session.pk).update(updated_at=ai_msg.created_at)
+
+    # Mirror both messages to Firestore (non-fatal if it fails)
+    if _FS_ENABLED():
+        session.refresh_from_db()   # pick up the new updated_at
+        fs_chat.mirror_message_pair(session, user_msg, ai_msg)
+
     return {
         'session_id': session.id,
         'reply':      ai_text,
@@ -265,7 +279,11 @@ def session_detail(request, session_id):
     session = get_object_or_404(ChatSession, id=session_id, user=request.user)
 
     if request.method == 'DELETE':
+        user_id    = session.user_id
+        session_id = session.id
         session.delete()
+        if _FS_ENABLED():
+            fs_chat.mirror_session_delete(user_id, session_id)
         return Response({'ok': True})
 
     return Response(ChatSessionSerializer(session).data)
