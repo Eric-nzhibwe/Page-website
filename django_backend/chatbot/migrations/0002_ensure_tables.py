@@ -17,8 +17,15 @@ def ensure_tables(apps, schema_editor):
     user_table = User._meta.db_table
 
     if db == 'postgresql':
+        # Drop both tables unconditionally so we start from a known-good state.
+        # CASCADE handles the foreign key from chat_messages → chat_sessions.
+        # This is safe — the tables either don't exist yet, or exist in a broken
+        # partial state from a previous failed migration attempt.
+        schema_editor.execute("DROP TABLE IF EXISTS chat_messages CASCADE")
+        schema_editor.execute("DROP TABLE IF EXISTS chat_sessions CASCADE")
+
         schema_editor.execute(f"""
-            CREATE TABLE IF NOT EXISTS chat_sessions (
+            CREATE TABLE chat_sessions (
                 id         BIGSERIAL    PRIMARY KEY,
                 title      VARCHAR(200) NOT NULL DEFAULT 'New chat',
                 created_at TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
@@ -28,7 +35,7 @@ def ensure_tables(apps, schema_editor):
             )
         """)
         schema_editor.execute("""
-            CREATE TABLE IF NOT EXISTS chat_messages (
+            CREATE TABLE chat_messages (
                 id         BIGSERIAL   PRIMARY KEY,
                 role       VARCHAR(12) NOT NULL,
                 content    TEXT        NOT NULL,
@@ -38,22 +45,15 @@ def ensure_tables(apps, schema_editor):
                     REFERENCES chat_sessions(id) ON DELETE CASCADE
             )
         """)
-        schema_editor.execute("""
-            CREATE INDEX IF NOT EXISTS chatmsg_session_idx
-                ON chat_messages (session_id)
-        """)
-        schema_editor.execute("""
-            CREATE INDEX IF NOT EXISTS chatsess_user_idx
-                ON chat_sessions (user_id)
-        """)
-        schema_editor.execute("""
-            CREATE INDEX IF NOT EXISTS chatsess_updated_idx
-                ON chat_sessions (updated_at DESC)
-        """)
+        schema_editor.execute("CREATE INDEX chatmsg_session_idx  ON chat_messages (session_id)")
+        schema_editor.execute("CREATE INDEX chatsess_user_idx    ON chat_sessions  (user_id)")
+        schema_editor.execute("CREATE INDEX chatsess_updated_idx ON chat_sessions  (updated_at DESC)")
     else:
-        # SQLite (local dev)
+        # SQLite (local dev) — drop and recreate cleanly
+        schema_editor.execute("DROP TABLE IF EXISTS chat_messages")
+        schema_editor.execute("DROP TABLE IF EXISTS chat_sessions")
         schema_editor.execute(f"""
-            CREATE TABLE IF NOT EXISTS chat_sessions (
+            CREATE TABLE chat_sessions (
                 id         INTEGER PRIMARY KEY AUTOINCREMENT,
                 title      VARCHAR(200) NOT NULL DEFAULT 'New chat',
                 created_at DATETIME     NOT NULL,
@@ -63,7 +63,7 @@ def ensure_tables(apps, schema_editor):
             )
         """)
         schema_editor.execute("""
-            CREATE TABLE IF NOT EXISTS chat_messages (
+            CREATE TABLE chat_messages (
                 id         INTEGER PRIMARY KEY AUTOINCREMENT,
                 role       VARCHAR(12) NOT NULL,
                 content    TEXT        NOT NULL,
