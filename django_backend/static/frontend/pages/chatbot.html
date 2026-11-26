@@ -21,103 +21,141 @@
      ═══════════════════════════════════════════════════════ -->
 <div class="ai-app" id="aiApp">
 
-  <!-- Drawer overlay (mobile) -->
-  <div class="ai-drawer-overlay" id="drawerOverlay" onclick="closeSidebar()"></div>
-
-  <!-- ════════════════ SIDEBAR ════════════════ -->
+  <!-- ══════════════════════════════════════════════════════
+       MOBILE SIDEBAR  (full-screen drawer on mobile)
+       ══════════════════════════════════════════════════════ -->
   <aside class="ai-sidebar" id="aiSidebar">
 
-    <!-- Brand strip -->
+    <!-- Top row: branding + search icons -->
     <div class="ai-sidebar-top">
-      <a href="../index.html" class="ai-brand">
-        <div class="ai-brand-orb"><i class="fas fa-microchip"></i></div>
-        <div class="ai-brand-text">
-          <span class="ai-brand-name">PAGE AI</span>
-          <span class="ai-brand-sub">Powered by Groq</span>
-        </div>
-      </a>
-      <button class="ai-new-btn" onclick="newSession()" title="New chat">
-        <i class="fas fa-pen-to-square"></i>
-      </button>
+      <span class="ai-brand-name-lg">PAGE AI</span>
+      <div style="display:flex;gap:4px;align-items:center;">
+        <button class="ai-sidebar-icon-btn" onclick="openSearch()" aria-label="Search" title="Search">
+          <i class="fas fa-search"></i>
+        </button>
+        <button class="ai-sidebar-icon-btn ai-mobile-only" onclick="closeSidebar()" aria-label="Close" title="Close sidebar">
+          <i class="fas fa-sidebar"></i>
+        </button>
+      </div>
     </div>
 
-    <!-- Scrollable body -->
-    <div class="ai-sidebar-scroll">
+    <!-- New chat (desktop top) -->
+    <button class="ai-sidebar-new-chat ai-desktop-only" onclick="newSession()">
+      <i class="fas fa-pen-to-square"></i><span>New chat</span>
+    </button>
 
-      <!-- Quick suggestions -->
-      <p class="ai-sidebar-label">Quick ask</p>
-      <button class="ai-sidebar-row" onclick="quickSend('How do I deposit funds into my wallet?')">
-        <i class="fas fa-wallet"></i><span>Deposit funds</span>
-      </button>
-      <button class="ai-sidebar-row" onclick="quickSend('How do I earn money on PAGE?')">
-        <i class="fas fa-coins"></i><span>Earn money</span>
-      </button>
-      <button class="ai-sidebar-row" onclick="quickSend('How do tournaments work?')">
-        <i class="fas fa-trophy"></i><span>Tournaments</span>
+    <!-- Nav links -->
+    <nav class="ai-sidebar-nav">
+      <button class="ai-sidebar-row" onclick="quickSend('Show me my chat history')">
+        <i class="fas fa-images"></i><span>Library</span>
       </button>
       <button class="ai-sidebar-row" onclick="quickSend('Explain the prestige tier system')">
-        <i class="fas fa-layer-group"></i><span>Prestige tiers</span>
+        <i class="fas fa-sliders-h"></i><span>Customize</span>
       </button>
-      <button class="ai-sidebar-row" onclick="quickSend('What payment methods are supported?')">
-        <i class="fas fa-credit-card"></i><span>Payments</span>
+      <button class="ai-sidebar-row" onclick="quickSend('How do tournaments work?')">
+        <i class="fas fa-folder"></i><span>Challenges</span>
+      </button>
+      <button class="ai-sidebar-row" onclick="window.location.href='../index.html'">
+        <i class="fas fa-home"></i><span>Home</span>
       </button>
       <button class="ai-sidebar-row" onclick="quickSend('How do alliances work?')">
         <i class="fas fa-shield-halved"></i><span>Alliances</span>
       </button>
-      <button class="ai-sidebar-row" onclick="quickSend('What is my current prestige tier?')">
-        <i class="fas fa-star"></i><span>My tier</span>
-      </button>
-      <button class="ai-sidebar-row" onclick="quickSend('How do daily streaks work?')">
-        <i class="fas fa-fire"></i><span>Daily streaks</span>
-      </button>
+    </nav>
 
-      <!-- Past sessions — injected by JS -->
-      <div id="sidebarHistory"></div>
+    <!-- Divider -->
+    <div class="ai-sidebar-divider"></div>
 
+    <!-- Projects section (desktop) -->
+    <div class="ai-desktop-only" style="flex-direction:column;padding:0;">
+      <p class="ai-sidebar-label">Projects</p>
+      <p style="font-size:13px;color:var(--ai-muted);padding:4px 14px 8px;">No projects</p>
     </div>
 
-    <!-- Footer -->
-    <div class="ai-sidebar-footer">
-      <a href="../index.html" class="ai-back-link">
-        <i class="fas fa-arrow-left"></i> Back to PAGE
-      </a>
+    <!-- Recent sessions — injected by JS -->
+    <div class="ai-sidebar-scroll" id="sidebarHistory"></div>
+
+    <!-- Desktop: user profile footer -->
+    <div class="ai-sidebar-user-row ai-desktop-only" id="sidebarUserRow" style="display:none;">
+      <div class="ai-sidebar-user-avatar" id="sidebarUserAvatar">
+        <i class="fas fa-user" style="font-size:13px;"></i>
+      </div>
+      <div class="ai-sidebar-user-info">
+        <span class="ai-sidebar-user-name" id="sidebarUserName">User</span>
+        <span class="ai-sidebar-user-plan" id="sidebarUserPlan">Free</span>
+      </div>
+    </div>
+
+    <!-- Mobile bottom action bar -->
+    <div class="ai-sidebar-bottom-bar ai-mobile-only">
+      <!-- New Chat pill button -->
+      <button class="ai-new-chat-pill" onclick="newSession()">
+        <i class="fas fa-pen-to-square"></i>
+        <span>Chat</span>
+      </button>
+      <!-- User avatar -->
+      <button class="ai-sidebar-avatar-btn" id="sidebarAvatarBtn" onclick="closeSidebar()">
+        <div class="ai-sidebar-avatar" id="sidebarAvatar">
+          <i class="fas fa-user"></i>
+        </div>
+      </button>
+      <!-- Voice / AI orb -->
+      <button class="ai-sidebar-voice-btn"
+              onmousedown="startRec(event)" onmouseup="stopRec(event)"
+              ontouchstart="startRec(event)" ontouchend="stopRec(event)"
+              id="sidebarVoiceBtn" aria-label="Voice">
+        <i class="fas fa-waveform-lines"></i>
+      </button>
     </div>
 
   </aside>
 
+  <!-- Overlay behind drawer -->
+  <div class="ai-drawer-overlay" id="drawerOverlay" onclick="closeSidebar()"></div>
+
   <!-- ════════════════ MAIN ════════════════ -->
   <div class="ai-main" id="aiMain">
 
-    <!-- Top bar -->
+    <!-- Top bar: minimal, 2-button on mobile -->
     <header class="ai-topbar">
 
-      <!-- Mobile: open sidebar drawer -->
-      <button class="ai-topbar-btn ai-mobile-only" onclick="openSidebar()" aria-label="Menu">
-        <i class="fas fa-bars"></i>
+      <!-- Mobile: open sidebar drawer (hamburger) -->
+      <button class="ai-topbar-circle-btn ai-mobile-only" onclick="openSidebar()" aria-label="Menu">
+        <i class="fas fa-minus"></i>
       </button>
 
-      <!-- AI identity -->
-      <div class="ai-topbar-id">
-        <div class="ai-topbar-avatar" id="topbarAvatar">
-          <i class="fas fa-microchip"></i>
-        </div>
-        <div class="ai-topbar-info">
-          <span class="ai-topbar-name">PAGE AI</span>
-          <div class="ai-status-row">
-            <span class="ai-status-dot" id="statusDot"></span>
-            <span id="statusLabel">Connecting…</span>
-          </div>
-        </div>
+      <!-- Desktop left: sidebar toggle + PAGE AI brand -->
+      <div class="ai-topbar-left ai-desktop-only">
+        <button class="ai-topbar-icon" onclick="toggleDesktopSidebar()" title="Toggle sidebar">
+          <i class="fas fa-sidebar"></i>
+        </button>
       </div>
 
-      <!-- Desktop: new chat -->
-      <button class="ai-topbar-btn ai-desktop-only" onclick="newSession()" title="New chat">
-        <i class="fas fa-pen-to-square"></i>
-      </button>
+      <!-- Desktop center: session title -->
+      <div class="ai-topbar-center ai-desktop-only">
+        <span class="ai-topbar-title" id="topbarTitle"></span>
+      </div>
 
-      <!-- Mobile: new chat -->
-      <button class="ai-topbar-btn ai-mobile-only" onclick="newSession()" aria-label="New chat">
-        <i class="fas fa-pen-to-square"></i>
+      <!-- Desktop right: icons -->
+      <div class="ai-topbar-right ai-desktop-only">
+        <span class="ai-status-row" style="margin-right:6px;">
+          <span class="ai-status-dot" id="statusDot"></span>
+          <span id="statusLabel" style="font-size:12px;color:var(--ai-muted);">Connecting…</span>
+        </span>
+        <button class="ai-topbar-icon" onclick="newSession()" title="New chat">
+          <i class="fas fa-pen-to-square"></i>
+        </button>
+      </div>
+
+      <!-- Mobile status dot (centered) -->
+      <div class="ai-mobile-status ai-mobile-only">
+        <span class="ai-status-dot" id="statusDotMobile"></span>
+        <span id="statusLabelMobile" class="ai-mobile-status-label">PAGE AI</span>
+      </div>
+
+      <!-- Mobile right: refresh/new -->
+      <button class="ai-topbar-circle-btn ai-mobile-only" onclick="newSession()" aria-label="New chat">
+        <i class="fas fa-rotate-right"></i>
       </button>
 
     </header>
@@ -142,42 +180,71 @@
         <!-- Attachment preview strip -->
         <div class="ai-attach-strip" id="attachStrip"></div>
 
-        <!-- Input pill -->
-        <div class="ai-input-pill" id="inputPill">
+        <!-- Mobile input row: + pill textarea mic voice-orb -->
+        <div class="ai-input-row">
 
-          <!-- Attach file -->
-          <button type="button" class="ai-pill-btn" title="Attach image or file"
-                  onclick="document.getElementById('fileInput').click()">
-            <i class="fas fa-paperclip"></i>
+          <!-- + attach button (circle) -->
+          <button type="button" class="ai-input-circle-btn ai-mobile-only"
+                  onclick="document.getElementById('fileInput').click()"
+                  title="Attach file" aria-label="Attach">
+            <i class="fas fa-plus"></i>
           </button>
           <input type="file" id="fileInput"
                  accept="image/*,.pdf,.txt,.csv,.md"
                  style="display:none"
                  onchange="handleAttach(event)">
 
-          <!-- Text input -->
-          <textarea id="aiMsgInput" rows="1" maxlength="2000"
-                    placeholder="Ask PAGE AI anything…"
-                    aria-label="Message"></textarea>
+          <!-- Input pill (text + desktop controls inside) -->
+          <div class="ai-input-pill" id="inputPill">
 
-          <!-- Voice -->
-          <button type="button" class="ai-pill-btn" id="voiceBtn"
-                  title="Hold to record a voice message"
-                  onmousedown="startRec(event)"
-                  onmouseup="stopRec(event)"
-                  ontouchstart="startRec(event)"
-                  ontouchend="stopRec(event)">
+            <!-- Desktop: attach inside pill -->
+            <button type="button" class="ai-pill-btn ai-desktop-only" title="Attach image or file"
+                    onclick="document.getElementById('fileInput').click()">
+              <i class="fas fa-paperclip"></i>
+            </button>
+
+            <!-- Text input -->
+            <textarea id="aiMsgInput" rows="1" maxlength="2000"
+                      placeholder="Ask PAGE AI…"
+                      aria-label="Message"></textarea>
+
+            <!-- Desktop: Think button -->
+            <button type="button" class="ai-think-btn ai-desktop-only" id="thinkBtn" title="Think mode">
+              <i class="fas fa-brain"></i> Think
+            </button>
+
+            <!-- Desktop: voice -->
+            <button type="button" class="ai-pill-btn ai-desktop-only" id="voiceBtnDesktop"
+                    title="Hold to record"
+                    onmousedown="startRec(event)" onmouseup="stopRec(event)">
+              <i class="fas fa-microphone"></i>
+            </button>
+
+            <!-- Desktop: blue orb send -->
+            <button type="submit" id="aiSendBtn" disabled title="Send message" class="ai-desktop-only">
+              <i class="fas fa-waveform-lines" id="desktopOrbIcon"></i>
+            </button>
+
+          </div>
+
+          <!-- Mobile: mic circle -->
+          <button type="button" class="ai-input-circle-btn ai-mobile-only" id="voiceBtn"
+                  title="Hold to record"
+                  onmousedown="startRec(event)" onmouseup="stopRec(event)"
+                  ontouchstart="startRec(event)" ontouchend="stopRec(event)">
             <i class="fas fa-microphone"></i>
           </button>
 
-          <!-- Send -->
-          <button type="submit" id="aiSendBtn" disabled title="Send message">
-            <i class="fas fa-paper-plane"></i>
+          <!-- Mobile: send / voice orb -->
+          <button type="submit" id="aiSendBtnMobile"
+                  class="ai-voice-orb ai-mobile-only"
+                  title="Send message" aria-label="Send">
+            <i class="fas fa-paper-plane" id="voiceOrbIcon"></i>
           </button>
 
         </div>
 
-        <p class="ai-disclaimer">PAGE AI can make mistakes. Double-check important info.</p>
+        <p class="ai-disclaimer ai-desktop-only">PAGE AI can make mistakes. Double-check important info.</p>
       </form>
     </footer>
 
@@ -186,9 +253,9 @@
 </div><!-- /ai-app -->
 
 <!-- ═══════════════════════════════════════════════════════
-     MOBILE BOTTOM NAV
+     MOBILE BOTTOM NAV  (hidden on the AI page — we use our own chrome)
      ═══════════════════════════════════════════════════════ -->
-<nav class="mobile-bottom-nav" id="mobileBottomNav">
+<nav class="mobile-bottom-nav ai-hide-mobile-nav" id="mobileBottomNav" style="display:none">
   <button class="icon-nav-btn" onclick="window.location.href='../index.html'" title="Home">
     <i class="fas fa-home"></i>
   </button>
@@ -211,7 +278,7 @@
      ═══════════════════════════════════════════════════════ -->
 <script src="../scripts/chatbot.js"></script>
 <script>
-/* Sidebar drawer (mobile) */
+/* ── Sidebar drawer (mobile) ─────────────────────────── */
 function openSidebar() {
   document.getElementById('aiSidebar').classList.add('open');
   document.getElementById('drawerOverlay').classList.add('visible');
@@ -223,29 +290,88 @@ function closeSidebar() {
   document.body.style.overflow = '';
 }
 
-/* More menu (bottom nav) */
-function toggleMoreMenu(btn) {
-  const dd = document.getElementById('userMenuDropdown');
-  if (!dd) return;
-  const open = dd.classList.contains('show');
-  if (open) {
-    dd.classList.remove('show');
-    ['top','bottom','right','position'].forEach(p => dd.style.removeProperty(p));
-  } else {
-    const navH = document.getElementById('mobileBottomNav').offsetHeight;
-    Object.assign(dd.style, { position:'fixed', bottom:(navH+8)+'px', top:'auto', right:'8px' });
-    dd.classList.add('show');
-  }
+/* ── Desktop sidebar toggle ──────────────────────────── */
+function toggleDesktopSidebar() {
+  const sidebar = document.getElementById('aiSidebar');
+  if (window.innerWidth < 1024) { openSidebar(); return; }
+  sidebar.style.display = sidebar.style.display === 'none' ? '' : 'none';
 }
-document.addEventListener('click', e => {
-  const dd = document.getElementById('userMenuDropdown');
-  if (dd?.classList.contains('show') && dd.style.bottom) {
-    const btn = document.querySelector('.mobile-bottom-nav .icon-nav-btn[title="More"]');
-    if (!dd.contains(e.target) && !btn?.contains(e.target)) {
-      dd.classList.remove('show');
-      ['top','bottom','right','position'].forEach(p => dd.style.removeProperty(p));
+
+/* ── Search placeholder ──────────────────────────────── */
+function openSearch() { /* future: open a search overlay */ }
+
+/* ── Mirror status to mobile indicator ──────────────── */
+(function mirrorStatus() {
+  const observer = new MutationObserver(() => {
+    const dot    = document.getElementById('statusDot');
+    const label  = document.getElementById('statusLabel');
+    const mdot   = document.getElementById('statusDotMobile');
+    const mlabel = document.getElementById('statusLabelMobile');
+    if (dot   && mdot)   mdot.className   = dot.className;
+    if (label && mlabel) mlabel.innerHTML = label.innerHTML;
+  });
+  const dot = document.getElementById('statusDot');
+  if (dot) observer.observe(dot.parentElement, { subtree: true, attributes: true, childList: true, characterData: true });
+})();
+
+/* ── Populate avatars and user footer from localStorage ─ */
+document.addEventListener('DOMContentLoaded', () => {
+  try {
+    const u    = JSON.parse(localStorage.getItem('pageUser') || '{}');
+    const raw  = u.profile_image_url || u.avatar_url || null;
+    const url  = raw ? (typeof resolveMediaUrl === 'function' ? resolveMediaUrl(raw) : raw) : null;
+    const init = (u.display_name || u.username || 'Y').charAt(0).toUpperCase();
+    const name = u.display_name || u.username || 'User';
+    const plan = u.access_tier  || 'Free';
+
+    /* Mobile sidebar avatar */
+    const mAva = document.getElementById('sidebarAvatar');
+    if (mAva) {
+      if (url) {
+        mAva.innerHTML = `<img src="${url}" alt="${init}"
+          style="width:100%;height:100%;object-fit:cover;border-radius:50%;"
+          onerror="this.style.display='none'">`;
+      } else {
+        mAva.textContent = init;
+        Object.assign(mAva.style, { display:'flex', alignItems:'center', justifyContent:'center', fontWeight:'700' });
+      }
     }
+
+    /* Desktop user footer */
+    const footerRow = document.getElementById('sidebarUserRow');
+    const footerAva = document.getElementById('sidebarUserAvatar');
+    const footerName = document.getElementById('sidebarUserName');
+    const footerPlan = document.getElementById('sidebarUserPlan');
+    if (footerName) footerName.textContent = name;
+    if (footerPlan) footerPlan.textContent = plan;
+    if (footerAva) {
+      if (url) {
+        footerAva.innerHTML = `<img src="${url}" alt="${init}"
+          style="width:100%;height:100%;object-fit:cover;border-radius:50%;"
+          onerror="this.style.display='none'">`;
+      } else {
+        footerAva.textContent = init;
+        footerAva.querySelector('i')?.remove();
+      }
+    }
+    if (footerRow) footerRow.style.display = 'flex';
+  } catch {}
+
+  /* Sync mobile send disable state on input */
+  const inp   = document.getElementById('aiMsgInput');
+  const mSend = document.getElementById('aiSendBtnMobile');
+  if (inp && mSend) {
+    inp.addEventListener('input', () => {
+      mSend.disabled = inp.value.trim() === '' && !window._file;
+    });
   }
+});
+
+/* ── Sync mobile send button with busy state ─────────── */
+document.addEventListener('input', () => {
+  const inp   = document.getElementById('aiMsgInput');
+  const mSend = document.getElementById('aiSendBtnMobile');
+  if (mSend && inp) mSend.disabled = (inp.value.trim() === '' && !window._file) || !!window.isBusy;
 });
 </script>
 </body>

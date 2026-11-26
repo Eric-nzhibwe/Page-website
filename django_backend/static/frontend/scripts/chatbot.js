@@ -37,6 +37,9 @@ let _recActive = false;
 let _file      = null;
 let _fileURL   = null;
 
+// Expose for inline scripts
+Object.defineProperty(window, '_file', { get: () => _file, configurable: true });
+
 /* ── Boot ──────────────────────────────────────────────────────────────── */
 document.addEventListener('DOMContentLoaded', () => {
 
@@ -95,7 +98,6 @@ async function _apiFetch(url, opts = {}) {
 async function _checkStatus() {
   const dot   = document.getElementById('statusDot');
   const label = document.getElementById('statusLabel');
-  const ava   = document.getElementById('topbarAvatar');
   const ctrl  = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 9000);
 
@@ -111,27 +113,23 @@ async function _checkStatus() {
     aiSrc = d.engine;
 
     if (d.engine === 'groq' && d.status === 'online') {
-      dot.className   = 'ai-status-dot online';
-      label.innerHTML = `${d.label || 'PAGE AI'} <span class="ai-engine-pill live">● Live</span>`;
-      if (ava) ava.classList.add('is-online');
+      if (dot)   dot.className   = 'ai-status-dot online';
+      if (label) label.innerHTML = `${d.label || 'PAGE AI'} <span class="ai-engine-pill live">● Live</span>`;
     } else if (d.status === 'error') {
-      dot.className   = 'ai-status-dot error';
-      label.innerHTML = `<span class="ai-engine-pill limited">${d.label || 'Basic Mode'}</span>`;
+      if (dot)   dot.className   = 'ai-status-dot error';
+      if (label) label.innerHTML = `<span class="ai-engine-pill limited">${d.label || 'Basic Mode'}</span>`;
     } else {
-      dot.className   = 'ai-status-dot limited';
-      label.innerHTML = 'Basic Mode <span class="ai-engine-pill limited">Limited</span>';
+      if (dot)   dot.className   = 'ai-status-dot limited';
+      if (label) label.innerHTML = 'Basic Mode <span class="ai-engine-pill limited">Limited</span>';
     }
   } catch (err) {
     clearTimeout(timer);
     if (err.name === 'AbortError') {
-      /* Server cold-starting — optimistically show ready */
-      dot.className   = 'ai-status-dot online';
-      label.innerHTML = 'PAGE AI <span class="ai-engine-pill live">Ready</span>';
-      if (document.getElementById('topbarAvatar'))
-        document.getElementById('topbarAvatar').classList.add('is-online');
+      if (dot)   dot.className   = 'ai-status-dot online';
+      if (label) label.innerHTML = 'PAGE AI <span class="ai-engine-pill live">Ready</span>';
     } else {
-      dot.className   = 'ai-status-dot error';
-      label.textContent = 'Offline';
+      if (dot)   dot.className   = 'ai-status-dot error';
+      if (label) label.textContent = 'Offline';
     }
   }
 }
@@ -139,35 +137,51 @@ async function _checkStatus() {
 /* ── Welcome / empty state ─────────────────────────────────────────────── */
 function _renderWelcome() {
   const feed = document.getElementById('aiFeed');
-  feed.innerHTML = `
-    <div class="ai-welcome" id="aiWelcome">
-      <div class="ai-welcome-icon"><i class="fas fa-microchip"></i></div>
-      <h2>Hey, I'm PAGE AI</h2>
-      <p class="ai-welcome-sub">
-        Ask me anything — your wallet, challenges, prestige tiers, or
-        honestly just about anything else. I'm here.
-      </p>
-      <div class="ai-starter-grid">
-        <button class="ai-starter-card" onclick="quickSend('How do I deposit funds into my wallet?')">
-          <i class="fas fa-wallet"></i><span>Deposit funds</span>
-        </button>
-        <button class="ai-starter-card" onclick="quickSend('How do I earn money on PAGE?')">
-          <i class="fas fa-coins"></i><span>Earn money</span>
-        </button>
-        <button class="ai-starter-card" onclick="quickSend('How do tournaments work?')">
-          <i class="fas fa-trophy"></i><span>Tournaments</span>
-        </button>
-        <button class="ai-starter-card" onclick="quickSend('Explain the prestige tier system')">
-          <i class="fas fa-layer-group"></i><span>Prestige tiers</span>
-        </button>
-        <button class="ai-starter-card" onclick="quickSend('What payment methods are supported?')">
-          <i class="fas fa-credit-card"></i><span>Payments</span>
-        </button>
-        <button class="ai-starter-card" onclick="quickSend('How do alliances work?')">
-          <i class="fas fa-shield-halved"></i><span>Alliances</span>
-        </button>
-      </div>
-    </div>`;
+  const isDesktop = window.innerWidth >= 1024;
+
+  if (isDesktop) {
+    /* Desktop: centered heading + floating input bar */
+    feed.innerHTML = `
+      <div class="ai-welcome" id="aiWelcome">
+        <h2>What's on your mind today?</h2>
+        <div class="ai-welcome-input-wrap" id="welcomeInputWrap">
+          <!-- The real input bar stays at the bottom; we clone its look as a hint -->
+        </div>
+        <div class="ai-starter-chips">
+          <button class="ai-starter-chip" onclick="quickSend('How do I deposit funds into my wallet?')">Deposit funds</button>
+          <button class="ai-starter-chip" onclick="quickSend('How do I earn money on PAGE?')">Earn money</button>
+          <button class="ai-starter-chip" onclick="quickSend('How do tournaments work?')">Tournaments</button>
+          <button class="ai-starter-chip" onclick="quickSend('Explain the prestige tier system')">Prestige tiers</button>
+          <button class="ai-starter-chip" onclick="quickSend('How do alliances work?')">Alliances</button>
+          <button class="ai-starter-chip" onclick="quickSend('What payment methods are supported?')">Payments</button>
+        </div>
+      </div>`;
+  } else {
+    feed.innerHTML = `
+      <div class="ai-welcome" id="aiWelcome">
+        <h2 style="font-size:22px;">Hey, I'm PAGE AI</h2>
+        <p style="font-size:14px;color:var(--ai-muted);max-width:320px;text-align:center;line-height:1.6;">
+          Ask me anything about PAGE — wallet, challenges, prestige, and more.
+        </p>
+        <div class="ai-starter-grid">
+          <button class="ai-starter-card" onclick="quickSend('How do I deposit funds into my wallet?')">
+            <i class="fas fa-wallet"></i><span>Deposit funds</span>
+          </button>
+          <button class="ai-starter-card" onclick="quickSend('How do I earn money on PAGE?')">
+            <i class="fas fa-coins"></i><span>Earn money</span>
+          </button>
+          <button class="ai-starter-card" onclick="quickSend('How do tournaments work?')">
+            <i class="fas fa-trophy"></i><span>Tournaments</span>
+          </button>
+          <button class="ai-starter-card" onclick="quickSend('Explain the prestige tier system')">
+            <i class="fas fa-layer-group"></i><span>Prestige tiers</span>
+          </button>
+        </div>
+      </div>`;
+  }
+
+  /* Update topbar title */
+  _setTopbarTitle('');
   sessionId = null;
   msgCount  = 0;
 }
@@ -187,6 +201,12 @@ function newSession() {
   _renderWelcome();
   _updateSidebarActive(null);
   closeSidebar();
+}
+
+/* ── Topbar title helper ───────────────────────────────────────────────── */
+function _setTopbarTitle(title) {
+  const el = document.getElementById('topbarTitle');
+  if (el) el.textContent = title || '';
 }
 
 /* ── Send text ─────────────────────────────────────────────────────────── */
@@ -225,7 +245,10 @@ async function sendMessage(e) {
     if (data.session_id) {
       const isNew = !sessionId;
       sessionId = data.session_id;
-      if (isNew) _loadSessions(); /* update sidebar after first message */
+      if (isNew) {
+        _loadSessions();
+        _setTopbarTitle(data.title || text.slice(0, 50));
+      }
     }
     _appendMsg(data.reply || data.message?.content || '…', 'bot', data.ai_source);
   } catch (err) {
@@ -255,19 +278,32 @@ async function _loadSessions() {
   if (!container) return;
   try {
     const data     = await _apiFetch(`${API}/chatbot/sessions/`);
-    const sessions = (data.sessions || []).slice(0, 15);
+    const all      = data.sessions || [];
+    const sessions = all.slice(0, 15);
     if (!sessions.length) { container.innerHTML = ''; return; }
 
     container.innerHTML = '<p class="ai-sidebar-label">Recent chats</p>';
     sessions.forEach(s => {
-      const btn   = document.createElement('button');
+      const btn      = document.createElement('button');
       btn.className  = `ai-sidebar-row${s.id === sessionId ? ' active' : ''}`;
       btn.dataset.sid = s.id;
-      const title = (s.title || 'Chat').slice(0, 36) + ((s.title?.length || 0) > 36 ? '…' : '');
-      btn.innerHTML   = `<i class="fas fa-message"></i><span>${_esc(title)}</span>`;
+      const title    = (s.title || 'Chat').slice(0, 36) + ((s.title?.length || 0) > 36 ? '…' : '');
+      btn.innerHTML  = `<i class="fas fa-message"></i><span>${_esc(title)}</span>`;
       btn.addEventListener('click', () => _openSession(s.id));
       container.appendChild(btn);
     });
+
+    if (all.length > 15) {
+      const more = document.createElement('button');
+      more.className = 'ai-sidebar-see-all';
+      more.textContent = 'See all…';
+      more.addEventListener('click', () => {
+        /* Show all */
+        container.querySelectorAll('.ai-sidebar-row[data-sid]').forEach(b => { b.style.display = ''; });
+        more.remove();
+      });
+      container.appendChild(more);
+    }
   } catch { /* sidebar history is non-critical */ }
 }
 
@@ -287,6 +323,7 @@ async function _openSession(id) {
     } else {
       _renderWelcome();
     }
+    _setTopbarTitle(data.title || '');
     _updateSidebarActive(id);
     closeSidebar();
   } catch (err) { console.error('Failed to load session:', err); }
@@ -309,8 +346,11 @@ async function startRec(e) {
     _recorder.ondataavailable = ev => { if (ev.data.size > 0) _chunks.push(ev.data); };
     _recorder.start(100);
     _recActive = true;
-    const btn = document.getElementById('voiceBtn');
-    btn.classList.add('recording'); btn.title = 'Release to send';
+    /* Mark all voice buttons as recording */
+    ['voiceBtn','voiceBtnDesktop','sidebarVoiceBtn'].forEach(id => {
+      const b = document.getElementById(id);
+      if (b) { b.classList.add('recording'); b.title = 'Release to send'; }
+    });
     _recTimer = setTimeout(() => stopRec(), 60000);
   } catch {
     _appendErr('Could not access microphone — please allow microphone permission.');
@@ -322,8 +362,10 @@ async function stopRec(e) {
   if (!_recActive || !_recorder) return;
   _recActive = false;
   clearTimeout(_recTimer);
-  const btn = document.getElementById('voiceBtn');
-  btn.classList.remove('recording'); btn.title = 'Hold to record a voice message';
+  ['voiceBtn','voiceBtnDesktop','sidebarVoiceBtn'].forEach(id => {
+    const b = document.getElementById(id);
+    if (b) { b.classList.remove('recording'); b.title = 'Hold to record'; }
+  });
   _recorder.stop();
   _recorder.stream.getTracks().forEach(t => t.stop());
   await new Promise(r => setTimeout(r, 160));
@@ -486,32 +528,75 @@ async function _sendMedia(text, file) {
 function _appendMsg(text, sender, source = null) {
   const feed = document.getElementById('aiFeed');
   const row  = document.createElement('div');
-  row.className = `ai-msg-row ${sender === 'user' ? 'user-row' : 'bot-row'} fade-in`;
+  row.className = `ai-msg-row ${sender === 'user' ? 'user-row' : 'bot-row'}`;
 
-  /* Source badge (AI messages only) */
-  let badge = '';
-  if (sender === 'bot' && source) {
+  if (sender === 'user') {
+    row.innerHTML = `
+      <div class="ai-msg-avatar ai-mobile-only">${_userAvatarHTML()}</div>
+      <div class="ai-bubble-wrap">
+        <div class="ai-bubble">${_md(text)}</div>
+      </div>`;
+  } else {
+    /* Source badge */
+    let badge = '';
     if (source === 'groq') {
-      badge = '<span class="ai-src-pill">✦ Groq</span>';
+      badge = '<span class="ai-src-pill">PAGE AI</span>';
     } else if (source === 'groq-vision') {
-      badge = '<span class="ai-src-pill vision">✦ Vision</span>';
-    } else {
+      badge = '<span class="ai-src-pill vision">Vision</span>';
+    } else if (source) {
       badge = '<span class="ai-src-pill fallback">Basic</span>';
     }
+
+    row.innerHTML = `
+      <div class="ai-msg-avatar ai-mobile-only"><i class="fas fa-microchip"></i></div>
+      <div class="ai-bubble-wrap" style="flex:1;max-width:100%;">
+        <div class="ai-bubble">${_md(text)}</div>
+        <div class="ai-reaction-bar">
+          <button class="ai-react-btn" title="Thumbs up" onclick="_react(this,'up')"><i class="far fa-thumbs-up"></i></button>
+          <button class="ai-react-btn" title="Thumbs down" onclick="_react(this,'down')"><i class="far fa-thumbs-down"></i></button>
+          <button class="ai-react-btn" title="Read aloud" onclick="_readAloud(this)"><i class="fas fa-volume-low"></i></button>
+          <button class="ai-react-btn" title="Copy" onclick="_copyMsg(this)"><i class="fas fa-arrow-up-from-bracket"></i></button>
+          <button class="ai-react-btn" title="More"><i class="fas fa-ellipsis"></i></button>
+          ${badge ? `<span style="margin-left:4px;">${badge}</span>` : ''}
+        </div>
+      </div>`;
   }
 
-  row.innerHTML = `
-    <div class="ai-msg-avatar">
-      ${sender === 'user' ? _userAvatarHTML() : '<i class="fas fa-microchip"></i>'}
-    </div>
-    <div class="ai-bubble-wrap">
-      <div class="ai-bubble">${_md(text)}</div>
-      <div class="ai-msg-meta">
-        <span class="ai-msg-time">${_time()}</span>${badge}
-      </div>
-    </div>`;
-
   feed.appendChild(row); msgCount++; _scrollDown();
+}
+
+/* ── Reaction helpers ───────────────────────────────────────────────────── */
+function _react(btn, dir) {
+  const icon = btn.querySelector('i');
+  const isUp = dir === 'up';
+  /* Toggle fill */
+  if (icon.classList.contains(isUp ? 'fa-solid' : 'fas')) {
+    icon.className = isUp ? 'far fa-thumbs-up' : 'far fa-thumbs-down';
+    btn.style.color = '';
+  } else {
+    icon.className = isUp ? 'fas fa-thumbs-up' : 'fas fa-thumbs-down';
+    btn.style.color = isUp ? '#22c55e' : '#ef4444';
+  }
+}
+function _readAloud(btn) {
+  /* Find the bubble content above the reaction bar */
+  const bubble = btn.closest('.ai-bubble-wrap').querySelector('.ai-bubble');
+  const text   = bubble ? bubble.innerText : '';
+  if (!text) return;
+  window.speechSynthesis?.cancel();
+  const utt = new SpeechSynthesisUtterance(text);
+  window.speechSynthesis?.speak(utt);
+  btn.querySelector('i').className = 'fas fa-volume-high';
+  utt.onend = () => { btn.querySelector('i').className = 'fas fa-volume-low'; };
+}
+function _copyMsg(btn) {
+  const bubble = btn.closest('.ai-bubble-wrap').querySelector('.ai-bubble');
+  if (!bubble) return;
+  navigator.clipboard?.writeText(bubble.innerText || '').then(() => {
+    const icon = btn.querySelector('i');
+    icon.className = 'fas fa-check';
+    setTimeout(() => { icon.className = 'fas fa-arrow-up-from-bracket'; }, 1500);
+  });
 }
 
 function _appendErr(text) {
@@ -633,9 +718,27 @@ function _grow(el) {
 }
 
 function _toggleSend() {
-  const inp = document.getElementById('aiMsgInput');
-  const btn = document.getElementById('aiSendBtn');
-  btn.disabled = (inp.value.trim() === '' && !_file) || isBusy;
+  const inp      = document.getElementById('aiMsgInput');
+  const hasContent = inp.value.trim() !== '' || !!_file;
+  const disabled = !hasContent || isBusy;
+  const btn      = document.getElementById('aiSendBtn');
+  const mBtn     = document.getElementById('aiSendBtnMobile');
+  if (btn)  btn.disabled  = disabled;
+  if (mBtn) mBtn.disabled = disabled;
+
+  /* Mobile orb icon: waveform when idle, paper-plane when typing */
+  const mIcon = document.getElementById('voiceOrbIcon');
+  if (mIcon) mIcon.className = hasContent ? 'fas fa-paper-plane' : 'fas fa-waveform-lines';
+
+  /* Desktop orb icon: same logic */
+  const dIcon = document.getElementById('desktopOrbIcon');
+  if (dIcon) dIcon.className = hasContent ? 'fas fa-paper-plane' : 'fas fa-waveform-lines';
+
+  /* Style desktop send button: blue when active */
+  if (btn) {
+    btn.style.background = hasContent && !isBusy ? '#2563eb' : '';
+    btn.style.boxShadow  = hasContent && !isBusy ? '0 4px 12px rgba(37,99,235,0.3)' : '';
+  }
 }
 
 function _time() {
