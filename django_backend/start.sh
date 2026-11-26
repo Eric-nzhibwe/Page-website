@@ -16,9 +16,6 @@ for i in $(seq 1 $MAX_RETRIES); do
     if python manage.py migrate --no-input; then
         echo "==> Migrations complete."
         break
-    else
-        echo "   Attempt $i/$MAX_RETRIES failed. Retrying in ${RETRY_DELAY}s..."
-        sleep $RETRY_DELAY
     fi
     if [ "$i" = "$MAX_RETRIES" ]; then
         echo "   FATAL: Migrations failed after $MAX_RETRIES attempts."
@@ -26,6 +23,8 @@ for i in $(seq 1 $MAX_RETRIES); do
         echo "   Failing the deploy instead of starting a broken server."
         exit 1
     fi
+    echo "   Attempt $i/$MAX_RETRIES failed. Retrying in ${RETRY_DELAY}s..."
+    sleep $RETRY_DELAY
 done
 
 echo "==> Ensuring superuser exists..."
